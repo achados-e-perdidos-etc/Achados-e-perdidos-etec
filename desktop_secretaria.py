@@ -4,8 +4,7 @@ import requests
 import base64
 from datetime import datetime
 
-# Substitua pela URL final do seu backend (ex: no Render)
-API_URL = "https://SEU-APP-NO-RENDER.onrender.com"
+API_URL = "https://achados-etec-api.onrender.com"
 
 class AdminDesktopApp:
     def __init__(self, root):
