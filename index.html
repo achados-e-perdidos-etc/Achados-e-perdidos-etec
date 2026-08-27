@@ -7,13 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Variáveis de Cores Primárias Dinâmicas */
+        /* Variáveis de Cores Primárias Dinâmicas (Padrão: Vermelho ETEC) */
         :root {
-            --primary-color: #238636;
-            --primary-hover: #2ea043;
-            --primary-text: #4ade80;
-            --primary-bg-subtle: #052e16;
-            --primary-border: #14532d;
+            --primary-color: #dc2626;
+            --primary-hover: #b91c1c;
+            --primary-text: #f87171;
+            --primary-bg-subtle: #450a0a;
+            --primary-border: #991b1b;
         }
 
         /* Tema Escuro (Padrão) */
@@ -86,7 +86,7 @@
                     </button>
 
                     <!-- MENU DROPDOWN DE CONFIGURAÇÕES -->
-                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-56 bg-card border border-color rounded-xl shadow-2xl p-3 z-50 space-y-3">
+                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-60 bg-card border border-color rounded-xl shadow-2xl p-3 z-50 space-y-3">
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
                             <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main hover:opacity-80 transition">
@@ -99,7 +99,10 @@
 
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Cor do Estilo</span>
-                            <div class="grid grid-cols-3 gap-2 pt-1">
+                            <div class="grid grid-cols-4 gap-2 pt-1">
+                                <button onclick="mudarEstiloCor('vermelho')" class="h-8 rounded-lg bg-red-600 border border-red-400 flex items-center justify-center text-white" title="Vermelho ETEC">
+                                    <i class="fas fa-check text-xs hidden" id="check-vermelho"></i>
+                                </button>
                                 <button onclick="mudarEstiloCor('verde')" class="h-8 rounded-lg bg-green-600 border border-green-400 flex items-center justify-center text-white" title="Verde ETEC">
                                     <i class="fas fa-check text-xs hidden" id="check-verde"></i>
                                 </button>
@@ -186,7 +189,6 @@
             menu.classList.toggle('hidden');
         }
 
-        // Fecha o menu se clicar fora dele
         window.addEventListener('click', function(e) {
             const menu = document.getElementById('configMenu');
             const btn = e.target.closest('button');
@@ -213,6 +215,13 @@
         }
 
         const temasCores = {
+            vermelho: {
+                primary: '#dc2626',
+                hover: '#b91c1c',
+                text: '#f87171',
+                subtle: '#450a0a',
+                border: '#991b1b'
+            },
             verde: {
                 primary: '#238636',
                 hover: '#2ea043',
@@ -237,7 +246,7 @@
         };
 
         function mudarEstiloCor(cor) {
-            const tema = temasCores[cor] || temasCores.verde;
+            const tema = temasCores[cor] || temasCores.vermelho;
             const root = document.documentElement;
 
             root.style.setProperty('--primary-color', tema.primary);
@@ -246,7 +255,6 @@
             root.style.setProperty('--primary-bg-subtle', tema.subtle);
             root.style.setProperty('--primary-border', tema.border);
 
-            // Atualiza marcadores visuais do menu
             document.querySelectorAll('#configMenu i[id^="check-"]').forEach(el => el.classList.add('hidden'));
             const check = document.getElementById(`check-${cor}`);
             if (check) check.classList.remove('hidden');
@@ -263,7 +271,7 @@
                 document.getElementById('themeIcon').className = "fas fa-sun text-yellow-500";
             }
 
-            const corSalva = localStorage.getItem('theme_color') || 'verde';
+            const corSalva = localStorage.getItem('theme_color') || 'vermelho';
             mudarEstiloCor(corSalva);
         }
 
