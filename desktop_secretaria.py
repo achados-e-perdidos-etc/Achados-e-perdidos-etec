@@ -6,21 +6,77 @@ from datetime import datetime
 
 API_URL = "https://achados-etec-api.onrender.com"
 
+# Credenciais permitidas para acesso
+EMAIL_CORRETO = "achadoseperdidosetec@gmail.com"
+SENHA_CORRETA = "etecachados"
+
 class AdminDesktopApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("950x680")
+        self.root.title("ETEC - Achados e Perdidos | Login Secretaria")
+        self.root.geometry("400x450")
         self.root.configure(bg="#1e1e2e")
-        
+        self.root.resizable(False, False)
+
         self.foto_base64 = ""
 
-        # Estilização Tkinter
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure("Treeview", background="#2d3748", foreground="#ffffff", fieldbackground="#2d3748", rowheight=28)
-        style.configure("Treeview.Heading", background="#1e293b", foreground="#38bdf8", font=("Helvetica", 10, "bold"))
-        style.map("Treeview", background=[('selected', '#2563eb')])
+        # Estilização global do Tkinter
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+        self.style.configure("Treeview", background="#2d3748", foreground="#ffffff", fieldbackground="#2d3748", rowheight=28)
+        self.style.configure("Treeview.Heading", background="#1e293b", foreground="#38bdf8", font=("Helvetica", 10, "bold"))
+        self.style.map("Treeview", background=[('selected', '#2563eb')])
+
+        # Inicia exibindo a tela de login
+        self.mostrar_tela_login()
+
+    def mostrar_tela_login(self):
+        # Frame centralizado de Login
+        self.login_frame = tk.Frame(self.root, bg="#1e1e2e", padx=30, pady=30)
+        self.login_frame.pack(expand=True, fill="both")
+
+        lbl_icone = tk.Label(self.login_frame, text="🔒", font=("Helvetica", 40), bg="#1e1e2e", fg="#38bdf8")
+        lbl_icone.pack(pady=(10, 5))
+
+        lbl_titulo = tk.Label(self.login_frame, text="Acesso Restrito", font=("Helvetica", 16, "bold"), bg="#1e1e2e", fg="#ffffff")
+        lbl_titulo.pack()
+
+        lbl_sub = tk.Label(self.login_frame, text="Secretaria - ETEC Profº José Ignácio", font=("Helvetica", 9), bg="#1e1e2e", fg="#94a3b8")
+        lbl_sub.pack(pady=(0, 20))
+
+        # Campo: E-mail
+        tk.Label(self.login_frame, text="E-mail de Acesso:", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10, "bold")).pack(anchor="w", pady=(5, 2))
+        self.txt_login_email = tk.Entry(self.login_frame, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_login_email.pack(fill="x", pady=(0, 15))
+
+        # Campo: Senha
+        tk.Label(self.login_frame, text="Senha:", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10, "bold")).pack(anchor="w", pady=(5, 2))
+        self.txt_login_senha = tk.Entry(self.login_frame, font=("Helvetica", 11), show="•", bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_login_senha.pack(fill="x", pady=(0, 20))
+
+        # Permite pressionar ENTER no teclado para logar
+        self.txt_login_senha.bind("<Return>", lambda event: self.validar_login())
+
+        # Botão Entrar
+        btn_entrar = tk.Button(self.login_frame, text="ENTRAR NO SISTEMA", command=self.validar_login, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", pady=8, cursor="hand2")
+        btn_entrar.pack(fill="x")
+
+    def validar_login(self):
+        email_digitado = self.txt_login_email.get().strip()
+        senha_digitada = self.txt_login_senha.get().strip()
+
+        if email_digitado == EMAIL_CORRETO and senha_digitada == SENHA_CORRETA:
+            # Destrói a tela de login e abre o painel principal
+            self.login_frame.destroy()
+            self.iniciar_painel_principal()
+        else:
+            messagebox.showerror("Acesso Negado", "E-mail ou senha incorretos!\nApenas a secretaria tem acesso a este sistema.")
+
+    def iniciar_painel_principal(self):
+        # Redimensiona a janela para a interface completa da Secretaria
+        self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
+        self.root.geometry("950x680")
+        self.root.resizable(True, True)
 
         # Cabeçalho
         header = tk.Frame(self.root, bg="#0f172a", height=70)
@@ -41,7 +97,7 @@ class AdminDesktopApp:
         form_frame = tk.LabelFrame(container, text=" Cadastro de Objeto Encontrado ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=15, pady=15)
         form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        # Campo: Descrição (txt_descricao)
+        # Campo: Descrição
         tk.Label(form_frame, text="Descrição do Item (txt_descricao):", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
         self.txt_descricao = tk.Entry(form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_descricao.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky="w")
@@ -52,18 +108,18 @@ class AdminDesktopApp:
         self.cb_categoria.current(0)
         self.cb_categoria.grid(row=3, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        # Campo: Data (txt_data)
+        # Campo: Data
         tk.Label(form_frame, text="Data Encontrado (txt_data):", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
         self.txt_data = tk.Entry(form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
         self.txt_data.grid(row=5, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        # Campo: Local (txt_local)
+        # Campo: Local
         tk.Label(form_frame, text="Local Encontrado (txt_local):", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
         self.txt_local = tk.Entry(form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_local.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        # Campo: Foto (foto)
+        # Campo: Foto
         tk.Label(form_frame, text="Foto do Objeto (foto):", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
         btn_foto = tk.Button(form_frame, text="📷 Carregar Foto...", command=self.carregar_foto, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_foto.grid(row=9, column=0, sticky="w", pady=(0, 10))
