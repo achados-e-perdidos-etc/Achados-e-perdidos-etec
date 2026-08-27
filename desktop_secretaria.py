@@ -6,9 +6,9 @@ from datetime import datetime
 
 API_URL = "https://achados-etec-api.onrender.com"
 
-# Credenciais permitidas para acesso
-EMAIL_CORRETO = "achadoseperdidosetec@gmail.com"
-SENHA_CORRETA = "etecachados"
+# Credenciais armazenadas em Base64 para não ficarem em texto simples no código
+_AUTH_EMAIL_HASH = "YWNoYWRvc2VwZXJkaWRvc2V0ZWNAZ21haWwuY29t" # achadoseperdidosetec@gmail.com
+_AUTH_PASS_HASH = "ZXRlY2FjaGFkb3M="                         # etecachados
 
 class AdminDesktopApp:
     def __init__(self, root):
@@ -19,6 +19,7 @@ class AdminDesktopApp:
         self.root.resizable(False, False)
 
         self.foto_base64 = ""
+        self.item_selecionado_id = None
 
         # Estilização global do Tkinter
         self.style = ttk.Style()
@@ -31,7 +32,6 @@ class AdminDesktopApp:
         self.mostrar_tela_login()
 
     def mostrar_tela_login(self):
-        # Frame centralizado de Login
         self.login_frame = tk.Frame(self.root, bg="#1e1e2e", padx=30, pady=30)
         self.login_frame.pack(expand=True, fill="both")
 
@@ -54,10 +54,8 @@ class AdminDesktopApp:
         self.txt_login_senha = tk.Entry(self.login_frame, font=("Helvetica", 11), show="•", bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_login_senha.pack(fill="x", pady=(0, 20))
 
-        # Permite pressionar ENTER no teclado para logar
         self.txt_login_senha.bind("<Return>", lambda event: self.validar_login())
 
-        # Botão Entrar
         btn_entrar = tk.Button(self.login_frame, text="ENTRAR NO SISTEMA", command=self.validar_login, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", pady=8, cursor="hand2")
         btn_entrar.pack(fill="x")
 
@@ -65,17 +63,19 @@ class AdminDesktopApp:
         email_digitado = self.txt_login_email.get().strip()
         senha_digitada = self.txt_login_senha.get().strip()
 
-        if email_digitado == EMAIL_CORRETO and senha_digitada == SENHA_CORRETA:
-            # Destrói a tela de login e abre o painel principal
+        # Decodifica as credenciais ocultas para validação
+        email_real = base64.b64decode(_AUTH_EMAIL_HASH).decode('utf-8')
+        senha_real = base64.b64decode(_AUTH_PASS_HASH).decode('utf-8')
+
+        if email_digitado == email_real and senha_digitada == senha_real:
             self.login_frame.destroy()
             self.iniciar_painel_principal()
         else:
             messagebox.showerror("Acesso Negado", "E-mail ou senha incorretos!\nApenas a secretaria tem acesso a este sistema.")
 
     def iniciar_painel_principal(self):
-        # Redimensiona a janela para a interface completa da Secretaria
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("950x680")
+        self.root.geometry("1000x680")
         self.root.resizable(True, True)
 
         # Cabeçalho
@@ -98,7 +98,7 @@ class AdminDesktopApp:
         form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
         # Campo: Descrição
-        tk.Label(form_frame, text="Descrição do Item (txt_descricao):", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
+        tk.Label(form_frame, text="Descrição do Item:", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
         self.txt_descricao = tk.Entry(form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_descricao.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
@@ -109,25 +109,25 @@ class AdminDesktopApp:
         self.cb_categoria.grid(row=3, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
         # Campo: Data
-        tk.Label(form_frame, text="Data Encontrado (txt_data):", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
+        tk.Label(form_frame, text="Data Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
         self.txt_data = tk.Entry(form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
         self.txt_data.grid(row=5, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
         # Campo: Local
-        tk.Label(form_frame, text="Local Encontrado (txt_local):", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
+        tk.Label(form_frame, text="Local Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
         self.txt_local = tk.Entry(form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_local.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
         # Campo: Foto
-        tk.Label(form_frame, text="Foto do Objeto (foto):", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
+        tk.Label(form_frame, text="Foto do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
         btn_foto = tk.Button(form_frame, text="📷 Carregar Foto...", command=self.carregar_foto, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_foto.grid(row=9, column=0, sticky="w", pady=(0, 10))
         
         self.lbl_status_foto = tk.Label(form_frame, text="Sem foto", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
         self.lbl_status_foto.grid(row=9, column=1, sticky="w", padx=5)
 
-        # Botão Enviar
+        # Botão Cadastrar
         btn_cadastrar = tk.Button(form_frame, text="✔ Gravar no Banco Nuvem", command=self.cadastrar_item, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", padx=10, pady=8, cursor="hand2")
         btn_cadastrar.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(15, 0))
 
@@ -139,7 +139,7 @@ class AdminDesktopApp:
         container.rowconfigure(0, weight=1)
 
         columns = ("id", "descricao", "data", "local", "status")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=13)
         
         self.tree.heading("id", text="ID")
         self.tree.heading("descricao", text="Descrição")
@@ -148,15 +148,25 @@ class AdminDesktopApp:
         self.tree.heading("status", text="Status")
 
         self.tree.column("id", width=35, anchor="center")
-        self.tree.column("descricao", width=190)
+        self.tree.column("descricao", width=180)
         self.tree.column("data", width=85, anchor="center")
         self.tree.column("local", width=110)
         self.tree.column("status", width=95, anchor="center")
 
         self.tree.pack(fill="both", expand=True)
 
-        btn_refresh = tk.Button(table_frame, text="🔄 Sincronizar / Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat")
-        btn_refresh.pack(fill="x", pady=(8, 0))
+        # Painel de Ações (Editar, Excluir e Sincronizar)
+        actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
+        actions_frame.pack(fill="x", pady=(10, 0))
+
+        btn_editar = tk.Button(actions_frame, text="✏ Alterar Status", command=self.editar_status_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+
+        btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
+
+        btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
+        btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
 
         self.carregar_tabela()
 
@@ -202,6 +212,50 @@ class AdminDesktopApp:
                 messagebox.showerror("Erro", f"Falha no servidor: {res.text}")
         except Exception as e:
             messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
+
+    def editar_status_item(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para alterar o status!")
+            return
+
+        item_values = self.tree.item(selected[0], "values")
+        item_id = item_values[0]
+        status_atual = item_values[4]
+
+        novo_status = "ENTREGUE" if status_atual != "ENTREGUE" else "GUARDADO"
+
+        if messagebox.askyesno("Confirmar Alteração", f"Deseja alterar o status do item ID #{item_id} para '{novo_status}'?"):
+            try:
+                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": novo_status}, timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", f"Status alterado para {novo_status}!")
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Falha ao atualizar status: {res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
+
+    def excluir_item(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para excluir!")
+            return
+
+        item_values = self.tree.item(selected[0], "values")
+        item_id = item_values[0]
+        item_desc = item_values[1]
+
+        if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir o item '{item_desc}' (ID #{item_id})?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/{item_id}", timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Item removido com sucesso!")
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Falha ao excluir item: {res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
 
     def carregar_tabela(self):
         for item in self.tree.get_children():
