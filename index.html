@@ -52,6 +52,7 @@
         .sliding-pill {
             background-color: var(--primary-color);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
         }
 
         /* Texto de Destaque Dinâmico */
@@ -142,7 +143,7 @@
                 <!-- CONTAINER DE CATEGORIAS COM SLIDER DE ANIMAÇÃO -->
                 <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
                     <!-- Fundo animado deslizante -->
-                    <div id="catIndicator" class="sliding-pill absolute rounded-full pointer-events-none z-0"></div>
+                    <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
 
                     <!-- Botões de Categoria -->
                     <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
@@ -316,6 +317,7 @@
             indicator.style.top = `${element.offsetTop}px`;
             indicator.style.width = `${element.offsetWidth}px`;
             indicator.style.height = `${element.offsetHeight}px`;
+            indicator.classList.remove('opacity-0');
         }
 
         function filtrarCategoria(cat, btnElement) {
@@ -420,6 +422,4 @@
                     })
                 });
 
-                const res = await response.json();
-                alert(res.message);
-   
+             
