@@ -6,9 +6,8 @@ from datetime import datetime
 
 API_URL = "https://achados-etec-api.onrender.com"
 
-# Credenciais armazenadas em Base64
-_AUTH_EMAIL_HASH = "YWNoYWRvc2VwZXJkaWRvc2V0ZWNAZ21haWwuY29t" # achadoseperdidosetec@gmail.com
-_AUTH_PASS_HASH = "ZXRlY2FjaGFkb3M="                         # etecachados
+_AUTH_EMAIL_HASH = "YWNoYWRvc2VwZXJkaWRvc2V0ZWNAZ21haWwuY29t"
+_AUTH_PASS_HASH = "ZXRlY2FjaGFkb3M=" 
 
 class AdminDesktopApp:
     def __init__(self, root):
