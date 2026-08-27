@@ -1,38 +1,30 @@
-/* --- VARIÁVEIS DE COR E TEMAS --- */
-:root {
-    --primary-color: #dc2626;
-    --primary-hover: #b91c1c;
-    --primary-text: #f87171;
-    --primary-bg-subtle: #450a0a;
-    --primary-border: #991b1b;
-
-    /* Tema Escuro (Padrão) */
-    --bg-main: #0d1117;
-    --bg-header: #161b22;
-    --bg-card: #21262d;
-    --text-main: #c9d1d9;
-    --text-muted: #8b949e;
-    --border-color: #30363d;
+/* --- TEMAS (MODO ESCURO E MODO CLARO) --- */
+body.dark-theme {
+    --bg-main: #0d1117 !important;
+    --bg-header: #161b22 !important;
+    --bg-card: #21262d !important;
+    --text-main: #c9d1d9 !important;
+    --text-muted: #8b949e !important;
+    --border-color: #30363d !important;
 }
 
 body.light-theme {
-    /* Tema Claro */
-    --bg-main: #f6f8fa;
-    --bg-header: #ffffff;
-    --bg-card: #ffffff;
-    --text-main: #1f2328;
-    --text-muted: #656d76;
-    --border-color: #d0d7de;
+    --bg-main: #f6f8fa !important;
+    --bg-header: #ffffff !important;
+    --bg-card: #ffffff !important;
+    --text-main: #1f2328 !important;
+    --text-muted: #656d76 !important;
+    --border-color: #d0d7de !important;
 }
 
 body {
     background-color: var(--bg-main) !important;
     color: var(--text-main) !important;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* --- APLICAÇÃO DE ESTILOS DINÂMICOS --- */
+/* --- APLICAÇÃO DAS VARIÁVEIS --- */
 .bg-header {
     background-color: var(--bg-header) !important;
 }
@@ -73,19 +65,20 @@ body {
     background-color: var(--primary-hover) !important;
 }
 
-/* --- TRATAMENTO DA LOGO --- */
+/* --- REGRAS DA LOGO --- */
 #siteLogo {
     width: 40px !important;
     height: 40px !important;
     min-width: 40px !important;
     min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
     object-fit: cover !important;
     border-radius: 9999px !important;
     display: block !important;
     flex-shrink: 0 !important;
 }
 
-/* --- INDICADOR ANIMADO DE CATEGORIAS --- */
 .sliding-pill {
     background-color: var(--primary-color) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
