@@ -4,37 +4,47 @@ let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
 
-// --- SISTEMA DE TEMA E CORES ---
+// --- SISTEMA DE MENU DE CONFIGURAÇÕES ---
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
-    menu.classList.toggle('hidden');
+    if (menu) {
+        menu.classList.toggle('hidden');
+    }
 }
 
+// Fecha o menu de configurações se clicar fora dele
 window.addEventListener('click', function(e) {
     const menu = document.getElementById('configMenu');
+    if (!menu) return;
+    
     const btn = e.target.closest('button');
     if (!menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleConfigMenu'))) {
         menu.classList.add('hidden');
     }
 });
 
+// --- SISTEMA DE TEMA (CLARO / ESCURO) ---
 function alternarModoEscuroClaro() {
     const isDark = document.body.classList.contains('dark-theme');
+    const label = document.getElementById('themeLabel');
+    const icon = document.getElementById('themeIcon');
+
     if (isDark) {
         document.body.classList.remove('dark-theme');
         document.body.classList.add('light-theme');
-        document.getElementById('themeLabel').innerText = "Modo Claro";
-        document.getElementById('themeIcon').className = "fas fa-sun text-yellow-500";
+        if (label) label.innerText = "Modo Claro";
+        if (icon) icon.className = "fas fa-sun text-yellow-500";
         localStorage.setItem('theme_mode', 'light');
     } else {
         document.body.classList.remove('light-theme');
         document.body.classList.add('dark-theme');
-        document.getElementById('themeLabel').innerText = "Modo Escuro";
-        document.getElementById('themeIcon').className = "fas fa-moon text-yellow-400";
+        if (label) label.innerText = "Modo Escuro";
+        if (icon) icon.className = "fas fa-moon text-yellow-400";
         localStorage.setItem('theme_mode', 'dark');
     }
 }
 
+// --- SISTEMA DE CORES E LOGO DINÂMICA ---
 const temasCores = {
     vermelho: {
         primary: '#dc2626',
@@ -80,12 +90,13 @@ function mudarEstiloCor(cor) {
     root.style.setProperty('--primary-bg-subtle', tema.subtle);
     root.style.setProperty('--primary-border', tema.border);
 
-    // Troca dinamicamente a imagem da logo conforme a cor selecionada
+    // Troca a logo dinamicamente sem quebrar a imagem
     const logoImg = document.getElementById('siteLogo');
     if (logoImg) {
         logoImg.src = tema.logo;
     }
 
+    // Atualiza os marcadores no menu de configurações
     document.querySelectorAll('#configMenu i[id^="check-"]').forEach(el => el.classList.add('hidden'));
     const check = document.getElementById(`check-${cor}`);
     if (check) check.classList.remove('hidden');
@@ -94,19 +105,29 @@ function mudarEstiloCor(cor) {
 }
 
 function carregarPreferenciasAparencia() {
+    // Carrega o modo (Escuro / Claro)
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
+    const label = document.getElementById('themeLabel');
+    const icon = document.getElementById('themeIcon');
+
     if (modoSalvo === 'light') {
         document.body.classList.remove('dark-theme');
         document.body.classList.add('light-theme');
-        document.getElementById('themeLabel').innerText = "Modo Claro";
-        document.getElementById('themeIcon').className = "fas fa-sun text-yellow-500";
+        if (label) label.innerText = "Modo Claro";
+        if (icon) icon.className = "fas fa-sun text-yellow-500";
+    } else {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+        if (label) label.innerText = "Modo Escuro";
+        if (icon) icon.className = "fas fa-moon text-yellow-400";
     }
 
+    // Carrega a cor do tema e a logo correspondente
     const corSalva = localStorage.getItem('theme_color') || 'vermelho';
     mudarEstiloCor(corSalva);
 }
 
-// --- MÉTODOS DA API ---
+// --- CONEXÃO COM A API ---
 async function carregarItensDaAPI() {
     try {
         const response = await fetch(`${API_URL}/api/itens`);
@@ -115,18 +136,18 @@ async function carregarItensDaAPI() {
             renderizarItens();
         }
     } catch (error) {
-        console.error("Erro ao carregar dados do Neon PostgreSQL", error);
+        console.error("Erro ao carregar dados da API:", error);
     }
 }
 
 function logout() {
     alunoLogado = null;
-    document.getElementById('userInfo').classList.add('hidden');
-    document.getElementById('catalogScreen').classList.add('hidden');
-    document.getElementById('detailScreen').classList.add('hidden');
+    document.getElementById('userInfo')?.classList.add('hidden');
+    document.getElementById('catalogScreen')?.classList.add('hidden');
+    document.getElementById('detailScreen')?.classList.add('hidden');
 }
 
-// --- FILTRAGEM DE CATEGORIAS COM SLIDER ANIMADO ---
+// --- CATEGORIAS E INDICADOR DESLIZANTE ---
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
     if (!indicator || !element) return;
@@ -158,11 +179,13 @@ function filtrarCategoria(cat, btnElement) {
 
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
+    if (!grid) return;
+
     grid.innerHTML = '';
 
     const filtrados = categoriaAtual === 'TODOS' 
         ? todosItens 
-        : todosItens.filter(i => i.categoria.toUpperCase() === categoriaAtual);
+        : todosItens.filter(i => i.categoria && i.categoria.toUpperCase() === categoriaAtual);
 
     if (filtrados.length === 0) {
         grid.innerHTML = '<div class="col-span-2 text-center text-muted py-8">Nenhum objeto cadastrado nesta categoria.</div>';
@@ -190,10 +213,11 @@ function renderizarItens() {
     });
 }
 
+// --- TELA DE DETALHES E SOLICITAÇÃO ---
 function abrirDetalhes(item) {
     itemSelecionado = item;
-    document.getElementById('catalogScreen').classList.add('hidden');
-    document.getElementById('detailScreen').classList.remove('hidden');
+    document.getElementById('catalogScreen')?.classList.add('hidden');
+    document.getElementById('detailScreen')?.classList.remove('hidden');
 
     document.getElementById('detailTitle').innerText = item.categoria;
     document.getElementById('detailDescription').innerText = item.txt_descricao;
@@ -214,8 +238,8 @@ function abrirDetalhes(item) {
 }
 
 function voltarParaCatalogo() {
-    document.getElementById('detailScreen').classList.add('hidden');
-    document.getElementById('catalogScreen').classList.remove('hidden');
+    document.getElementById('detailScreen')?.classList.add('hidden');
+    document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
 async function solicitarColeta() {
@@ -249,6 +273,7 @@ async function solicitarColeta() {
     }
 }
 
+// --- INICIALIZAÇÃO DA PÁGINA ---
 window.onload = () => {
     carregarPreferenciasAparencia();
     carregarItensDaAPI();
