@@ -38,35 +38,9 @@
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
 
-        <!-- TELA DE LOGIN -->
-        <section id="loginScreen" class="max-w-md mx-auto my-8 bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
-            <div class="text-center mb-6">
-                <i class="fas fa-user-graduate text-5xl text-green-500 mb-3"></i>
-                <h2 class="text-xl font-bold">PORTAL DO ALUNO</h2>
-                <p class="text-sm text-gray-400">Entre com Nome e RM para consultar os objetos</p>
-            </div>
-
-            <form id="formLogin" onsubmit="realizarLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">NOME DE USUÁRIO:</label>
-                    <input type="text" id="inputNome" placeholder="Seu nome" required
-                        class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-green-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">RM:</label>
-                    <input type="text" id="inputRM" placeholder="Seu número de RM" required
-                        class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-green-500">
-                </div>
-
-                <button type="submit" class="w-full green-button font-bold py-3 rounded-lg text-sm uppercase">
-                    ACESSAR O SISTEMA
-                </button>
-            </form>
-        </section>
-
+        
         <!-- CATÁLOGO DE OBJETOS -->
-        <section id="catalogScreen" class="hidden space-y-6">
+        <section id="catalogScreen" class="space-y-6">
             <div>
                 <h3 class="text-xs font-bold uppercase text-gray-400 mb-3">FILTRAR POR CATEGORIA:</h3>
                 <div class="flex flex-wrap gap-2">
@@ -225,15 +199,26 @@
         }
 
         async function solicitarColeta() {
-            if (!itemSelecionado || !alunoLogado) return;
+            if (!itemSelecionado) return;
+
+        // Pergunta o nome e o RM na hora do clique                                                                                                                                                                                             
+            let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
+            let rmDigitado = prompt("Por favor, digite seu RM:");
+
+        // Se o aluno cancelar ou deixar vazio, avisa ele e cancela a ação
+            if (!nomeDigitado || !rmDigitado) {
+            alert("Você precisa informar seu Nome e RM para solicitar o item!");
+            return;
+            }
+
 
             const response = await fetch(`${API_URL}/api/solicitar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: itemSelecionado.id,
-                    nome: alunoLogado.nome,
-                    rm: alunoLogado.rm
+                    nome: nomeDigitado,
+                    rm: rmDigitado
                 })
             });
 
@@ -242,6 +227,8 @@
             voltarParaCatalogo();
             carregarItensDaAPI();
         }
+        
+        window.onload = carregarItensDaAPI;
     </script>
 </body>
 </html>
