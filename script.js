@@ -41,28 +41,32 @@ const temasCores = {
         hover: '#b91c1c',
         text: '#f87171',
         subtle: '#450a0a',
-        border: '#991b1b'
+        border: '#991b1b',
+        logo: 'logo-vermelho.png'
     },
     verde: {
         primary: '#238636',
         hover: '#2ea043',
         text: '#4ade80',
         subtle: '#052e16',
-        border: '#14532d'
+        border: '#14532d',
+        logo: 'logo-verde.png'
     },
     azul: {
         primary: '#0284c7',
         hover: '#0369a1',
         text: '#38bdf8',
         subtle: '#0c4a6e',
-        border: '#0369a1'
+        border: '#0369a1',
+        logo: 'logo-azul.png'
     },
     roxo: {
         primary: '#9333ea',
         hover: '#7e22ce',
         text: '#c084fc',
         subtle: '#3b0764',
-        border: '#6b21a8'
+        border: '#6b21a8',
+        logo: 'logo-roxo.png'
     }
 };
 
@@ -75,6 +79,12 @@ function mudarEstiloCor(cor) {
     root.style.setProperty('--primary-text', tema.text);
     root.style.setProperty('--primary-bg-subtle', tema.subtle);
     root.style.setProperty('--primary-border', tema.border);
+
+    // Troca dinamicamente a imagem da logo conforme a cor selecionada
+    const logoImg = document.getElementById('siteLogo');
+    if (logoImg) {
+        logoImg.src = tema.logo;
+    }
 
     document.querySelectorAll('#configMenu i[id^="check-"]').forEach(el => el.classList.add('hidden'));
     const check = document.getElementById(`check-${cor}`);
