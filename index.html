@@ -7,48 +7,134 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0d1117; color: #e6edf3; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .green-button { background-color: #238636; color: #ffffff; transition: all 0.2s; }
-        .green-button:hover { background-color: #2ea043; }
+        /* Variáveis de Cores Primárias Dinâmicas */
+        :root {
+            --primary-color: #238636;
+            --primary-hover: #2ea043;
+            --primary-text: #4ade80;
+            --primary-bg-subtle: #052e16;
+            --primary-border: #14532d;
+        }
+
+        /* Tema Escuro (Padrão) */
+        body.dark-theme {
+            background-color: #0d1117;
+            color: #e6edf3;
+        }
+        .dark-theme .bg-card { background-color: #161b22; }
+        .dark-theme .bg-header { background-color: #161b22; }
+        .dark-theme .border-color { border-color: #30363d; }
+        .dark-theme .text-muted { color: #8b949e; }
+        .dark-theme .text-main { color: #ffffff; }
+
+        /* Tema Claro */
+        body.light-theme {
+            background-color: #f6f8fa;
+            color: #1f2328;
+        }
+        .light-theme .bg-card { background-color: #ffffff; }
+        .light-theme .bg-header { background-color: #ffffff; }
+        .light-theme .border-color { border-color: #d0d7de; }
+        .light-theme .text-muted { color: #636c76; }
+        .light-theme .text-main { color: #1f2328; }
+
+        /* Botão Primário Dinâmico */
+        .dynamic-btn {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            transition: all 0.2s;
+        }
+        .dynamic-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Texto de Destaque Dinâmico */
+        .dynamic-text {
+            color: var(--primary-text);
+        }
+
+        /* Badge Dinâmico */
+        .dynamic-badge {
+            background-color: var(--primary-bg-subtle);
+            color: var(--primary-text);
+            border: 1px solid var(--primary-border);
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between">
+<body class="dark-theme min-h-screen flex flex-col justify-between">
 
     <script>
         const API_URL = "https://achados-etec-api.onrender.com";
     </script>
 
     <!-- CABEÇALHO -->
-    <header class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-50">
+    <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <img src="Logo.png" alt="Logo Achados e Perdidos" class="w-10 h-10 object-cover rounded-full">
                 <div>
-                    <h1 class="font-bold text-lg text-green-400 leading-tight">ACHADOS E PERDIDOS</h1>
-                    <p class="text-xs text-gray-400">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
+                    <h1 class="font-bold text-lg dynamic-text leading-tight">ACHADOS E PERDIDOS</h1>
+                    <p class="text-xs text-muted">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
                 </div>
             </div>
-            <div id="userInfo" class="hidden text-right">
-                <span id="userName" class="block font-bold text-sm text-green-400"></span>
-                <span id="userRM" class="text-xs text-gray-400"></span>
-                <button onclick="logout()" class="text-xs text-red-400 underline block mt-1">Sair</button>
+
+            <div class="flex items-center space-x-3">
+                <!-- PAINEL DE CONFIGURAÇÕES DE TEMA E COR -->
+                <div class="relative">
+                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações de Aparência">
+                        <i class="fas fa-cog text-base"></i>
+                    </button>
+
+                    <!-- MENU DROPDOWN DE CONFIGURAÇÕES -->
+                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-56 bg-card border border-color rounded-xl shadow-2xl p-3 z-50 space-y-3">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
+                            <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main hover:opacity-80 transition">
+                                <span id="themeLabel">Modo Escuro</span>
+                                <i id="themeIcon" class="fas fa-moon text-yellow-400"></i>
+                            </button>
+                        </div>
+
+                        <hr class="border-color">
+
+                        <div>
+                            <span class="text-[11px] font-bold uppercase text-muted block mb-1">Cor do Estilo</span>
+                            <div class="grid grid-cols-3 gap-2 pt-1">
+                                <button onclick="mudarEstiloCor('verde')" class="h-8 rounded-lg bg-green-600 border border-green-400 flex items-center justify-center text-white" title="Verde ETEC">
+                                    <i class="fas fa-check text-xs hidden" id="check-verde"></i>
+                                </button>
+                                <button onclick="mudarEstiloCor('azul')" class="h-8 rounded-lg bg-blue-600 border border-blue-400 flex items-center justify-center text-white" title="Azul Tecnológico">
+                                    <i class="fas fa-check text-xs hidden" id="check-azul"></i>
+                                </button>
+                                <button onclick="mudarEstiloCor('roxo')" class="h-8 rounded-lg bg-purple-600 border border-purple-400 flex items-center justify-center text-white" title="Roxo Cyber">
+                                    <i class="fas fa-check text-xs hidden" id="check-roxo"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="userInfo" class="hidden text-right">
+                    <span id="userName" class="block font-bold text-sm dynamic-text"></span>
+                    <span id="userRM" class="text-xs text-muted"></span>
+                    <button onclick="logout()" class="text-xs text-red-400 underline block mt-1">Sair</button>
+                </div>
             </div>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
 
-        
         <!-- CATÁLOGO DE OBJETOS -->
         <section id="catalogScreen" class="space-y-6">
             <div>
-                <h3 class="text-xs font-bold uppercase text-gray-400 mb-3">FILTRAR POR CATEGORIA:</h3>
+                <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
                 <div class="flex flex-wrap gap-2">
-                    <button onclick="filtrarCategoria('TODOS')" class="cat-btn bg-green-600 text-white px-4 py-2 rounded-full text-xs font-bold">TODOS</button>
-                    <button onclick="filtrarCategoria('MOCHILA')" class="cat-btn bg-gray-800 text-gray-300 hover:bg-gray-700 px-4 py-2 rounded-full text-xs font-bold">MOCHILA</button>
-                    <button onclick="filtrarCategoria('ROUPAS')" class="cat-btn bg-gray-800 text-gray-300 hover:bg-gray-700 px-4 py-2 rounded-full text-xs font-bold">ROUPAS</button>
-                    <button onclick="filtrarCategoria('ACESSÓRIOS')" class="cat-btn bg-gray-800 text-gray-300 hover:bg-gray-700 px-4 py-2 rounded-full text-xs font-bold">ACESSÓRIOS</button>
-                    <button onclick="filtrarCategoria('ESCOLARES')" class="cat-btn bg-gray-800 text-gray-300 hover:bg-gray-700 px-4 py-2 rounded-full text-xs font-bold">ESCOLARES</button>
+                    <button onclick="filtrarCategoria('TODOS')" class="cat-btn dynamic-btn px-4 py-2 rounded-full text-xs font-bold">TODOS</button>
+                    <button onclick="filtrarCategoria('MOCHILA')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">MOCHILA</button>
+                    <button onclick="filtrarCategoria('ROUPAS')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">ROUPAS</button>
+                    <button onclick="filtrarCategoria('ACESSÓRIOS')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">ACESSÓRIOS</button>
+                    <button onclick="filtrarCategoria('ESCOLARES')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">ESCOLARES</button>
                 </div>
             </div>
 
@@ -56,30 +142,30 @@
         </section>
 
         <!-- TELA DETALHADA -->
-        <section id="detailScreen" class="hidden max-w-lg mx-auto bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <button onclick="voltarParaCatalogo()" class="text-xs text-gray-400 hover:text-white mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
+        <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
+            <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
 
-            <h2 class="text-xs font-bold text-green-400 uppercase mb-2">INFORMAÇÕES DO ITEM</h2>
+            <h2 class="text-xs font-bold dynamic-text uppercase mb-2">INFORMAÇÕES DO ITEM</h2>
 
-            <div class="bg-black rounded-xl overflow-hidden mb-4 border border-gray-800 h-64 flex items-center justify-center">
+            <div class="bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64 flex items-center justify-center">
                 <img id="detailImage" src="" class="max-h-full object-contain hidden">
-                <div id="detailPlaceholder" class="text-center p-6 text-gray-500">
+                <div id="detailPlaceholder" class="text-center p-6 text-muted">
                     <i class="fas fa-box-open text-5xl mb-2"></i>
                     <p class="text-xs">Foto mantida no registro da secretaria</p>
                 </div>
             </div>
 
             <div class="space-y-3">
-                <h3 id="detailTitle" class="text-2xl font-black text-white"></h3>
-                <p id="detailDescription" class="text-sm text-gray-300 bg-gray-800/40 p-3 rounded-lg border border-gray-800"></p>
+                <h3 id="detailTitle" class="text-2xl font-black text-main"></h3>
+                <p id="detailDescription" class="text-sm text-muted bg-header p-3 rounded-lg border border-color"></p>
 
-                <div class="flex justify-between items-center text-xs text-gray-400 pt-2 border-t border-gray-800">
-                    <span>Local: <strong id="detailLocal" class="text-gray-200"></strong></span>
-                    <span>Data: <strong id="detailDate" class="text-gray-200"></strong></span>
+                <div class="flex justify-between items-center text-xs text-muted pt-2 border-t border-color">
+                    <span>Local: <strong id="detailLocal" class="text-main"></strong></span>
+                    <span>Data: <strong id="detailDate" class="text-main"></strong></span>
                 </div>
 
                 <div class="pt-4">
-                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full green-button font-bold py-3.5 rounded-xl text-sm uppercase">
+                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
                         ESTE É O MEU ITEM / SOLICITAR COLETA
                     </button>
                 </div>
@@ -94,6 +180,94 @@
         let itemSelecionado = null;
         let categoriaAtual = 'TODOS';
 
+        // --- SISTEMA DE TEMA E CORES ---
+        function toggleConfigMenu() {
+            const menu = document.getElementById('configMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Fecha o menu se clicar fora dele
+        window.addEventListener('click', function(e) {
+            const menu = document.getElementById('configMenu');
+            const btn = e.target.closest('button');
+            if (!menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleConfigMenu'))) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        function alternarModoEscuroClaro() {
+            const isDark = document.body.classList.contains('dark-theme');
+            if (isDark) {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+                document.getElementById('themeLabel').innerText = "Modo Claro";
+                document.getElementById('themeIcon').className = "fas fa-sun text-yellow-500";
+                localStorage.setItem('theme_mode', 'light');
+            } else {
+                document.body.classList.remove('light-theme');
+                document.body.classList.add('dark-theme');
+                document.getElementById('themeLabel').innerText = "Modo Escuro";
+                document.getElementById('themeIcon').className = "fas fa-moon text-yellow-400";
+                localStorage.setItem('theme_mode', 'dark');
+            }
+        }
+
+        const temasCores = {
+            verde: {
+                primary: '#238636',
+                hover: '#2ea043',
+                text: '#4ade80',
+                subtle: '#052e16',
+                border: '#14532d'
+            },
+            azul: {
+                primary: '#0284c7',
+                hover: '#0369a1',
+                text: '#38bdf8',
+                subtle: '#0c4a6e',
+                border: '#0369a1'
+            },
+            roxo: {
+                primary: '#9333ea',
+                hover: '#7e22ce',
+                text: '#c084fc',
+                subtle: '#3b0764',
+                border: '#6b21a8'
+            }
+        };
+
+        function mudarEstiloCor(cor) {
+            const tema = temasCores[cor] || temasCores.verde;
+            const root = document.documentElement;
+
+            root.style.setProperty('--primary-color', tema.primary);
+            root.style.setProperty('--primary-hover', tema.hover);
+            root.style.setProperty('--primary-text', tema.text);
+            root.style.setProperty('--primary-bg-subtle', tema.subtle);
+            root.style.setProperty('--primary-border', tema.border);
+
+            // Atualiza marcadores visuais do menu
+            document.querySelectorAll('#configMenu i[id^="check-"]').forEach(el => el.classList.add('hidden'));
+            const check = document.getElementById(`check-${cor}`);
+            if (check) check.classList.remove('hidden');
+
+            localStorage.setItem('theme_color', cor);
+        }
+
+        function carregarPreferenciasAparencia() {
+            const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
+            if (modoSalvo === 'light') {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+                document.getElementById('themeLabel').innerText = "Modo Claro";
+                document.getElementById('themeIcon').className = "fas fa-sun text-yellow-500";
+            }
+
+            const corSalva = localStorage.getItem('theme_color') || 'verde';
+            mudarEstiloCor(corSalva);
+        }
+
+        // --- MÉTODOS DA API ---
         async function carregarItensDaAPI() {
             try {
                 const response = await fetch(`${API_URL}/api/itens`);
@@ -106,29 +280,11 @@
             }
         }
 
-        function realizarLogin(e) {
-            e.preventDefault();
-            alunoLogado = {
-                nome: document.getElementById('inputNome').value.trim(),
-                rm: document.getElementById('inputRM').value.trim()
-            };
-
-            document.getElementById('userName').innerText = alunoLogado.nome;
-            document.getElementById('userRM').innerText = `RM: ${alunoLogado.rm}`;
-            document.getElementById('userInfo').classList.remove('hidden');
-
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('catalogScreen').classList.remove('hidden');
-
-            carregarItensDaAPI();
-        }
-
         function logout() {
             alunoLogado = null;
             document.getElementById('userInfo').classList.add('hidden');
             document.getElementById('catalogScreen').classList.add('hidden');
             document.getElementById('detailScreen').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
         }
 
         function filtrarCategoria(cat) {
@@ -145,25 +301,25 @@
                 : todosItens.filter(i => i.categoria.toUpperCase() === categoriaAtual);
 
             if (filtrados.length === 0) {
-                grid.innerHTML = '<div class="col-span-2 text-center text-gray-500 py-8">Nenhum objeto cadastrado nesta categoria.</div>';
+                grid.innerHTML = '<div class="col-span-2 text-center text-muted py-8">Nenhum objeto cadastrado nesta categoria.</div>';
                 return;
             }
 
             filtrados.forEach(item => {
                 const card = document.createElement('div');
-                card.className = "bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-green-500 transition";
+                card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-gray-500 transition";
                 card.onclick = () => abrirDetalhes(item);
 
                 const imgHtml = item.foto 
                     ? `<img src="${item.foto}" class="w-full h-32 object-cover rounded-lg mb-3">`
-                    : `<div class="w-full h-32 bg-gray-800 rounded-lg mb-3 flex items-center justify-center text-gray-600"><i class="fas fa-box text-3xl"></i></div>`;
+                    : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box text-3xl"></i></div>`;
 
                 card.innerHTML = `
                     <div>
                         ${imgHtml}
-                        <span class="text-[10px] font-bold bg-green-950 text-green-400 border border-green-800 px-2 py-0.5 rounded uppercase">${item.categoria}</span>
-                        <h4 class="font-bold text-base mt-2 text-white">${item.txt_descricao}</h4>
-                        <p class="text-xs text-gray-400 mt-1"><i class="fas fa-map-marker-alt"></i> ${item.txt_local}</p>
+                        <span class="text-[10px] font-bold dynamic-badge px-2 py-0.5 rounded uppercase">${item.categoria}</span>
+                        <h4 class="font-bold text-base mt-2 text-main">${item.txt_descricao}</h4>
+                        <p class="text-xs text-muted mt-1"><i class="fas fa-map-marker-alt"></i> ${item.txt_local}</p>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -201,34 +357,38 @@
         async function solicitarColeta() {
             if (!itemSelecionado) return;
 
-        // Pergunta o nome e o RM na hora do clique                                                                                                                                                                                             
             let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
             let rmDigitado = prompt("Por favor, digite seu RM:");
 
-        // Se o aluno cancelar ou deixar vazio, avisa ele e cancela a ação
             if (!nomeDigitado || !rmDigitado) {
-            alert("Você precisa informar seu Nome e RM para solicitar o item!");
-            return;
+                alert("Você precisa informar seu Nome e RM para solicitar o item!");
+                return;
             }
 
+            try {
+                const response = await fetch(`${API_URL}/api/solicitar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: itemSelecionado.id,
+                        nome: nomeDigitado,
+                        rm: rmDigitado
+                    })
+                });
 
-            const response = await fetch(`${API_URL}/api/solicitar`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: itemSelecionado.id,
-                    nome: nomeDigitado,
-                    rm: rmDigitado
-                })
-            });
-
-            const res = await response.json();
-            alert(res.message);
-            voltarParaCatalogo();
-            carregarItensDaAPI();
+                const res = await response.json();
+                alert(res.message);
+                voltarParaCatalogo();
+                carregarItensDaAPI();
+            } catch (error) {
+                alert("Erro ao enviar a solicitação ao servidor.");
+            }
         }
         
-        window.onload = carregarItensDaAPI;
+        window.onload = () => {
+            carregarPreferenciasAparencia();
+            carregarItensDaAPI();
+        };
     </script>
 </body>
 </html>
