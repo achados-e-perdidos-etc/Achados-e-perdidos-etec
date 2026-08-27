@@ -42,10 +42,16 @@
         .dynamic-btn {
             background-color: var(--primary-color);
             color: #ffffff;
-            transition: all 0.2s;
+            transition: background-color 0.2s;
         }
         .dynamic-btn:hover {
             background-color: var(--primary-hover);
+        }
+
+        /* Indicador Deslizante de Categoria */
+        .sliding-pill {
+            background-color: var(--primary-color);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* Texto de Destaque Dinâmico */
@@ -132,12 +138,18 @@
         <section id="catalogScreen" class="space-y-6">
             <div>
                 <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="filtrarCategoria('TODOS')" class="cat-btn dynamic-btn px-4 py-2 rounded-full text-xs font-bold">TODOS</button>
-                    <button onclick="filtrarCategoria('MOCHILA')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">MOCHILA</button>
-                    <button onclick="filtrarCategoria('ROUPAS')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">ROUPAS</button>
-                    <button onclick="filtrarCategoria('ACESSÓRIOS')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">ACESSÓRIOS</button>
-                    <button onclick="filtrarCategoria('ESCOLARES')" class="cat-btn bg-card text-muted hover:text-main border border-color px-4 py-2 rounded-full text-xs font-bold">ESCOLARES</button>
+                
+                <!-- CONTAINER DE CATEGORIAS COM SLIDER DE ANIMAÇÃO -->
+                <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
+                    <!-- Fundo animado deslizante -->
+                    <div id="catIndicator" class="sliding-pill absolute rounded-full pointer-events-none z-0"></div>
+
+                    <!-- Botões de Categoria -->
+                    <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
+                    <button onclick="filtrarCategoria('MOCHILA', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">MOCHILA</button>
+                    <button onclick="filtrarCategoria('ROUPAS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ROUPAS</button>
+                    <button onclick="filtrarCategoria('ACESSÓRIOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ACESSÓRIOS</button>
+                    <button onclick="filtrarCategoria('ESCOLARES', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ESCOLARES</button>
                 </div>
             </div>
 
@@ -295,8 +307,32 @@
             document.getElementById('detailScreen').classList.add('hidden');
         }
 
-        function filtrarCategoria(cat) {
+        // --- FILTRAGEM DE CATEGORIAS COM SLIDER ANIMADO ---
+        function moveIndicator(element) {
+            const indicator = document.getElementById('catIndicator');
+            if (!indicator || !element) return;
+
+            indicator.style.left = `${element.offsetLeft}px`;
+            indicator.style.top = `${element.offsetTop}px`;
+            indicator.style.width = `${element.offsetWidth}px`;
+            indicator.style.height = `${element.offsetHeight}px`;
+        }
+
+        function filtrarCategoria(cat, btnElement) {
             categoriaAtual = cat;
+            
+            if (btnElement) {
+                document.querySelectorAll('.cat-btn').forEach(b => {
+                    b.classList.remove('text-white', 'border-transparent');
+                    b.classList.add('text-muted', 'border-color', 'bg-card');
+                });
+
+                btnElement.classList.remove('text-muted', 'border-color', 'bg-card');
+                btnElement.classList.add('text-white', 'border-transparent');
+
+                moveIndicator(btnElement);
+            }
+
             renderizarItens();
         }
 
@@ -386,17 +422,4 @@
 
                 const res = await response.json();
                 alert(res.message);
-                voltarParaCatalogo();
-                carregarItensDaAPI();
-            } catch (error) {
-                alert("Erro ao enviar a solicitação ao servidor.");
-            }
-        }
-        
-        window.onload = () => {
-            carregarPreferenciasAparencia();
-            carregarItensDaAPI();
-        };
-    </script>
-</body>
-</html>
+   
