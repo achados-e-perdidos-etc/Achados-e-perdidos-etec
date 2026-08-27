@@ -1,0 +1,59 @@
+/* Variáveis de Cores Primárias Dinâmicas (Padrão: Vermelho ETEC) */
+:root {
+    --primary-color: #dc2626;
+    --primary-hover: #b91c1c;
+    --primary-text: #f87171;
+    --primary-bg-subtle: #450a0a;
+    --primary-border: #991b1b;
+}
+
+/* Tema Escuro (Padrão) */
+body.dark-theme {
+    background-color: #0d1117;
+    color: #e6edf3;
+}
+.dark-theme .bg-card { background-color: #161b22; }
+.dark-theme .bg-header { background-color: #161b22; }
+.dark-theme .border-color { border-color: #30363d; }
+.dark-theme .text-muted { color: #8b949e; }
+.dark-theme .text-main { color: #ffffff; }
+
+/* Tema Claro */
+body.light-theme {
+    background-color: #f6f8fa;
+    color: #1f2328;
+}
+.light-theme .bg-card { background-color: #ffffff; }
+.light-theme .bg-header { background-color: #ffffff; }
+.light-theme .border-color { border-color: #d0d7de; }
+.light-theme .text-muted { color: #636c76; }
+.light-theme .text-main { color: #1f2328; }
+
+/* Botão Primário Dinâmico */
+.dynamic-btn {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    transition: background-color 0.2s;
+}
+.dynamic-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+/* Indicador Deslizante de Categoria */
+.sliding-pill {
+    background-color: var(--primary-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+/* Texto de Destaque Dinâmico */
+.dynamic-text {
+    color: var(--primary-text);
+}
+
+/* Badge Dinâmico */
+.dynamic-badge {
+    background-color: var(--primary-bg-subtle);
+    color: var(--primary-text);
+    border: 1px solid var(--primary-border);
+}
