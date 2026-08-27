@@ -4,6 +4,7 @@ let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
 
+// --- MENU DE CONFIGURAÇÕES ---
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
     if (menu) menu.classList.toggle('hidden');
@@ -18,7 +19,7 @@ window.addEventListener('click', function(e) {
     }
 });
 
-// ALTERNÂNCIA DO MODO CLARO E ESCURO
+// --- TEMA CLARO / ESCURO ---
 function alternarModoEscuroClaro() {
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -39,7 +40,7 @@ function alternarModoEscuroClaro() {
     }
 }
 
-// CORES E LOGOS DINÂMICAS
+// --- CORES E LOGOS COM TRATAMENTO DE ERRO ---
 const temasCores = {
     vermelho: {
         primary: '#dc2626',
@@ -79,17 +80,27 @@ function mudarEstiloCor(cor) {
     const tema = temasCores[cor] || temasCores.vermelho;
     const root = document.documentElement;
 
+    // Atualiza variáveis de cor
     root.style.setProperty('--primary-color', tema.primary);
     root.style.setProperty('--primary-hover', tema.hover);
     root.style.setProperty('--primary-text', tema.text);
     root.style.setProperty('--primary-bg-subtle', tema.subtle);
     root.style.setProperty('--primary-border', tema.border);
 
+    // Troca da logo com timestamp para evitar cache do navegador
     const logoImg = document.getElementById('siteLogo');
     if (logoImg) {
-        logoImg.src = tema.logo;
+        const novaSrc = `${tema.logo}?v=${new Date().getTime()}`;
+        logoImg.src = novaSrc;
+
+        // Se der erro ao carregar a imagem verde/azul, volta para a vermelha
+        logoImg.onerror = function() {
+            this.onerror = null;
+            this.src = 'logo-vermelho.png';
+        };
     }
 
+    // Atualiza ícone de seleção no menu
     document.querySelectorAll('#configMenu i[id^="check-"]').forEach(el => el.classList.add('hidden'));
     const check = document.getElementById(`check-${cor}`);
     if (check) check.classList.remove('hidden');
@@ -98,6 +109,7 @@ function mudarEstiloCor(cor) {
 }
 
 function carregarPreferenciasAparencia() {
+    // Carregar Modo Claro/Escuro
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -114,10 +126,12 @@ function carregarPreferenciasAparencia() {
         if (icon) icon.className = "fas fa-moon text-yellow-400";
     }
 
+    // Carregar Cor do Tema
     const corSalva = localStorage.getItem('theme_color') || 'vermelho';
     mudarEstiloCor(corSalva);
 }
 
+// --- INTEGRAÇÃO COM A API ---
 async function carregarItensDaAPI() {
     try {
         const response = await fetch(`${API_URL}/api/itens`);
@@ -137,6 +151,7 @@ function logout() {
     document.getElementById('detailScreen')?.classList.add('hidden');
 }
 
+// --- SLIDER DE CATEGORIAS ---
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
     if (!indicator || !element) return;
