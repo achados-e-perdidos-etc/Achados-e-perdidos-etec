@@ -70,10 +70,6 @@
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between">
 
-    <script>
-        const API_URL = "https://achados-etec-api.onrender.com";
-    </script>
-
     <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
@@ -189,8 +185,8 @@
         </section>
 
     </main>
-
     <script>
+        const API_URL = "https://achados-etec-api.onrender.com";
         let alunoLogado = null;
         let todosItens = [];
         let itemSelecionado = null;
@@ -422,4 +418,31 @@
                     })
                 });
 
-             
+                const res = await response.json();
+                alert(res.message);
+                voltarParaCatalogo();
+                carregarItensDaAPI();
+            } catch (error) {
+                alert("Erro ao enviar a solicitação ao servidor.");
+            }
+        }
+        
+        window.onload = () => {
+            carregarPreferenciasAparencia();
+            carregarItensDaAPI();
+
+            setTimeout(() => {
+                const defaultBtn = document.querySelector('.cat-btn');
+                if (defaultBtn) {
+                    moveIndicator(defaultBtn);
+                }
+            }, 100);
+        };
+
+        window.addEventListener('resize', () => {
+            const activeBtn = document.querySelector('.cat-btn.text-white');
+            if (activeBtn) moveIndicator(activeBtn);
+        });
+    </script>
+</body>
+</html>
