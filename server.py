@@ -8,7 +8,6 @@ app = Flask(__name__)
 CORS(app)
 
 # Obtém a URL de Conexão do Neon PostgreSQL a partir das variáveis de ambiente
-# Formato padrão Neon: postgresql://usuario:senha@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_connection():
@@ -92,6 +91,60 @@ def cadastrar_item():
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": "Objeto salvo no Neon PostgreSQL com sucesso!", "id": novo_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# Rota para atualizar todos os dados do objeto (Secretaria)
+@app.route('/api/itens/<int:item_id>', methods=['PUT'])
+def atualizar_item(item_id):
+    data = request.json
+    descricao = data.get('descricao')
+    categoria = data.get('categoria')
+    data_enc = data.get('data')
+    local = data.get('local')
+    foto = data.get('foto')
+    status = data.get('status', 'Disponível')
+
+    if not descricao or not data_enc or not local:
+        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Se uma nova foto Base64 foi enviada, atualiza também a foto
+        if foto:
+            cursor.execute('''
+                UPDATE itens
+                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, status = %s
+                WHERE id = %s;
+            ''', (descricao, categoria, data_enc, local, foto, status, item_id))
+        else:
+            # Caso contrário, mantém a foto já gravada no banco
+            cursor.execute('''
+                UPDATE itens
+                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
+                WHERE id = %s;
+            ''', (descricao, categoria, data_enc, local, status, item_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# Rota para excluir objeto do banco
+@app.route('/api/itens/<int:item_id>', methods=['DELETE'])
+def excluir_item(item_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": f"Item #{item_id} excluído com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
