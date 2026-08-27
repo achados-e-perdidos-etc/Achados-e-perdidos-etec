@@ -6,32 +6,28 @@
     <title>ETEC - Achados e Perdidos (Alunos)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- VINCULO COM O SEU CSS (estilo.css) -->
     <link rel="stylesheet" href="estilo.css">
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between">
 
     <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <!-- LOGO COM ID PARA ALTERAÇÃO DINÂMICA VIA SCRIPT -->
-                <img id="siteLogo" src="logo-vermelho.png" alt="Logo Achados e Perdidos" class="w-10 h-10 object-cover rounded-full">
-                <div>
-                    <h1 class="font-bold text-lg dynamic-text leading-tight">ACHADOS E PERDIDOS</h1>
-                    <p class="text-xs text-muted">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
+        <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center space-x-3 min-w-0">
+                <!-- LOGO BLINDADA CONTRA CONFLITOS DE TAMANHO -->
+                <img id="siteLogo" src="logo-vermelho.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
+                <div class="min-w-0">
+                    <h1 class="font-bold text-lg dynamic-text leading-tight truncate">ACHADOS E PERDIDOS</h1>
+                    <p class="text-xs text-muted truncate">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
                 </div>
             </div>
 
-            <div class="flex items-center space-x-3">
-                <!-- PAINEL DE CONFIGURAÇÕES DE TEMA E COR -->
+            <div class="flex items-center space-x-3 shrink-0">
                 <div class="relative">
                     <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações de Aparência">
                         <i class="fas fa-cog text-base"></i>
                     </button>
 
-                    <!-- MENU DROPDOWN DE CONFIGURAÇÕES -->
                     <div id="configMenu" class="hidden absolute right-0 mt-2 w-60 bg-card border border-color rounded-xl shadow-2xl p-3 z-50 space-y-3">
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
@@ -46,16 +42,16 @@
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Cor do Estilo</span>
                             <div class="grid grid-cols-4 gap-2 pt-1">
-                                <button onclick="mudarEstiloCor('vermelho')" class="h-8 rounded-lg bg-red-600 border border-red-400 flex items-center justify-center text-white" title="Vermelho ETEC">
+                                <button onclick="mudarEstiloCor('vermelho')" class="h-8 rounded-lg bg-red-600 border border-red-400 flex items-center justify-center text-white" title="Vermelho">
                                     <i class="fas fa-check text-xs hidden" id="check-vermelho"></i>
                                 </button>
-                                <button onclick="mudarEstiloCor('verde')" class="h-8 rounded-lg bg-green-600 border border-green-400 flex items-center justify-center text-white" title="Verde ETEC">
+                                <button onclick="mudarEstiloCor('verde')" class="h-8 rounded-lg bg-green-600 border border-green-400 flex items-center justify-center text-white" title="Verde">
                                     <i class="fas fa-check text-xs hidden" id="check-verde"></i>
                                 </button>
-                                <button onclick="mudarEstiloCor('azul')" class="h-8 rounded-lg bg-blue-600 border border-blue-400 flex items-center justify-center text-white" title="Azul Tecnológico">
+                                <button onclick="mudarEstiloCor('azul')" class="h-8 rounded-lg bg-blue-600 border border-blue-400 flex items-center justify-center text-white" title="Azul">
                                     <i class="fas fa-check text-xs hidden" id="check-azul"></i>
                                 </button>
-                                <button onclick="mudarEstiloCor('roxo')" class="h-8 rounded-lg bg-purple-600 border border-purple-400 flex items-center justify-center text-white" title="Roxo Cyber">
+                                <button onclick="mudarEstiloCor('roxo')" class="h-8 rounded-lg bg-purple-600 border border-purple-400 flex items-center justify-center text-white" title="Roxo">
                                     <i class="fas fa-check text-xs hidden" id="check-roxo"></i>
                                 </button>
                             </div>
@@ -73,18 +69,12 @@
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-
-        <!-- CATÁLOGO DE OBJETOS -->
         <section id="catalogScreen" class="space-y-6">
             <div>
                 <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
-                
-                <!-- CONTAINER DE CATEGORIAS COM SLIDER DE ANIMAÇÃO -->
                 <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
-                    <!-- Fundo animado deslizante -->
                     <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
 
-                    <!-- Botões de Categoria -->
                     <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
                     <button onclick="filtrarCategoria('MOCHILA', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">MOCHILA</button>
                     <button onclick="filtrarCategoria('ROUPAS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ROUPAS</button>
@@ -96,7 +86,6 @@
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
-        <!-- TELA DETALHADA -->
         <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
             <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
 
@@ -126,10 +115,8 @@
                 </div>
             </div>
         </section>
-
     </main>
 
-    <!-- LINK PARA O ARQUIVO JAVASCRIPT SEPARADO -->
     <script src="script.js"></script>
 </body>
 </html>
