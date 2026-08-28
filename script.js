@@ -19,6 +19,16 @@ window.addEventListener('click', function(e) {
     }
 });
 
+// --- FIXAR COR VERMELHA PRINCIPAL ---
+function aplicarTemaVermelho() {
+    const root = document.documentElement;
+    root.style.setProperty('--primary-color', '#dc2626');
+    root.style.setProperty('--primary-hover', '#b91c1c');
+    root.style.setProperty('--primary-text', '#f87171');
+    root.style.setProperty('--primary-bg-subtle', '#450a0a');
+    root.style.setProperty('--primary-border', '#991b1b');
+}
+
 // --- TEMA CLARO / ESCURO ---
 function alternarModoEscuroClaro() {
     const label = document.getElementById('themeLabel');
@@ -40,76 +50,9 @@ function alternarModoEscuroClaro() {
     }
 }
 
-// --- CORES E LOGOS COM TRATAMENTO DE ERRO ---
-const temasCores = {
-    vermelho: {
-        primary: '#dc2626',
-        hover: '#b91c1c',
-        text: '#f87171',
-        subtle: '#450a0a',
-        border: '#991b1b',
-        logo: 'logo-vermelho.png'
-    },
-    verde: {
-        primary: '#238636',
-        hover: '#2ea043',
-        text: '#4ade80',
-        subtle: '#052e16',
-        border: '#14532d',
-        logo: 'logo-verde.png'
-    },
-    azul: {
-        primary: '#0284c7',
-        hover: '#0369a1',
-        text: '#38bdf8',
-        subtle: '#0c4a6e',
-        border: '#0369a1',
-        logo: 'logo-azul.png'
-    },
-    roxo: {
-        primary: '#9333ea',
-        hover: '#7e22ce',
-        text: '#c084fc',
-        subtle: '#3b0764',
-        border: '#6b21a8',
-        logo: 'logo-roxo.png'
-    }
-};
-
-function mudarEstiloCor(cor) {
-    const tema = temasCores[cor] || temasCores.vermelho;
-    const root = document.documentElement;
-
-    // Atualiza variáveis de cor
-    root.style.setProperty('--primary-color', tema.primary);
-    root.style.setProperty('--primary-hover', tema.hover);
-    root.style.setProperty('--primary-text', tema.text);
-    root.style.setProperty('--primary-bg-subtle', tema.subtle);
-    root.style.setProperty('--primary-border', tema.border);
-
-    // Troca da logo com timestamp para evitar cache do navegador
-    const logoImg = document.getElementById('siteLogo');
-    if (logoImg) {
-        const novaSrc = `${tema.logo}?v=${new Date().getTime()}`;
-        logoImg.src = novaSrc;
-
-        // Se der erro ao carregar a imagem verde/azul, volta para a vermelha
-        logoImg.onerror = function() {
-            this.onerror = null;
-            this.src = 'logo-vermelho.png';
-        };
-    }
-
-    // Atualiza ícone de seleção no menu
-    document.querySelectorAll('#configMenu i[id^="check-"]').forEach(el => el.classList.add('hidden'));
-    const check = document.getElementById(`check-${cor}`);
-    if (check) check.classList.remove('hidden');
-
-    localStorage.setItem('theme_color', cor);
-}
-
 function carregarPreferenciasAparencia() {
-    // Carregar Modo Claro/Escuro
+    aplicarTemaVermelho();
+
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -125,10 +68,6 @@ function carregarPreferenciasAparencia() {
         if (label) label.innerText = "Modo Escuro";
         if (icon) icon.className = "fas fa-moon text-yellow-400";
     }
-
-    // Carregar Cor do Tema
-    const corSalva = localStorage.getItem('theme_color') || 'vermelho';
-    mudarEstiloCor(corSalva);
 }
 
 // --- INTEGRAÇÃO COM A API ---
