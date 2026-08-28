@@ -3,6 +3,7 @@ let alunoLogado = null;
 let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
+let termoBusca = '';
 
 // --- MENU DE CONFIGURAÇÕES ---
 function toggleConfigMenu() {
@@ -90,6 +91,33 @@ function logout() {
     document.getElementById('detailScreen')?.classList.add('hidden');
 }
 
+// --- BUSCA POR PALAVRA-CHAVE ---
+function filtrarPorPalavraChave() {
+    const input = document.getElementById('searchInput');
+    const btnClear = document.getElementById('btnClearSearch');
+    
+    termoBusca = input.value.trim().toLowerCase();
+
+    if (termoBusca.length > 0) {
+        btnClear?.classList.remove('hidden');
+    } else {
+        btnClear?.classList.add('hidden');
+    }
+
+    renderizarItens();
+}
+
+function limparBusca() {
+    const input = document.getElementById('searchInput');
+    const btnClear = document.getElementById('btnClearSearch');
+    
+    if (input) input.value = '';
+    termoBusca = '';
+    btnClear?.classList.add('hidden');
+    
+    renderizarItens();
+}
+
 // --- SLIDER DE CATEGORIAS ---
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
@@ -120,18 +148,39 @@ function filtrarCategoria(cat, btnElement) {
     renderizarItens();
 }
 
+// --- RENDERIZAÇÃO DOS ITENS (COM FILTROS COMBINADOS) ---
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
 
     grid.innerHTML = '';
 
-    const filtrados = categoriaAtual === 'TODOS' 
-        ? todosItens 
-        : todosItens.filter(i => i.categoria && i.categoria.toUpperCase() === categoriaAtual);
+    const filtrados = todosItens.filter(item => {
+        // Filtro de Categoria
+        const atendeCategoria = categoriaAtual === 'TODOS' || 
+            (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
+
+        // Filtro de Palavra-Chave (busca no título/descrição, local e categoria)
+        const desc = (item.txt_descricao || '').toLowerCase();
+        const local = (item.txt_local || '').toLowerCase();
+        const cat = (item.categoria || '').toLowerCase();
+        
+        const atendeBusca = !termoBusca || 
+            desc.includes(termoBusca) || 
+            local.includes(termoBusca) || 
+            cat.includes(termoBusca);
+
+        return atendeCategoria && atendeBusca;
+    });
 
     if (filtrados.length === 0) {
-        grid.innerHTML = '<div class="col-span-2 text-center text-muted py-8">Nenhum objeto cadastrado nesta categoria.</div>';
+        grid.innerHTML = `
+            <div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl">
+                <i class="fas fa-search text-3xl mb-2 text-muted"></i>
+                <p class="text-sm font-semibold">Nenhum objeto encontrado.</p>
+                <p class="text-xs text-muted mt-1">Tente pesquisar com outros termos ou selecione outra categoria.</p>
+            </div>
+        `;
         return;
     }
 
