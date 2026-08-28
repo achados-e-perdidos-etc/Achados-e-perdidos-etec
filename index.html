@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETEC - Achados e Perdidos (Alunos)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme min-h-screen flex flex-col justify-between">
+
+    <!-- CABEÇALHO -->
+    <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
+        <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center space-x-3 min-w-0">
+                <!-- LOGO SIMPLIFICADA -->
+                <img id="siteLogo" src="logo.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
+                <div class="min-w-0">
+                    <h1 class="font-bold text-lg dynamic-text leading-tight truncate">ACHADOS E PERDIDOS</h1>
+                    <p class="text-xs text-muted truncate">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 shrink-0">
+                <div class="relative">
+                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações de Aparência">
+                        <i class="fas fa-cog text-base"></i>
+                    </button>
+
+                    <!-- MENU DE CONFIGURAÇÃO (MODO CLARO / ESCURO) -->
+                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
+                            <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main hover:opacity-80 transition">
+                                <span id="themeLabel">Modo Escuro</span>
+                                <i id="themeIcon" class="fas fa-moon text-yellow-400"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="userInfo" class="hidden text-right">
+                    <span id="userName" class="block font-bold text-sm dynamic-text"></span>
+                    <span id="userRM" class="text-xs text-muted"></span>
+                    <button onclick="logout()" class="text-xs text-red-400 underline block mt-1">Sair</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
+        <section id="catalogScreen" class="space-y-6">
+            
+            <!-- BUSCA E FILTROS -->
+            <div class="space-y-4">
+                <!-- BARRA DE PESQUISA POR PALAVRA-CHAVE -->
+                <div class="relative w-full">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        oninput="filtrarPorPalavraChave()" 
+                        placeholder="Buscar por palavra-chave (ex: garrafa, casaco, chave)..." 
+                        class="w-full bg-card border border-color text-main text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted"
+                    >
+                    <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- CATEGORIAS -->
+                <div>
+                    <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
+                    <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
+                        <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
+
+                        <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
+                        <button onclick="filtrarCategoria('MOCHILA', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">MOCHILA</button>
+                        <button onclick="filtrarCategoria('ROUPAS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ROUPAS</button>
+                        <button onclick="filtrarCategoria('ACESSÓRIOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ACESSÓRIOS</button>
+                        <button onclick="filtrarCategoria('ESCOLARES', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ESCOLARES</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRID DE ITENS -->
+            <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <!-- TELA DE DETALHES -->
+        <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
+            <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
+
+            <h2 class="text-xs font-bold dynamic-text uppercase mb-2">INFORMAÇÕES DO ITEM</h2>
+
+            <div class="bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64 flex items-center justify-center">
+                <img id="detailImage" src="" class="max-h-full object-contain hidden">
+                <div id="detailPlaceholder" class="text-center p-6 text-muted">
+                    <i class="fas fa-box-open text-5xl mb-2"></i>
+                    <p class="text-xs">Foto mantida no registro da secretaria</p>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <h3 id="detailTitle" class="text-2xl font-black text-main"></h3>
+                <p id="detailDescription" class="text-sm text-muted bg-header p-3 rounded-lg border border-color"></p>
+
+                <div class="flex justify-between items-center text-xs text-muted pt-2 border-t border-color">
+                    <span>Local: <strong id="detailLocal" class="text-main"></strong></span>
+                    <span>Data: <strong id="detailDate" class="text-main"></strong></span>
+                </div>
+
+                <div class="pt-4">
+                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
+                        ESTE É O MEU ITEM / SOLICITAR COLETA
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
