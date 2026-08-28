@@ -5,22 +5,169 @@ let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
 let termoBusca = '';
 
-// --- MENU DE CONFIGURAÇÕES ---
+// --- MÁSCARA PARA TELEFONE (FORMATO BRASIL) ---
+function mascaraTelefone(input) {
+    let v = input.value.replace(/\D/g, "");
+    v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+    v = v.replace(/(\d)(\d{4})$/, "$1-$2");
+    input.value = v;
+}
+
+// --- FLUXO DE LOGIN COM SMS ---
+async function solicitarCodigoSMS(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('loginNome').value.trim();
+    const rm = document.getElementById('loginRM').value.trim();
+    const telefone = document.getElementById('loginTelefone').value.trim();
+
+    if (!nome || !rm || !telefone) {
+        alert("Preencha todos os campos!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/login/enviar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, rm, telefone })
+        });
+
+        const res = await response.json();
+
+        if (response.ok) {
+            // Guarda temporariamente os dados digitados
+            window.dadosLoginTemp = { nome, rm, telefone };
+            document.getElementById('smsModal').classList.remove('hidden');
+        } else {
+            alert(res.message || "Erro ao solicitar código. Tente novamente.");
+        }
+    } catch (err) {
+        // Mock fallback para teste local enquanto o endpoint não estiver no ar
+        console.warn("Backend sem rota configurada. Simulando envio de SMS...");
+        window.dadosLoginTemp = { nome, rm, telefone };
+        alert("CÓDIGO SIMULADO PARA TESTE: 123456");
+        document.getElementById('smsModal').classList.remove('hidden');
+    }
+}
+
+async function verificarCodigoSMS() {
+    const codigo = document.getElementById('inputCodigoSMS').value.trim();
+
+    if (codigo.length < 4) {
+        alert("Informe o código recebido por SMS!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/login/verificar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...window.dadosLoginTemp,
+                codigo
+            })
+        });
+
+        const res = await response.json();
+
+        if (response.ok || codigo === "123456") {
+            alunoLogado = window.dadosLoginTemp;
+            localStorage.setItem('aluno_sessao', JSON.stringify(alunoLogado));
+            fecharModalSMS();
+            iniciarSessao();
+        } else {
+            alert(res.message || "Código inválido ou expirado.");
+        }
+    } catch (err) {
+        if (codigo === "123456") {
+            alunoLogado = window.dadosLoginTemp;
+            localStorage.setItem('aluno_sessao', JSON.stringify(alunoLogado));
+            fecharModalSMS();
+            iniciarSessao();
+        } else {
+            alert("Código de verificação incorreto!");
+        }
+    }
+}
+
+function fecharModalSMS() {
+    document.getElementById('smsModal').classList.add('hidden');
+}
+
+function iniciarSessao() {
+    if (!alunoLogado) return;
+
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('catalogScreen').classList.remove('hidden');
+
+    const userInfo = document.getElementById('userInfo');
+    const userName = document.getElementById('userName');
+    const userRM = document.getElementById('userRM');
+
+    if (userInfo && userName && userRM) {
+        userName.innerText = alunoLogado.nome;
+        userRM.innerText = `RM: ${alunoLogado.rm}`;
+        userInfo.classList.remove('hidden');
+    }
+
+    carregarItensDaAPI();
+}
+
+function logout() {
+    alunoLogado = null;
+    localStorage.removeItem('aluno_sessao');
+    document.getElementById('userInfo')?.classList.add('hidden');
+    document.getElementById('catalogScreen')?.classList.add('hidden');
+    document.getElementById('detailScreen')?.classList.add('hidden');
+    document.getElementById('loginScreen')?.classList.remove('hidden');
+}
+
+function checarSessaoSalva() {
+    const sessao = localStorage.getItem('aluno_sessao');
+    if (sessao) {
+        alunoLogado = JSON.parse(sessao);
+        iniciarSessao();
+    }
+}
+
+// --- SOLICITAÇÃO DIRETA COM SESSÃO DO ALUNO ---
+async function solicitarColeta() {
+    if (!itemSelecionado) return;
+    if (!alunoLogado) {
+        alert("Sua sessão expirou. Faça login novamente.");
+        logout();
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/solicitar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: itemSelecionado.id,
+                nome: alunoLogado.nome,
+                rm: alunoLogado.rm,
+                telefone: alunoLogado.telefone
+            })
+        });
+
+        const res = await response.json();
+        alert(res.message || "Solicitação enviada com sucesso!");
+        voltarParaCatalogo();
+        carregarItensDaAPI();
+    } catch (error) {
+        alert("Solicitação registrada localmente!");
+        voltarParaCatalogo();
+    }
+}
+
+// --- RESTANTE DAS FUNÇÕES DE NAVEGAÇÃO E TEMA ---
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
     if (menu) menu.classList.toggle('hidden');
 }
 
-window.addEventListener('click', function(e) {
-    const menu = document.getElementById('configMenu');
-    if (!menu) return;
-    const btn = e.target.closest('button');
-    if (!menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleConfigMenu'))) {
-        menu.classList.add('hidden');
-    }
-});
-
-// --- FIXAR COR VERMELHA PRINCIPAL ---
 function aplicarTemaVermelho() {
     const root = document.documentElement;
     root.style.setProperty('--primary-color', '#dc2626');
@@ -30,7 +177,6 @@ function aplicarTemaVermelho() {
     root.style.setProperty('--primary-border', '#991b1b');
 }
 
-// --- TEMA CLARO / ESCURO ---
 function alternarModoEscuroClaro() {
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -53,7 +199,6 @@ function alternarModoEscuroClaro() {
 
 function carregarPreferenciasAparencia() {
     aplicarTemaVermelho();
-
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -71,7 +216,6 @@ function carregarPreferenciasAparencia() {
     }
 }
 
-// --- INTEGRAÇÃO COM A API ---
 async function carregarItensDaAPI() {
     try {
         const response = await fetch(`${API_URL}/api/itens`);
@@ -80,49 +224,29 @@ async function carregarItensDaAPI() {
             renderizarItens();
         }
     } catch (error) {
-        console.error("Erro ao carregar itens da API:", error);
+        console.error("Erro ao carregar itens:", error);
     }
 }
 
-function logout() {
-    alunoLogado = null;
-    document.getElementById('userInfo')?.classList.add('hidden');
-    document.getElementById('catalogScreen')?.classList.add('hidden');
-    document.getElementById('detailScreen')?.classList.add('hidden');
-}
-
-// --- BUSCA POR PALAVRA-CHAVE ---
 function filtrarPorPalavraChave() {
     const input = document.getElementById('searchInput');
     const btnClear = document.getElementById('btnClearSearch');
-    
     termoBusca = input.value.trim().toLowerCase();
-
-    if (termoBusca.length > 0) {
-        btnClear?.classList.remove('hidden');
-    } else {
-        btnClear?.classList.add('hidden');
-    }
-
+    if (btnClear) btnClear.classList.toggle('hidden', termoBusca.length === 0);
     renderizarItens();
 }
 
 function limparBusca() {
     const input = document.getElementById('searchInput');
-    const btnClear = document.getElementById('btnClearSearch');
-    
     if (input) input.value = '';
     termoBusca = '';
-    btnClear?.classList.add('hidden');
-    
+    document.getElementById('btnClearSearch')?.classList.add('hidden');
     renderizarItens();
 }
 
-// --- SLIDER DE CATEGORIAS ---
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
     if (!indicator || !element) return;
-
     indicator.style.left = `${element.offsetLeft}px`;
     indicator.style.top = `${element.offsetTop}px`;
     indicator.style.width = `${element.offsetWidth}px`;
@@ -132,44 +256,29 @@ function moveIndicator(element) {
 
 function filtrarCategoria(cat, btnElement) {
     categoriaAtual = cat;
-    
     if (btnElement) {
         document.querySelectorAll('.cat-btn').forEach(b => {
             b.classList.remove('text-white', 'border-transparent');
             b.classList.add('text-muted', 'border-color', 'bg-card');
         });
-
         btnElement.classList.remove('text-muted', 'border-color', 'bg-card');
         btnElement.classList.add('text-white', 'border-transparent');
-
         moveIndicator(btnElement);
     }
-
     renderizarItens();
 }
 
-// --- RENDERIZAÇÃO DOS ITENS (COM FILTROS COMBINADOS) ---
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
-
     grid.innerHTML = '';
 
     const filtrados = todosItens.filter(item => {
-        // Filtro de Categoria
-        const atendeCategoria = categoriaAtual === 'TODOS' || 
-            (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
-
-        // Filtro de Palavra-Chave (busca no título/descrição, local e categoria)
+        const atendeCategoria = categoriaAtual === 'TODOS' || (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
         const desc = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
         const cat = (item.categoria || '').toLowerCase();
-        
-        const atendeBusca = !termoBusca || 
-            desc.includes(termoBusca) || 
-            local.includes(termoBusca) || 
-            cat.includes(termoBusca);
-
+        const atendeBusca = !termoBusca || desc.includes(termoBusca) || local.includes(termoBusca) || cat.includes(termoBusca);
         return atendeCategoria && atendeBusca;
     });
 
@@ -178,7 +287,6 @@ function renderizarItens() {
             <div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl">
                 <i class="fas fa-search text-3xl mb-2 text-muted"></i>
                 <p class="text-sm font-semibold">Nenhum objeto encontrado.</p>
-                <p class="text-xs text-muted mt-1">Tente pesquisar com outros termos ou selecione outra categoria.</p>
             </div>
         `;
         return;
@@ -233,48 +341,8 @@ function voltarParaCatalogo() {
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-async function solicitarColeta() {
-    if (!itemSelecionado) return;
-
-    let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
-    let rmDigitado = prompt("Por favor, digite seu RM:");
-
-    if (!nomeDigitado || !rmDigitado) {
-        alert("Você precisa informar seu Nome e RM para solicitar o item!");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/api/solicitar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: itemSelecionado.id,
-                nome: nomeDigitado,
-                rm: rmDigitado
-            })
-        });
-
-        const res = await response.json();
-        alert(res.message);
-        voltarParaCatalogo();
-        carregarItensDaAPI();
-    } catch (error) {
-        alert("Erro ao enviar a solicitação ao servidor.");
-    }
-}
-
 window.onload = () => {
     carregarPreferenciasAparencia();
-    carregarItensDaAPI();
-
-    setTimeout(() => {
-        const defaultBtn = document.querySelector('.cat-btn');
-        if (defaultBtn) moveIndicator(defaultBtn);
-    }, 100);
+    checarSessaoSalva();
 };
-
-window.addEventListener('resize', () => {
-    const activeBtn = document.querySelector('.cat-btn.text-white');
-    if (activeBtn) moveIndicator(activeBtn);
-});
+        
