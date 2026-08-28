@@ -6,8 +6,6 @@
     <title>ETEC - Achados e Perdidos (Alunos)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- APONTANDO PARA O SEU ARQUIVO STYLE.CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between">
@@ -16,8 +14,8 @@
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
             <div class="flex items-center space-x-3 min-w-0">
-                <!-- LOGO COM LARGURA E ALTURA FIXAS -->
-                <img id="siteLogo" src="logo-vermelho.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
+                <!-- LOGO SIMPLIFICADA: logo.png -->
+                <img id="siteLogo" src="logo.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
                 <div class="min-w-0">
                     <h1 class="font-bold text-lg dynamic-text leading-tight truncate">ACHADOS E PERDIDOS</h1>
                     <p class="text-xs text-muted truncate">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
@@ -30,33 +28,14 @@
                         <i class="fas fa-cog text-base"></i>
                     </button>
 
-                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-60 bg-card border border-color rounded-xl shadow-2xl p-3 z-50 space-y-3">
+                    <!-- MENU DE CONFIGURAÇÃO (APENAS MODO CLARO / ESCURO) -->
+                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
                             <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main hover:opacity-80 transition">
                                 <span id="themeLabel">Modo Escuro</span>
                                 <i id="themeIcon" class="fas fa-moon text-yellow-400"></i>
                             </button>
-                        </div>
-
-                        <hr class="border-color">
-
-                        <div>
-                            <span class="text-[11px] font-bold uppercase text-muted block mb-1">Cor do Estilo</span>
-                            <div class="grid grid-cols-4 gap-2 pt-1">
-                                <button onclick="mudarEstiloCor('vermelho')" class="h-8 rounded-lg bg-red-600 border border-red-400 flex items-center justify-center text-white" title="Vermelho">
-                                    <i class="fas fa-check text-xs hidden" id="check-vermelho"></i>
-                                </button>
-                                <button onclick="mudarEstiloCor('verde')" class="h-8 rounded-lg bg-green-600 border border-green-400 flex items-center justify-center text-white" title="Verde">
-                                    <i class="fas fa-check text-xs hidden" id="check-verde"></i>
-                                </button>
-                                <button onclick="mudarEstiloCor('azul')" class="h-8 rounded-lg bg-blue-600 border border-blue-400 flex items-center justify-center text-white" title="Azul">
-                                    <i class="fas fa-check text-xs hidden" id="check-azul"></i>
-                                </button>
-                                <button onclick="mudarEstiloCor('roxo')" class="h-8 rounded-lg bg-purple-600 border border-purple-400 flex items-center justify-center text-white" title="Roxo">
-                                    <i class="fas fa-check text-xs hidden" id="check-roxo"></i>
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
