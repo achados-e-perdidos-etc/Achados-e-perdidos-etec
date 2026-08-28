@@ -1,46 +1,65 @@
 const API_URL = "https://achados-etec-api.onrender.com";
-let alunoLogado = null;
 let todosItens = [];
-let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
 let statusAtual = 'TODOS';
 let termoBusca = '';
 
-// --- INICIALIZAÇÃO ---
+// --- INICIALIZAÇÃO SEGURA ---
 document.addEventListener("DOMContentLoaded", () => {
-    carregarItens();
-    
-    // Seleciona o primeiro botão ("TODOS") como ativo inicialmente
+    // Configura o visual inicial da pílula de categorias
     const btnTodos = document.querySelector('.cat-btn');
     if (btnTodos) {
         atualizarPillSlide(btnTodos);
     }
+    
+    // Inicia a busca de dados na API
+    carregarItens();
 });
 
 // --- REQUISIÇÃO À API ---
 async function carregarItens() {
+    const grid = document.getElementById('itemsGrid');
+    if (grid) {
+        grid.innerHTML = `
+            <div class="col-span-full text-center text-muted py-12 bg-card border border-color rounded-xl">
+                <i class="fas fa-spinner fa-spin text-3xl mb-3 text-accent"></i>
+                <p class="text-sm font-semibold text-main">Carregando objetos...</p>
+                <p class="text-xs text-muted mt-1">Conectando ao servidor, aguarde um momento.</p>
+            </div>
+        `;
+    }
+
     try {
         const response = await fetch(`${API_URL}/itens`);
-        if (!response.ok) throw new Error("Erro ao buscar dados do servidor");
         
-        todosItens = await response.json();
+        if (!response.ok) {
+            throw new Error(`Erro na resposta do servidor: ${response.status}`);
+        }
+        
+        const dados = await response.json();
+        
+        // Garante que dados recebidos sejam uma lista
+        todosItens = Array.isArray(dados) ? dados : [];
+        
         renderizarItens();
     } catch (erro) {
-        console.error("Erro no carregamento:", erro);
-        const grid = document.getElementById('itemsGrid');
+        console.error("Erro ao carregar itens da API:", erro);
         if (grid) {
             grid.innerHTML = `
                 <div class="col-span-full text-center text-accent py-12 bg-card border border-color rounded-xl">
                     <i class="fas fa-exclamation-triangle text-3xl mb-2"></i>
                     <p class="text-sm font-semibold">Falha ao conectar à API.</p>
-                    <p class="text-xs text-muted mt-1">Verifique sua conexão ou tente novamente mais tarde.</p>
+                    <p class="text-xs text-muted mt-1 mb-4">Verifique sua conexão ou aguarde o servidor inicializar.</p>
+                    <button onclick="carregarItens()" class="px-4 py-2 bg-accent text-white rounded-lg text-xs font-bold hover:opacity-90 transition">
+                        Tentar Novamente
+                    </button>
                 </div>
             `;
         }
     }
 }
 
-// --- FILTROS DE INTERFACE ---
+// --- FILTROS ---
 function filtrarCategoria(categoria, elemento) {
     categoriaAtual = categoria;
     atualizarPillSlide(elemento);
@@ -91,7 +110,7 @@ function renderizarItens() {
         const atendeCategoria = categoriaAtual === 'TODOS' || 
             (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
 
-        // 2. Filtro por Status (Suporta tanto GUARDADO quanto DISPONÍVEL)
+        // 2. Filtro por Status
         const itemStatus = (item.status || 'GUARDADO').toUpperCase();
         const atendeStatus = statusAtual === 'TODOS' || 
             (statusAtual === 'GUARDADO' && (itemStatus === 'GUARDADO' || itemStatus === 'DISPONÍVEL')) ||
@@ -110,7 +129,7 @@ function renderizarItens() {
         return atendeCategoria && atendeStatus && atendeBusca;
     });
 
-    // Estado vazio caso a busca não retorne itens
+    // Caso nenhum item corresponda aos filtros
     if (filtrados.length === 0) {
         grid.innerHTML = `
             <div class="col-span-full text-center text-muted py-12 bg-card border border-color rounded-xl">
@@ -128,10 +147,9 @@ function renderizarItens() {
         card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between hover:border-accent transition duration-200 cursor-pointer shadow-sm hover:shadow-md";
 
         const imgHtml = item.foto 
-            ? `<img src="${item.foto}" alt="${item.txt_descricao}" class="w-full h-36 object-cover rounded-lg mb-3">`
+            ? `<img src="${item.foto}" alt="${item.txt_descricao || 'Objeto'}" class="w-full h-36 object-cover rounded-lg mb-3">`
             : `<div class="w-full h-36 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box-open text-3xl"></i></div>`;
 
-        // Definição de estilo das badges de Status
         const statusUpper = (item.status || 'GUARDADO').toUpperCase();
         let statusBadgeColor = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
         
@@ -148,8 +166,8 @@ function renderizarItens() {
                     <span class="text-[10px] font-bold bg-header border border-color text-main px-2 py-0.5 rounded uppercase tracking-wider">${item.categoria || 'GERAL'}</span>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${statusBadgeColor}">${statusUpper}</span>
                 </div>
-                <h4 class="font-bold text-sm mt-2 text-white line-clamp-1">${item.txt_descricao}</h4>
-                <p class="text-xs text-muted mt-1"><i class="fas fa-map-marker-alt text-accent mr-1"></i> ${item.txt_local}</p>
+                <h4 class="font-bold text-sm mt-2 text-white line-clamp-1">${item.txt_descricao || 'Objeto sem descrição'}</h4>
+                <p class="text-xs text-muted mt-1"><i class="fas fa-map-marker-alt text-accent mr-1"></i> ${item.txt_local || 'Local não informado'}</p>
             </div>
         `;
         grid.appendChild(card);
