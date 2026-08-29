@@ -148,6 +148,12 @@ function filtrarCategoria(cat, btnElement) {
     renderizarItens();
 }
 
+function normalizarStatus(status) {
+    let st = (status || 'DISPONÍVEL').toUpperCase();
+    if (st === 'GUARDADO') return 'DISPONÍVEL';
+    return st;
+}
+
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
@@ -158,11 +164,10 @@ function renderizarItens() {
         const atendeCategoria = categoriaAtual === 'TODOS' || 
             (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
 
-        const stUpper = (item.status || 'GUARDADO').toUpperCase();
-        const atendeStatus = statusAtual === 'TODOS' || 
-            (statusAtual === 'GUARDADO' && (stUpper === 'GUARDADO' || stUpper === 'DISPONÍVEL' || stUpper === 'DISPONIVEL')) ||
-            (statusAtual === 'SOLICITADO' && stUpper === 'SOLICITADO') ||
-            (statusAtual === 'ENTREGUE' && stUpper === 'ENTREGUE');
+        const stUpper = normalizarStatus(item.status);
+        const stFiltro = normalizarStatus(statusAtual);
+
+        const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
 
         const desc = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
@@ -196,13 +201,17 @@ function renderizarItens() {
             ? `<img src="${item.foto}" class="w-full h-32 object-cover rounded-lg mb-3">`
             : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box text-3xl"></i></div>`;
 
-        const stUpper = (item.status || 'GUARDADO').toUpperCase();
+        const stUpper = normalizarStatus(item.status);
         let statusBadgeClass = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
         
         if (stUpper === 'SOLICITADO') {
             statusBadgeClass = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
         } else if (stUpper === 'ENTREGUE') {
             statusBadgeClass = 'bg-slate-800 text-slate-400 border-slate-700';
+        } else if (stUpper === 'PARA DOAÇÃO' || stUpper === 'PARA DOACAO') {
+            statusBadgeClass = 'bg-purple-900/40 text-purple-400 border-purple-700/50';
+        } else if (stUpper === 'DOAÇÃO FEITA' || stUpper === 'DOACAO FEITA') {
+            statusBadgeClass = 'bg-pink-900/40 text-pink-400 border-pink-700/50';
         }
 
         card.innerHTML = `
@@ -244,7 +253,7 @@ function abrirDetalhes(item) {
         placeholder.classList.remove('hidden');
     }
 
-    const stUpper = (item.status || 'GUARDADO').toUpperCase();
+    const stUpper = normalizarStatus(item.status);
     
     if (badgeStatus) {
         badgeStatus.innerText = stUpper;
@@ -252,14 +261,18 @@ function abrirDetalhes(item) {
             badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
         } else if (stUpper === 'ENTREGUE') {
             badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-slate-800 text-slate-400 border-slate-700';
+        } else if (stUpper === 'PARA DOAÇÃO' || stUpper === 'PARA DOACAO') {
+            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-purple-900/40 text-purple-400 border-purple-700/50';
+        } else if (stUpper === 'DOAÇÃO FEITA' || stUpper === 'DOACAO FEITA') {
+            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-pink-900/40 text-pink-400 border-pink-700/50';
         } else {
             badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
         }
     }
 
-    if (stUpper === 'SOLICITADO' || stUpper === 'ENTREGUE') {
+    if (stUpper !== 'DISPONÍVEL') {
         btnSolicitar.disabled = true;
-        btnSolicitar.innerText = "ITEM JÁ SOLICITADO / AGUARDANDO SECRETARIA";
+        btnSolicitar.innerText = `ITEM EM STATUS: ${stUpper}`;
         btnSolicitar.className = "w-full bg-gray-700 text-gray-400 cursor-not-allowed font-bold py-3.5 rounded-xl text-sm uppercase border border-gray-600";
     } else {
         btnSolicitar.disabled = false;
@@ -276,9 +289,9 @@ function voltarParaCatalogo() {
 async function solicitarColeta() {
     if (!itemSelecionado) return;
 
-    const stUpper = (itemSelecionado.status || 'GUARDADO').toUpperCase();
-    if (stUpper === 'SOLICITADO' || stUpper === 'ENTREGUE') {
-        alert("Este item já foi solicitado por outra pessoa e não está mais disponível!");
+    const stUpper = normalizarStatus(itemSelecionado.status);
+    if (stUpper !== 'DISPONÍVEL') {
+        alert("Este item não está mais disponível para solicitação!");
         return;
     }
 
