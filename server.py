@@ -19,7 +19,6 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Garante a tabela básica
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -33,16 +32,23 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
-        # Tenta adicionar a coluna fotos_json caso a tabela antiga já exista
         cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;")
         conn.commit()
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"Erro ao inicializar banco: {e}")
+        print(f"Erro ao inicializar o banco de dados: {e}")
 
 if DATABASE_URL:
     init_db()
+
+@app.route('/')
+def home():
+    return jsonify({
+        "status": "online",
+        "banco": "Neon PostgreSQL",
+        "mensagem": "API Achados e Perdidos ETEC Ativa"
+    })
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
@@ -57,7 +63,6 @@ def get_itens():
         """)
         itens = cursor.fetchall()
         
-        # Converte a string JSON de volta para Lista nos retornos
         for item in itens:
             if item['fotos']:
                 try:
@@ -66,7 +71,7 @@ def get_itens():
                     item['fotos'] = [item['fotos']]
             else:
                 item['fotos'] = []
-                
+
         cursor.close()
         conn.close()
         return jsonify(itens)
@@ -84,7 +89,7 @@ def cadastrar_item():
     status = data.get('status', 'DISPONÍVEL')
 
     if not descricao or not data_enc or not local:
-        return jsonify({"success": False, "message": "Preencha todos os campos!"}), 400
+        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
 
     fotos_json = json.dumps(fotos)
 
@@ -113,6 +118,9 @@ def atualizar_item(item_id):
     fotos = data.get('fotos')
     status = data.get('status', 'DISPONÍVEL')
 
+    if not descricao or not data_enc or not local:
+        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -134,7 +142,7 @@ def atualizar_item(item_id):
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} atualizado!"})
+        return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -147,7 +155,7 @@ def excluir_item(item_id):
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Item removido!"})
+        return jsonify({"success": True, "message": f"Item #{item_id} excluído com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -156,12 +164,12 @@ def concluir_doacoes():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM itens WHERE UPPER(status) IN ('DOAÇÃO FEITA', 'DOACAO FEITA');")
+        cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
         removidos = cursor.rowcount
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "removidos": removidos})
+        return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -172,27 +180,40 @@ def solicitar_item():
     nome_aluno = data.get('nome')
     rm_aluno = data.get('rm')
     
+    if not item_id or not nome_aluno or not rm_aluno:
+        return jsonify({"success": False, "message": "Dados incompletos do aluno!"}), 400
+        
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
         cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
 
-        if not item or (item['status'] or '').upper() != 'DISPONÍVEL':
+        if not item:
             cursor.close()
             conn.close()
-            return jsonify({"success": False, "message": "Item indisponível!"}), 400
+            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
+
+        status_atual = (item['status'] or 'DISPONÍVEL').upper()
+        if status_atual in ['SOLICITADO', 'ENTREGUE', 'PARA DOAÇÃO', 'DOAÇÃO FEITA']:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
 
         cursor.execute('''
-            UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s WHERE id = %s;
+            UPDATE itens 
+            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
+            WHERE id = %s;
         ''', (nome_aluno, rm_aluno, item_id))
         
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada!"})
+        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
