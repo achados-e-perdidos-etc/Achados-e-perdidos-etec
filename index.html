@@ -80,17 +80,18 @@
                     </div>
                 </div>
 
-                <!-- FILTRO DE STATUS -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
-                    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
-                    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
-                        <option value="TODOS">TODOS OS STATUS</option>
-                        <option value="GUARDADO">GUARDADO / DISPONÍVEL</option>
-                        <option value="SOLICITADO">SOLICITADO</option>
-                        <option value="ENTREGUE">ENTREGUE</option>
-                    </select>
-                </div>
-            </div>
+<!-- FILTRO DE STATUS -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
+    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
+    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
+        <option value="TODOS">TODOS OS STATUS</option>
+        <option value="DISPONÍVEL">DISPONÍVEL</option>
+        <option value="SOLICITADO">SOLICITADO</option>
+        <option value="ENTREGUE">ENTREGUE</option>
+        <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
+        <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
+    </select>
+</div>
 
             <!-- GRID DE ITENS -->
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
