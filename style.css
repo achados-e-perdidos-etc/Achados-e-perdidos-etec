@@ -1,0 +1,85 @@
+/* --- TEMAS (MODO ESCURO E MODO CLARO) --- */
+body.dark-theme {
+    --bg-main: #0d1117 !important;
+    --bg-header: #161b22 !important;
+    --bg-card: #21262d !important;
+    --text-main: #c9d1d9 !important;
+    --text-muted: #8b949e !important;
+    --border-color: #30363d !important;
+}
+
+body.light-theme {
+    --bg-main: #f6f8fa !important;
+    --bg-header: #ffffff !important;
+    --bg-card: #ffffff !important;
+    --text-main: #1f2328 !important;
+    --text-muted: #656d76 !important;
+    --border-color: #d0d7de !important;
+}
+
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-main) !important;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* --- APLICAÇÃO DAS VARIÁVEIS --- */
+.bg-header {
+    background-color: var(--bg-header) !important;
+}
+
+.bg-card {
+    background-color: var(--bg-card) !important;
+}
+
+.border-color {
+    border-color: var(--border-color) !important;
+}
+
+.text-main {
+    color: var(--text-main) !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.dynamic-text {
+    color: var(--primary-text) !important;
+}
+
+.dynamic-badge {
+    background-color: var(--primary-bg-subtle) !important;
+    color: var(--primary-text) !important;
+    border: 1px solid var(--primary-border) !important;
+}
+
+.dynamic-btn {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+    transition: background-color 0.2s ease;
+}
+
+.dynamic-btn:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+/* --- REGRAS DA LOGO --- */
+#siteLogo {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    object-fit: cover !important;
+    border-radius: 9999px !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+}
+
+.sliding-pill {
+    background-color: var(--primary-color) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
