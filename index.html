@@ -80,24 +80,25 @@
                     </div>
                 </div>
 
-<!-- FILTRO DE STATUS -->
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
-    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
-    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
-        <option value="TODOS">TODOS OS STATUS</option>
-        <option value="DISPONÍVEL">DISPONÍVEL</option>
-        <option value="SOLICITADO">SOLICITADO</option>
-        <option value="ENTREGUE">ENTREGUE</option>
-        <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
-        <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
-    </select>
-</div>
+                <!-- FILTRO DE STATUS -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
+                    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
+                    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
+                        <option value="TODOS">TODOS OS STATUS</option>
+                        <option value="DISPONÍVEL">DISPONÍVEL</option>
+                        <option value="SOLICITADO">SOLICITADO</option>
+                        <option value="ENTREGUE">ENTREGUE</option>
+                        <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
+                        <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
+                    </select>
+                </div>
+            </div>
 
             <!-- GRID DE ITENS -->
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
-        <!-- TELA DE DETALHES -->
+        <!-- TELA DE DETALHES COM CARROSSEL -->
         <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
             <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
 
@@ -106,9 +107,28 @@
                 <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border"></span>
             </div>
 
-            <div class="bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64 flex items-center justify-center">
-                <img id="detailImage" src="" class="max-h-full object-contain hidden">
-                <div id="detailPlaceholder" class="text-center p-6 text-muted">
+            <!-- CARROSSEL DE FOTOS -->
+            <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
+                <!-- Indicador 1/4 (Mostrado quando há fotos) -->
+                <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
+                    <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
+                </div>
+
+                <!-- Container Deslizante com Suporte a Drag/Touch -->
+                <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth">
+                    <!-- Fotos injetadas via JavaScript -->
+                </div>
+
+                <!-- Botões de navegação lateral para desktop -->
+                <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
+                    <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <button id="btnNextPhoto" onclick="navegarFotos(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </button>
+
+                <!-- Placeholder sem foto -->
+                <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
                     <i class="fas fa-box-open text-5xl mb-2"></i>
                     <p class="text-xs">Foto mantida no registro da secretaria</p>
                 </div>
