@@ -7,14 +7,12 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Obtém a URL de Conexão do Neon PostgreSQL a partir das variáveis de ambiente
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_connection():
     if not DATABASE_URL:
         raise ValueError("A variável de ambiente DATABASE_URL não foi configurada!")
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-    return conn
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def init_db():
     try:
@@ -28,7 +26,7 @@ def init_db():
                 data_encontrado VARCHAR(20) NOT NULL,
                 local_encontrado VARCHAR(100) NOT NULL,
                 foto_base64 TEXT,
-                status VARCHAR(30) DEFAULT 'Disponível',
+                status VARCHAR(30) DEFAULT 'GUARDADO',
                 solicitado_por VARCHAR(100),
                 rm_aluno VARCHAR(20)
             );
@@ -36,11 +34,10 @@ def init_db():
         conn.commit()
         cursor.close()
         conn.close()
-        print("Tabela inicializada com sucesso no Neon PostgreSQL!")
+        print("Tabela inicializada no Neon PostgreSQL!")
     except Exception as e:
-        print(f"Erro ao inicializar o banco de dados Neon: {e}")
+        print(f"Erro ao inicializar o banco de dados: {e}")
 
-# Executa criação da tabela ao iniciar
 if DATABASE_URL:
     init_db()
 
@@ -52,7 +49,6 @@ def home():
         "mensagem": "API Achados e Perdidos ETEC Ativa"
     })
 
-# Rota para listar todos os itens salvos no Neon
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
     try:
@@ -66,7 +62,6 @@ def get_itens():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Rota para cadastrar novo objeto (Secretaria)
 @app.route('/api/itens', methods=['POST'])
 def cadastrar_item():
     data = request.json
@@ -75,6 +70,7 @@ def cadastrar_item():
     data_enc = data.get('data')
     local = data.get('local')
     foto = data.get('foto', '')
+    status = data.get('status', 'GUARDADO')
 
     if not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
@@ -83,18 +79,17 @@ def cadastrar_item():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64)
-            VALUES (%s, %s, %s, %s, %s) RETURNING id;
-        ''', (descricao, categoria, data_enc, local, foto))
+            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, status)
+            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;
+        ''', (descricao, categoria, data_enc, local, foto, status))
         novo_id = cursor.fetchone()[0]
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo no Neon PostgreSQL com sucesso!", "id": novo_id})
+        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Rota para atualizar todos os dados do objeto (Secretaria)
 @app.route('/api/itens/<int:item_id>', methods=['PUT'])
 def atualizar_item(item_id):
     data = request.json
@@ -103,7 +98,7 @@ def atualizar_item(item_id):
     data_enc = data.get('data')
     local = data.get('local')
     foto = data.get('foto')
-    status = data.get('status', 'Disponível')
+    status = data.get('status', 'GUARDADO')
 
     if not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
@@ -112,7 +107,6 @@ def atualizar_item(item_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Se uma nova foto Base64 foi enviada, atualiza também a foto
         if foto:
             cursor.execute('''
                 UPDATE itens
@@ -120,7 +114,6 @@ def atualizar_item(item_id):
                 WHERE id = %s;
             ''', (descricao, categoria, data_enc, local, foto, status, item_id))
         else:
-            # Caso contrário, mantém a foto já gravada no banco
             cursor.execute('''
                 UPDATE itens
                 SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
@@ -134,7 +127,6 @@ def atualizar_item(item_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Rota para excluir objeto do banco
 @app.route('/api/itens/<int:item_id>', methods=['DELETE'])
 def excluir_item(item_id):
     try:
@@ -148,7 +140,6 @@ def excluir_item(item_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Rota para solicitar retirada do item (Aluno Web)
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json
@@ -163,7 +154,6 @@ def solicitar_item():
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Verifica no banco se o item já foi solicitado
         cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
 
@@ -172,23 +162,22 @@ def solicitar_item():
             conn.close()
             return jsonify({"success": False, "message": "Item não encontrado!"}), 404
 
-        status_atual = (item['status'] or 'Disponível').upper()
-        if status_atual == 'SOLICITADO' or status_atual == 'ENTREGUE':
+        status_atual = (item['status'] or 'GUARDADO').upper()
+        if status_atual in ['SOLICITADO', 'ENTREGUE']:
             cursor.close()
             conn.close()
-            return jsonify({"success": False, "message": "Este item já foi solicitado por outro aluno!"}), 400
+            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
 
-        # 2. Se estiver disponível, grava a solicitação e muda o status para 'Solicitado'
         cursor.execute('''
             UPDATE itens 
-            SET status = 'Solicitado', solicitado_por = %s, rm_aluno = %s
+            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
             WHERE id = %s;
         ''', (nome_aluno, rm_aluno, item_id))
         
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada no banco! Compareça à secretaria para retirada."})
+        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
