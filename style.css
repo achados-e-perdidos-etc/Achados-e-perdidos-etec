@@ -83,3 +83,12 @@ body {
     background-color: var(--primary-color) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Esconde barra de rolagem do carrossel no Chrome/Safari/Firefox */
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
