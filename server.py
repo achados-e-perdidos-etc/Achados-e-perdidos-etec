@@ -1,186 +1,306 @@
-import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import requests
+import base64
+from datetime import datetime
 
-app = Flask(__name__)
-CORS(app)
+API_URL = "https://achados-etec-api.onrender.com"
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+_AUTH_EMAIL_HASH = "YWNoYWRvc2VwZXJkaWRvc2V0ZWNAZ21haWwuY29t"
+_AUTH_PASS_HASH = "ZXRlY2FjaGFkb3M=" 
 
-def get_db_connection():
-    if not DATABASE_URL:
-        raise ValueError("A variável de ambiente DATABASE_URL não foi configurada!")
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+class AdminDesktopApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ETEC - Achados e Perdidos | Login Secretaria")
+        self.root.geometry("400x450")
+        self.root.configure(bg="#1e1e2e")
+        self.root.resizable(False, False)
 
-def init_db():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS itens (
-                id SERIAL PRIMARY KEY,
-                descricao TEXT NOT NULL,
-                categoria VARCHAR(50) NOT NULL,
-                data_encontrado VARCHAR(20) NOT NULL,
-                local_encontrado VARCHAR(100) NOT NULL,
-                foto_base64 TEXT,
-                status VARCHAR(30) DEFAULT 'GUARDADO',
-                solicitado_por VARCHAR(100),
-                rm_aluno VARCHAR(20)
-            );
-        ''')
-        conn.commit()
-        cursor.close()
-        conn.close()
-        print("Tabela inicializada no Neon PostgreSQL!")
-    except Exception as e:
-        print(f"Erro ao inicializar o banco de dados: {e}")
+        self.foto_base64 = ""
+        self.item_editando_id = None
 
-if DATABASE_URL:
-    init_db()
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+        self.style.configure("Treeview", background="#2d3748", foreground="#ffffff", fieldbackground="#2d3748", rowheight=28)
+        self.style.configure("Treeview.Heading", background="#1e293b", foreground="#38bdf8", font=("Helvetica", 10, "bold"))
+        self.style.map("Treeview", background=[('selected', '#2563eb')])
 
-@app.route('/')
-def home():
-    return jsonify({
-        "status": "online",
-        "banco": "Neon PostgreSQL",
-        "mensagem": "API Achados e Perdidos ETEC Ativa"
-    })
+        self.mostrar_tela_login()
 
-@app.route('/api/itens', methods=['GET'])
-def get_itens():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
-        itens = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(itens)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    def mostrar_tela_login(self):
+        self.login_frame = tk.Frame(self.root, bg="#1e1e2e", padx=30, pady=30)
+        self.login_frame.pack(expand=True, fill="both")
 
-@app.route('/api/itens', methods=['POST'])
-def cadastrar_item():
-    data = request.json
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-    data_enc = data.get('data')
-    local = data.get('local')
-    foto = data.get('foto', '')
-    status = data.get('status', 'GUARDADO')
+        lbl_icone = tk.Label(self.login_frame, text="🔒", font=("Helvetica", 40), bg="#1e1e2e", fg="#38bdf8")
+        lbl_icone.pack(pady=(10, 5))
 
-    if not descricao or not data_enc or not local:
-        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+        lbl_titulo = tk.Label(self.login_frame, text="Acesso Restrito", font=("Helvetica", 16, "bold"), bg="#1e1e2e", fg="#ffffff")
+        lbl_titulo.pack()
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, status)
-            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;
-        ''', (descricao, categoria, data_enc, local, foto, status))
-        novo_id = cursor.fetchone()[0]
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        lbl_sub = tk.Label(self.login_frame, text="Secretaria - ETEC Profº José Ignácio", font=("Helvetica", 9), bg="#1e1e2e", fg="#94a3b8")
+        lbl_sub.pack(pady=(0, 20))
 
-@app.route('/api/itens/<int:item_id>', methods=['PUT'])
-def atualizar_item(item_id):
-    data = request.json
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-    data_enc = data.get('data')
-    local = data.get('local')
-    foto = data.get('foto')
-    status = data.get('status', 'GUARDADO')
+        tk.Label(self.login_frame, text="E-mail de Acesso:", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10, "bold")).pack(anchor="w", pady=(5, 2))
+        self.txt_login_email = tk.Entry(self.login_frame, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_login_email.pack(fill="x", pady=(0, 15))
 
-    if not descricao or not data_enc or not local:
-        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+        tk.Label(self.login_frame, text="Senha:", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10, "bold")).pack(anchor="w", pady=(5, 2))
+        self.txt_login_senha = tk.Entry(self.login_frame, font=("Helvetica", 11), show="•", bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_login_senha.pack(fill="x", pady=(0, 20))
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        if foto:
-            cursor.execute('''
-                UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, status = %s
-                WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, foto, status, item_id))
+        self.txt_login_senha.bind("<Return>", lambda event: self.validar_login())
+
+        btn_entrar = tk.Button(self.login_frame, text="ENTRAR NO SISTEMA", command=self.validar_login, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", pady=8, cursor="hand2")
+        btn_entrar.pack(fill="x")
+
+    def validar_login(self):
+        email_digitado = self.txt_login_email.get().strip()
+        senha_digitada = self.txt_login_senha.get().strip()
+
+        email_real = base64.b64decode(_AUTH_EMAIL_HASH).decode('utf-8')
+        senha_real = base64.b64decode(_AUTH_PASS_HASH).decode('utf-8')
+
+        if email_digitado == email_real and senha_digitada == senha_real:
+            self.login_frame.destroy()
+            self.iniciar_painel_principal()
         else:
-            cursor.execute('''
-                UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
-                WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, status, item_id))
+            messagebox.showerror("Acesso Negado", "E-mail ou senha incorretos!\nApenas a secretaria tem acesso a este sistema.")
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    def iniciar_painel_principal(self):
+        self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
+        self.root.geometry("1100x700")
+        self.root.resizable(True, True)
 
-@app.route('/api/itens/<int:item_id>', methods=['DELETE'])
-def excluir_item(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} excluído com sucesso!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/solicitar', methods=['POST'])
-def solicitar_item():
-    data = request.json
-    item_id = data.get('id')
-    nome_aluno = data.get('nome')
-    rm_aluno = data.get('rm')
-    
-    if not item_id or not nome_aluno or not rm_aluno:
-        return jsonify({"success": False, "message": "Dados incompletos do aluno!"}), 400
+        header = tk.Frame(self.root, bg="#0f172a", height=70)
+        header.pack(fill="x", side="top")
         
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        lbl_title = tk.Label(header, text="SECRETARIA - BANCO DE DADOS NEON (POSTGRESQL)", font=("Helvetica", 14, "bold"), bg="#0f172a", fg="#38bdf8")
+        lbl_title.pack(pady=8)
+        lbl_sub = tk.Label(header, text="ETEC Prof.º José Ignácio Azevedo Filho", font=("Helvetica", 9), bg="#0f172a", fg="#94a3b8")
+        lbl_sub.pack()
+
+        container = tk.Frame(self.root, bg="#1e1e2e")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        self.form_frame = tk.LabelFrame(container, text=" Cadastro / Edição de Objeto ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=15, pady=15)
+        self.form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+
+        tk.Label(self.form_frame, text="Descrição do Item:", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
+        self.txt_descricao = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_descricao.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky="w")
+
+        tk.Label(self.form_frame, text="Categoria:", bg="#1e1e2e", fg="#e2e8f0").grid(row=2, column=0, sticky="w", pady=(5,2))
+        self.cb_categoria = ttk.Combobox(self.form_frame, values=["MOCHILA", "ROUPAS", "ACESSÓRIOS", "ESCOLARES", "OUTROS"], state="readonly", width=30)
+        self.cb_categoria.current(0)
+        self.cb_categoria.grid(row=3, column=0, columnspan=2, pady=(0, 10), sticky="w")
+
+        tk.Label(self.form_frame, text="Data Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
+        self.txt_data = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
+        self.txt_data.grid(row=5, column=0, columnspan=2, pady=(0, 10), sticky="w")
+
+        tk.Label(self.form_frame, text="Local Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
+        self.txt_local = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_local.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
+
+        tk.Label(self.form_frame, text="Status do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
+        self.cb_status = ttk.Combobox(self.form_frame, values=["GUARDADO", "SOLICITADO", "ENTREGUE"], state="readonly", width=30)
+        self.cb_status.current(0)
+        self.cb_status.grid(row=9, column=0, columnspan=2, pady=(0, 10), sticky="w")
+
+        tk.Label(self.form_frame, text="Foto do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=10, column=0, sticky="w", pady=(5,2))
+        btn_foto = tk.Button(self.form_frame, text="📷 Carregar Nova Foto...", command=self.carregar_foto, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_foto.grid(row=11, column=0, sticky="w", pady=(0, 10))
         
-        cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
+        self.lbl_status_foto = tk.Label(self.form_frame, text="Sem foto nova", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
+        self.lbl_status_foto.grid(row=11, column=1, sticky="w", padx=5)
 
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
+        self.btn_salvar = tk.Button(self.form_frame, text="✔ Gravar no Banco Nuvem", command=self.salvar_item, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", padx=10, pady=8, cursor="hand2")
+        self.btn_salvar.grid(row=12, column=0, columnspan=2, sticky="ew", pady=(10, 5))
 
-        status_atual = (item['status'] or 'GUARDADO').upper()
-        if status_atual in ['SOLICITADO', 'ENTREGUE']:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
+        self.btn_cancelar = tk.Button(self.form_frame, text="✖ Cancelar Edição", command=self.limpar_formulario, bg="#64748b", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_cancelar.grid(row=13, column=0, columnspan=2, sticky="ew")
+        self.btn_cancelar.grid_remove()
 
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s;
-        ''', (nome_aluno, rm_aluno, item_id))
+        table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
+        table_frame.grid(row=0, column=1, sticky="nsew")
+
+        container.columnconfigure(1, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        columns = ("id", "descricao", "categoria", "data", "local", "status", "solicitado_por", "rm_aluno")
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        self.tree.heading("id", text="ID")
+        self.tree.heading("descricao", text="Descrição")
+        self.tree.heading("categoria", text="Categoria")
+        self.tree.heading("data", text="Data")
+        self.tree.heading("local", text="Local")
+        self.tree.heading("status", text="Status")
+        self.tree.heading("solicitado_por", text="Solicitante")
+        self.tree.heading("rm_aluno", text="RM")
+
+        self.tree.column("id", width=35, anchor="center")
+        self.tree.column("descricao", width=140)
+        self.tree.column("categoria", width=90)
+        self.tree.column("data", width=80, anchor="center")
+        self.tree.column("local", width=90)
+        self.tree.column("status", width=85, anchor="center")
+        self.tree.column("solicitado_por", width=110)
+        self.tree.column("rm_aluno", width=65, anchor="center")
+
+        self.tree.pack(fill="both", expand=True)
+
+        self.tree.bind("<Double-1>", lambda event: self.preparar_edicao_item())
+
+        actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
+        actions_frame.pack(fill="x", pady=(10, 0))
+
+        btn_editar = tk.Button(actions_frame, text="✏ Editar Item Selecionado", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+
+        btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
+
+        btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
+        btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
+
+        self.carregar_tabela()
+
+    def carregar_foto(self):
+        filename = filedialog.askopenfilename(filetypes=[("Imagens", "*.png;*.jpg;*.jpeg;*.webp")])
+        if filename:
+            try:
+                with open(filename, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                    self.foto_base64 = f"data:image/jpeg;base64,{encoded_string}"
+                    self.lbl_status_foto.config(text="✓ Nova Foto Pronta", fg="#4ade80")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao processar imagem: {e}")
+
+    def salvar_item(self):
+        descricao = self.txt_descricao.get().strip()
+        categoria = self.cb_categoria.get()
+        data = self.txt_data.get().strip()
+        local = self.txt_local.get().strip()
+        status = self.cb_status.get()
+
+        if not descricao or not data or not local:
+            messagebox.showwarning("Atenção!", "Preencha todos os campos obrigatórios!")
+            return
+
+        payload = {
+            "descricao": descricao,
+            "categoria": categoria,
+            "data": data,
+            "local": local,
+            "status": status,
+            "foto": self.foto_base64
+        }
+
+        try:
+            if self.item_editando_id is None:
+                res = requests.post(f"{API_URL}/api/itens", json=payload, timeout=10)
+                msg_sucesso = "Registrado no PostgreSQL Neon!"
+            else:
+                res = requests.put(f"{API_URL}/api/itens/{self.item_editando_id}", json=payload, timeout=10)
+                msg_sucesso = f"Item #{self.item_editando_id} atualizado com sucesso!"
+
+            if res.status_code == 200:
+                messagebox.showinfo("Sucesso", msg_sucesso)
+                self.limpar_formulario()
+                self.carregar_tabela()
+            else:
+                messagebox.showerror("Erro", f"Falha no servidor ({res.status_code}):\n{res.text}")
+        except Exception as e:
+            messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
+
+    def preparar_edicao_item(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para editar!")
+            return
+
+        valores = self.tree.item(selected[0], "values")
+        
+        self.item_editando_id = valores[0]
+        self.txt_descricao.delete(0, tk.END)
+        self.txt_descricao.insert(0, valores[1])
+        
+        if valores[2] in self.cb_categoria["values"]:
+            self.cb_categoria.set(valores[2])
+
+        self.txt_data.delete(0, tk.END)
+        self.txt_data.insert(0, valores[3])
+
+        self.txt_local.delete(0, tk.END)
+        self.txt_local.insert(0, valores[4])
+
+        if valores[5] in self.cb_status["values"]:
+            self.cb_status.set(valores[5])
+
+        self.foto_base64 = ""
+        self.lbl_status_foto.config(text="Manter foto atual", fg="#94a3b8")
+
+        self.form_frame.config(text=f" Editando Item ID #{self.item_editando_id} ", fg="#eab308")
+        self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
+        self.btn_cancelar.grid()
+
+    def limpar_formulario(self):
+        self.item_editando_id = None
+        self.txt_descricao.delete(0, tk.END)
+        self.cb_categoria.current(0)
+        self.txt_data.delete(0, tk.END)
+        self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
+        self.txt_local.delete(0, tk.END)
+        self.cb_status.current(0)
+        self.foto_base64 = ""
+        self.lbl_status_foto.config(text="Sem foto nova", fg="#94a3b8")
+
+        self.form_frame.config(text=" Cadastro / Edição de Objeto ", fg="#38bdf8")
+        self.btn_salvar.config(text="✔ Gravar no Banco Nuvem", bg="#16a34a", fg="white")
+        self.btn_cancelar.grid_remove()
+
+    def excluir_item(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para excluir!")
+            return
+
+        item_values = self.tree.item(selected[0], "values")
+        item_id = item_values[0]
+        item_desc = item_values[1]
+
+        if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir o item '{item_desc}' (ID #{item_id})?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/{item_id}", timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Item removido com sucesso!")
+                    self.limpar_formulario()
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Falha ao excluir item ({res.status_code}):\n{res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
+
+    def carregar_tabela(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        try:
+            res = requests.get(f"{API_URL}/api/itens", timeout=10)
+            if res.status_code == 200:
+                itens = res.json()
+                for i in itens:
+                    categoria = i.get("categoria", "OUTROS")
+                    solicitado_por = i.get("solicitado_por") or "-"
+                    rm_aluno = i.get("rm_aluno") or "-"
+                    self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], i["status"], solicitado_por, rm_aluno))
+        except Exception as e:
+            print(f"Aguardando conexão... {e}")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    root = tk.Tk()
+    app = AdminDesktopApp(root)
+    root.mainloop()
