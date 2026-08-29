@@ -157,27 +157,16 @@ function normalizarStatus(status) {
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
-
     grid.innerHTML = '';
 
     const filtrados = todosItens.filter(item => {
-        const atendeCategoria = categoriaAtual === 'TODOS' || 
-            (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
-
+        const atendeCategoria = categoriaAtual === 'TODOS' || (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
         const stUpper = normalizarStatus(item.status);
-        const stFiltro = normalizarStatus(statusAtual);
-
-        const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
-
+        const atendeStatus = statusAtual === 'TODOS' || stUpper === normalizarStatus(statusAtual);
         const desc = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
         const cat = (item.categoria || '').toLowerCase();
-        
-        const atendeBusca = !termoBusca || 
-            desc.includes(termoBusca) || 
-            local.includes(termoBusca) || 
-            cat.includes(termoBusca);
-
+        const atendeBusca = !termoBusca || desc.includes(termoBusca) || local.includes(termoBusca) || cat.includes(termoBusca);
         return atendeCategoria && atendeStatus && atendeBusca;
     });
 
@@ -186,9 +175,7 @@ function renderizarItens() {
             <div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl">
                 <i class="fas fa-search text-3xl mb-2 text-muted"></i>
                 <p class="text-sm font-semibold">Nenhum objeto encontrado.</p>
-                <p class="text-xs text-muted mt-1">Tente pesquisar com outros termos ou altere os filtros selecionados.</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
 
@@ -197,22 +184,17 @@ function renderizarItens() {
         card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-gray-500 transition";
         card.onclick = () => abrirDetalhes(item);
 
-        const imgHtml = item.foto 
-            ? `<img src="${item.foto}" class="w-full h-32 object-cover rounded-lg mb-3">`
+        // Pega a primeira foto para a capa se for um Array
+        const primeiraFoto = Array.isArray(item.fotos) && item.fotos.length > 0 ? item.fotos[0] : (typeof item.fotos === 'string' ? item.fotos : null);
+
+        const imgHtml = primeiraFoto 
+            ? `<img src="${primeiraFoto}" class="w-full h-32 object-cover rounded-lg mb-3">`
             : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box text-3xl"></i></div>`;
 
         const stUpper = normalizarStatus(item.status);
         let statusBadgeClass = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
-        
-        if (stUpper === 'SOLICITADO') {
-            statusBadgeClass = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
-        } else if (stUpper === 'ENTREGUE') {
-            statusBadgeClass = 'bg-slate-800 text-slate-400 border-slate-700';
-        } else if (stUpper === 'PARA DOAÇÃO' || stUpper === 'PARA DOACAO') {
-            statusBadgeClass = 'bg-purple-900/40 text-purple-400 border-purple-700/50';
-        } else if (stUpper === 'DOAÇÃO FEITA' || stUpper === 'DOACAO FEITA') {
-            statusBadgeClass = 'bg-pink-900/40 text-pink-400 border-pink-700/50';
-        }
+        if (stUpper === 'SOLICITADO') statusBadgeClass = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
+        else if (stUpper === 'ENTREGUE') statusBadgeClass = 'bg-slate-800 text-slate-400 border-slate-700';
 
         card.innerHTML = `
             <div>
@@ -239,36 +221,57 @@ function abrirDetalhes(item) {
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
 
-    const imgEl = document.getElementById('detailImage');
+    const track = document.getElementById('carouselTrack');
+    const counter = document.getElementById('photoCounter');
     const placeholder = document.getElementById('detailPlaceholder');
-    const btnSolicitar = document.getElementById('btnSolicitar');
-    const badgeStatus = document.getElementById('detailStatusBadge');
+    const currentIdx = document.getElementById('currentPhotoIndex');
+    const totalCount = document.getElementById('totalPhotos');
 
-    if (item.foto) {
-        imgEl.src = item.foto;
-        imgEl.classList.remove('hidden');
+    track.innerHTML = '';
+    
+    // Normaliza a lista de fotos
+    let fotosArr = [];
+    if (Array.isArray(item.fotos)) {
+        fotosArr = item.fotos;
+    } else if (typeof item.fotos === 'string' && item.fotos.length > 0) {
+        fotosArr = [item.fotos];
+    }
+
+    if (fotosArr.length > 0) {
         placeholder.classList.add('hidden');
+        track.classList.remove('hidden');
+        counter.classList.remove('hidden');
+
+        totalCount.innerText = fotosArr.length;
+        currentIdx.innerText = 1;
+
+        fotosArr.forEach(src => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = "w-full h-full object-contain shrink-0 snap-center";
+            track.appendChild(img);
+        });
+
+        // Atualiza a contagem (1/4, 2/4) ao arrastar pro lado no touch/scroll
+        track.onscroll = () => {
+            const width = track.clientWidth;
+            if (width > 0) {
+                const index = Math.round(track.scrollLeft / width) + 1;
+                currentIdx.innerText = Math.min(index, fotosArr.length);
+            }
+        };
     } else {
-        imgEl.classList.add('hidden');
+        track.classList.add('hidden');
+        counter.classList.add('hidden');
         placeholder.classList.remove('hidden');
     }
 
+    // Status / Botão Solicitar
+    const badgeStatus = document.getElementById('detailStatusBadge');
+    const btnSolicitar = document.getElementById('btnSolicitar');
     const stUpper = normalizarStatus(item.status);
     
-    if (badgeStatus) {
-        badgeStatus.innerText = stUpper;
-        if (stUpper === 'SOLICITADO') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
-        } else if (stUpper === 'ENTREGUE') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-slate-800 text-slate-400 border-slate-700';
-        } else if (stUpper === 'PARA DOAÇÃO' || stUpper === 'PARA DOACAO') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-purple-900/40 text-purple-400 border-purple-700/50';
-        } else if (stUpper === 'DOAÇÃO FEITA' || stUpper === 'DOACAO FEITA') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-pink-900/40 text-pink-400 border-pink-700/50';
-        } else {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
-        }
-    }
+    if (badgeStatus) badgeStatus.innerText = stUpper;
 
     if (stUpper !== 'DISPONÍVEL') {
         btnSolicitar.disabled = true;
@@ -280,6 +283,7 @@ function abrirDetalhes(item) {
         btnSolicitar.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase";
     }
 }
+
 
 function voltarParaCatalogo() {
     document.getElementById('detailScreen')?.classList.add('hidden');
