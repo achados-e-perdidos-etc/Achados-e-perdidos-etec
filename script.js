@@ -5,6 +5,8 @@ let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
 let statusAtual = 'TODOS';
 let termoBusca = '';
+let fotosAtuais = [];
+let fotoIndiceAtual = 0;
 
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
@@ -197,8 +199,11 @@ function renderizarItens() {
         card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-gray-500 transition";
         card.onclick = () => abrirDetalhes(item);
 
-        const imgHtml = item.foto 
-            ? `<img src="${item.foto}" class="w-full h-32 object-cover rounded-lg mb-3">`
+        const fotosArr = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
+        const primeiraFoto = fotosArr[0];
+
+        const imgHtml = primeiraFoto 
+            ? `<div class="relative"><img src="${primeiraFoto}" class="w-full h-32 object-cover rounded-lg mb-3">${fotosArr.length > 1 ? `<span class="absolute bottom-4 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full"><i class="fas fa-images"></i> 1/${fotosArr.length}</span>` : ''}</div>`
             : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box text-3xl"></i></div>`;
 
         const stUpper = normalizarStatus(item.status);
@@ -239,17 +244,55 @@ function abrirDetalhes(item) {
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
 
-    const imgEl = document.getElementById('detailImage');
+    const container = document.getElementById('carouselContainer');
     const placeholder = document.getElementById('detailPlaceholder');
+    const counter = document.getElementById('photoCounter');
+    const btnPrev = document.getElementById('btnPrevPhoto');
+    const btnNext = document.getElementById('btnNextPhoto');
     const btnSolicitar = document.getElementById('btnSolicitar');
     const badgeStatus = document.getElementById('detailStatusBadge');
 
-    if (item.foto) {
-        imgEl.src = item.foto;
-        imgEl.classList.remove('hidden');
+    container.innerHTML = '';
+    fotosAtuais = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
+    fotoIndiceAtual = 0;
+
+    if (fotosAtuais.length > 0) {
         placeholder.classList.add('hidden');
+        container.classList.remove('hidden');
+
+        fotosAtuais.forEach((f, idx) => {
+            const slide = document.createElement('div');
+            slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
+            slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
+            container.appendChild(slide);
+        });
+
+        document.getElementById('photoCurrentIdx').innerText = 1;
+        document.getElementById('photoTotalCount').innerText = fotosAtuais.length;
+        counter.classList.remove('hidden');
+
+        if (fotosAtuais.length > 1) {
+            btnPrev.classList.remove('hidden');
+            btnNext.classList.remove('hidden');
+        } else {
+            btnPrev.classList.add('hidden');
+            btnNext.classList.add('hidden');
+        }
+
+        container.onscroll = () => {
+            const width = container.clientWidth;
+            if (width > 0) {
+                const idx = Math.round(container.scrollLeft / width);
+                fotoIndiceAtual = idx;
+                document.getElementById('photoCurrentIdx').innerText = idx + 1;
+            }
+        };
+
     } else {
-        imgEl.classList.add('hidden');
+        container.classList.add('hidden');
+        counter.classList.add('hidden');
+        btnPrev.classList.add('hidden');
+        btnNext.classList.add('hidden');
         placeholder.classList.remove('hidden');
     }
 
@@ -279,6 +322,19 @@ function abrirDetalhes(item) {
         btnSolicitar.innerText = "ESTE É O MEU ITEM / SOLICITAR COLETA";
         btnSolicitar.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase";
     }
+}
+
+function navegarFotos(direcao) {
+    const container = document.getElementById('carouselContainer');
+    if (!container || fotosAtuais.length === 0) return;
+
+    let novoIndice = fotoIndiceAtual + direcao;
+    if (novoIndice < 0) novoIndice = fotosAtuais.length - 1;
+    if (novoIndice >= fotosAtuais.length) novoIndice = 0;
+
+    fotoIndiceAtual = novoIndice;
+    const width = container.clientWidth;
+    container.scrollTo({ left: width * novoIndice, behavior: 'smooth' });
 }
 
 function voltarParaCatalogo() {
