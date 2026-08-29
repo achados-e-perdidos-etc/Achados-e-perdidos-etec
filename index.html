@@ -14,7 +14,6 @@
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
             <div class="flex items-center space-x-3 min-w-0">
-                <!-- LOGO SIMPLIFICADA -->
                 <img id="siteLogo" src="logo.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
                 <div class="min-w-0">
                     <h1 class="font-bold text-lg dynamic-text leading-tight truncate">ACHADOS E PERDIDOS</h1>
@@ -28,7 +27,6 @@
                         <i class="fas fa-cog text-base"></i>
                     </button>
 
-                    <!-- MENU DE CONFIGURAÇÃO (MODO CLARO / ESCURO) -->
                     <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
@@ -54,7 +52,6 @@
             
             <!-- BUSCA E FILTROS -->
             <div class="space-y-4">
-                <!-- BARRA DE PESQUISA POR PALAVRA-CHAVE -->
                 <div class="relative w-full">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
                     <input 
@@ -83,12 +80,12 @@
                     </div>
                 </div>
 
-                <!-- NOVO FILTRO DE STATUS -->
+                <!-- FILTRO DE STATUS -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
                     <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
                     <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
                         <option value="TODOS">TODOS OS STATUS</option>
-                        <option value="DISPONIVEL">GUARDADO / DISPONÍVEL</option>
+                        <option value="GUARDADO">GUARDADO / DISPONÍVEL</option>
                         <option value="SOLICITADO">SOLICITADO</option>
                         <option value="ENTREGUE">ENTREGUE</option>
                     </select>
@@ -136,4 +133,5 @@
 
     <script src="script.js"></script>
 </body>
-</html>
+    </html>
+    
