@@ -17,7 +17,7 @@ class AdminDesktopApp:
         self.root.configure(bg="#1e1e2e")
         self.root.resizable(False, False)
 
-        self.foto_base64 = ""
+        self.fotos_base64 = []
         self.item_editando_id = None
 
         self.style = ttk.Style()
@@ -69,7 +69,7 @@ class AdminDesktopApp:
 
     def iniciar_painel_principal(self):
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("1150x700")
+        self.root.geometry("1180x730")
         self.root.resizable(True, True)
 
         header = tk.Frame(self.root, bg="#0f172a", height=70)
@@ -109,18 +109,25 @@ class AdminDesktopApp:
         self.cb_status.current(0)
         self.cb_status.grid(row=9, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        tk.Label(self.form_frame, text="Foto do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=10, column=0, sticky="w", pady=(5,2))
-        btn_foto = tk.Button(self.form_frame, text="📷 Carregar Nova Foto...", command=self.carregar_foto, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_foto.grid(row=11, column=0, sticky="w", pady=(0, 10))
+        tk.Label(self.form_frame, text="Fotos do Objeto (Até 4):", bg="#1e1e2e", fg="#e2e8f0").grid(row=10, column=0, sticky="w", pady=(5,2))
         
-        self.lbl_status_foto = tk.Label(self.form_frame, text="Sem foto nova", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
-        self.lbl_status_foto.grid(row=11, column=1, sticky="w", padx=5)
+        btn_foto_frame = tk.Frame(self.form_frame, bg="#1e1e2e")
+        btn_foto_frame.grid(row=11, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        
+        btn_foto = tk.Button(btn_foto_frame, text="📷 Selecionar Fotos...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_foto.pack(side="left", padx=(0, 5))
+
+        btn_limpar_fotos = tk.Button(btn_foto_frame, text="🗑 Limpar Fotos", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2")
+        btn_limpar_fotos.pack(side="left")
+
+        self.lbl_status_foto = tk.Label(self.form_frame, text="0 / 4 fotos selecionadas", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
+        self.lbl_status_foto.grid(row=12, column=0, columnspan=2, sticky="w", pady=(0, 10))
 
         self.btn_salvar = tk.Button(self.form_frame, text="✔ Gravar no Banco Nuvem", command=self.salvar_item, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", padx=10, pady=8, cursor="hand2")
-        self.btn_salvar.grid(row=12, column=0, columnspan=2, sticky="ew", pady=(10, 5))
+        self.btn_salvar.grid(row=13, column=0, columnspan=2, sticky="ew", pady=(10, 5))
 
         self.btn_cancelar = tk.Button(self.form_frame, text="✖ Cancelar Edição", command=self.limpar_formulario, bg="#64748b", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        self.btn_cancelar.grid(row=13, column=0, columnspan=2, sticky="ew")
+        self.btn_cancelar.grid(row=14, column=0, columnspan=2, sticky="ew")
         self.btn_cancelar.grid_remove()
 
         table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
@@ -171,16 +178,40 @@ class AdminDesktopApp:
 
         self.carregar_tabela()
 
-    def carregar_foto(self):
-        filename = filedialog.askopenfilename(filetypes=[("Imagens", "*.png;*.jpg;*.jpeg;*.webp")])
-        if filename:
-            try:
-                with open(filename, "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                    self.foto_base64 = f"data:image/jpeg;base64,{encoded_string}"
-                    self.lbl_status_foto.config(text="✓ Nova Foto Pronta", fg="#4ade80")
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao processar imagem: {e}")
+    def carregar_fotos(self):
+        filenames = filedialog.askopenfilenames(
+            title="Selecione até 4 fotos",
+            filetypes=[("Imagens", "*.png;*.jpg;*.jpeg;*.webp")]
+        )
+        if filenames:
+            novas_fotos = list(filenames)
+            disponiveis = 4 - len(self.fotos_base64)
+            
+            if disponiveis <= 0:
+                messagebox.showwarning("Limite Atingido", "Limite de 4 fotos já foi atingido! Clique em 'Limpar Fotos' se quiser mudar.")
+                return
+
+            if len(novas_fotos) > disponiveis:
+                messagebox.showinfo("Aviso", f"Você pode adicionar mais {disponiveis} foto(s). Apenas as primeiras {disponiveis} serão adicionadas.")
+                novas_fotos = novas_fotos[:disponiveis]
+
+            for file in novas_fotos:
+                try:
+                    with open(file, "rb") as image_file:
+                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                        self.fotos_base64.append(f"data:image/jpeg;base64,{encoded_string}")
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Erro ao processar imagem {file}: {e}")
+
+            qtd = len(self.fotos_base64)
+            self.lbl_status_foto.config(text=f"✓ {qtd} / 4 fotos selecionadas", fg="#4ade80")
+
+    def limpar_fotos_selecionadas(self):
+        self.fotos_base64 = []
+        if self.item_editando_id:
+            self.lbl_status_foto.config(text="Fotos limpas (não substituirá fotos atuais se não carregar novas)", fg="#94a3b8")
+        else:
+            self.lbl_status_foto.config(text="0 / 4 fotos selecionadas", fg="#94a3b8")
 
     def salvar_item(self):
         descricao = self.txt_descricao.get().strip()
@@ -199,7 +230,7 @@ class AdminDesktopApp:
             "data": data,
             "local": local,
             "status": status,
-            "foto": self.foto_base64
+            "fotos": self.fotos_base64
         }
 
         try:
@@ -247,8 +278,8 @@ class AdminDesktopApp:
         if status_normalizado in self.cb_status["values"]:
             self.cb_status.set(status_normalizado)
 
-        self.foto_base64 = ""
-        self.lbl_status_foto.config(text="Manter foto atual", fg="#94a3b8")
+        self.fotos_base64 = []
+        self.lbl_status_foto.config(text="Manter foto(s) atual(is)", fg="#94a3b8")
 
         self.form_frame.config(text=f" Editando Item ID #{self.item_editando_id} ", fg="#eab308")
         self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
@@ -262,8 +293,8 @@ class AdminDesktopApp:
         self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
         self.txt_local.delete(0, tk.END)
         self.cb_status.current(0)
-        self.foto_base64 = ""
-        self.lbl_status_foto.config(text="Sem foto nova", fg="#94a3b8")
+        self.fotos_base64 = []
+        self.lbl_status_foto.config(text="0 / 4 fotos selecionadas", fg="#94a3b8")
 
         self.form_frame.config(text=" Cadastro / Edição de Objeto ", fg="#38bdf8")
         self.btn_salvar.config(text="✔ Gravar no Banco Nuvem", bg="#16a34a", fg="white")
