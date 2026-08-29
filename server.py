@@ -26,7 +26,7 @@ def init_db():
                 data_encontrado VARCHAR(20) NOT NULL,
                 local_encontrado VARCHAR(100) NOT NULL,
                 foto_base64 TEXT,
-                status VARCHAR(30) DEFAULT 'GUARDADO',
+                status VARCHAR(30) DEFAULT 'DISPONÍVEL',
                 solicitado_por VARCHAR(100),
                 rm_aluno VARCHAR(20)
             );
@@ -34,7 +34,6 @@ def init_db():
         conn.commit()
         cursor.close()
         conn.close()
-        print("Tabela inicializada no Neon PostgreSQL!")
     except Exception as e:
         print(f"Erro ao inicializar o banco de dados: {e}")
 
@@ -70,7 +69,7 @@ def cadastrar_item():
     data_enc = data.get('data')
     local = data.get('local')
     foto = data.get('foto', '')
-    status = data.get('status', 'GUARDADO')
+    status = data.get('status', 'DISPONÍVEL')
 
     if not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
@@ -98,7 +97,7 @@ def atualizar_item(item_id):
     data_enc = data.get('data')
     local = data.get('local')
     foto = data.get('foto')
-    status = data.get('status', 'GUARDADO')
+    status = data.get('status', 'DISPONÍVEL')
 
     if not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
@@ -140,6 +139,21 @@ def excluir_item(item_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# NOVA ROTA: Apaga todos os itens marcados como DOAÇÃO FEITA
+@app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
+def concluir_doacoes():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
+        removidos = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json
@@ -162,8 +176,8 @@ def solicitar_item():
             conn.close()
             return jsonify({"success": False, "message": "Item não encontrado!"}), 404
 
-        status_atual = (item['status'] or 'GUARDADO').upper()
-        if status_atual in ['SOLICITADO', 'ENTREGUE']:
+        status_atual = (item['status'] or 'DISPONÍVEL').upper()
+        if status_atual in ['SOLICITADO', 'ENTREGUE', 'PARA DOAÇÃO', 'DOAÇÃO FEITA']:
             cursor.close()
             conn.close()
             return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
