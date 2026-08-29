@@ -69,7 +69,7 @@ class AdminDesktopApp:
 
     def iniciar_painel_principal(self):
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("1100x700")
+        self.root.geometry("1150x700")
         self.root.resizable(True, True)
 
         header = tk.Frame(self.root, bg="#0f172a", height=70)
@@ -105,7 +105,7 @@ class AdminDesktopApp:
         self.txt_local.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
         tk.Label(self.form_frame, text="Status do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
-        self.cb_status = ttk.Combobox(self.form_frame, values=["GUARDADO", "SOLICITADO", "ENTREGUE"], state="readonly", width=30)
+        self.cb_status = ttk.Combobox(self.form_frame, values=["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO", "DOAÇÃO FEITA"], state="readonly", width=30)
         self.cb_status.current(0)
         self.cb_status.grid(row=9, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
@@ -146,7 +146,7 @@ class AdminDesktopApp:
         self.tree.column("categoria", width=90)
         self.tree.column("data", width=80, anchor="center")
         self.tree.column("local", width=90)
-        self.tree.column("status", width=85, anchor="center")
+        self.tree.column("status", width=100, anchor="center")
         self.tree.column("solicitado_por", width=110)
         self.tree.column("rm_aluno", width=65, anchor="center")
 
@@ -157,11 +157,14 @@ class AdminDesktopApp:
         actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
         actions_frame.pack(fill="x", pady=(10, 0))
 
-        btn_editar = tk.Button(actions_frame, text="✏ Editar Item Selecionado", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_editar = tk.Button(actions_frame, text="✏ Editar Item", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
 
         btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
+
+        btn_doacao = tk.Button(actions_frame, text="🎁 Concluir Doações", command=self.concluir_doacoes, bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_doacao.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
         btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
         btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
@@ -237,8 +240,12 @@ class AdminDesktopApp:
         self.txt_local.delete(0, tk.END)
         self.txt_local.insert(0, valores[4])
 
-        if valores[5] in self.cb_status["values"]:
-            self.cb_status.set(valores[5])
+        status_normalizado = valores[5].upper()
+        if status_normalizado in ["GUARDADO", "DISPONIVEL"]:
+            status_normalizado = "DISPONÍVEL"
+
+        if status_normalizado in self.cb_status["values"]:
+            self.cb_status.set(status_normalizado)
 
         self.foto_base64 = ""
         self.lbl_status_foto.config(text="Manter foto atual", fg="#94a3b8")
@@ -284,6 +291,19 @@ class AdminDesktopApp:
             except Exception as e:
                 messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
 
+    def concluir_doacoes(self):
+        if messagebox.askyesno("Confirmar Conclusão de Doações", "Tem certeza que deseja APAGAR TODOS os itens com o status 'DOAÇÃO FEITA'?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/doacoes/concluir", timeout=10)
+                if res.status_code == 200:
+                    dados = res.json()
+                    messagebox.showinfo("Sucesso", f"Operação concluída!\n{dados.get('removidos', 0)} item(ns) removido(s) do banco de dados.")
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Falha ao concluir doações ({res.status_code}):\n{res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
+
     def carregar_tabela(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -296,7 +316,10 @@ class AdminDesktopApp:
                     categoria = i.get("categoria", "OUTROS")
                     solicitado_por = i.get("solicitado_por") or "-"
                     rm_aluno = i.get("rm_aluno") or "-"
-                    self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], i["status"], solicitado_por, rm_aluno))
+                    status = i.get("status", "DISPONÍVEL")
+                    if status.upper() == "GUARDADO":
+                        status = "DISPONÍVEL"
+                    self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], status, solicitado_por, rm_aluno))
         except Exception as e:
             print(f"Aguardando conexão... {e}")
 
