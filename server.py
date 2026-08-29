@@ -1,4 +1,5 @@
 import os
+import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify
@@ -26,10 +27,15 @@ def init_db():
                 data_encontrado VARCHAR(20) NOT NULL,
                 local_encontrado VARCHAR(100) NOT NULL,
                 foto_base64 TEXT,
+                fotos_json TEXT,
                 status VARCHAR(30) DEFAULT 'DISPONÍVEL',
                 solicitado_por VARCHAR(100),
                 rm_aluno VARCHAR(20)
             );
+        ''')
+        # Garante a coluna fotos_json caso a tabela já existisse
+        cursor.execute('''
+            ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;
         ''')
         conn.commit()
         cursor.close()
@@ -53,8 +59,21 @@ def get_itens():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
+        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
         itens = cursor.fetchall()
+        
+        # Formata o array de fotos para o frontend
+        for item in itens:
+            fotos = []
+            if item.get('fotos_json'):
+                try:
+                    fotos = json.loads(item['fotos_json'])
+                except:
+                    fotos = []
+            if not fotos and item.get('foto'):
+                fotos = [item['foto']]
+            item['fotos'] = fotos
+            
         cursor.close()
         conn.close()
         return jsonify(itens)
@@ -68,19 +87,22 @@ def cadastrar_item():
     categoria = data.get('categoria')
     data_enc = data.get('data')
     local = data.get('local')
-    foto = data.get('foto', '')
+    fotos = data.get('fotos', [])
     status = data.get('status', 'DISPONÍVEL')
 
     if not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
 
+    foto_capa = fotos[0] if len(fotos) > 0 else ''
+    fotos_json_str = json.dumps(fotos)
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, status)
-            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;
-        ''', (descricao, categoria, data_enc, local, foto, status))
+            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
+        ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
         novo_id = cursor.fetchone()[0]
         conn.commit()
         cursor.close()
@@ -96,7 +118,7 @@ def atualizar_item(item_id):
     categoria = data.get('categoria')
     data_enc = data.get('data')
     local = data.get('local')
-    foto = data.get('foto')
+    fotos = data.get('fotos')
     status = data.get('status', 'DISPONÍVEL')
 
     if not descricao or not data_enc or not local:
@@ -106,12 +128,14 @@ def atualizar_item(item_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        if foto:
+        if fotos is not None and len(fotos) > 0:
+            foto_capa = fotos[0]
+            fotos_json_str = json.dumps(fotos)
             cursor.execute('''
                 UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, status = %s
+                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
                 WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, foto, status, item_id))
+            ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
         else:
             cursor.execute('''
                 UPDATE itens
@@ -139,7 +163,6 @@ def excluir_item(item_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# NOVA ROTA: Apaga todos os itens marcados como DOAÇÃO FEITA
 @app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
 def concluir_doacoes():
     try:
@@ -167,7 +190,6 @@ def solicitar_item():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
         cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
 
