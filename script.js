@@ -6,7 +6,6 @@ let categoriaAtual = 'TODOS';
 let statusAtual = 'TODOS';
 let termoBusca = '';
 
-// --- MENU DE CONFIGURAÇÕES ---
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
     if (menu) menu.classList.toggle('hidden');
@@ -21,7 +20,6 @@ window.addEventListener('click', function(e) {
     }
 });
 
-// --- FIXAR COR VERMELHA PRINCIPAL ---
 function aplicarTemaVermelho() {
     const root = document.documentElement;
     root.style.setProperty('--primary-color', '#dc2626');
@@ -31,7 +29,6 @@ function aplicarTemaVermelho() {
     root.style.setProperty('--primary-border', '#991b1b');
 }
 
-// --- TEMA CLARO / ESCURO ---
 function alternarModoEscuroClaro() {
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -72,7 +69,6 @@ function carregarPreferenciasAparencia() {
     }
 }
 
-// --- INTEGRAÇÃO COM A API ---
 async function carregarItensDaAPI() {
     try {
         const response = await fetch(`${API_URL}/api/itens`);
@@ -92,7 +88,6 @@ function logout() {
     document.getElementById('detailScreen')?.classList.add('hidden');
 }
 
-// --- BUSCA E FILTROS ---
 function filtrarPorPalavraChave() {
     const input = document.getElementById('searchInput');
     const btnClear = document.getElementById('btnClearSearch');
@@ -124,7 +119,6 @@ function filtrarStatus(status) {
     renderizarItens();
 }
 
-// --- SLIDER DE CATEGORIAS ---
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
     if (!indicator || !element) return;
@@ -154,7 +148,6 @@ function filtrarCategoria(cat, btnElement) {
     renderizarItens();
 }
 
-// --- RENDERIZAÇÃO DOS ITENS (COM FILTROS COMBINADOS E BADGES DE STATUS) ---
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
@@ -162,18 +155,15 @@ function renderizarItens() {
     grid.innerHTML = '';
 
     const filtrados = todosItens.filter(item => {
-        // 1. Filtro de Categoria
         const atendeCategoria = categoriaAtual === 'TODOS' || 
             (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
 
-        // 2. Filtro de Status
-        const stUpper = (item.status || 'Disponível').toUpperCase();
+        const stUpper = (item.status || 'GUARDADO').toUpperCase();
         const atendeStatus = statusAtual === 'TODOS' || 
-            (statusAtual === 'DISPONIVEL' && (stUpper === 'DISPONÍVEL' || stUpper === 'DISPONIVEL' || stUpper === 'GUARDADO')) ||
+            (statusAtual === 'GUARDADO' && (stUpper === 'GUARDADO' || stUpper === 'DISPONÍVEL' || stUpper === 'DISPONIVEL')) ||
             (statusAtual === 'SOLICITADO' && stUpper === 'SOLICITADO') ||
             (statusAtual === 'ENTREGUE' && stUpper === 'ENTREGUE');
 
-        // 3. Filtro de Palavra-Chave
         const desc = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
         const cat = (item.categoria || '').toLowerCase();
@@ -206,8 +196,7 @@ function renderizarItens() {
             ? `<img src="${item.foto}" class="w-full h-32 object-cover rounded-lg mb-3">`
             : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box text-3xl"></i></div>`;
 
-        // Estilo e cor das Badges de Status
-        const stUpper = (item.status || 'Disponível').toUpperCase();
+        const stUpper = (item.status || 'GUARDADO').toUpperCase();
         let statusBadgeClass = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
         
         if (stUpper === 'SOLICITADO') {
@@ -255,8 +244,7 @@ function abrirDetalhes(item) {
         placeholder.classList.remove('hidden');
     }
 
-    // Configuração do Status e do Botão de Solicitação na Tela de Detalhes
-    const stUpper = (item.status || 'Disponível').toUpperCase();
+    const stUpper = (item.status || 'GUARDADO').toUpperCase();
     
     if (badgeStatus) {
         badgeStatus.innerText = stUpper;
@@ -269,8 +257,6 @@ function abrirDetalhes(item) {
         }
     }
 
-    // REGRA DE SOLICITAÇÃO ÚNICA:
-    // Se o item já estiver 'SOLICITADO' ou 'ENTREGUE', trava o botão para que mais ninguém consiga solicitar!
     if (stUpper === 'SOLICITADO' || stUpper === 'ENTREGUE') {
         btnSolicitar.disabled = true;
         btnSolicitar.innerText = "ITEM JÁ SOLICITADO / AGUARDANDO SECRETARIA";
@@ -290,8 +276,7 @@ function voltarParaCatalogo() {
 async function solicitarColeta() {
     if (!itemSelecionado) return;
 
-    // Dupla verificação de segurança no front-end
-    const stUpper = (itemSelecionado.status || 'Disponível').toUpperCase();
+    const stUpper = (itemSelecionado.status || 'GUARDADO').toUpperCase();
     if (stUpper === 'SOLICITADO' || stUpper === 'ENTREGUE') {
         alert("Este item já foi solicitado por outra pessoa e não está mais disponível!");
         return;
