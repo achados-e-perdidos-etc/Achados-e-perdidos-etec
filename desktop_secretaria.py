@@ -1,359 +1,350 @@
+import os
+import json
+import base64
+import requests
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
-import requests
-import base64
+from PIL import Image, ImageTk
 from datetime import datetime
 
-API_URL = "https://achados-etec-api.onrender.com"
+# Configuração da URL da API
+API_URL = os.environ.get("API_URL", "http://127.0.0.1:5000")
 
-_AUTH_EMAIL_HASH = "YWNoYWRvc2VwZXJkaWRvc2V0ZWNAZ21haWwuY29t"
-_AUTH_PASS_HASH = "ZXRlY2FjaGFkb3M=" 
-
-class AdminDesktopApp:
+class AchadosPerdidosApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("ETEC - Achados e Perdidos | Login Secretaria")
-        self.root.geometry("400x450")
-        self.root.configure(bg="#1e1e2e")
-        self.root.resizable(False, False)
+        self.root.title("Sistema Achados e Perdidos - ETEC Profº José Ignácio Azevedo Filho")
+        self.root.geometry("1100x700")
+        self.root.configure(bg="#0f172a")
 
-        self.fotos_base64 = []
         self.item_editando_id = None
+        self.fotos_base64 = []
 
-        self.style = ttk.Style()
-        self.style.theme_use('clam')
-        self.style.configure("Treeview", background="#2d3748", foreground="#ffffff", fieldbackground="#2d3748", rowheight=28)
-        self.style.configure("Treeview.Heading", background="#1e293b", foreground="#38bdf8", font=("Helvetica", 10, "bold"))
-        self.style.map("Treeview", background=[('selected', '#2563eb')])
+        self.setup_ui()
+        self.carregar_tabela()
 
-        self.mostrar_tela_login()
-
-    def mostrar_tela_login(self):
-        self.login_frame = tk.Frame(self.root, bg="#1e1e2e", padx=30, pady=30)
-        self.login_frame.pack(expand=True, fill="both")
-
-        lbl_icone = tk.Label(self.login_frame, text="🔒", font=("Helvetica", 40), bg="#1e1e2e", fg="#38bdf8")
-        lbl_icone.pack(pady=(10, 5))
-
-        lbl_titulo = tk.Label(self.login_frame, text="Acesso Restrito", font=("Helvetica", 16, "bold"), bg="#1e1e2e", fg="#ffffff")
-        lbl_titulo.pack()
-
-        lbl_sub = tk.Label(self.login_frame, text="Secretaria - ETEC Profº José Ignácio", font=("Helvetica", 9), bg="#1e1e2e", fg="#94a3b8")
-        lbl_sub.pack(pady=(0, 20))
-
-        tk.Label(self.login_frame, text="E-mail de Acesso:", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10, "bold")).pack(anchor="w", pady=(5, 2))
-        self.txt_login_email = tk.Entry(self.login_frame, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
-        self.txt_login_email.pack(fill="x", pady=(0, 15))
-
-        tk.Label(self.login_frame, text="Senha:", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10, "bold")).pack(anchor="w", pady=(5, 2))
-        self.txt_login_senha = tk.Entry(self.login_frame, font=("Helvetica", 11), show="•", bg="#334155", fg="#ffffff", insertbackground="white")
-        self.txt_login_senha.pack(fill="x", pady=(0, 20))
-
-        self.txt_login_senha.bind("<Return>", lambda event: self.validar_login())
-
-        btn_entrar = tk.Button(self.login_frame, text="ENTRAR NO SISTEMA", command=self.validar_login, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", pady=8, cursor="hand2")
-        btn_entrar.pack(fill="x")
-
-    def validar_login(self):
-        email_digitado = self.txt_login_email.get().strip()
-        senha_digitada = self.txt_login_senha.get().strip()
-
-        email_real = base64.b64decode(_AUTH_EMAIL_HASH).decode('utf-8')
-        senha_real = base64.b64decode(_AUTH_PASS_HASH).decode('utf-8')
-
-        if email_digitado == email_real and senha_digitada == senha_real:
-            self.login_frame.destroy()
-            self.iniciar_painel_principal()
-        else:
-            messagebox.showerror("Acesso Negado", "E-mail ou senha incorretos!\nApenas a secretaria tem acesso a este sistema.")
-
-    def iniciar_painel_principal(self):
-        self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("1180x730")
-        self.root.resizable(True, True)
-
-        header = tk.Frame(self.root, bg="#0f172a", height=70)
-        header.pack(fill="x", side="top")
+    def setup_ui(self):
+        # Título Principal
+        header_frame = tk.Frame(self.root, bg="#1e293b", height=60)
+        header_frame.pack(fill="x", side="top")
         
-        lbl_title = tk.Label(header, text="SECRETARIA - BANCO DE DADOS NEON (POSTGRESQL)", font=("Helvetica", 14, "bold"), bg="#0f172a", fg="#38bdf8")
-        lbl_title.pack(pady=8)
-        lbl_sub = tk.Label(header, text="ETEC Prof.º José Ignácio Azevedo Filho", font=("Helvetica", 9), bg="#0f172a", fg="#94a3b8")
-        lbl_sub.pack()
+        lbl_titulo = tk.Label(
+            header_frame, 
+            text="📦 Painel de Controle - Achados e Perdidos", 
+            font=("Helvetica", 16, "bold"), 
+            bg="#1e293b", 
+            fg="#f8fafc"
+        )
+        lbl_titulo.pack(side="left", padx=20, pady=15)
 
-        container = tk.Frame(self.root, bg="#1e1e2e")
-        container.pack(fill="both", expand=True, padx=20, pady=20)
+        # Container Principal
+        main_container = tk.Frame(self.root, bg="#0f172a")
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
 
-        self.form_frame = tk.LabelFrame(container, text=" Cadastro / Edição de Objeto ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=15, pady=15)
-        self.form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        # Painel Esquerdo: Formulário
+        form_frame = tk.LabelFrame(main_container, text=" Cadastro / Edição ", font=("Helvetica", 11, "bold"), bg="#1e293b", fg="#38bdf8", bd=1, relief="solid")
+        form_frame.pack(side="left", fill="y", padx=(0, 15), ipadx=10, ipady=10)
 
-        tk.Label(self.form_frame, text="Descrição do Item:", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
-        self.txt_descricao = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
-        self.txt_descricao.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        # Descrição
+        tk.Label(form_frame, text="Descrição do Item *", bg="#1e293b", fg="#94a3b8", font=("Helvetica", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
+        self.txt_descricao = tk.Entry(form_frame, bg="#334155", fg="#ffffff", insertbackground="white", relief="flat", font=("Helvetica", 10))
+        self.txt_descricao.pack(fill="x", padx=10, ipady=5)
 
-        tk.Label(self.form_frame, text="Categoria:", bg="#1e1e2e", fg="#e2e8f0").grid(row=2, column=0, sticky="w", pady=(5,2))
-        self.cb_categoria = ttk.Combobox(self.form_frame, values=["MOCHILA", "ROUPAS", "ACESSÓRIOS", "ESCOLARES", "OUTROS"], state="readonly", width=30)
+        # Categoria
+        tk.Label(form_frame, text="Categoria *", bg="#1e293b", fg="#94a3b8", font=("Helvetica", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
+        self.cb_categoria = ttk.Combobox(form_frame, values=["Eletrônicos", "Documentos", "Roupas / Agasalhos", "Material Escolar", "Chaves", "Garrafas / Marmitas", "Acessórios / Bijuterias", "Outros"], state="readonly")
         self.cb_categoria.current(0)
-        self.cb_categoria.grid(row=3, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.cb_categoria.pack(fill="x", padx=10, ipady=3)
 
-        tk.Label(self.form_frame, text="Data Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
-        self.txt_data = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
+        # Data Encontrado
+        tk.Label(form_frame, text="Data Encontrado *", bg="#1e293b", fg="#94a3b8", font=("Helvetica", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
+        self.txt_data = tk.Entry(form_frame, bg="#334155", fg="#ffffff", insertbackground="white", relief="flat", font=("Helvetica", 10))
         self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
-        self.txt_data.grid(row=5, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.txt_data.pack(fill="x", padx=10, ipady=5)
 
-        tk.Label(self.form_frame, text="Local Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
-        self.txt_local = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
-        self.txt_local.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        # Local Encontrado
+        tk.Label(form_frame, text="Local Encontrado *", bg="#1e293b", fg="#94a3b8", font=("Helvetica", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
+        self.txt_local = tk.Entry(form_frame, bg="#334155", fg="#ffffff", insertbackground="white", relief="flat", font=("Helvetica", 10))
+        self.txt_local.pack(fill="x", padx=10, ipady=5)
 
-        tk.Label(self.form_frame, text="Status do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
-        self.cb_status = ttk.Combobox(self.form_frame, values=["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO", "DOAÇÃO FEITA"], state="readonly", width=30)
+        # Status
+        tk.Label(form_frame, text="Status *", bg="#1e293b", fg="#94a3b8", font=("Helvetica", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
+        self.cb_status = ttk.Combobox(form_frame, values=["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO", "DOAÇÃO FEITA"], state="readonly")
         self.cb_status.current(0)
-        self.cb_status.grid(row=9, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.cb_status.pack(fill="x", padx=10, ipady=3)
 
-        tk.Label(self.form_frame, text="Fotos do Objeto (Até 4):", bg="#1e1e2e", fg="#e2e8f0").grid(row=10, column=0, sticky="w", pady=(5,2))
-        
-        btn_foto_frame = tk.Frame(self.form_frame, bg="#1e1e2e")
-        btn_foto_frame.grid(row=11, column=0, columnspan=2, sticky="w", pady=(0, 10))
-        
-        btn_foto = tk.Button(btn_foto_frame, text="📷 Selecionar Fotos...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_foto.pack(side="left", padx=(0, 5))
+        # Seleção de Fotos
+        btn_foto = tk.Button(form_frame, text="📷 Adicionar Fotos", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_foto.pack(fill="x", padx=10, pady=(15, 5), ipady=5)
 
-        btn_limpar_fotos = tk.Button(btn_foto_frame, text="🗑 Limpar Fotos", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2")
-        btn_limpar_fotos.pack(side="left")
+        self.lbl_fotos_status = tk.Label(form_frame, text="Nenhuma foto anexada", bg="#1e293b", fg="#64748b", font=("Helvetica", 8))
+        self.lbl_fotos_status.pack(anchor="w", padx=10)
 
-        self.lbl_status_foto = tk.Label(self.form_frame, text="0 / 4 fotos selecionadas", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
-        self.lbl_status_foto.grid(row=12, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        # Botões do Formulário
+        self.btn_salvar = tk.Button(form_frame, text="💾 Salvar Item", command=self.salvar_item, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2")
+        self.btn_salvar.pack(fill="x", padx=10, pady=(20, 5), ipady=7)
 
-        self.btn_salvar = tk.Button(self.form_frame, text="✔ Gravar no Banco Nuvem", command=self.salvar_item, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", padx=10, pady=8, cursor="hand2")
-        self.btn_salvar.grid(row=13, column=0, columnspan=2, sticky="ew", pady=(10, 5))
+        self.btn_limpar = tk.Button(form_frame, text="🧹 Limpar / Novo", command=self.limpar_formulario, bg="#475569", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
+        self.btn_limpar.pack(fill="x", padx=10, ipady=5)
 
-        self.btn_cancelar = tk.Button(self.form_frame, text="✖ Cancelar Edição", command=self.limpar_formulario, bg="#64748b", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        self.btn_cancelar.grid(row=14, column=0, columnspan=2, sticky="ew")
-        self.btn_cancelar.grid_remove()
+        # Painel Direito: Tabela e Ações Gerais
+        table_frame = tk.Frame(main_container, bg="#0f172a")
+        table_frame.pack(side="right", fill="both", expand=True)
 
-        table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
-        table_frame.grid(row=0, column=1, sticky="nsew")
+        # Barra de Ações do Topo da Tabela
+        top_actions = tk.Frame(table_frame, bg="#0f172a")
+        top_actions.pack(fill="x", pady=(0, 10))
 
-        container.columnconfigure(1, weight=1)
-        container.rowconfigure(0, weight=1)
+        btn_atualizar = tk.Button(top_actions, text="🔄 Atualizar Lista", command=self.carregar_tabela, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_atualizar.pack(side="left")
 
-        columns = ("id", "descricao", "categoria", "data", "local", "status", "solicitado_por", "rm_aluno")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
-        
+        btn_concluir_doacoes = tk.Button(top_actions, text="🗑️ Limpar Itens Doados", command=self.concluir_doacoes, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_concluir_doacoes.pack(side="right")
+
+        # Configuração da Tabela Treeview
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Treeview", background="#1e293b", foreground="#f8fafc", fieldbackground="#1e293b", rowheight=30)
+        style.configure("Treeview.Heading", background="#334155", foreground="#38bdf8", font=("Helvetica", 9, "bold"))
+        style.map("Treeview", background=[("selected", "#0284c7")])
+
+        colunas = ("id", "descricao", "categoria", "data", "local", "status", "solicitado_por", "rm_aluno")
+        self.tree = ttk.Treeview(table_frame, columns=colunas, show="headings")
+
         self.tree.heading("id", text="ID")
         self.tree.heading("descricao", text="Descrição")
         self.tree.heading("categoria", text="Categoria")
         self.tree.heading("data", text="Data")
         self.tree.heading("local", text="Local")
         self.tree.heading("status", text="Status")
-        self.tree.heading("solicitado_por", text="Solicitante")
-        self.tree.heading("rm_aluno", text="RM")
+        self.tree.heading("solicitado_por", text="Solicitado Por")
+        self.tree.heading("rm_aluno", text="RM/Doc")
 
-        self.tree.column("id", width=35, anchor="center")
-        self.tree.column("descricao", width=140)
-        self.tree.column("categoria", width=90)
-        self.tree.column("data", width=80, anchor="center")
-        self.tree.column("local", width=90)
-        self.tree.column("status", width=100, anchor="center")
-        self.tree.column("solicitado_por", width=110)
-        self.tree.column("rm_aluno", width=65, anchor="center")
+        self.tree.column("id", width=40, anchor="center")
+        self.tree.column("descricao", width=180)
+        self.tree.column("categoria", width=110)
+        self.tree.column("data", width=90, anchor="center")
+        self.tree.column("local", width=110)
+        self.tree.column("status", width=110, anchor="center")
+        self.tree.column("solicitado_por", width=130)
+        self.tree.column("rm_aluno", width=80, anchor="center")
 
-        self.tree.pack(fill="both", expand=True)
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
 
-        self.tree.bind("<Double-1>", lambda event: self.preparar_edicao_item())
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
-        actions_frame.pack(fill="x", pady=(10, 0))
+        self.tree.bind("<Double-1>", self.on_item_double_click)
 
-        btn_localizar = tk.Button(actions_frame, text="🔍 Localizar / Dar Baixa", command=self.abrir_janela_localizar_item, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_localizar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+        # Barra de Botões Ação para Item Selecionado
+        bottom_actions = tk.Frame(table_frame, bg="#0f172a")
+        bottom_actions.pack(fill="x", pady=(10, 0))
 
-        btn_editar = tk.Button(actions_frame, text="✏ Editar Item", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_editar.pack(side="left", expand=True, fill="x", padx=(2, 2))
+        btn_editar = tk.Button(bottom_actions, text="✏️ Editar Selecionado", command=self.carregar_item_selecionado, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_editar.pack(side="left", padx=(0, 5))
 
-        btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
+        btn_comprovante = tk.Button(bottom_actions, text="📄 Gerar Comprovante", command=self.gerar_comprovante_selecionado, bg="#8b5cf6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_comprovante.pack(side="left", padx=5)
 
-        btn_doacao = tk.Button(actions_frame, text="🎁 Concluir Doações", command=self.concluir_doacoes, bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_doacao.pack(side="left", expand=True, fill="x", padx=(2, 2))
+        btn_excluir = tk.Button(bottom_actions, text="❌ Excluir Item", command=self.excluir_item_selecionado, bg="#b91c1c", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_excluir.pack(side="right")
 
-        btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
-        btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
+    def carregar_fotos(self):
+        caminhos = filedialog.askopenfilenames(
+            title="Selecione as imagens do item",
+            filetypes=[("Imagens", "*.png *.jpg *.jpeg *.webp")]
+        )
+        if caminhos:
+            self.fotos_base64 = []
+            for cam in caminhos:
+                try:
+                    with open(cam, "rb") as f:
+                        b64 = base64.b64encode(f.read()).decode('utf-8')
+                        self.fotos_base64.append(f"data:image/jpeg;base64,{b64}")
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Falha ao carregar imagem {cam}: {e}")
+            self.lbl_fotos_status.config(text=f"{len(self.fotos_base64)} foto(s) selecionada(s)", fg="#38bdf8")
 
-        self.carregar_tabela()
+    def salvar_item(self):
+        descricao = self.txt_descricao.get().strip()
+        categoria = self.cb_categoria.get()
+        data = self.txt_data.get().strip()
+        local = self.txt_local.get().strip()
+        status = self.cb_status.get()
 
-    def abrir_janela_localizar_item(self):
-        item_id = simpledialog.askinteger("Localizar Item", "Digite o código/ID do item:", parent=self.root)
-        if not item_id:
+        if not descricao or not data or not local:
+            messagebox.showwarning("Atenção!", "Preencha todos os campos obrigatórios!")
             return
 
-        try:
-            res = requests.get(f"{API_URL}/api/itens", timeout=10)
-            if res.status_code == 200:
-                itens = res.json()
-                item_encontrado = next((i for i in itens if i['id'] == item_id), None)
+        solicitado_por = None
+        rm_aluno = None
 
-                if not item_encontrado:
-                    messagebox.showerror("Não Encontrado", f"Nenhum item com o ID #{item_id} foi encontrado no banco de dados!")
-                    return
+        # Se alterar/salvar o status como ENTREGUE, obriga o preenchimento das informações
+        if status.upper() == "ENTREGUE":
+            solicitado_por = simpledialog.askstring("Dados do Retirante", "Nome completo de quem retirou o item:", parent=self.root)
+            if not solicitado_por:
+                messagebox.showwarning("Atenção", "O nome do retirante é obrigatório para o status ENTREGUE!")
+                return
 
-                self.exibir_modal_confirmacao_item(item_encontrado)
-            else:
-                messagebox.showerror("Erro", "Erro ao comunicar com o servidor.")
-        except Exception as e:
-            messagebox.showerror("Erro de Conexão", f"Falha na conexão: {e}")
-
-    def exibir_modal_confirmacao_item(self, item):
-        win = tk.Toplevel(self.root)
-        win.title(f"Item #{item['id']} - Detalhes e Ações")
-        win.geometry("480x520")
-        win.configure(bg="#1e1e2e")
-        win.grab_set()
-        win.resizable(False, False)
-
-        tk.Label(win, text=f"📦 OBJETO ENCONTRADO - ID #{item['id']}", font=("Helvetica", 12, "bold"), bg="#1e1e2e", fg="#38bdf8").pack(pady=(15, 10))
-
-        info_frame = tk.Frame(win, bg="#334155", padx=15, pady=15)
-        info_frame.pack(fill="x", padx=20, pady=5)
-
-        status_atual = item.get('status', 'DISPONÍVEL').upper()
-
-        tk.Label(info_frame, text=f"Descrição: {item['txt_descricao']}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#ffffff", anchor="w").pack(fill="x")
-        tk.Label(info_frame, text=f"Categoria: {item.get('categoria', 'N/A')}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
-        tk.Label(info_frame, text=f"Local: {item['txt_local']}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
-        tk.Label(info_frame, text=f"Data Encontrado: {item['txt_data']}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
-        tk.Label(info_frame, text=f"Status Atual: {status_atual}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#facc15" if status_atual != "ENTREGUE" else "#4ade80", anchor="w").pack(fill="x", pady=(5, 0))
-
-        # CORREÇÃO: SE O ITEM ESTIVER ENTREGUE, DESTACA O NOME E RM DO RETIRANTE
-        if status_atual == "ENTREGUE":
-            solicitante = item.get('solicitado_por') or "Não Informado"
-            rm = item.get('rm_aluno') or "Não Informado"
-            tk.Label(info_frame, text=f"✔ ENTREGUE PARA: {solicitante}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#4ade80", anchor="w").pack(fill="x", pady=(6, 0))
-            tk.Label(info_frame, text=f"   RM/Documento: {rm}", font=("Helvetica", 9, "bold"), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x")
-        elif item.get('solicitado_por'):
-            tk.Label(info_frame, text=f"Solicitado Por: {item['solicitado_por']} (RM: {item.get('rm_aluno', '-')})", font=("Helvetica", 9, "bold"), bg="#334155", fg="#38bdf8", anchor="w").pack(fill="x", pady=(2, 0))
-
-        tk.Label(win, text="Escolha uma opção de ação para este item:", font=("Helvetica", 9, "bold"), bg="#1e1e2e", fg="#94a3b8").pack(pady=(15, 5))
-
-        btn_entregar = tk.Button(win, text="🚚 Dar Baixa como 'Entregue ao Dono'", command=lambda: [win.destroy(), self.dar_baixa_entregue(item)], bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
-        btn_entregar.pack(fill="x", padx=20, pady=3)
-
-        btn_doacao = tk.Button(win, text="🎁 Alterar para 'Para Doação'", command=lambda: [win.destroy(), self.alterar_status_rapido(item['id'], "PARA DOAÇÃO")], bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
-        btn_doacao.pack(fill="x", padx=20, pady=3)
-
-        # CORREÇÃO DO BOTÃO EDITAR NA MODAL
-        btn_editar = tk.Button(win, text="✏ Editar Informações do Objeto", command=lambda: [win.destroy(), self.selecionar_e_editar_item_por_id(item['id'])], bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
-        btn_editar.pack(fill="x", padx=20, pady=3)
-
-        btn_comprovante = tk.Button(win, text="📄 Imprimir / Gerar Comprovante de Retirada", command=lambda: [win.destroy(), self.gerar_comprovante_retirada(item)], bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
-        btn_comprovante.pack(fill="x", padx=20, pady=3)
-
-    def dar_baixa_entregue(self, item):
-        nome = simpledialog.askstring("Dar Baixa", "Nome do Aluno/Pessoa que retirou:", initialvalue=item.get('solicitado_por') or "", parent=self.root)
-        if not nome:
-            return
-            
-        rm = simpledialog.askstring("Dar Baixa", "RM ou Documento de Identificação:", initialvalue=item.get('rm_aluno') or "", parent=self.root)
-        if not rm:
-            return
+            rm_aluno = simpledialog.askstring("Dados do Retirante", "RM ou Documento de identificação do retirante:", parent=self.root)
+            if not rm_aluno:
+                messagebox.showwarning("Atenção", "O RM/Documento é obrigatório para o status ENTREGUE!")
+                return
 
         payload = {
-            "descricao": item['txt_descricao'],
-            "categoria": item.get('categoria', 'OUTROS'),
-            "data": item['txt_data'],
-            "local": item['txt_local'],
-            "status": "ENTREGUE",
-            "solicitado_por": nome,
-            "rm_aluno": rm
+            "descricao": descricao,
+            "categoria": categoria,
+            "data": data,
+            "local": local,
+            "status": status,
+            "fotos": self.fotos_base64,
+            "solicitado_por": solicitado_por,
+            "rm_aluno": rm_aluno
         }
 
         try:
-            res = requests.put(f"{API_URL}/api/itens/{item['id']}", json=payload, timeout=10)
+            if self.item_editando_id is None:
+                res = requests.post(f"{API_URL}/api/itens", json=payload, timeout=10)
+                msg_sucesso = "Registrado no PostgreSQL Neon!"
+            else:
+                res = requests.put(f"{API_URL}/api/itens/{self.item_editando_id}", json=payload, timeout=10)
+                msg_sucesso = f"Item #{self.item_editando_id} atualizado com sucesso!"
+
             if res.status_code == 200:
-                messagebox.showinfo("Sucesso", f"Item #{item['id']} marcado como ENTREGUE para {nome}!")
+                messagebox.showinfo("Sucesso", msg_sucesso)
+                self.limpar_formulario()
                 self.carregar_tabela()
             else:
-                messagebox.showerror("Erro", f"Falha ao dar baixa: {res.text}")
+                messagebox.showerror("Erro", f"Falha no servidor ({res.status_code}):\n{res.text}")
         except Exception as e:
             messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
 
-    def alterar_status_rapido(self, item_id, novo_status):
+    def carregar_tabela(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
         try:
             res = requests.get(f"{API_URL}/api/itens", timeout=10)
             if res.status_code == 200:
                 itens = res.json()
-                item = next((i for i in itens if i['id'] == item_id), None)
-                if item:
-                    payload = {
-                        "descricao": item['txt_descricao'],
-                        "categoria": item.get('categoria', 'OUTROS'),
-                        "data": item['txt_data'],
-                        "local": item['txt_local'],
-                        "status": novo_status
-                    }
-                    res_put = requests.put(f"{API_URL}/api/itens/{item_id}", json=payload, timeout=10)
-                    if res_put.status_code == 200:
-                        messagebox.showinfo("Sucesso", f"Status do item #{item_id} alterado para {novo_status}!")
-                        self.carregar_tabela()
+                for item in itens:
+                    self.tree.insert("", "end", values=(
+                        item.get("id"),
+                        item.get("txt_descricao"),
+                        item.get("categoria", "N/A"),
+                        item.get("txt_data"),
+                        item.get("txt_local"),
+                        item.get("status", "DISPONÍVEL"),
+                        item.get("solicitado_por") or "-",
+                        item.get("rm_aluno") or "-"
+                    ))
+            else:
+                messagebox.showerror("Erro", f"Não foi possível buscar a lista de itens. Código: {res.status_code}")
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao atualizar status: {e}")
+            messagebox.showerror("Erro de Conexão", f"Falha ao conectar na API: {e}")
 
-    # CORREÇÃO COMPLETA: CARREGA O ITEM DIRETAMENTE E COLOCA EM EDIÇÃO
-    def selecionar_e_editar_item_por_id(self, item_id):
-        item_id_str = str(item_id)
-        encontrado = False
+    def carregar_item_selecionado(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para editar!")
+            return
 
-        for child in self.tree.get_children():
-            valores = self.tree.item(child, "values")
-            if str(valores[0]) == item_id_str:
-                self.tree.selection_set(child)
-                self.tree.focus(child)
-                self.tree.see(child)
-                encontrado = True
-                break
+        item_values = self.tree.item(selected[0], "values")
+        self.item_editando_id = item_values[0]
 
-        if encontrado:
-            self.preparar_edicao_item()
-        else:
-            try:
-                res = requests.get(f"{API_URL}/api/itens", timeout=10)
-                if res.status_code == 200:
-                    itens = res.json()
-                    item = next((i for i in itens if str(i['id']) == item_id_str), None)
-                    if item:
-                        self.preparar_edicao_direta(item)
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao carregar dados do item: {e}")
-
-    def preparar_edicao_direta(self, item):
-        self.item_editando_id = item['id']
         self.txt_descricao.delete(0, tk.END)
-        self.txt_descricao.insert(0, item['txt_descricao'])
+        self.txt_descricao.insert(0, item_values[1])
 
-        cat = item.get('categoria', 'OUTROS')
-        if cat in self.cb_categoria["values"]:
-            self.cb_categoria.set(cat)
+        self.cb_categoria.set(item_values[2])
 
         self.txt_data.delete(0, tk.END)
-        self.txt_data.insert(0, item['txt_data'])
+        self.txt_data.insert(0, item_values[3])
 
         self.txt_local.delete(0, tk.END)
-        self.txt_local.insert(0, item['txt_local'])
+        self.txt_local.insert(0, item_values[4])
 
-        status_normalizado = item.get('status', 'DISPONÍVEL').upper()
-        if status_normalizado in ["GUARDADO", "DISPONIVEL"]:
-            status_normalizado = "DISPONÍVEL"
+        self.cb_status.set(item_values[5])
 
-        if status_normalizado in self.cb_status["values"]:
-            self.cb_status.set(status_normalizado)
+        self.btn_salvar.config(text=f"🔄 Atualizar Item #{self.item_editando_id}", bg="#eab308", fg="#0f172a")
 
+    def limpar_formulario(self):
+        self.item_editando_id = None
+        self.txt_descricao.delete(0, tk.END)
+        self.cb_categoria.current(0)
+        self.txt_data.delete(0, tk.END)
+        self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
+        self.txt_local.delete(0, tk.END)
+        self.cb_status.current(0)
         self.fotos_base64 = []
-        self.lbl_status_foto.config(text="Manter foto(s) atual(is)", fg="#94a3b8")
+        self.lbl_fotos_status.config(text="Nenhuma foto anexada", fg="#64748b")
+        self.btn_salvar.config(text="💾 Salvar Item", bg="#16a34a", fg="white")
 
-        self.form_frame.config(text=f" Editando Item ID #{self.item_editando_id} ", fg="#eab308")
-        self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
-        self.btn_cancelar.grid()
+    def excluir_item_selecionado(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para excluir!")
+            return
+
+        item_values = self.tree.item(selected[0], "values")
+        item_id = item_values[0]
+
+        if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir permanentemente o Item #{item_id}?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/{item_id}", timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", f"Item #{item_id} excluído com sucesso!")
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Erro ao excluir o item: {res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Falha ao comunicar com a API: {e}")
+
+    def concluir_doacoes(self):
+        if messagebox.askyesno("Confirmar Limpeza", "Deseja remover do sistema todos os itens marcados como 'DOAÇÃO FEITA'?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/doacoes/concluir", timeout=10)
+                if res.status_code == 200:
+                    dados = res.json()
+                    messagebox.showinfo("Sucesso", dados.get("message", "Concluído!"))
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Erro ao executar ação: {res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Falha de comunicação: {e}")
+
+    def on_item_double_click(self, event):
+        self.carregar_item_selecionado()
+
+    def gerar_comprovante_selecionado(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item na tabela para gerar o comprovante!")
+            return
+
+        item_values = self.tree.item(selected[0], "values")
+        item_data = {
+            "id": item_values[0],
+            "txt_descricao": item_values[1],
+            "categoria": item_values[2],
+            "txt_data": item_values[3],
+            "txt_local": item_values[4],
+            "status": item_values[5],
+            "solicitado_por": item_values[6],
+            "rm_aluno": item_values[7]
+        }
+        self.gerar_comprovante_retirada(item_data)
 
     def gerar_comprovante_retirada(self, item):
+        solicitante = item.get('solicitado_por')
+        rm = item.get('rm_aluno')
+
+        # Solicita preenchimento caso o item ainda não tenha os dados cadastrados
+        if not solicitante or solicitante == "-":
+            solicitante = simpledialog.askstring("Comprovante", "Nome Completo do Retirante:", parent=self.root) or "Não informado"
+        if not rm or rm == "-":
+            rm = simpledialog.askstring("Comprovante", "RM ou Documento do Retirante:", parent=self.root) or "Não informado"
+
         comprovante = f"""==================================================
         ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO
            TERMO DE RETIRADA DE ACHADOS E PERDIDOS
@@ -366,8 +357,8 @@ Data de Registro: {item['txt_data']}
 
 --------------------------------------------------
 DADOS DO RETIRANTE:
-Nome Completo: {item.get('solicitado_por', '________________________')}
-RM/Documento: {item.get('rm_aluno', '__________')}
+Nome Completo: {solicitante}
+RM/Documento: {rm}
 Data de Devolução: {datetime.now().strftime("%d/%m/%Y às %H:%M")}
 
 Declaro ter recebido o objeto acima descrito em devidas condições.
@@ -394,7 +385,6 @@ Assinatura do Funcionário/Secretaria
         txt.insert("1.0", comprovante)
         txt.config(state="disabled")
 
-        # NOVO BOTÃO DE DOWNLOAD DO COMPROVANTE
         btn_frame = tk.Frame(comp_win, bg="#1e1e2e")
         btn_frame.pack(fill="x", padx=15, pady=(0, 15))
 
@@ -402,198 +392,20 @@ Assinatura do Funcionário/Secretaria
         btn_baixar.pack(fill="x")
 
     def salvar_comprovante_arquivo(self, item_id, conteudo):
-        nome_padrao = f"Comprovante_Retirada_Item_{item_id}.txt"
-        caminho_arquivo = filedialog.asksaveasfilename(
+        caminho = filedialog.asksaveasfilename(
             defaultextension=".txt",
-            filetypes=[("Arquivo de Texto", "*.txt"), ("Todos os Arquivos", "*.*")],
-            initialfile=nome_padrao,
-            title="Salvar Comprovante de Retirada"
+            initialfile=f"comprovante_item_{item_id}.txt",
+            filetypes=[("Arquivo de Texto", "*.txt")]
         )
-        if caminho_arquivo:
+        if caminho:
             try:
-                with open(caminho_arquivo, "w", encoding="utf-8") as f:
+                with open(caminho, "w", encoding="utf-8") as f:
                     f.write(conteudo)
-                messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso em:\n{caminho_arquivo}")
+                messagebox.showinfo("Sucesso", f"Comprovante salvo em:\n{caminho}")
             except Exception as e:
-                messagebox.showerror("Erro", f"Falha ao salvar o arquivo: {e}")
-
-    def carregar_fotos(self):
-        filenames = filedialog.askopenfilenames(
-            title="Selecione até 4 fotos",
-            filetypes=[("Imagens", "*.png;*.jpg;*.jpeg;*.webp")]
-        )
-        if filenames:
-            novas_fotos = list(filenames)
-            disponiveis = 4 - len(self.fotos_base64)
-            
-            if disponiveis <= 0:
-                messagebox.showwarning("Limite Atingido", "Limite de 4 fotos já foi atingido! Clique em 'Limpar Fotos' se quiser mudar.")
-                return
-
-            if len(novas_fotos) > disponiveis:
-                messagebox.showinfo("Aviso", f"Você pode adicionar mais {disponiveis} foto(s). Apenas as primeiras {disponiveis} serão adicionadas.")
-                novas_fotos = novas_fotos[:disponiveis]
-
-            for file in novas_fotos:
-                try:
-                    with open(file, "rb") as image_file:
-                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                        self.fotos_base64.append(f"data:image/jpeg;base64,{encoded_string}")
-                except Exception as e:
-                    messagebox.showerror("Erro", f"Erro ao processar imagem {file}: {e}")
-
-            qtd = len(self.fotos_base64)
-            self.lbl_status_foto.config(text=f"✓ {qtd} / 4 fotos selecionadas", fg="#4ade80")
-
-    def limpar_fotos_selecionadas(self):
-        self.fotos_base64 = []
-        if self.item_editando_id:
-            self.lbl_status_foto.config(text="Fotos limpas (não substituirá fotos atuais se não carregar novas)", fg="#94a3b8")
-        else:
-            self.lbl_status_foto.config(text="0 / 4 fotos selecionadas", fg="#94a3b8")
-
-    def salvar_item(self):
-        descricao = self.txt_descricao.get().strip()
-        categoria = self.cb_categoria.get()
-        data = self.txt_data.get().strip()
-        local = self.txt_local.get().strip()
-        status = self.cb_status.get()
-
-        if not descricao or not data or not local:
-            messagebox.showwarning("Atenção!", "Preencha todos os campos obrigatórios!")
-            return
-
-        payload = {
-            "descricao": descricao,
-            "categoria": categoria,
-            "data": data,
-            "local": local,
-            "status": status,
-            "fotos": self.fotos_base64
-        }
-
-        try:
-            if self.item_editando_id is None:
-                res = requests.post(f"{API_URL}/api/itens", json=payload, timeout=10)
-                msg_sucesso = "Registrado no PostgreSQL Neon!"
-            else:
-                res = requests.put(f"{API_URL}/api/itens/{self.item_editando_id}", json=payload, timeout=10)
-                msg_sucesso = f"Item #{self.item_editando_id} atualizado com sucesso!"
-
-            if res.status_code == 200:
-                messagebox.showinfo("Sucesso", msg_sucesso)
-                self.limpar_formulario()
-                self.carregar_tabela()
-            else:
-                messagebox.showerror("Erro", f"Falha no servidor ({res.status_code}):\n{res.text}")
-        except Exception as e:
-            messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
-
-    def preparar_edicao_item(self):
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Atenção", "Selecione um item da tabela para editar!")
-            return
-
-        valores = self.tree.item(selected[0], "values")
-        
-        self.item_editando_id = valores[0]
-        self.txt_descricao.delete(0, tk.END)
-        self.txt_descricao.insert(0, valores[1])
-        
-        if valores[2] in self.cb_categoria["values"]:
-            self.cb_categoria.set(valores[2])
-
-        self.txt_data.delete(0, tk.END)
-        self.txt_data.insert(0, valores[3])
-
-        self.txt_local.delete(0, tk.END)
-        self.txt_local.insert(0, valores[4])
-
-        status_normalizado = valores[5].upper()
-        if status_normalizado in ["GUARDADO", "DISPONIVEL"]:
-            status_normalizado = "DISPONÍVEL"
-
-        if status_normalizado in self.cb_status["values"]:
-            self.cb_status.set(status_normalizado)
-
-        self.fotos_base64 = []
-        self.lbl_status_foto.config(text="Manter foto(s) atual(is)", fg="#94a3b8")
-
-        self.form_frame.config(text=f" Editando Item ID #{self.item_editando_id} ", fg="#eab308")
-        self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
-        self.btn_cancelar.grid()
-
-    def limpar_formulario(self):
-        self.item_editando_id = None
-        self.txt_descricao.delete(0, tk.END)
-        self.cb_categoria.current(0)
-        self.txt_data.delete(0, tk.END)
-        self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
-        self.txt_local.delete(0, tk.END)
-        self.cb_status.current(0)
-        self.fotos_base64 = []
-        self.lbl_status_foto.config(text="0 / 4 fotos selecionadas", fg="#94a3b8")
-
-        self.form_frame.config(text=" Cadastro / Edição de Objeto ", fg="#38bdf8")
-        self.btn_salvar.config(text="✔ Gravar no Banco Nuvem", bg="#16a34a", fg="white")
-        self.btn_cancelar.grid_remove()
-
-    def excluir_item(self):
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Atenção", "Selecione um item da tabela para excluir!")
-            return
-
-        item_values = self.tree.item(selected[0], "values")
-        item_id = item_values[0]
-        item_desc = item_values[1]
-
-        if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir o item '{item_desc}' (ID #{item_id})?"):
-            try:
-                res = requests.delete(f"{API_URL}/api/itens/{item_id}", timeout=10)
-                if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item removido com sucesso!")
-                    self.limpar_formulario()
-                    self.carregar_tabela()
-                else:
-                    messagebox.showerror("Erro", f"Falha ao excluir item ({res.status_code}):\n{res.text}")
-            except Exception as e:
-                messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
-
-    def concluir_doacoes(self):
-        if messagebox.askyesno("Confirmar Conclusão de Doações", "Tem certeza que deseja APAGAR TODOS os itens com o status 'DOAÇÃO FEITA'?"):
-            try:
-                res = requests.delete(f"{API_URL}/api/itens/doacoes/concluir", timeout=10)
-                if res.status_code == 200:
-                    dados = res.json()
-                    messagebox.showinfo("Sucesso", f"Operação concluída!\n{dados.get('removidos', 0)} item(ns) removido(s) do banco de dados.")
-                    self.carregar_tabela()
-                else:
-                    messagebox.showerror("Erro", f"Falha ao concluir doações ({res.status_code}):\n{res.text}")
-            except Exception as e:
-                messagebox.showerror("Erro de Conexão", f"Não foi possível se conectar à API: {e}")
-
-    def carregar_tabela(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        try:
-            res = requests.get(f"{API_URL}/api/itens", timeout=10)
-            if res.status_code == 200:
-                itens = res.json()
-                for i in itens:
-                    categoria = i.get("categoria", "OUTROS")
-                    solicitado_por = i.get("solicitado_por") or "-"
-                    rm_aluno = i.get("rm_aluno") or "-"
-                    status = i.get("status", "DISPONÍVEL")
-                    if status.upper() == "GUARDADO":
-                        status = "DISPONÍVEL"
-                    self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], status, solicitado_por, rm_aluno))
-        except Exception as e:
-            print(f"Aguardando conexão... {e}")
+                messagebox.showerror("Erro", f"Não foi possível salvar o arquivo: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = AdminDesktopApp(root)
-    root.mainloop() 
+    app = AchadosPerdidosApp(root)
+    root.mainloop()
