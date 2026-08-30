@@ -35,11 +35,8 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
-        cursor.execute('''
-            ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;
-        ''')
 
-        # Tabela de Entregues (Separada)
+        # Tabela de Entregues / Historico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -47,7 +44,9 @@ def init_db():
                 nome_item TEXT NOT NULL,
                 retirado_por VARCHAR(100) NOT NULL,
                 rm_retirante VARCHAR(30) NOT NULL,
-                data_entrega VARCHAR(20) NOT NULL
+                turma_curso VARCHAR(50),
+                data_entrega VARCHAR(30) NOT NULL,
+                funcionario_responsavel VARCHAR(100)
             );
         ''')
 
@@ -59,10 +58,6 @@ def init_db():
 
 if DATABASE_URL:
     init_db()
-
-@app.route('/')
-def home():
-    return jsonify({"status": "online", "banco": "Neon PostgreSQL", "mensagem": "API Achados e Perdidos ETEC Ativa"})
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
@@ -114,71 +109,10 @@ def cadastrar_item():
         ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
         novo_id = cursor.fetchone()[0]
 
-        # Se for cadastrado direto como ENTREGUE
-        if status.upper() == 'ENTREGUE':
-            retirado_por = data.get('retirado_por', 'Não informado')
-            rm_retirante = data.get('rm_retirante', 'Não informado')
-            data_entrega = data.get('data_entrega', data_enc)
-            cursor.execute('''
-                INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, data_entrega)
-                VALUES (%s, %s, %s, %s, %s);
-            ''', (novo_id, descricao, retirado_por, rm_retirante, data_entrega))
-
         conn.commit()
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/<int:item_id>', methods=['PUT'])
-def atualizar_item(item_id):
-    data = request.json
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-    data_enc = data.get('data')
-    local = data.get('local')
-    fotos = data.get('fotos')
-    status = data.get('status', 'DISPONÍVEL')
-
-    if not descricao or not data_enc or not local:
-        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        if fotos is not None and len(fotos) > 0:
-            foto_capa = fotos[0]
-            fotos_json_str = json.dumps(fotos)
-            cursor.execute('''
-                UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
-                WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
-        else:
-            cursor.execute('''
-                UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
-                WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, status, item_id))
-
-        if status.upper() == 'ENTREGUE':
-            retirado_por = data.get('retirado_por', 'Não informado')
-            rm_retirante = data.get('rm_retirante', 'Não informado')
-            data_entrega = data.get('data_entrega', data_enc)
-            
-            # Remove eventual registro anterior e recria para atualizar
-            cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-            cursor.execute('''
-                INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, data_entrega)
-                VALUES (%s, %s, %s, %s, %s);
-            ''', (item_id, descricao, retirado_por, rm_retirante, data_entrega))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -196,7 +130,7 @@ def localizar_item(item_id):
             return jsonify({"success": False, "message": "Item não encontrado!"}), 404
 
         if (item['status'] or '').upper() == 'ENTREGUE':
-            cursor.execute("SELECT retirado_por, rm_retirante, data_entrega FROM entregues WHERE item_id = %s ORDER BY id DESC LIMIT 1;", (item_id,))
+            cursor.execute("SELECT retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel FROM entregues WHERE item_id = %s ORDER BY id DESC LIMIT 1;", (item_id,))
             dados_entrega = cursor.fetchone()
             if dados_entrega:
                 item['entrega'] = dados_entrega
@@ -204,6 +138,58 @@ def localizar_item(item_id):
         cursor.close()
         conn.close()
         return jsonify({"success": True, "item": item})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/itens/<int:item_id>', methods=['PUT'])
+def atualizar_item(item_id):
+    data = request.json
+    descricao = data.get('descricao')
+    categoria = data.get('categoria')
+    data_enc = data.get('data')
+    local = data.get('local')
+    fotos = data.get('fotos')
+    status = data.get('status', 'DISPONÍVEL')
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if descricao and data_enc and local:
+            if fotos is not None and len(fotos) > 0:
+                foto_capa = fotos[0]
+                fotos_json_str = json.dumps(fotos)
+                cursor.execute('''
+                    UPDATE itens
+                    SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
+                    WHERE id = %s;
+                ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
+            else:
+                cursor.execute('''
+                    UPDATE itens
+                    SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
+                    WHERE id = %s;
+                ''', (descricao, categoria, data_enc, local, status, item_id))
+        else:
+            cursor.execute("UPDATE itens SET status = %s WHERE id = %s;", (status, item_id))
+
+        if status.upper() == 'ENTREGUE':
+            retirado_por = data.get('retirado_por', 'Não informado')
+            rm_retirante = data.get('rm_retirante', 'Não informado')
+            turma_curso = data.get('turma_curso', '-')
+            data_entrega = data.get('data_entrega', data_enc)
+            func_resp = data.get('funcionario_responsavel', 'Secretaria')
+            
+            cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
+            cursor.execute('''
+                INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel)
+                VALUES (%s, %s, %s, %s, %s, %s, %s);
+            ''', (item_id, descricao or "Item #" + str(item_id), retirado_por, rm_retirante, turma_curso, data_entrega, func_resp))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -232,46 +218,6 @@ def concluir_doacoes():
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/solicitar', methods=['POST'])
-def solicitar_item():
-    data = request.json
-    item_id = data.get('id')
-    nome_aluno = data.get('nome')
-    rm_aluno = data.get('rm')
-    
-    if not item_id or not nome_aluno or not rm_aluno:
-        return jsonify({"success": False, "message": "Dados incompletos do aluno!"}), 400
-        
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
-
-        status_atual = (item['status'] or 'DISPONÍVEL').upper()
-        if status_atual in ['SOLICITADO', 'ENTREGUE', 'PARA DOAÇÃO', 'DOAÇÃO FEITA']:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
-
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s;
-        ''', (nome_aluno, rm_aluno, item_id))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
