@@ -164,7 +164,6 @@ class AdminDesktopApp:
         actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
         actions_frame.pack(fill="x", pady=(10, 0))
 
-        # NOVO BOTÃO DE LOCALIZAR E DAR BAIXA
         btn_localizar = tk.Button(actions_frame, text="🔍 Localizar / Dar Baixa", command=self.abrir_janela_localizar_item, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_localizar.pack(side="left", expand=True, fill="x", padx=(0, 2))
 
@@ -182,7 +181,6 @@ class AdminDesktopApp:
 
         self.carregar_tabela()
 
-    # FUNCIONALIDADE DE LOCALIZAR E GERENCIAR O ITEM PELO ID
     def abrir_janela_localizar_item(self):
         item_id = simpledialog.askinteger("Localizar Item", "Digite o código/ID do item:", parent=self.root)
         if not item_id:
@@ -206,8 +204,8 @@ class AdminDesktopApp:
 
     def exibir_modal_confirmacao_item(self, item):
         win = tk.Toplevel(self.root)
-        win.title(f"Item #{item['id']} - Confirmação")
-        win.geometry("450x480")
+        win.title(f"Item #{item['id']} - Detalhes e Ações")
+        win.geometry("480x520")
         win.configure(bg="#1e1e2e")
         win.grab_set()
         win.resizable(False, False)
@@ -217,14 +215,22 @@ class AdminDesktopApp:
         info_frame = tk.Frame(win, bg="#334155", padx=15, pady=15)
         info_frame.pack(fill="x", padx=20, pady=5)
 
+        status_atual = item.get('status', 'DISPONÍVEL').upper()
+
         tk.Label(info_frame, text=f"Descrição: {item['txt_descricao']}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#ffffff", anchor="w").pack(fill="x")
         tk.Label(info_frame, text=f"Categoria: {item.get('categoria', 'N/A')}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
         tk.Label(info_frame, text=f"Local: {item['txt_local']}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
         tk.Label(info_frame, text=f"Data Encontrado: {item['txt_data']}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
-        tk.Label(info_frame, text=f"Status Atual: {item.get('status', 'DISPONÍVEL')}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#facc15", anchor="w").pack(fill="x", pady=(5, 0))
+        tk.Label(info_frame, text=f"Status Atual: {status_atual}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#facc15" if status_atual != "ENTREGUE" else "#4ade80", anchor="w").pack(fill="x", pady=(5, 0))
 
-        if item.get('solicitado_por'):
-            tk.Label(info_frame, text=f"Solicitante: {item['solicitado_por']} (RM: {item.get('rm_aluno', '-')})", font=("Helvetica", 9, "bold"), bg="#334155", fg="#4ade80", anchor="w").pack(fill="x", pady=(2, 0))
+        # CORREÇÃO: SE O ITEM ESTIVER ENTREGUE, DESTACA O NOME E RM DO RETIRANTE
+        if status_atual == "ENTREGUE":
+            solicitante = item.get('solicitado_por') or "Não Informado"
+            rm = item.get('rm_aluno') or "Não Informado"
+            tk.Label(info_frame, text=f"✔ ENTREGUE PARA: {solicitante}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#4ade80", anchor="w").pack(fill="x", pady=(6, 0))
+            tk.Label(info_frame, text=f"   RM/Documento: {rm}", font=("Helvetica", 9, "bold"), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x")
+        elif item.get('solicitado_por'):
+            tk.Label(info_frame, text=f"Solicitado Por: {item['solicitado_por']} (RM: {item.get('rm_aluno', '-')})", font=("Helvetica", 9, "bold"), bg="#334155", fg="#38bdf8", anchor="w").pack(fill="x", pady=(2, 0))
 
         tk.Label(win, text="Escolha uma opção de ação para este item:", font=("Helvetica", 9, "bold"), bg="#1e1e2e", fg="#94a3b8").pack(pady=(15, 5))
 
@@ -234,6 +240,7 @@ class AdminDesktopApp:
         btn_doacao = tk.Button(win, text="🎁 Alterar para 'Para Doação'", command=lambda: [win.destroy(), self.alterar_status_rapido(item['id'], "PARA DOAÇÃO")], bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
         btn_doacao.pack(fill="x", padx=20, pady=3)
 
+        # CORREÇÃO DO BOTÃO EDITAR NA MODAL
         btn_editar = tk.Button(win, text="✏ Editar Informações do Objeto", command=lambda: [win.destroy(), self.selecionar_e_editar_item_por_id(item['id'])], bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
         btn_editar.pack(fill="x", padx=20, pady=3)
 
@@ -290,13 +297,61 @@ class AdminDesktopApp:
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao atualizar status: {e}")
 
+    # CORREÇÃO COMPLETA: CARREGA O ITEM DIRETAMENTE E COLOCA EM EDIÇÃO
     def selecionar_e_editar_item_por_id(self, item_id):
+        item_id_str = str(item_id)
+        encontrado = False
+
         for child in self.tree.get_children():
-            if self.tree.item(child, "values")[0] == item_id:
+            valores = self.tree.item(child, "values")
+            if str(valores[0]) == item_id_str:
                 self.tree.selection_set(child)
                 self.tree.focus(child)
-                self.preparar_edicao_item()
+                self.tree.see(child)
+                encontrado = True
                 break
+
+        if encontrado:
+            self.preparar_edicao_item()
+        else:
+            try:
+                res = requests.get(f"{API_URL}/api/itens", timeout=10)
+                if res.status_code == 200:
+                    itens = res.json()
+                    item = next((i for i in itens if str(i['id']) == item_id_str), None)
+                    if item:
+                        self.preparar_edicao_direta(item)
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao carregar dados do item: {e}")
+
+    def preparar_edicao_direta(self, item):
+        self.item_editando_id = item['id']
+        self.txt_descricao.delete(0, tk.END)
+        self.txt_descricao.insert(0, item['txt_descricao'])
+
+        cat = item.get('categoria', 'OUTROS')
+        if cat in self.cb_categoria["values"]:
+            self.cb_categoria.set(cat)
+
+        self.txt_data.delete(0, tk.END)
+        self.txt_data.insert(0, item['txt_data'])
+
+        self.txt_local.delete(0, tk.END)
+        self.txt_local.insert(0, item['txt_local'])
+
+        status_normalizado = item.get('status', 'DISPONÍVEL').upper()
+        if status_normalizado in ["GUARDADO", "DISPONIVEL"]:
+            status_normalizado = "DISPONÍVEL"
+
+        if status_normalizado in self.cb_status["values"]:
+            self.cb_status.set(status_normalizado)
+
+        self.fotos_base64 = []
+        self.lbl_status_foto.config(text="Manter foto(s) atual(is)", fg="#94a3b8")
+
+        self.form_frame.config(text=f" Editando Item ID #{self.item_editando_id} ", fg="#eab308")
+        self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
+        self.btn_cancelar.grid()
 
     def gerar_comprovante_retirada(self, item):
         comprovante = f"""==================================================
@@ -309,25 +364,58 @@ Categoria: {item.get('categoria', 'N/A')}
 Local Encontrado: {item['txt_local']}
 Data de Registro: {item['txt_data']}
 
+--------------------------------------------------
 DADOS DO RETIRANTE:
 Nome Completo: {item.get('solicitado_por', '________________________')}
-RM: {item.get('rm_aluno', '__________')}
+RM/Documento: {item.get('rm_aluno', '__________')}
 Data de Devolução: {datetime.now().strftime("%d/%m/%Y às %H:%M")}
 
 Declaro ter recebido o objeto acima descrito em devidas condições.
 
-Assinatura do Aluno/Responsável: ___________________________
+__________________________________________________
+Assinatura do Aluno/Responsável
+
+--------------------------------------------------
+DADOS DO ATENDIMENTO:
+Funcionário Responsável: ___________________________
+
+__________________________________________________
+Assinatura do Funcionário/Secretaria
 =================================================="""
         
         comp_win = tk.Toplevel(self.root)
-        comp_win.title("Comprovante de Retirada")
-        comp_win.geometry("480x420")
+        comp_win.title(f"Comprovante de Retirada - Item #{item['id']}")
+        comp_win.geometry("500x520")
         comp_win.configure(bg="#1e1e2e")
+        comp_win.resizable(False, False)
 
         txt = tk.Text(comp_win, bg="#0f172a", fg="#38bdf8", font=("Courier", 9), padx=10, pady=10)
-        txt.pack(fill="both", expand=True, padx=10, pady=10)
+        txt.pack(fill="both", expand=True, padx=15, pady=(15, 10))
         txt.insert("1.0", comprovante)
         txt.config(state="disabled")
+
+        # NOVO BOTÃO DE DOWNLOAD DO COMPROVANTE
+        btn_frame = tk.Frame(comp_win, bg="#1e1e2e")
+        btn_frame.pack(fill="x", padx=15, pady=(0, 15))
+
+        btn_baixar = tk.Button(btn_frame, text="💾 Baixar Comprovante (.txt)", command=lambda: self.salvar_comprovante_arquivo(item['id'], comprovante), bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", pady=8, cursor="hand2")
+        btn_baixar.pack(fill="x")
+
+    def salvar_comprovante_arquivo(self, item_id, conteudo):
+        nome_padrao = f"Comprovante_Retirada_Item_{item_id}.txt"
+        caminho_arquivo = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Arquivo de Texto", "*.txt"), ("Todos os Arquivos", "*.*")],
+            initialfile=nome_padrao,
+            title="Salvar Comprovante de Retirada"
+        )
+        if caminho_arquivo:
+            try:
+                with open(caminho_arquivo, "w", encoding="utf-8") as f:
+                    f.write(conteudo)
+                messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso em:\n{caminho_arquivo}")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Falha ao salvar o arquivo: {e}")
 
     def carregar_fotos(self):
         filenames = filedialog.askopenfilenames(
@@ -508,4 +596,4 @@ Assinatura do Aluno/Responsável: ___________________________
 if __name__ == "__main__":
     root = tk.Tk()
     app = AdminDesktopApp(root)
-    root.mainloop()
+    root.mainloop() 
