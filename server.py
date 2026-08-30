@@ -4,6 +4,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -19,6 +20,8 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Tabela principal de itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -33,10 +36,20 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
-        # Garante a coluna fotos_json caso a tabela já existisse
+        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
+
+        # NOVA TABELA: entregues
         cursor.execute('''
-            ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;
+            CREATE TABLE IF NOT EXISTS entregues (
+                id SERIAL PRIMARY KEY,
+                item_id INT NOT NULL,
+                nome_item TEXT NOT NULL,
+                quem_pegou VARCHAR(100) NOT NULL,
+                rm_documento VARCHAR(30) NOT NULL,
+                dia_pegou VARCHAR(30) NOT NULL
+            );
         ''')
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -62,7 +75,6 @@ def get_itens():
         cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
         itens = cursor.fetchall()
         
-        # Formata o array de fotos para o frontend
         for item in itens:
             fotos = []
             if item.get('fotos_json'):
@@ -120,9 +132,15 @@ def atualizar_item(item_id):
     local = data.get('local')
     fotos = data.get('fotos')
     status = data.get('status', 'DISPONÍVEL')
+    solicitado_por = data.get('solicitado_por')
+    rm_aluno = data.get('rm_aluno')
 
     if not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+
+    # EXIGÊNCIA: Se status for ENTREGUE, exige o nome e RM/Documento
+    if status.upper() == "ENTREGUE" and (not solicitado_por or not rm_aluno):
+        return jsonify({"success": False, "message": "Para marcar como ENTREGUE é obrigatório informar o nome do retirante e o RM/Documento!"}), 400
 
     try:
         conn = get_db_connection()
@@ -133,15 +151,23 @@ def atualizar_item(item_id):
             fotos_json_str = json.dumps(fotos)
             cursor.execute('''
                 UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
+                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s, solicitado_por = %s, rm_aluno = %s
                 WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
+            ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, solicitado_por, rm_aluno, item_id))
         else:
             cursor.execute('''
                 UPDATE itens
-                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
+                SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s, solicitado_por = %s, rm_aluno = %s
                 WHERE id = %s;
-            ''', (descricao, categoria, data_enc, local, status, item_id))
+            ''', (descricao, categoria, data_enc, local, status, solicitado_por, rm_aluno, item_id))
+
+        # Registrar no histórico da tabela 'entregues' se o status for ENTREGUE
+        if status.upper() == "ENTREGUE":
+            dia_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
+            cursor.execute('''
+                INSERT INTO entregues (item_id, nome_item, quem_pegou, rm_documento, dia_pegou)
+                VALUES (%s, %s, %s, %s, %s);
+            ''', (item_id, descricao, solicitado_por, rm_aluno, dia_hoje))
 
         conn.commit()
         cursor.close()
