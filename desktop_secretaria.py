@@ -8,7 +8,7 @@ from PIL import Image, ImageTk
 from datetime import datetime
 
 # Configuração da URL da API
-API_URL = os.environ.get("API_URL", "http://127.0.0.1:5000")
+API_URL = os.environ.get("API_URL", "https://achados-e-perdidos-etec.vercel.app/")
 
 class AchadosPerdidosApp:
     def __init__(self, root):
