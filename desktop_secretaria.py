@@ -167,7 +167,7 @@ class AdminDesktopApp:
         btn_editar = tk.Button(actions_frame, text="✏ Editar Item", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
 
-        btn_localizar = tk.Button(actions_frame, text="🔍 Localizar / Baixa", command=self.abrir_janela_localizar, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_localizar = tk.Button(actions_frame, text="🔍 Localizar / Dar Baixa", command=self.abrir_janela_localizar, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_localizar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
         btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
@@ -236,34 +236,19 @@ class AdminDesktopApp:
             "fotos": self.fotos_base64
         }
 
-        # Solicita dados de quem retirou se for marcado como ENTREGUE
-        if status.upper() == 'ENTREGUE':
-            nome_ret = simpledialog.askstring("Dados da Entrega", "Nome completo do retirante:", parent=self.root)
-            rm_ret = simpledialog.askstring("Dados da Entrega", "RM/Documento do retirante:", parent=self.root)
-            if not nome_ret or not rm_ret:
-                messagebox.showwarning("Atenção", "É necessário informar o nome e RM/Documento para marcar como ENTREGUE!")
-                return
-            payload["retirado_por"] = nome_ret
-            payload["rm_retirante"] = rm_ret
-            payload["data_entrega"] = datetime.now().strftime("%d/%m/%Y")
-
         try:
             if self.item_editando_id is None:
                 res = requests.post(f"{API_URL}/api/itens", json=payload, timeout=10)
-                msg_sucesso = "Registrado no PostgreSQL Neon!"
+                if res.status_code == 200:
+                    dados = res.json()
+                    novo_id = dados.get("id")
+                    messagebox.showinfo("Sucesso!", f"Objeto cadastrado com Sucesso!\n\nID / CÓDIGO GERADO: #{novo_id}")
             else:
                 res = requests.put(f"{API_URL}/api/itens/{self.item_editando_id}", json=payload, timeout=10)
-                msg_sucesso = f"Item #{self.item_editando_id} atualizado com sucesso!"
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso!", f"Item #{self.item_editando_id} atualizado com sucesso!")
 
             if res.status_code == 200:
-                messagebox.showinfo("Sucesso", msg_sucesso)
-                if status.upper() == 'ENTREGUE':
-                    self.exibir_comprovante_retirada(
-                        self.item_editando_id or "NOVO",
-                        descricao,
-                        payload.get("retirado_por"),
-                        payload.get("rm_retirante")
-                    )
                 self.limpar_formulario()
                 self.carregar_tabela()
             else:
@@ -315,26 +300,29 @@ class AdminDesktopApp:
     def abrir_janela_localizar(self):
         top = tk.Toplevel(self.root)
         top.title("Localizar Item / Dar Baixa")
-        top.geometry("450x380")
+        top.geometry("520x560")
         top.configure(bg="#1e1e2e")
         top.transient(self.root)
         top.grab_set()
 
-        tk.Label(top, text="Digite o ID do Item:", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(20, 5))
-        txt_busca_id = tk.Entry(top, font=("Helvetica", 12), bg="#334155", fg="white", justify="center", insertbackground="white")
-        txt_busca_id.pack(pady=5)
+        tk.Label(top, text="Digite o ID / Código do Item:", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(15, 5))
+        
+        frame_busca = tk.Frame(top, bg="#1e1e2e")
+        frame_busca.pack(pady=5)
+
+        txt_busca_id = tk.Entry(frame_busca, font=("Helvetica", 12, "bold"), bg="#334155", fg="white", justify="center", width=12, insertbackground="white")
+        txt_busca_id.pack(side="left", padx=5)
         txt_busca_id.focus()
 
-        lbl_resultado = tk.Label(top, text="", bg="#1e1e2e", fg="#e2e8f0", font=("Helvetica", 10), justify="left", wraplength=400)
-        lbl_resultado.pack(pady=15)
+        lbl_resultado = tk.Label(top, text="Digite o ID e clique em Buscar para exibir as opções.", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10), justify="left", wraplength=460)
+        lbl_resultado.pack(pady=10)
 
-        btn_editar_loc = tk.Button(top, text="✏ Editar Este Item", bg="#eab308", fg="#0f172a", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2")
-        btn_editar_loc.pack_forget()
+        options_frame = tk.Frame(top, bg="#1e1e2e")
 
         def buscar():
             item_id = txt_busca_id.get().strip()
             if not item_id.isdigit():
-                messagebox.showwarning("Aviso", "Digite um ID válido (número)!", parent=top)
+                messagebox.showwarning("Aviso", "Digite um código/ID válido!", parent=top)
                 return
 
             try:
@@ -343,62 +331,174 @@ class AdminDesktopApp:
                     data = res.json().get("item", {})
                     st = data.get("status", "DISPONÍVEL")
                     
-                    text = f"ID: #{data.get('id')}\n"
-                    text += f"Descrição: {data.get('txt_descricao')}\n"
-                    text += f"Categoria: {data.get('categoria')}\n"
-                    text += f"Data: {data.get('txt_data')} | Local: {data.get('txt_local')}\n"
-                    text += f"Status: {st}\n"
+                    text = f"📦 ID #{data.get('id')} - {data.get('txt_descricao')}\n"
+                    text += f"Categoria: {data.get('categoria')} | Data: {data.get('txt_data')}\n"
+                    text += f"Local Encontrado: {data.get('txt_local')}\n"
+                    text += f"Status Atual: {st}\n"
 
                     if st.upper() == 'ENTREGUE' and "entrega" in data:
                         ent = data["entrega"]
-                        text += f"\n--- DADOS DA RETIRADA ---\n"
-                        text += f"Retirado Por: {ent.get('retirado_por')}\n"
-                        text += f"RM/Doc: {ent.get('rm_retirante')}\n"
-                        text += f"Data Entrega: {ent.get('data_entrega')}\n"
+                        text += f"\n--- RETIRADO POR ---\n"
+                        text += f"Nome: {ent.get('retirado_por')} | RM/Doc: {ent.get('rm_retirante')}\n"
+                        text += f"Turma/Curso: {ent.get('turma_curso')} | Data: {ent.get('data_entrega')}\n"
 
-                    lbl_resultado.config(text=text)
+                    lbl_resultado.config(text=text, fg="#ffffff")
 
-                    btn_editar_loc.config(command=lambda: [top.destroy(), self.preparar_edicao_item(data.get('id'))])
-                    btn_editar_loc.pack(pady=5)
+                    for child in options_frame.winfo_children():
+                        child.destroy()
+
+                    options_frame.pack(fill="x", padx=20, pady=10)
+
+                    # OPÇÃO 1: Imprimir / Gerar Comprovante
+                    btn_comp = tk.Button(options_frame, text="📄 Imprimir / Gerar Comprovante de Retirada", 
+                                         command=lambda: self.exibir_comprovante_retirada(data.get('id'), data.get('txt_descricao'), data.get('solicitado_por'), data.get('rm_aluno')), 
+                                         bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
+                    btn_comp.pack(fill="x", pady=3)
+
+                    # OPÇÃO 2: Editar Informações do Objeto
+                    btn_edit = tk.Button(options_frame, text="✏ Editar Informações do Objeto", 
+                                         command=lambda: [top.destroy(), self.preparar_edicao_item(data.get('id'))], 
+                                         bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
+                    btn_edit.pack(fill="x", pady=3)
+
+                    # OPÇÃO 3: Confirmar "Doação Realizada"
+                    btn_doar = tk.Button(options_frame, text="🎁 Confirmar 'Doação Realizada'", 
+                                         command=lambda: self.confirmar_doacao_item(data.get('id'), top), 
+                                         bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
+                    btn_doar.pack(fill="x", pady=3)
+
+                    # OPÇÃO 4: Dar Baixa como "Entregue ao Dono"
+                    btn_baixa = tk.Button(options_frame, text="✅ Dar Baixa como 'Entregue ao Dono'", 
+                                          command=lambda: self.dar_baixa_entregue(data.get('id'), data.get('txt_descricao'), top), 
+                                          bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
+                    btn_baixa.pack(fill="x", pady=3)
+
                 else:
-                    lbl_resultado.config(text="❌ Item não encontrado no banco de dados!")
-                    btn_editar_loc.pack_forget()
+                    lbl_resultado.config(text="❌ Item não encontrado no banco de dados!", fg="#f87171")
+                    options_frame.pack_forget()
             except Exception as e:
                 messagebox.showerror("Erro", f"Erro na requisição: {e}", parent=top)
 
-        btn_buscar = tk.Button(top, text="🔍 Buscar", command=buscar, bg="#0284c7", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2")
-        btn_buscar.pack(pady=5)
+        btn_buscar = tk.Button(frame_busca, text="🔍 Buscar", command=buscar, bg="#0284c7", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2")
+        btn_buscar.pack(side="left")
 
-    def exibir_comprovante_retirada(self, item_id, descricao, retirante, rm):
+    def dar_baixa_entregue(self, item_id, descricao, parent_top):
+        top_baixa = tk.Toplevel(parent_top)
+        top_baixa.title(f"Baixa / Devolução - Item #{item_id}")
+        top_baixa.geometry("380x380")
+        top_baixa.configure(bg="#1e1e2e")
+        top_baixa.transient(parent_top)
+        top_baixa.grab_set()
+
+        tk.Label(top_baixa, text=f"Registrar Devolução: #{item_id}", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(15, 10))
+
+        tk.Label(top_baixa, text="Nome Completo do Retirante:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
+        txt_nome = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white", insertbackground="white")
+        txt_nome.pack(fill="x", padx=25)
+
+        tk.Label(top_baixa, text="RM / Documento:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
+        txt_rm = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white", insertbackground="white")
+        txt_rm.pack(fill="x", padx=25)
+
+        tk.Label(top_baixa, text="Turma / Curso:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
+        txt_turma = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white", insertbackground="white")
+        txt_turma.pack(fill="x", padx=25)
+
+        tk.Label(top_baixa, text="Funcionário Responsável:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
+        txt_func = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white", insertbackground="white")
+        txt_func.insert(0, "Secretaria ETEC")
+        txt_func.pack(fill="x", padx=25)
+
+        def salvar_baixa():
+            nome = txt_nome.get().strip()
+            rm = txt_rm.get().strip()
+            turma = txt_turma.get().strip()
+            func = txt_func.get().strip()
+
+            if not nome or not rm:
+                messagebox.showwarning("Atenção", "Preencha Nome e RM do retirante!", parent=top_baixa)
+                return
+
+            payload = {
+                "status": "ENTREGUE",
+                "retirado_por": nome,
+                "rm_retirante": rm,
+                "turma_curso": turma,
+                "funcionario_responsavel": func,
+                "data_entrega": datetime.now().strftime("%d/%m/%Y %H:%M")
+            }
+
+            try:
+                res = requests.put(f"{API_URL}/api/itens/{item_id}", json=payload, timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Dar baixa como ENTREGUE realizado com sucesso!", parent=top_baixa)
+                    top_baixa.destroy()
+                    parent_top.destroy()
+                    self.carregar_tabela()
+                    self.exibir_comprovante_retirada(item_id, descricao, nome, rm, func, turma)
+                else:
+                    messagebox.showerror("Erro", f"Erro no servidor: {res.text}", parent=top_baixa)
+            except Exception as e:
+                messagebox.showerror("Erro", f"Conexão falhou: {e}", parent=top_baixa)
+
+        btn_confirmar = tk.Button(top_baixa, text="✔ Confirmar Baixa e Gerar Recibo", command=salvar_baixa, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", pady=8)
+        btn_confirmar.pack(fill="x", padx=25, pady=20)
+
+    def confirmar_doacao_item(self, item_id, parent_top):
+        entidade = simpledialog.askstring("Confirmar Doação", "Informe o nome da Instituição/Aluno favorecido:", parent=parent_top)
+        if entidade:
+            try:
+                payload = {"status": "DOAÇÃO FEITA"}
+                res = requests.put(f"{API_URL}/api/itens/{item_id}", json=payload, timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", f"Item #{item_id} marcado como 'DOAÇÃO FEITA' para '{entidade}'!", parent=parent_top)
+                    parent_top.destroy()
+                    self.carregar_tabela()
+            except Exception as e:
+                messagebox.showerror("Erro", f"Falha na atualização: {e}", parent=parent_top)
+
+    def exibir_comprovante_retirada(self, item_id, descricao, retirante_p="", rm_p="", func_p="", turma_p=""):
         top = tk.Toplevel(self.root)
         top.title("Comprovante de Retirada de Objeto")
-        top.geometry("480x520")
+        top.geometry("500x580")
         top.configure(bg="#1e1e2e")
 
-        func_nome = simpledialog.askstring("Assinatura", "Nome do funcionário que efetuou a devolução:", parent=self.root) or "Secretaria ETEC"
+        func_nome = func_p or simpledialog.askstring("Assinatura", "Nome do funcionário atendente:", parent=self.root) or "Secretaria ETEC"
+        nome_retirante = retirante_p or simpledialog.askstring("Dados", "Nome completo do retirante:", parent=self.root) or "Não informado"
+        rm_retirante = rm_p or simpledialog.askstring("Dados", "RM / Documento do retirante:", parent=self.root) or "Não informado"
 
         texto_comprovante = f"""---------------------------------------------------
         ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO
            COMPROVANTE DE RETIRADA DE OBJETO
 ---------------------------------------------------
 Data/Hora: {datetime.now().strftime("%d/%m/%Y - %H:%M")}
-ID do Item: #{item_id}
-Descrição: {descricao}
+ID / Código do Item: #{item_id}
+Descrição do Objeto: {descricao}
 
 DADOS DO RETIRANTE:
-Nome Completo: {retirante}
-RM / Documento: {rm}
+Nome Completo: {nome_retirante}
+RM / Documento: {rm_retirante}
+Turma / Curso: {turma_p or 'N/A'}
 
-RESPONSÁVEL PELA DEVOLUÇÃO:
-Funcionário: {func_nome}
+ATENDIMENTO:
+Funcionário Resp.: {func_nome}
 
 ---------------------------------------------------
-Assinatura do Retirante: ___________________________
+TERMO DE RESPONSABILIDADE:
+Declaro que recebi o objeto acima descrito em 
+perfeitas condições.
 
-Assinatura do Funcionário: _________________________
+Assinatura do Retirante: 
+
+__________________________________________________
+
+
+Assinatura do Funcionário Responsável:
+
+__________________________________________________
 ---------------------------------------------------"""
 
-        lbl_txt = tk.Text(top, font=("Courier", 10), bg="#0f172a", fg="#38bdf8", padx=10, pady=10)
+        lbl_txt = tk.Text(top, font=("Courier", 9), bg="#0f172a", fg="#38bdf8", padx=10, pady=10)
         lbl_txt.insert("1.0", texto_comprovante)
         lbl_txt.config(state="disabled")
         lbl_txt.pack(fill="both", expand=True, padx=15, pady=15)
@@ -410,7 +510,7 @@ Assinatura do Funcionário: _________________________
                     f.write(texto_comprovante)
                 messagebox.showinfo("Sucesso", "Comprovante salvo com sucesso!", parent=top)
 
-        btn_dl = tk.Button(top, text="💾 Baixar / Imprimir Comprovante", command=baixar, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", pady=8)
+        btn_dl = tk.Button(top, text="💾 Baixar / Imprimir Comprovante (.TXT)", command=baixar, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", pady=8)
         btn_dl.pack(fill="x", padx=15, pady=(0, 15))
 
     def limpar_formulario(self):
