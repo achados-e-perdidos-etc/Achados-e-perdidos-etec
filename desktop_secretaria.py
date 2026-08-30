@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import requests
 import base64
 from datetime import datetime
@@ -164,8 +164,12 @@ class AdminDesktopApp:
         actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
         actions_frame.pack(fill="x", pady=(10, 0))
 
+        # NOVO BOTÃO DE LOCALIZAR E DAR BAIXA
+        btn_localizar = tk.Button(actions_frame, text="🔍 Localizar / Dar Baixa", command=self.abrir_janela_localizar_item, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_localizar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+
         btn_editar = tk.Button(actions_frame, text="✏ Editar Item", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+        btn_editar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
         btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
@@ -177,6 +181,153 @@ class AdminDesktopApp:
         btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
 
         self.carregar_tabela()
+
+    # FUNCIONALIDADE DE LOCALIZAR E GERENCIAR O ITEM PELO ID
+    def abrir_janela_localizar_item(self):
+        item_id = simpledialog.askinteger("Localizar Item", "Digite o código/ID do item:", parent=self.root)
+        if not item_id:
+            return
+
+        try:
+            res = requests.get(f"{API_URL}/api/itens", timeout=10)
+            if res.status_code == 200:
+                itens = res.json()
+                item_encontrado = next((i for i in itens if i['id'] == item_id), None)
+
+                if not item_encontrado:
+                    messagebox.showerror("Não Encontrado", f"Nenhum item com o ID #{item_id} foi encontrado no banco de dados!")
+                    return
+
+                self.exibir_modal_confirmacao_item(item_encontrado)
+            else:
+                messagebox.showerror("Erro", "Erro ao comunicar com o servidor.")
+        except Exception as e:
+            messagebox.showerror("Erro de Conexão", f"Falha na conexão: {e}")
+
+    def exibir_modal_confirmacao_item(self, item):
+        win = tk.Toplevel(self.root)
+        win.title(f"Item #{item['id']} - Confirmação")
+        win.geometry("450x480")
+        win.configure(bg="#1e1e2e")
+        win.grab_set()
+        win.resizable(False, False)
+
+        tk.Label(win, text=f"📦 OBJETO ENCONTRADO - ID #{item['id']}", font=("Helvetica", 12, "bold"), bg="#1e1e2e", fg="#38bdf8").pack(pady=(15, 10))
+
+        info_frame = tk.Frame(win, bg="#334155", padx=15, pady=15)
+        info_frame.pack(fill="x", padx=20, pady=5)
+
+        tk.Label(info_frame, text=f"Descrição: {item['txt_descricao']}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#ffffff", anchor="w").pack(fill="x")
+        tk.Label(info_frame, text=f"Categoria: {item.get('categoria', 'N/A')}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
+        tk.Label(info_frame, text=f"Local: {item['txt_local']}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
+        tk.Label(info_frame, text=f"Data Encontrado: {item['txt_data']}", font=("Helvetica", 9), bg="#334155", fg="#cbd5e1", anchor="w").pack(fill="x", pady=2)
+        tk.Label(info_frame, text=f"Status Atual: {item.get('status', 'DISPONÍVEL')}", font=("Helvetica", 10, "bold"), bg="#334155", fg="#facc15", anchor="w").pack(fill="x", pady=(5, 0))
+
+        if item.get('solicitado_por'):
+            tk.Label(info_frame, text=f"Solicitante: {item['solicitado_por']} (RM: {item.get('rm_aluno', '-')})", font=("Helvetica", 9, "bold"), bg="#334155", fg="#4ade80", anchor="w").pack(fill="x", pady=(2, 0))
+
+        tk.Label(win, text="Escolha uma opção de ação para este item:", font=("Helvetica", 9, "bold"), bg="#1e1e2e", fg="#94a3b8").pack(pady=(15, 5))
+
+        btn_entregar = tk.Button(win, text="🚚 Dar Baixa como 'Entregue ao Dono'", command=lambda: [win.destroy(), self.dar_baixa_entregue(item)], bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
+        btn_entregar.pack(fill="x", padx=20, pady=3)
+
+        btn_doacao = tk.Button(win, text="🎁 Alterar para 'Para Doação'", command=lambda: [win.destroy(), self.alterar_status_rapido(item['id'], "PARA DOAÇÃO")], bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
+        btn_doacao.pack(fill="x", padx=20, pady=3)
+
+        btn_editar = tk.Button(win, text="✏ Editar Informações do Objeto", command=lambda: [win.destroy(), self.selecionar_e_editar_item_por_id(item['id'])], bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
+        btn_editar.pack(fill="x", padx=20, pady=3)
+
+        btn_comprovante = tk.Button(win, text="📄 Imprimir / Gerar Comprovante de Retirada", command=lambda: [win.destroy(), self.gerar_comprovante_retirada(item)], bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6, cursor="hand2")
+        btn_comprovante.pack(fill="x", padx=20, pady=3)
+
+    def dar_baixa_entregue(self, item):
+        nome = simpledialog.askstring("Dar Baixa", "Nome do Aluno/Pessoa que retirou:", initialvalue=item.get('solicitado_por') or "", parent=self.root)
+        if not nome:
+            return
+            
+        rm = simpledialog.askstring("Dar Baixa", "RM ou Documento de Identificação:", initialvalue=item.get('rm_aluno') or "", parent=self.root)
+        if not rm:
+            return
+
+        payload = {
+            "descricao": item['txt_descricao'],
+            "categoria": item.get('categoria', 'OUTROS'),
+            "data": item['txt_data'],
+            "local": item['txt_local'],
+            "status": "ENTREGUE",
+            "solicitado_por": nome,
+            "rm_aluno": rm
+        }
+
+        try:
+            res = requests.put(f"{API_URL}/api/itens/{item['id']}", json=payload, timeout=10)
+            if res.status_code == 200:
+                messagebox.showinfo("Sucesso", f"Item #{item['id']} marcado como ENTREGUE para {nome}!")
+                self.carregar_tabela()
+            else:
+                messagebox.showerror("Erro", f"Falha ao dar baixa: {res.text}")
+        except Exception as e:
+            messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
+
+    def alterar_status_rapido(self, item_id, novo_status):
+        try:
+            res = requests.get(f"{API_URL}/api/itens", timeout=10)
+            if res.status_code == 200:
+                itens = res.json()
+                item = next((i for i in itens if i['id'] == item_id), None)
+                if item:
+                    payload = {
+                        "descricao": item['txt_descricao'],
+                        "categoria": item.get('categoria', 'OUTROS'),
+                        "data": item['txt_data'],
+                        "local": item['txt_local'],
+                        "status": novo_status
+                    }
+                    res_put = requests.put(f"{API_URL}/api/itens/{item_id}", json=payload, timeout=10)
+                    if res_put.status_code == 200:
+                        messagebox.showinfo("Sucesso", f"Status do item #{item_id} alterado para {novo_status}!")
+                        self.carregar_tabela()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao atualizar status: {e}")
+
+    def selecionar_e_editar_item_por_id(self, item_id):
+        for child in self.tree.get_children():
+            if self.tree.item(child, "values")[0] == item_id:
+                self.tree.selection_set(child)
+                self.tree.focus(child)
+                self.preparar_edicao_item()
+                break
+
+    def gerar_comprovante_retirada(self, item):
+        comprovante = f"""==================================================
+        ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO
+           TERMO DE RETIRADA DE ACHADOS E PERDIDOS
+==================================================
+ID do Item: #{item['id']}
+Descrição: {item['txt_descricao']}
+Categoria: {item.get('categoria', 'N/A')}
+Local Encontrado: {item['txt_local']}
+Data de Registro: {item['txt_data']}
+
+DADOS DO RETIRANTE:
+Nome Completo: {item.get('solicitado_por', '________________________')}
+RM: {item.get('rm_aluno', '__________')}
+Data de Devolução: {datetime.now().strftime("%d/%m/%Y às %H:%M")}
+
+Declaro ter recebido o objeto acima descrito em devidas condições.
+
+Assinatura do Aluno/Responsável: ___________________________
+=================================================="""
+        
+        comp_win = tk.Toplevel(self.root)
+        comp_win.title("Comprovante de Retirada")
+        comp_win.geometry("480x420")
+        comp_win.configure(bg="#1e1e2e")
+
+        txt = tk.Text(comp_win, bg="#0f172a", fg="#38bdf8", font=("Courier", 9), padx=10, pady=10)
+        txt.pack(fill="both", expand=True, padx=10, pady=10)
+        txt.insert("1.0", comprovante)
+        txt.config(state="disabled")
 
     def carregar_fotos(self):
         filenames = filedialog.askopenfilenames(
