@@ -38,6 +38,10 @@
                     </div>
                 </div>
 
+                <button onclick="abrirPainelAnuncios()" class="p-2 px-3 rounded-lg bg-card border border-color text-muted hover:text-main transition text-xs font-bold" title="Painel de anúncios">
+                    <i class="fas fa-tv mr-1"></i> ANÚNCIOS
+                </button>
+
                 <div id="userInfo" class="hidden text-right">
                     <span id="userName" class="block font-bold text-sm dynamic-text"></span>
                     <span id="userRM" class="text-xs text-muted"></span>
@@ -98,6 +102,101 @@
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
+        <!-- PAINEL DE ANÚNCIOS - NOVO MODO DO SITE -->
+        <section id="adsScreen" class="hidden">
+            <div class="relative min-h-[70vh] flex flex-col justify-center">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-red-400">PAINEL DE ANÚNCIOS</span>
+                        <h2 class="text-2xl sm:text-3xl font-black dynamic-text">Últimos itens encontrados</h2>
+                    </div>
+                    <button onclick="fecharPainelAnuncios()" class="p-2.5 rounded-xl bg-card border border-color text-muted hover:text-main transition" title="Voltar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div id="adsCarousel" class="relative overflow-hidden rounded-3xl border border-color bg-card shadow-2xl">
+                    <div id="adsLoading" class="min-h-[55vh] flex items-center justify-center text-muted">
+                        <div class="text-center">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p class="text-sm">Carregando últimos itens...</p>
+                        </div>
+                    </div>
+
+                    <div id="adsContent" class="hidden min-h-[55vh]">
+                        <div class="grid grid-cols-1 md:grid-cols-2 min-h-[55vh]">
+                            <div class="relative bg-black/20 min-h-[320px] md:min-h-[55vh] flex items-center justify-center overflow-hidden">
+                                <img id="adImage" src="" alt="Foto do item encontrado"
+                                     class="w-full h-full object-contain absolute inset-0 p-3 transition-opacity duration-500">
+                                <div id="adImagePlaceholder" class="hidden text-center text-muted">
+                                    <i class="fas fa-box-open text-7xl mb-3"></i>
+                                    <p class="text-sm">Sem foto disponível</p>
+                                </div>
+                                <div id="adCounter" class="absolute top-4 right-4 bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                                    1 / 1
+                                </div>
+                            </div>
+
+                            <div class="p-6 sm:p-10 flex flex-col justify-center">
+                                <span id="adCategory" class="inline-flex self-start px-3 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase mb-4"></span>
+                                <h3 id="adTitle" class="text-3xl sm:text-5xl font-black text-main leading-tight mb-5"></h3>
+
+                                <div class="space-y-4">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-header border border-color flex items-center justify-center shrink-0">
+                                            <i class="fas fa-location-dot text-red-400"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] uppercase font-bold text-muted">Local encontrado</p>
+                                            <p id="adLocal" class="text-base sm:text-lg font-bold text-main"></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-header border border-color flex items-center justify-center shrink-0">
+                                            <i class="fas fa-calendar-days text-red-400"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] uppercase font-bold text-muted">Encontrado em</p>
+                                            <p id="adDate" class="text-base sm:text-lg font-bold text-main"></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button onclick="abrirAnuncioAtual()" class="mt-8 dynamic-btn font-bold py-3.5 px-5 rounded-xl text-sm uppercase">
+                                    <i class="fas fa-eye mr-2"></i> Ver detalhes do item
+                                </button>
+                            </div>
+                        </div>
+
+                        <button onclick="mudarAnuncio(-1)" class="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center transition z-10">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button onclick="mudarAnuncio(1)" class="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center transition z-10">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div id="adsEmpty" class="hidden min-h-[55vh] flex items-center justify-center text-muted">
+                        <div class="text-center">
+                            <i class="fas fa-box-open text-5xl mb-3"></i>
+                            <p class="font-bold text-main">Nenhum item encontrado.</p>
+                            <p class="text-sm mt-1">Os anúncios aparecerão aqui quando houver itens cadastrados.</p>
+                        </div>
+                    </div>
+
+                    <div id="adsDots" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20"></div>
+                </div>
+
+                <div class="flex items-center justify-between mt-4 text-xs text-muted">
+                    <button onclick="fecharPainelAnuncios()" class="hover:text-main transition">
+                        <i class="fas fa-arrow-left mr-1"></i> Voltar ao catálogo
+                    </button>
+                    <span><i class="fas fa-rotate mr-1"></i> Troca automática</span>
+                </div>
+            </div>
+        </section>
+
         <!-- TELA DE DETALHES COM CARROSSEL -->
         <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
             <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
@@ -153,5 +252,231 @@
     </main>
 
     <script src="script.js"></script>
+
+    <!-- FUNCIONALIDADE DO PAINEL DE ANÚNCIOS (ADICIONADA SEM REMOVER O SCRIPT ORIGINAL) -->
+    <script>
+    (function () {
+        const ADS_API_URL = "https://achados-etec-api.onrender.com";
+        let anuncios = [];
+        let anuncioAtual = 0;
+        let intervaloAnuncios = null;
+
+        function valorItem(item, ...chaves) {
+            for (const chave of chaves) {
+                if (item && item[chave] !== undefined && item[chave] !== null && String(item[chave]).trim() !== "") {
+                    return item[chave];
+                }
+            }
+            return "";
+        }
+
+        function fotosDoItem(item) {
+            let fotos = valorItem(item, "fotos", "photos", "imagens");
+            if (Array.isArray(fotos)) return fotos.filter(Boolean);
+            if (typeof fotos === "string" && fotos.trim()) {
+                try {
+                    const parsed = JSON.parse(fotos);
+                    if (Array.isArray(parsed)) return parsed.filter(Boolean);
+                } catch (_) {}
+                return [fotos];
+            }
+
+            const possiveis = ["foto", "foto1", "foto2", "foto3", "foto4", "imagem", "image"];
+            return possiveis.map(k => item && item[k]).filter(Boolean);
+        }
+
+        async function carregarAnuncios() {
+            const loading = document.getElementById("adsLoading");
+            const content = document.getElementById("adsContent");
+            const empty = document.getElementById("adsEmpty");
+
+            loading.classList.remove("hidden");
+            content.classList.add("hidden");
+            empty.classList.add("hidden");
+
+            try {
+                const resposta = await fetch(`${ADS_API_URL}/api/itens`, { cache: "no-store" });
+                if (!resposta.ok) throw new Error("Falha ao consultar os itens.");
+
+                const dados = await resposta.json();
+                anuncios = Array.isArray(dados) ? dados : [];
+
+                // Mais recentes primeiro. O ID é usado como critério principal,
+                // pois é gerado no cadastro e também funciona quando a API não
+                // devolve um campo específico de criação.
+                anuncios.sort((a, b) => {
+                    const idA = Number(valorItem(a, "id")) || 0;
+                    const idB = Number(valorItem(b, "id")) || 0;
+                    if (idA !== idB) return idB - idA;
+
+                    const dataA = valorItem(a, "created_at", "data_cadastro", "data_criacao");
+                    const dataB = valorItem(b, "created_at", "data_cadastro", "data_criacao");
+                    return String(dataB).localeCompare(String(dataA));
+                });
+
+                // Anúncios mostram somente itens que ainda fazem sentido para
+                // divulgação pública.
+                anuncios = anuncios.filter(item => {
+                    const status = String(valorItem(item, "status") || "DISPONÍVEL").toUpperCase();
+                    return !["ENTREGUE", "DOAÇÃO FEITA"].includes(status);
+                }).slice(0, 10);
+
+                anuncioAtual = 0;
+
+                if (!anuncios.length) {
+                    loading.classList.add("hidden");
+                    empty.classList.remove("hidden");
+                    pararRotacao();
+                    return;
+                }
+
+                loading.classList.add("hidden");
+                content.classList.remove("hidden");
+                renderizarAnuncio();
+                iniciarRotacao();
+            } catch (erro) {
+                console.error("Painel de anúncios:", erro);
+                loading.classList.add("hidden");
+                empty.classList.remove("hidden");
+                const msg = empty.querySelector("p.font-bold");
+                if (msg) msg.textContent = "Não foi possível carregar os anúncios.";
+                pararRotacao();
+            }
+        }
+
+        function renderizarAnuncio() {
+            if (!anuncios.length) return;
+
+            const item = anuncios[anuncioAtual];
+            const titulo = valorItem(item, "txt_descricao", "descricao", "description") || "Item encontrado";
+            const categoria = valorItem(item, "categoria", "category") || "OUTROS";
+            const local = valorItem(item, "txt_local", "local", "location") || "Não informado";
+            const data = valorItem(item, "txt_data", "data", "date") || "Não informada";
+            const fotos = fotosDoItem(item);
+
+            const img = document.getElementById("adImage");
+            const placeholder = document.getElementById("adImagePlaceholder");
+
+            document.getElementById("adTitle").textContent = titulo;
+            document.getElementById("adCategory").textContent = categoria;
+            document.getElementById("adLocal").textContent = local;
+            document.getElementById("adDate").textContent = data;
+            document.getElementById("adCounter").textContent = `${anuncioAtual + 1} / ${anuncios.length}`;
+
+            if (fotos.length) {
+                img.src = fotos[0];
+                img.classList.remove("hidden");
+                placeholder.classList.add("hidden");
+            } else {
+                img.removeAttribute("src");
+                img.classList.add("hidden");
+                placeholder.classList.remove("hidden");
+            }
+
+            const dots = document.getElementById("adsDots");
+            dots.innerHTML = "";
+            anuncios.forEach((_, i) => {
+                const dot = document.createElement("button");
+                dot.type = "button";
+                dot.title = `Anúncio ${i + 1}`;
+                dot.className = "w-2 h-2 rounded-full transition-all " +
+                    (i === anuncioAtual ? "bg-white w-5" : "bg-white/40 hover:bg-white/70");
+                dot.onclick = () => {
+                    anuncioAtual = i;
+                    renderizarAnuncio();
+                    reiniciarRotacao();
+                };
+                dots.appendChild(dot);
+            });
+        }
+
+        function mudarAnuncio(direcao) {
+            if (!anuncios.length) return;
+            anuncioAtual = (anuncioAtual + direcao + anuncios.length) % anuncios.length;
+            renderizarAnuncio();
+            reiniciarRotacao();
+        }
+
+        function iniciarRotacao() {
+            pararRotacao();
+            if (anuncios.length > 1) {
+                intervaloAnuncios = setInterval(() => {
+                    anuncioAtual = (anuncioAtual + 1) % anuncios.length;
+                    renderizarAnuncio();
+                }, 6000);
+            }
+        }
+
+        function reiniciarRotacao() {
+            iniciarRotacao();
+        }
+
+        function pararRotacao() {
+            if (intervaloAnuncios) {
+                clearInterval(intervaloAnuncios);
+                intervaloAnuncios = null;
+            }
+        }
+
+        window.abrirPainelAnuncios = function () {
+            const catalogo = document.getElementById("catalogScreen");
+            const detalhes = document.getElementById("detailScreen");
+            const painel = document.getElementById("adsScreen");
+
+            if (catalogo) catalogo.classList.add("hidden");
+            if (detalhes) detalhes.classList.add("hidden");
+            if (painel) painel.classList.remove("hidden");
+
+            carregarAnuncios();
+        };
+
+        window.fecharPainelAnuncios = function () {
+            const painel = document.getElementById("adsScreen");
+            const catalogo = document.getElementById("catalogScreen");
+
+            pararRotacao();
+            if (painel) painel.classList.add("hidden");
+            if (catalogo) catalogo.classList.remove("hidden");
+        };
+
+        window.mudarAnuncio = mudarAnuncio;
+
+        window.abrirAnuncioAtual = function () {
+            const item = anuncios[anuncioAtual];
+            if (!item) return;
+
+            const id = valorItem(item, "id");
+            pararRotacao();
+
+            // Aproveita a tela de detalhes que já existe no site.
+            if (typeof window.mostrarDetalhesItem === "function") {
+                window.fecharPainelAnuncios();
+                window.mostrarDetalhesItem(id);
+                return;
+            }
+
+            // Compatibilidade com possíveis nomes já usados pelo script original.
+            if (typeof window.verDetalhes === "function") {
+                window.fecharPainelAnuncios();
+                window.verDetalhes(id);
+                return;
+            }
+
+            // Se o script original não expuser uma função pública, o painel
+            // continua funcionando normalmente sem quebrar o catálogo.
+            console.log("ID do anúncio selecionado:", id);
+        };
+
+        // Teclas ← e → funcionam enquanto o painel estiver aberto.
+        document.addEventListener("keydown", function (event) {
+            const painel = document.getElementById("adsScreen");
+            if (!painel || painel.classList.contains("hidden")) return;
+
+            if (event.key === "ArrowLeft") mudarAnuncio(-1);
+            if (event.key === "ArrowRight") mudarAnuncio(1);
+            if (event.key === "Escape") window.fecharPainelAnuncios();
+        });
+    })();
+    </script>
 </body>
 </html>
