@@ -38,21 +38,55 @@
                     </div>
                 </div>
 
-                <button onclick="abrirPainelAnuncios()" class="p-2 px-3 rounded-lg bg-card border border-color text-muted hover:text-main transition text-xs font-bold" title="Painel de anúncios">
+                <button onclick="abrirPainelAnuncios()" id="btnAds" class="p-2 px-3 rounded-lg bg-card border border-color text-muted hover:text-main transition text-xs font-bold" title="Painel de anúncios">
                     <i class="fas fa-tv mr-1"></i> ANÚNCIOS
                 </button>
 
                 <div id="userInfo" class="hidden text-right">
                     <span id="userName" class="block font-bold text-sm dynamic-text"></span>
                     <span id="userRM" class="text-xs text-muted"></span>
-                    <button onclick="logout()" class="text-xs text-red-400 underline block mt-1">Sair</button>
+                    <button onclick="logout()" class="text-xs text-red-400 hover:text-red-300 transition block mt-1 w-full text-right"><i class="fas fa-sign-out-alt"></i> Sair</button>
                 </div>
             </div>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-        <section id="catalogScreen" class="space-y-6">
+        
+        <!-- TELA DE LOGIN INSTITUCIONAL -->
+        <section id="loginScreen" class="max-w-md mx-auto bg-card border border-color rounded-2xl p-8 shadow-lg mt-10">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 rounded-full bg-header border border-color flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-graduate text-3xl dynamic-text"></i>
+                </div>
+                <h2 class="text-xl font-bold text-main">Acesso do Aluno</h2>
+                <p class="text-xs text-muted mt-2">Utilize seu e-mail @etec.sp.gov.br para acessar o catálogo de objetos e solicitar retiradas.</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="fazerLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1">Nome Completo</label>
+                    <input type="text" id="loginNome" required class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted" placeholder="Digite seu nome">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1">RM (Registro de Matrícula)</label>
+                    <input type="number" id="loginRM" required class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted" placeholder="Ex: 12345">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1">E-mail Institucional</label>
+                    <input type="email" id="loginEmail" required class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted" placeholder="seunome@etec.sp.gov.br">
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm shadow-md flex justify-center items-center gap-2">
+                        <span>ENTRAR NO SISTEMA</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- TELA DE CATÁLOGO (Oculta por padrão) -->
+        <section id="catalogScreen" class="hidden space-y-6">
             
             <!-- BUSCA E FILTROS -->
             <div class="space-y-4">
@@ -163,8 +197,8 @@
                                     </div>
                                 </div>
 
-                                <button onclick="abrirAnuncioAtual()" class="mt-8 dynamic-btn font-bold py-3.5 px-5 rounded-xl text-sm uppercase">
-                                    <i class="fas fa-eye mr-2"></i> Ver detalhes do item
+                                <button onclick="abrirAnuncioAtual()" class="mt-8 dynamic-btn font-bold py-3.5 px-5 rounded-xl text-sm uppercase flex items-center justify-center gap-2">
+                                    <i class="fas fa-eye"></i> Ver detalhes do item
                                 </button>
                             </div>
                         </div>
@@ -190,7 +224,7 @@
 
                 <div class="flex items-center justify-between mt-4 text-xs text-muted">
                     <button onclick="fecharPainelAnuncios()" class="hover:text-main transition">
-                        <i class="fas fa-arrow-left mr-1"></i> Voltar ao catálogo
+                        <i class="fas fa-arrow-left mr-1"></i> Voltar
                     </button>
                     <span><i class="fas fa-rotate mr-1"></i> Troca automática</span>
                 </div>
@@ -243,8 +277,9 @@
                 </div>
 
                 <div class="pt-4">
-                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
-                        ESTE É O MEU ITEM / SOLICITAR COLETA
+                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase flex justify-center items-center gap-2">
+                        <i class="fas fa-hand-paper"></i>
+                        <span>ESTE É O MEU ITEM / SOLICITAR COLETA</span>
                     </button>
                 </div>
             </div>
@@ -301,9 +336,6 @@
                 const dados = await resposta.json();
                 anuncios = Array.isArray(dados) ? dados : [];
 
-                // Mais recentes primeiro. O ID é usado como critério principal,
-                // pois é gerado no cadastro e também funciona quando a API não
-                // devolve um campo específico de criação.
                 anuncios.sort((a, b) => {
                     const idA = Number(valorItem(a, "id")) || 0;
                     const idB = Number(valorItem(b, "id")) || 0;
@@ -314,8 +346,6 @@
                     return String(dataB).localeCompare(String(dataA));
                 });
 
-                // Anúncios mostram somente itens que ainda fazem sentido para
-                // divulgação pública.
                 anuncios = anuncios.filter(item => {
                     const status = String(valorItem(item, "status") || "DISPONÍVEL").toUpperCase();
                     return !["ENTREGUE", "DOAÇÃO FEITA"].includes(status);
@@ -422,9 +452,11 @@
             const catalogo = document.getElementById("catalogScreen");
             const detalhes = document.getElementById("detailScreen");
             const painel = document.getElementById("adsScreen");
+            const login = document.getElementById("loginScreen"); // Ajuste de integração
 
             if (catalogo) catalogo.classList.add("hidden");
             if (detalhes) detalhes.classList.add("hidden");
+            if (login) login.classList.add("hidden"); // Oculta o login ao abrir painel
             if (painel) painel.classList.remove("hidden");
 
             carregarAnuncios();
@@ -433,10 +465,18 @@
         window.fecharPainelAnuncios = function () {
             const painel = document.getElementById("adsScreen");
             const catalogo = document.getElementById("catalogScreen");
+            const login = document.getElementById("loginScreen"); // Ajuste de integração
 
             pararRotacao();
             if (painel) painel.classList.add("hidden");
-            if (catalogo) catalogo.classList.remove("hidden");
+            
+            // Verifica se o aluno já fez login para retornar para a tela correta
+            const sessao = localStorage.getItem('aluno_etec_sessao');
+            if (sessao) {
+                if (catalogo) catalogo.classList.remove("hidden");
+            } else {
+                if (login) login.classList.remove("hidden");
+            }
         };
 
         window.mudarAnuncio = mudarAnuncio;
@@ -461,9 +501,14 @@
                 window.verDetalhes(id);
                 return;
             }
+            
+            // Adicionado para suportar a função atual abrirDetalhes()
+            if (typeof window.abrirDetalhes === "function") {
+                window.fecharPainelAnuncios();
+                window.abrirDetalhes(item);
+                return;
+            }
 
-            // Se o script original não expuser uma função pública, o painel
-            // continua funcionando normalmente sem quebrar o catálogo.
             console.log("ID do anúncio selecionado:", id);
         };
 
