@@ -71,6 +71,66 @@ function carregarPreferenciasAparencia() {
     }
 }
 
+// ------------------------------------------------------------------
+// SISTEMA DE LOGIN INSTITUCIONAL
+// ------------------------------------------------------------------
+function verificarSessao() {
+    const userStr = localStorage.getItem('aluno_etec_sessao');
+    if (userStr) {
+        alunoLogado = JSON.parse(userStr);
+        
+        // Esconde Login, Mostra Catálogo
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('catalogScreen').classList.remove('hidden');
+        document.getElementById('userInfo').classList.remove('hidden');
+        
+        // Atualiza cabeçalho
+        document.getElementById('userName').innerText = alunoLogado.nome;
+        document.getElementById('userRM').innerText = "RM: " + alunoLogado.rm;
+        
+        // Carrega dados da API apenas se estiver logado
+        carregarItensDaAPI();
+    } else {
+        // Exige Login
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('catalogScreen').classList.add('hidden');
+        document.getElementById('detailScreen').classList.add('hidden');
+        document.getElementById('userInfo').classList.add('hidden');
+    }
+}
+
+function fazerLogin(event) {
+    event.preventDefault(); // Impede a página de recarregar
+    
+    const nome = document.getElementById('loginNome').value.trim();
+    const rm = document.getElementById('loginRM').value.trim();
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+
+    // Validação obrigatória do domínio ETEC
+    if (!email.endsWith('@etec.sp.gov.br')) {
+        alert("🔒 Acesso Bloqueado!\n\nVocê precisa usar o seu e-mail institucional oficial (terminado em @etec.sp.gov.br) para acessar o sistema.");
+        return;
+    }
+
+    // Salva a sessão no navegador do aluno
+    alunoLogado = { nome, rm, email };
+    localStorage.setItem('aluno_etec_sessao', JSON.stringify(alunoLogado));
+    
+    verificarSessao();
+}
+
+function logout() {
+    if(confirm("Tem certeza que deseja sair da sua conta?")) {
+        alunoLogado = null;
+        localStorage.removeItem('aluno_etec_sessao');
+        verificarSessao(); // Volta para a tela de login
+        
+        // Limpa os campos do formulário para o próximo login
+        document.getElementById('loginForm').reset();
+    }
+}
+// ------------------------------------------------------------------
+
 async function carregarItensDaAPI() {
     try {
         const response = await fetch(`${API_URL}/api/itens`);
@@ -81,13 +141,6 @@ async function carregarItensDaAPI() {
     } catch (error) {
         console.error("Erro ao carregar itens da API:", error);
     }
-}
-
-function logout() {
-    alunoLogado = null;
-    document.getElementById('userInfo')?.classList.add('hidden');
-    document.getElementById('catalogScreen')?.classList.add('hidden');
-    document.getElementById('detailScreen')?.classList.add('hidden');
 }
 
 function filtrarPorPalavraChave() {
@@ -315,12 +368,12 @@ function abrirDetalhes(item) {
 
     if (stUpper !== 'DISPONÍVEL') {
         btnSolicitar.disabled = true;
-        btnSolicitar.innerText = `ITEM EM STATUS: ${stUpper}`;
-        btnSolicitar.className = "w-full bg-gray-700 text-gray-400 cursor-not-allowed font-bold py-3.5 rounded-xl text-sm uppercase border border-gray-600";
+        btnSolicitar.innerHTML = `<i class="fas fa-lock"></i> ITEM EM STATUS: ${stUpper}`;
+        btnSolicitar.className = "w-full flex justify-center items-center gap-2 bg-gray-700 text-gray-400 cursor-not-allowed font-bold py-3.5 rounded-xl text-sm uppercase border border-gray-600";
     } else {
         btnSolicitar.disabled = false;
-        btnSolicitar.innerText = "ESTE É O MEU ITEM / SOLICITAR COLETA";
-        btnSolicitar.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase";
+        btnSolicitar.innerHTML = `<i class="fas fa-hand-paper"></i> ESTE É O MEU ITEM / SOLICITAR COLETA`;
+        btnSolicitar.className = "w-full flex justify-center items-center gap-2 dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase";
     }
 }
 
@@ -344,6 +397,12 @@ function voltarParaCatalogo() {
 
 async function solicitarColeta() {
     if (!itemSelecionado) return;
+    
+    // Verificação de segurança extra para garantir que o aluno logou
+    if (!alunoLogado) {
+        alert("Você precisa estar logado para solicitar um item!");
+        return;
+    }
 
     const stUpper = normalizarStatus(itemSelecionado.status);
     if (stUpper !== 'DISPONÍVEL') {
@@ -351,13 +410,10 @@ async function solicitarColeta() {
         return;
     }
 
-    let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
-    let rmDigitado = prompt("Por favor, digite seu RM:");
-
-    if (!nomeDigitado || !rmDigitado) {
-        alert("Você precisa informar seu Nome e RM para solicitar o item!");
-        return;
-    }
+    // Pergunta se ele confirma solicitar no nome dele (dados pegos no login)
+    const confirmacao = confirm(`Você está solicitando este item como:\n\nNome: ${alunoLogado.nome}\nRM: ${alunoLogado.rm}\n\nDeseja confirmar a solicitação?`);
+    
+    if (!confirmacao) return;
 
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
@@ -365,8 +421,8 @@ async function solicitarColeta() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: itemSelecionado.id,
-                nome: nomeDigitado,
-                rm: rmDigitado
+                nome: alunoLogado.nome,
+                rm: alunoLogado.rm
             })
         });
 
@@ -386,7 +442,7 @@ async function solicitarColeta() {
 
 window.onload = () => {
     carregarPreferenciasAparencia();
-    carregarItensDaAPI();
+    verificarSessao(); // Inicia verificando se há login, se houver ele carrega a API.
 
     setTimeout(() => {
         const defaultBtn = document.querySelector('.cat-btn');
