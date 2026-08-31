@@ -10,27 +10,6 @@
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between">
 
-    <!-- POPUP DE NOVOS ACHADOS -->
-    <div id="recentItemsPopup" class="hidden fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-card border border-color rounded-3xl shadow-2xl">
-            <button onclick="fecharPopupNovosAchados()" class="absolute top-3 right-3 z-30 w-10 h-10 rounded-full bg-black/70 text-white hover:bg-black/90 flex items-center justify-center transition" aria-label="Fechar">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="p-5 sm:p-7 pb-3">
-                <span class="text-[10px] font-bold uppercase tracking-widest text-red-400">NOVOS ACHADOS</span>
-                <h2 class="text-2xl sm:text-3xl font-black dynamic-text mt-1">Itens encontrados recentemente</h2>
-                <p class="text-xs text-muted mt-1">Confira os últimos itens cadastrados.</p>
-            </div>
-            <div id="recentItemsPopupContent" class="px-5 sm:px-7 pb-7">
-                <div class="flex justify-center py-20 text-muted">
-                    <i class="fas fa-spinner fa-spin text-2xl mr-3"></i>
-                    <span class="text-sm">Carregando...</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
     <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
@@ -58,6 +37,10 @@
                         </div>
                     </div>
                 </div>
+
+                <button onclick="abrirPainelAnuncios()" class="p-2 px-3 rounded-lg bg-card border border-color text-muted hover:text-main transition text-xs font-bold" title="Painel de anúncios">
+                    <i class="fas fa-tv mr-1"></i> ANÚNCIOS
+                </button>
 
                 <div id="userInfo" class="hidden text-right">
                     <span id="userName" class="block font-bold text-sm dynamic-text"></span>
@@ -120,14 +103,16 @@
         </section>
 
         <!-- PAINEL DE ANÚNCIOS - NOVO MODO DO SITE -->
-        <section id="adsScreen" class="mb-8">
+        <section id="adsScreen" class="hidden">
             <div class="relative min-h-[70vh] flex flex-col justify-center">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <span class="text-[10px] font-bold uppercase tracking-widest text-red-400">PAINEL DE ANÚNCIOS</span>
                         <h2 class="text-2xl sm:text-3xl font-black dynamic-text">Últimos itens encontrados</h2>
                     </div>
-
+                    <button onclick="fecharPainelAnuncios()" class="p-2.5 rounded-xl bg-card border border-color text-muted hover:text-main transition" title="Voltar">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
                 <div id="adsCarousel" class="relative overflow-hidden rounded-3xl border border-color bg-card shadow-2xl">
@@ -204,7 +189,9 @@
                 </div>
 
                 <div class="flex items-center justify-between mt-4 text-xs text-muted">
-                    <span></span>
+                    <button onclick="fecharPainelAnuncios()" class="hover:text-main transition">
+                        <i class="fas fa-arrow-left mr-1"></i> Voltar ao catálogo
+                    </button>
                     <span><i class="fas fa-rotate mr-1"></i> Troca automática</span>
                 </div>
             </div>
@@ -432,15 +419,24 @@
         }
 
         window.abrirPainelAnuncios = function () {
+            const catalogo = document.getElementById("catalogScreen");
+            const detalhes = document.getElementById("detailScreen");
             const painel = document.getElementById("adsScreen");
-            if (painel) painel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+            if (catalogo) catalogo.classList.add("hidden");
+            if (detalhes) detalhes.classList.add("hidden");
+            if (painel) painel.classList.remove("hidden");
+
             carregarAnuncios();
         };
 
         window.fecharPainelAnuncios = function () {
             const painel = document.getElementById("adsScreen");
-            if (painel) painel.scrollIntoView({ behavior: "smooth", block: "start" });
-            iniciarRotacao();
+            const catalogo = document.getElementById("catalogScreen");
+
+            pararRotacao();
+            if (painel) painel.classList.add("hidden");
+            if (catalogo) catalogo.classList.remove("hidden");
         };
 
         window.mudarAnuncio = mudarAnuncio;
@@ -454,12 +450,14 @@
 
             // Aproveita a tela de detalhes que já existe no site.
             if (typeof window.mostrarDetalhesItem === "function") {
+                window.fecharPainelAnuncios();
                 window.mostrarDetalhesItem(id);
                 return;
             }
 
             // Compatibilidade com possíveis nomes já usados pelo script original.
             if (typeof window.verDetalhes === "function") {
+                window.fecharPainelAnuncios();
                 window.verDetalhes(id);
                 return;
             }
@@ -469,143 +467,16 @@
             console.log("ID do anúncio selecionado:", id);
         };
 
-        // O painel é carregado automaticamente ao abrir o site.
-        window.addEventListener("DOMContentLoaded", function () {
-            carregarAnuncios();
-        });
-
         // Teclas ← e → funcionam enquanto o painel estiver aberto.
         document.addEventListener("keydown", function (event) {
             const painel = document.getElementById("adsScreen");
-            if (!painel) return;
+            if (!painel || painel.classList.contains("hidden")) return;
 
             if (event.key === "ArrowLeft") mudarAnuncio(-1);
             if (event.key === "ArrowRight") mudarAnuncio(1);
+            if (event.key === "Escape") window.fecharPainelAnuncios();
         });
     })();
     </script>
-
-    <script>
-    (function () {
-        const RECENT_API_URL = "https://achados-etec-api.onrender.com";
-
-        function v(item, ...keys) {
-            for (const key of keys) {
-                if (item && item[key] !== undefined && item[key] !== null && String(item[key]).trim()) return item[key];
-            }
-            return "";
-        }
-
-        function photos(item) {
-            let f = v(item, "fotos", "photos", "imagens");
-            if (Array.isArray(f)) return f.filter(Boolean);
-            if (typeof f === "string" && f.trim()) {
-                try {
-                    const x = JSON.parse(f);
-                    if (Array.isArray(x)) return x.filter(Boolean);
-                } catch (_) {}
-                return [f];
-            }
-            return ["foto","foto1","foto2","foto3","foto4","imagem","image"].map(k => item && item[k]).filter(Boolean);
-        }
-
-        async function abrirPopupNovosAchados() {
-            const popup = document.getElementById("recentItemsPopup");
-            const content = document.getElementById("recentItemsPopupContent");
-            if (!popup || !content) return;
-
-            try {
-                const res = await fetch(`${RECENT_API_URL}/api/itens`, {cache:"no-store"});
-                if (!res.ok) throw new Error("API indisponível");
-
-                let itens = await res.json();
-                itens = Array.isArray(itens) ? itens : [];
-
-                // Mais recentes primeiro.
-                itens.sort((a,b) => (Number(v(b,"id"))||0) - (Number(v(a,"id"))||0));
-
-                // Somente itens ainda disponíveis para consulta pública.
-                itens = itens.filter(item => {
-                    const status = String(v(item,"status") || "DISPONÍVEL").toUpperCase();
-                    return !["ENTREGUE","DOAÇÃO FEITA"].includes(status);
-                }).slice(0,3);
-
-                if (!itens.length) return;
-
-                content.innerHTML = "";
-                const grid = document.createElement("div");
-                grid.className = itens.length === 1
-                    ? "grid grid-cols-1 max-w-2xl mx-auto"
-                    : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
-
-                itens.forEach(item => {
-                    const descricao = v(item,"txt_descricao","descricao","description") || "Item encontrado";
-                    const categoria = v(item,"categoria","category") || "OUTROS";
-                    const local = v(item,"txt_local","local","location") || "Não informado";
-                    const data = v(item,"txt_data","data","date") || "Não informada";
-                    const f = photos(item);
-
-                    const card = document.createElement("div");
-                    card.className = "bg-header border border-color rounded-2xl overflow-hidden";
-
-                    const media = document.createElement("div");
-                    media.className = "h-64 sm:h-72 bg-black/20 flex items-center justify-center";
-
-                    if (f.length) {
-                        const img = document.createElement("img");
-                        img.src = f[0];
-                        img.alt = descricao;
-                        img.className = "w-full h-full object-contain p-3";
-                        media.appendChild(img);
-                    } else {
-                        media.innerHTML = '<div class="text-muted text-center"><i class="fas fa-box-open text-6xl mb-2"></i><p class="text-xs">Sem foto disponível</p></div>';
-                    }
-
-                    const info = document.createElement("div");
-                    info.className = "p-4 sm:p-5";
-
-                    const badge = document.createElement("span");
-                    badge.className = "inline-block px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase";
-                    badge.textContent = categoria;
-
-                    const title = document.createElement("h3");
-                    title.className = "text-xl sm:text-2xl font-black text-main mt-3";
-                    title.textContent = descricao;
-
-                    const details = document.createElement("div");
-                    details.className = "mt-3 space-y-2 text-xs text-muted";
-
-                    const p1 = document.createElement("p");
-                    p1.innerHTML = '<i class="fas fa-location-dot text-red-400 mr-1"></i><strong class="text-main">Local:</strong> ';
-                    p1.appendChild(document.createTextNode(local));
-
-                    const p2 = document.createElement("p");
-                    p2.innerHTML = '<i class="fas fa-calendar-days text-red-400 mr-1"></i><strong class="text-main">Data:</strong> ';
-                    p2.appendChild(document.createTextNode(data));
-
-                    details.append(p1,p2);
-                    info.append(badge,title,details);
-                    card.append(media,info);
-                    grid.appendChild(card);
-                });
-
-                content.appendChild(grid);
-                popup.classList.remove("hidden");
-                document.body.classList.add("overflow-hidden");
-            } catch (e) {
-                console.error("Erro no popup:", e);
-            }
-        }
-
-        window.fecharPopupNovosAchados = function() {
-            const popup = document.getElementById("recentItemsPopup");
-            if (popup) popup.classList.add("hidden");
-            document.body.classList.remove("overflow-hidden");
-        };
-
-        window.addEventListener("DOMContentLoaded", abrirPopupNovosAchados);
-    })();
-    </script>
-
 </body>
 </html>
