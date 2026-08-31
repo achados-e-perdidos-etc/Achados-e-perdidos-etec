@@ -8,6 +8,11 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
+// Variáveis temporárias para a etapa de login
+let tempNome = "";
+let tempRM = "";
+let tempEmail = "";
+
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
     if (menu) menu.classList.toggle('hidden');
@@ -53,7 +58,6 @@ function alternarModoEscuroClaro() {
 
 function carregarPreferenciasAparencia() {
     aplicarTemaVermelho();
-
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -72,61 +76,116 @@ function carregarPreferenciasAparencia() {
 }
 
 // ------------------------------------------------------------------
-// SISTEMA DE LOGIN INSTITUCIONAL (ATUALIZADO)
+// SISTEMA DE LOGIN INSTITUCIONAL 2FA (NOVO)
 // ------------------------------------------------------------------
 function verificarSessao() {
     const userStr = localStorage.getItem('aluno_etec_sessao');
     if (userStr) {
         alunoLogado = JSON.parse(userStr);
         
-        // Esconde Login, Mostra Catálogo
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('catalogScreen').classList.remove('hidden');
         document.getElementById('userInfo').classList.remove('hidden');
         
-        // Atualiza cabeçalho
         document.getElementById('userName').innerText = alunoLogado.nome;
         document.getElementById('userRM').innerText = "RM: " + alunoLogado.rm;
         
-        // Carrega dados da API apenas se estiver logado
         carregarItensDaAPI();
     } else {
-        // Exige Login
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('catalogScreen').classList.add('hidden');
         document.getElementById('detailScreen').classList.add('hidden');
         document.getElementById('userInfo').classList.add('hidden');
+        voltarParaEtapa1();
     }
 }
 
-function fazerLogin(event) {
-    event.preventDefault(); // Impede a página de recarregar
+async function solicitarCodigoDeAcesso(event) {
+    event.preventDefault();
     
-    const nome = document.getElementById('loginNome').value.trim();
-    const rm = document.getElementById('loginRM').value.trim();
-    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const btn = document.getElementById('btnStep1');
+    
+    tempNome = document.getElementById('loginNome').value.trim();
+    tempRM = document.getElementById('loginRM').value.trim();
+    tempEmail = document.getElementById('loginEmail').value.trim().toLowerCase();
 
-    // Validação obrigatória do NOVO domínio do Centro Paula Souza
-    if (!email.endsWith('@aluno.cps.sp.gov.br')) {
-        alert("🔒 Acesso Bloqueado!\n\nVocê precisa usar o seu e-mail institucional oficial (terminado em @aluno.cps.sp.gov.br) para acessar o sistema.");
+    if (!tempEmail.endsWith('@aluno.cps.sp.gov.br')) {
+        alert("🔒 Acesso Bloqueado!\n\nVocê precisa usar o seu e-mail institucional oficial (terminado em @aluno.cps.sp.gov.br).");
         return;
     }
 
-    // Salva a sessão no navegador do aluno
-    alunoLogado = { nome, rm, email };
-    localStorage.setItem('aluno_etec_sessao', JSON.stringify(alunoLogado));
-    
-    verificarSessao();
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`;
+
+    try {
+        const response = await fetch(`${API_URL}/api/auth/codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome: tempNome, rm: tempRM, email: tempEmail })
+        });
+
+        const res = await response.json();
+        if (response.ok && res.success) {
+            document.getElementById('step1Form').classList.add('hidden');
+            document.getElementById('loginSubtitle').classList.add('hidden');
+            document.getElementById('displayEmailEnviado').innerText = tempEmail;
+            document.getElementById('step2Form').classList.remove('hidden');
+        } else {
+            alert(res.message || "Falha ao enviar o código.");
+        }
+    } catch (error) {
+        alert("Erro de conexão. O servidor pode estar indisponível.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>ENVIAR CÓDIGO DE ACESSO</span><i class="fas fa-envelope"></i>`;
+    }
+}
+
+async function validarCodigoDeAcesso(event) {
+    event.preventDefault();
+    const codigoInput = document.getElementById('loginCodigo').value.trim();
+    const btn = document.getElementById('btnStep2');
+
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Verificando...`;
+
+    try {
+        const response = await fetch(`${API_URL}/api/auth/validar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: tempEmail, codigo: codigoInput })
+        });
+
+        const res = await response.json();
+        if (response.ok && res.success) {
+            alunoLogado = { nome: tempNome, rm: tempRM, email: tempEmail };
+            localStorage.setItem('aluno_etec_sessao', JSON.stringify(alunoLogado));
+            verificarSessao();
+        } else {
+            alert(res.message || "Código inválido ou expirado.");
+            document.getElementById('loginCodigo').value = "";
+        }
+    } catch (error) {
+        alert("Erro de conexão ao validar o código.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>CONFIRMAR E ENTRAR</span><i class="fas fa-check-circle"></i>`;
+    }
+}
+
+function voltarParaEtapa1() {
+    document.getElementById('step2Form').classList.add('hidden');
+    document.getElementById('step1Form').classList.remove('hidden');
+    document.getElementById('loginSubtitle').classList.remove('hidden');
+    document.getElementById('loginCodigo').value = "";
 }
 
 function logout() {
     if(confirm("Tem certeza que deseja sair da sua conta?")) {
         alunoLogado = null;
         localStorage.removeItem('aluno_etec_sessao');
-        verificarSessao(); // Volta para a tela de login
-        
-        // Limpa os campos do formulário para o próximo login
-        document.getElementById('loginForm').reset();
+        verificarSessao(); 
+        document.getElementById('step1Form').reset();
     }
 }
 // ------------------------------------------------------------------
@@ -154,7 +213,6 @@ function filtrarPorPalavraChave() {
     } else {
         btnClear?.classList.add('hidden');
     }
-
     renderizarItens();
 }
 
@@ -165,7 +223,6 @@ function limparBusca() {
     if (input) input.value = '';
     termoBusca = '';
     btnClear?.classList.add('hidden');
-    
     renderizarItens();
 }
 
@@ -199,7 +256,6 @@ function filtrarCategoria(cat, btnElement) {
 
         moveIndicator(btnElement);
     }
-
     renderizarItens();
 }
 
@@ -340,7 +396,6 @@ function abrirDetalhes(item) {
                 document.getElementById('photoCurrentIdx').innerText = idx + 1;
             }
         };
-
     } else {
         container.classList.add('hidden');
         counter.classList.add('hidden');
@@ -398,7 +453,6 @@ function voltarParaCatalogo() {
 async function solicitarColeta() {
     if (!itemSelecionado) return;
     
-    // Verificação de segurança extra para garantir que o aluno logou
     if (!alunoLogado) {
         alert("Você precisa estar logado para solicitar um item!");
         return;
@@ -410,16 +464,13 @@ async function solicitarColeta() {
         return;
     }
 
-    // Pergunta se ele confirma solicitar no nome dele (dados pegos no login)
     const confirmacao = confirm(`Você está solicitando este item como:\n\nNome: ${alunoLogado.nome}\nRM: ${alunoLogado.rm}\n\nDeseja confirmar a solicitação?`);
-    
     if (!confirmacao) return;
 
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // Enviamos o email também caso o backend queira mandar a notificação direta!
             body: JSON.stringify({
                 id: itemSelecionado.id,
                 nome: alunoLogado.nome,
@@ -429,7 +480,6 @@ async function solicitarColeta() {
         });
 
         const res = await response.json();
-        
         if (response.ok && res.success) {
             alert(res.message);
             voltarParaCatalogo();
@@ -444,7 +494,7 @@ async function solicitarColeta() {
 
 window.onload = () => {
     carregarPreferenciasAparencia();
-    verificarSessao(); // Inicia verificando se há login, se houver ele carrega a API.
+    verificarSessao();
 
     setTimeout(() => {
         const defaultBtn = document.querySelector('.cat-btn');
