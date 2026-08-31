@@ -53,17 +53,18 @@
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
         
-        <!-- TELA DE LOGIN INSTITUCIONAL -->
+        <!-- TELA DE LOGIN INSTITUCIONAL COM 2 ETAPAS -->
         <section id="loginScreen" class="max-w-md mx-auto bg-card border border-color rounded-2xl p-8 shadow-lg mt-10">
             <div class="text-center mb-8">
                 <div class="w-16 h-16 rounded-full bg-header border border-color flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-user-graduate text-3xl dynamic-text"></i>
                 </div>
                 <h2 class="text-xl font-bold text-main">Acesso do Aluno</h2>
-                <p class="text-xs text-muted mt-2">Utilize seu e-mail @aluno.cps.sp.gov.br para acessar o catálogo de objetos e solicitar retiradas.</p>
+                <p id="loginSubtitle" class="text-xs text-muted mt-2">Utilize seu e-mail @aluno.cps.sp.gov.br para acessar o catálogo de objetos e solicitar retiradas.</p>
             </div>
             
-            <form id="loginForm" onsubmit="fazerLogin(event)" class="space-y-4">
+            <!-- ETAPA 1: SOLICITAR CÓDIGO -->
+            <form id="step1Form" onsubmit="solicitarCodigoDeAcesso(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-muted mb-1">Nome Completo</label>
                     <input type="text" id="loginNome" required class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted" placeholder="Digite seu nome">
@@ -77,11 +78,32 @@
                     <input type="email" id="loginEmail" required class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted" placeholder="seunome@aluno.cps.sp.gov.br">
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm shadow-md flex justify-center items-center gap-2">
-                        <span>ENTRAR NO SISTEMA</span>
-                        <i class="fas fa-arrow-right"></i>
+                    <button type="submit" id="btnStep1" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm shadow-md flex justify-center items-center gap-2">
+                        <span>ENVIAR CÓDIGO DE ACESSO</span>
+                        <i class="fas fa-envelope"></i>
                     </button>
                 </div>
+            </form>
+
+            <!-- ETAPA 2: DIGITAR CÓDIGO (Oculta por padrão) -->
+            <form id="step2Form" onsubmit="validarCodigoDeAcesso(event)" class="space-y-4 hidden">
+                <div class="bg-header p-4 rounded-xl border border-color text-center mb-2">
+                    <p class="text-xs text-muted mb-1">Enviamos um código de 6 dígitos para:</p>
+                    <p id="displayEmailEnviado" class="text-sm font-bold text-main"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 text-center">Digite o Código de Verificação</label>
+                    <input type="text" id="loginCodigo" required maxlength="6" class="w-full bg-header border border-color text-main text-2xl text-center tracking-widest rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm" placeholder="000000">
+                </div>
+                <div class="pt-2">
+                    <button type="submit" id="btnStep2" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm shadow-md flex justify-center items-center gap-2">
+                        <span>CONFIRMAR E ENTRAR</span>
+                        <i class="fas fa-check-circle"></i>
+                    </button>
+                </div>
+                <button type="button" onclick="voltarParaEtapa1()" class="w-full text-xs text-muted hover:text-main mt-2 transition">
+                    <i class="fas fa-arrow-left"></i> Usar outro e-mail
+                </button>
             </form>
         </section>
 
@@ -136,7 +158,7 @@
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
-        <!-- PAINEL DE ANÚNCIOS - NOVO MODO DO SITE -->
+        <!-- PAINEL DE ANÚNCIOS -->
         <section id="adsScreen" class="hidden">
             <div class="relative min-h-[70vh] flex flex-col justify-center">
                 <div class="flex items-center justify-between mb-4">
@@ -240,19 +262,13 @@
                 <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border"></span>
             </div>
 
-            <!-- CARROSSEL DE FOTOS -->
             <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
-                <!-- Indicador 1/4 (Mostrado quando há fotos) -->
                 <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
                     <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
                 </div>
 
-                <!-- Container Deslizante com Suporte a Drag/Touch -->
-                <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth">
-                    <!-- Fotos injetadas via JavaScript -->
-                </div>
+                <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"></div>
 
-                <!-- Botões de navegação lateral para desktop -->
                 <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
                     <i class="fas fa-chevron-left text-xs"></i>
                 </button>
@@ -260,7 +276,6 @@
                     <i class="fas fa-chevron-right text-xs"></i>
                 </button>
 
-                <!-- Placeholder sem foto -->
                 <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
                     <i class="fas fa-box-open text-5xl mb-2"></i>
                     <p class="text-xs">Foto mantida no registro da secretaria</p>
@@ -288,7 +303,7 @@
 
     <script src="script.js"></script>
 
-    <!-- FUNCIONALIDADE DO PAINEL DE ANÚNCIOS (ADICIONADA SEM REMOVER O SCRIPT ORIGINAL) -->
+    <!-- FUNCIONALIDADE DO PAINEL DE ANÚNCIOS -->
     <script>
     (function () {
         const ADS_API_URL = "https://achados-etec-api.onrender.com";
@@ -452,11 +467,11 @@
             const catalogo = document.getElementById("catalogScreen");
             const detalhes = document.getElementById("detailScreen");
             const painel = document.getElementById("adsScreen");
-            const login = document.getElementById("loginScreen"); // Ajuste de integração
+            const login = document.getElementById("loginScreen"); 
 
             if (catalogo) catalogo.classList.add("hidden");
             if (detalhes) detalhes.classList.add("hidden");
-            if (login) login.classList.add("hidden"); // Oculta o login ao abrir painel
+            if (login) login.classList.add("hidden"); 
             if (painel) painel.classList.remove("hidden");
 
             carregarAnuncios();
@@ -465,12 +480,11 @@
         window.fecharPainelAnuncios = function () {
             const painel = document.getElementById("adsScreen");
             const catalogo = document.getElementById("catalogScreen");
-            const login = document.getElementById("loginScreen"); // Ajuste de integração
+            const login = document.getElementById("loginScreen"); 
 
             pararRotacao();
             if (painel) painel.classList.add("hidden");
             
-            // Verifica se o aluno já fez login para retornar para a tela correta
             const sessao = localStorage.getItem('aluno_etec_sessao');
             if (sessao) {
                 if (catalogo) catalogo.classList.remove("hidden");
@@ -488,31 +502,24 @@
             const id = valorItem(item, "id");
             pararRotacao();
 
-            // Aproveita a tela de detalhes que já existe no site.
             if (typeof window.mostrarDetalhesItem === "function") {
                 window.fecharPainelAnuncios();
                 window.mostrarDetalhesItem(id);
                 return;
             }
-
-            // Compatibilidade com possíveis nomes já usados pelo script original.
             if (typeof window.verDetalhes === "function") {
                 window.fecharPainelAnuncios();
                 window.verDetalhes(id);
                 return;
             }
-            
-            // Adicionado para suportar a função atual abrirDetalhes()
             if (typeof window.abrirDetalhes === "function") {
                 window.fecharPainelAnuncios();
                 window.abrirDetalhes(item);
                 return;
             }
-
             console.log("ID do anúncio selecionado:", id);
         };
 
-        // Teclas ← e → funcionam enquanto o painel estiver aberto.
         document.addEventListener("keydown", function (event) {
             const painel = document.getElementById("adsScreen");
             if (!painel || painel.classList.contains("hidden")) return;
