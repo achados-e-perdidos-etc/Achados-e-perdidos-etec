@@ -65,34 +65,40 @@ def verificar_vencimento_doacoes():
     Verifica se há itens com status 'DISPONÍVEL' há mais de 90 dias
     e altera o status para 'PARA DOAÇÃO'.
     """
+    print("--- INICIANDO VERIFICAÇÃO DE 90 DIAS ---")
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT id, data_encontrado FROM itens WHERE status = 'DISPONÍVEL';")
         itens = cursor.fetchall()
+        print(f"-> Itens disponíveis encontrados no banco: {len(itens)}")
 
         hoje = datetime.now()
         itens_atualizados = 0
 
         for item in itens:
+            print(f"Verificando item #{item['id']} com data: '{item['data_encontrado']}'...")
             try:
                 # O formato salvo atualmente é DD/MM/YYYY
                 data_item = datetime.strptime(item['data_encontrado'], "%d/%m/%Y")
                 dias_passados = (hoje - data_item).days
+                print(f"   Dias passados: {dias_passados}")
 
                 if dias_passados >= 90:
                     cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = %s", (item['id'],))
                     itens_atualizados += 1
+                    print(f"   [SUCESSO] Item #{item['id']} atualizado para PARA DOAÇÃO!")
             except ValueError:
-                pass # Ignora itens cadastrados com formato de data inválido ou manual
+                print(f"   [ERRO] Formato de data inválido no item #{item['id']}. Esperado DD/MM/YYYY.")
 
         if itens_atualizados > 0:
             conn.commit()
+            print(f"-> Total de {itens_atualizados} itens salvos com novo status.")
 
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"Erro ao rodar automação de 90 dias: {e}")
+        print(f"[ERRO CRÍTICO] Falha na automação: {e}")
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
