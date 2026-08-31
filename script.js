@@ -72,7 +72,7 @@ function carregarPreferenciasAparencia() {
 }
 
 // ------------------------------------------------------------------
-// SISTEMA DE LOGIN INSTITUCIONAL
+// SISTEMA DE LOGIN INSTITUCIONAL (ATUALIZADO)
 // ------------------------------------------------------------------
 function verificarSessao() {
     const userStr = localStorage.getItem('aluno_etec_sessao');
@@ -106,9 +106,9 @@ function fazerLogin(event) {
     const rm = document.getElementById('loginRM').value.trim();
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
 
-    // Validação obrigatória do domínio ETEC
-    if (!email.endsWith('@etec.sp.gov.br')) {
-        alert("🔒 Acesso Bloqueado!\n\nVocê precisa usar o seu e-mail institucional oficial (terminado em @etec.sp.gov.br) para acessar o sistema.");
+    // Validação obrigatória do NOVO domínio do Centro Paula Souza
+    if (!email.endsWith('@aluno.cps.sp.gov.br')) {
+        alert("🔒 Acesso Bloqueado!\n\nVocê precisa usar o seu e-mail institucional oficial (terminado em @aluno.cps.sp.gov.br) para acessar o sistema.");
         return;
     }
 
@@ -419,10 +419,12 @@ async function solicitarColeta() {
         const response = await fetch(`${API_URL}/api/solicitar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // Enviamos o email também caso o backend queira mandar a notificação direta!
             body: JSON.stringify({
                 id: itemSelecionado.id,
                 nome: alunoLogado.nome,
-                rm: alunoLogado.rm
+                rm: alunoLogado.rm,
+                email: alunoLogado.email
             })
         });
 
