@@ -4,6 +4,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -59,8 +60,43 @@ def init_db():
 if DATABASE_URL:
     init_db()
 
+def verificar_vencimento_doacoes():
+    """
+    Verifica se há itens com status 'DISPONÍVEL' há mais de 90 dias
+    e altera o status para 'PARA DOAÇÃO'.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, data_encontrado FROM itens WHERE status = 'DISPONÍVEL';")
+        itens = cursor.fetchall()
+
+        hoje = datetime.now()
+        itens_atualizados = 0
+
+        for item in itens:
+            try:
+                # O formato salvo atualmente é DD/MM/YYYY
+                data_item = datetime.strptime(item['data_encontrado'], "%d/%m/%Y")
+                dias_passados = (hoje - data_item).days
+
+                if dias_passados >= 90:
+                    cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = %s", (item['id'],))
+                    itens_atualizados += 1
+            except ValueError:
+                pass # Ignora itens cadastrados com formato de data inválido ou manual
+
+        if itens_atualizados > 0:
+            conn.commit()
+
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Erro ao rodar automação de 90 dias: {e}")
+
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
+    verificar_vencimento_doacoes() # Roda a automação de 90 dias toda vez que a lista for chamada
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -218,6 +254,64 @@ def concluir_doacoes():
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+def enviar_notificacao(nome_aluno, rm_aluno, item_id):
+    """
+    Simula o envio de E-mail/WhatsApp para o aluno usando o RM.
+    Na versão final, você pode integrar com smtplib para e-mail real.
+    """
+    email_institucional = f"{rm_aluno}@etec.sp.gov.br"
+    mensagem = f"""
+    [WHATSAPP / E-MAIL AUTOMÁTICO]
+    Para: {nome_aluno} ({email_institucional})
+    Assunto: Confirmação de Solicitação - Achados e Perdidos ETEC
+
+    Olá {nome_aluno},
+    Sua solicitação para o item #{item_id} foi registrada com sucesso!
+    Por favor, compareça à Secretaria da escola de segunda a sexta, 
+    entre 08h e 17h, para realizar a retirada.
+    """
+    print(mensagem) # Exibe no console do Render
+
+@app.route('/api/solicitar', methods=['POST'])
+def solicitar_item():
+    data = request.json
+    item_id = data.get('id')
+    nome = data.get('nome')
+    rm = data.get('rm')
+
+    if not item_id or not nome or not rm:
+        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Só permite solicitar se estiver DISPONÍVEL
+        cursor.execute('''
+            UPDATE itens 
+            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
+            WHERE id = %s AND status = 'DISPONÍVEL';
+        ''', (nome, rm, item_id))
+
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "O item não está mais disponível para solicitação."}), 400
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Dispara a notificação após o sucesso
+        enviar_notificacao(nome, rm, item_id)
+
+        return jsonify({
+            "success": True, 
+            "message": "Solicitação realizada! Verifique seu e-mail institucional para ver o horário de atendimento."
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
