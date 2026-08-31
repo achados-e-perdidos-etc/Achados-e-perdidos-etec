@@ -12,6 +12,7 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
+# Variáveis de ambiente configuradas no Render
 DATABASE_URL = os.environ.get("DATABASE_URL")
 EMAIL_SMTP = os.environ.get("EMAIL_SMTP") 
 SENHA_SMTP = os.environ.get("SENHA_SMTP")
@@ -102,14 +103,12 @@ def verificar_vencimento_doacoes():
         print(f"[ERRO CRÍTICO] Falha na automação: {e}")
 
 # =======================================================
-# ROTAS DE AUTENTICAÇÃO E ENVIO DE E-MAIL (NOVAS)
+# ROTAS DE AUTENTICAÇÃO E ENVIO DE E-MAIL
 # =======================================================
 def enviar_email_real(destinatario, assunto, corpo):
     if not EMAIL_SMTP or not SENHA_SMTP:
-        print(f"\n[AVISO DE DESENVOLVEDOR] Variáveis EMAIL_SMTP e SENHA_SMTP não configuradas.")
-        print(f"O sistema simularia o envio deste e-mail para: {destinatario}")
-        print(f"Conteúdo:\n{corpo}\n")
-        return True # Retorna True para não travar os testes
+        print("[ERRO] Credenciais de e-mail não configuradas no servidor.")
+        return False
     
     msg = MIMEText(corpo)
     msg['Subject'] = assunto
@@ -117,13 +116,13 @@ def enviar_email_real(destinatario, assunto, corpo):
     msg['To'] = destinatario
 
     try:
-        # Usa porta 465 (SSL) padrão do Gmail
+        # Configuração oficial do servidor SMTP do Google (Gmail)
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_SMTP, SENHA_SMTP)
             server.send_message(msg)
         return True
     except Exception as e:
-        print(f"Erro ao enviar email via SMTP: {e}")
+        print(f"Erro ao enviar email via SMTP do Gmail: {e}")
         return False
 
 @app.route('/api/auth/codigo', methods=['POST'])
@@ -135,22 +134,18 @@ def gerar_codigo():
     if not email or not email.endswith('@aluno.cps.sp.gov.br'):
         return jsonify({"success": False, "message": "E-mail institucional inválido."}), 400
 
-    # Gera um código de 6 dígitos aleatório
     codigo_gerado = str(random.randint(100000, 999999))
-    
-    # Salva na memória atrelado ao e-mail
     codigos_verificacao[email] = codigo_gerado
 
     assunto = "Código de Acesso - Achados e Perdidos ETEC"
     corpo = f"Olá, {nome}.\n\nSeu código de acesso para o sistema de Achados e Perdidos é: {codigo_gerado}\n\nSe você não solicitou este acesso, apenas ignore este e-mail."
 
-    # Tenta enviar o email
     enviado = enviar_email_real(email, assunto, corpo)
 
     if enviado:
-        return jsonify({"success": True, "message": "Código gerado com sucesso."})
+        return jsonify({"success": True, "message": "Código enviado para seu e-mail."})
     else:
-        return jsonify({"success": False, "message": "Falha ao enviar o e-mail."}), 500
+        return jsonify({"success": False, "message": "Falha no servidor de e-mail. Contate a secretaria."}), 500
 
 @app.route('/api/auth/validar', methods=['POST'])
 def validar_codigo():
@@ -160,17 +155,15 @@ def validar_codigo():
 
     codigo_salvo = codigos_verificacao.get(email)
 
-    if codigo_salvo and codigo_salvo == codigo_digitado:
-        # Apaga o código depois de usado para segurança
+    if codigo_salvo and str(codigo_salvo) == str(codigo_digitado):
         del codigos_verificacao[email]
         return jsonify({"success": True, "message": "Login validado com sucesso!"})
     else:
         return jsonify({"success": False, "message": "Código incorreto ou expirado."}), 401
 
 # =======================================================
-# RESTANTE DAS ROTAS DE CATÁLOGO E SECRETARIA
+# ROTAS DO CATÁLOGO E SECRETARIA
 # =======================================================
-
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
     verificar_vencimento_doacoes() 
@@ -340,7 +333,7 @@ def solicitar_item():
     item_id = data.get('id')
     nome = data.get('nome')
     rm = data.get('rm')
-    email = data.get('email')
+    email = data.get('email') 
 
     if not item_id or not nome or not rm:
         return jsonify({"success": False, "message": "Dados incompletos!"}), 400
@@ -364,10 +357,11 @@ def solicitar_item():
         cursor.close()
         conn.close()
 
-        # Envia e-mail de notificação de sucesso da solicitação!
-        assunto_solicitacao = "Confirmação de Solicitação - Achados e Perdidos ETEC"
-        corpo_solicitacao = f"Olá, {nome}.\n\nSua solicitação para o item #{item_id} foi registrada com sucesso!\nPor favor, compareça à Secretaria da escola de segunda a sexta, entre 08h e 17h, para realizar a retirada."
-        enviar_email_real(email, assunto_solicitacao, corpo_solicitacao)
+        # Envia e-mail de notificação de sucesso da solicitação
+        if email:
+            assunto_solicitacao = "Confirmação de Solicitação - Achados e Perdidos ETEC"
+            corpo_solicitacao = f"Olá, {nome}.\n\nSua solicitação para o item #{item_id} foi registrada com sucesso!\nPor favor, compareça à Secretaria da escola de segunda a sexta, entre 08h e 17h, para realizar a retirada."
+            enviar_email_real(email, assunto_solicitacao, corpo_solicitacao)
 
         return jsonify({
             "success": True, 
