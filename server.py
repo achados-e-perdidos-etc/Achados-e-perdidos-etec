@@ -263,12 +263,13 @@ def concluir_doacoes():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-def enviar_notificacao(nome_aluno, rm_aluno, item_id):
+def enviar_notificacao(nome_aluno, rm_aluno, email_aluno, item_id):
     """
-    Simula o envio de E-mail/WhatsApp para o aluno usando o RM.
+    Simula o envio de E-mail/WhatsApp para o aluno.
     Na versão final, você pode integrar com smtplib para e-mail real.
     """
-    email_institucional = f"{rm_aluno}@etec.sp.gov.br"
+    # Usa o email que veio do Front (se disponível), senão monta a string de fallback
+    email_institucional = email_aluno if email_aluno else f"{rm_aluno}@aluno.cps.sp.gov.br"
     mensagem = f"""
     [WHATSAPP / E-MAIL AUTOMÁTICO]
     Para: {nome_aluno} ({email_institucional})
@@ -287,6 +288,7 @@ def solicitar_item():
     item_id = data.get('id')
     nome = data.get('nome')
     rm = data.get('rm')
+    email = data.get('email') # Recebendo o email opcional do FrontEnd
 
     if not item_id or not nome or not rm:
         return jsonify({"success": False, "message": "Dados incompletos!"}), 400
@@ -312,7 +314,7 @@ def solicitar_item():
         conn.close()
 
         # Dispara a notificação após o sucesso
-        enviar_notificacao(nome, rm, item_id)
+        enviar_notificacao(nome, rm, email, item_id)
 
         return jsonify({
             "success": True, 
