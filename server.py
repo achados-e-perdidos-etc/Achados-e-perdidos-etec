@@ -1,15 +1,26 @@
 import os
 import json
+import random
+import time
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import resend
 
-# Configura o Flask para servir os arquivos estáticos da própria pasta do projeto
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
+# Configuração da API Key do Resend
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
+# Dicionário em memória para guardar códigos OTP temporários
+# Estrutura: { "email@etec.sp.gov.br": { "codigo": "123456", "expira": timestamp, "nome": "Nome", "rm": "123" } }
+codigos_otp = {}
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -21,7 +32,6 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabela principal de Itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -38,7 +48,6 @@ def init_db():
         ''')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
 
-        # Tabela de Entregues / Histórico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -52,12 +61,6 @@ def init_db():
             );
         ''')
 
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS retirado_por VARCHAR(100);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS rm_retirante VARCHAR(30);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS turma_curso VARCHAR(50);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS data_entrega VARCHAR(30);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS funcionario_responsavel VARCHAR(100);')
-
         conn.commit()
         cursor.close()
         conn.close()
@@ -67,10 +70,89 @@ def init_db():
 if DATABASE_URL:
     init_db()
 
-# ROTA PRINCIPAL: Abre o site index.html diretamente no navegador
+# Rota principal para abrir o site
 @app.route('/')
 def home():
     return send_from_directory('.', 'index.html')
+
+# --- ROTAS DE LOGIN COM RESEND (E-MAIL OTP) ---
+
+@app.route('/api/login/enviar-codigo', methods=['POST'])
+def enviar_codigo_email():
+    data = request.json
+    email = (data.get('email') or '').strip().lower()
+    nome = (data.get('nome') or '').strip()
+    rm = (data.get('rm') or '').strip()
+
+    if not email or not nome or not rm:
+        return jsonify({"success": False, "message": "Preencha Nome, RM e E-mail!"}), 400
+
+    # Gera código aleatório de 6 dígitos
+    codigo = str(random.randint(100000, 999999))
+    
+    # Guarda o código válido por 10 minutos (600 segundos)
+    codigos_otp[email] = {
+        "codigo": codigo,
+        "expira": time.time() + 600,
+        "nome": nome,
+        "rm": rm
+    }
+
+    # Envio do e-mail pelo Resend
+    try:
+        if not RESEND_API_KEY:
+            print(f"[TESTE SEM RESEND KEY] Código para {email}: {codigo}")
+            return jsonify({"success": True, "message": f"Modo teste! Seu código é: {codigo}"})
+
+        params = {
+            "from": "ETEC Achados <onboarding@resend.dev>",  # Domínio de teste padrão do Resend
+            "to": [email],
+            "subject": "🔑 Seu Código de Acesso - Achados e Perdidos ETEC",
+            "html": f"""
+                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0d1117; color: #ffffff; border-radius: 10px;">
+                    <h2 style="color: #f87171;">ETEC Profº José Ignácio Azevedo Filho</h2>
+                    <p>Olá, <strong>{nome}</strong>!</p>
+                    <p>Seu código de verificação para acessar o portal de Achados e Perdidos é:</p>
+                    <div style="background-color: #161b22; border: 1px solid #30363d; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #38bdf8;">{codigo}</span>
+                    </div>
+                    <p style="font-size: 12px; color: #8b949e;">Este código expira em 10 minutos. Se você não solicitou este acesso, ignore este e-mail.</p>
+                </div>
+            """
+        }
+        resend.Emails.send(params)
+        return jsonify({"success": True, "message": "Código enviado para o seu e-mail com sucesso!"})
+    except Exception as e:
+        print(f"Erro ao enviar e-mail via Resend: {e}")
+        return jsonify({"success": False, "message": f"Erro ao enviar e-mail: {str(e)}"}), 500
+
+@app.route('/api/login/verificar-codigo', methods=['POST'])
+def verificar_codigo_email():
+    data = request.json
+    email = (data.get('email') or '').strip().lower()
+    codigo_digitado = (data.get('codigo') or '').strip()
+
+    otp_info = codigos_otp.get(email)
+
+    if not otp_info:
+        return jsonify({"success": False, "message": "Nenhum código solicitado para este e-mail!"}), 400
+
+    if time.time() > otp_info["expira"]:
+        del codigos_otp[email]
+        return jsonify({"success": False, "message": "Código expirado! Solicite um novo código."}), 400
+
+    if otp_info["codigo"] == codigo_digitado:
+        usuario = {
+            "nome": otp_info["nome"],
+            "rm": otp_info["rm"],
+            "email": email
+        }
+        del codigos_otp[email]  # Limpa o código após usar
+        return jsonify({"success": True, "message": "Login realizado com sucesso!", "usuario": usuario})
+
+    return jsonify({"success": False, "message": "Código de verificação incorreto!"}), 400
+
+# --- DEMAIS ROTAS DA API ---
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
