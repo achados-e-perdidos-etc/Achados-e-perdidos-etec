@@ -8,13 +8,14 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
-// --- FLUXO DE LOGIN COM RESEND ---
+// --- FLUXO DE LOGIN COM RESEND E LEMBRE-ME ---
 async function solicitarCodigoEmail(e) {
     e.preventDefault();
 
     const nome = document.getElementById('loginNome').value.trim();
     const rm = document.getElementById('loginRM').value.trim();
     const email = document.getElementById('loginEmail').value.trim();
+    const lembreme = document.getElementById('loginLembreme').checked;
 
     if (!nome || !rm || !email) {
         alert("Preencha todos os campos!");
@@ -35,7 +36,7 @@ async function solicitarCodigoEmail(e) {
         const res = await response.json();
 
         if (response.ok && res.success) {
-            window.dadosLoginTemp = { nome, rm, email };
+            window.dadosLoginTemp = { nome, rm, email, lembreme };
             document.getElementById('otpModal').classList.remove('hidden');
             alert(res.message);
         } else {
@@ -71,7 +72,16 @@ async function verificarCodigoOTP() {
 
         if (response.ok && res.success) {
             alunoLogado = res.usuario;
-            localStorage.setItem('aluno_sessao', JSON.stringify(alunoLogado));
+            
+            // LÓGICA DO LEMBRE-ME
+            if (window.dadosLoginTemp.lembreme) {
+                localStorage.setItem('aluno_sessao', JSON.stringify(alunoLogado));
+                sessionStorage.removeItem('aluno_sessao');
+            } else {
+                sessionStorage.setItem('aluno_sessao', JSON.stringify(alunoLogado));
+                localStorage.removeItem('aluno_sessao');
+            }
+
             fecharModalOTP();
             iniciarSessao();
         } else {
@@ -108,6 +118,7 @@ function iniciarSessao() {
 function logout() {
     alunoLogado = null;
     localStorage.removeItem('aluno_sessao');
+    sessionStorage.removeItem('aluno_sessao');
     document.getElementById('userInfo')?.classList.add('hidden');
     document.getElementById('catalogScreen')?.classList.add('hidden');
     document.getElementById('detailScreen')?.classList.add('hidden');
@@ -115,13 +126,18 @@ function logout() {
 }
 
 function checarSessaoSalva() {
-    const sessao = localStorage.getItem('aluno_sessao');
-    if (sessao) {
+    // Procura primeiro no localStorage (Lembre-me ativo) e depois no sessionStorage
+    const sessaoLocal = localStorage.getItem('aluno_sessao');
+    const sessaoTemp = sessionStorage.getItem('aluno_sessao');
+    const sessaoValida = sessaoLocal || sessaoTemp;
+
+    if (sessaoValida) {
         try {
-            alunoLogado = JSON.parse(sessao);
+            alunoLogado = JSON.parse(sessaoValida);
             iniciarSessao();
         } catch (e) {
             localStorage.removeItem('aluno_sessao');
+            sessionStorage.removeItem('aluno_sessao');
         }
     }
 }
