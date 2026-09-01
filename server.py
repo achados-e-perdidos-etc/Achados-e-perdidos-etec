@@ -2,11 +2,11 @@ import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import datetime
 
-# Configura o Flask para servir os arquivos estáticos da própria pasta do projeto
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__)
 CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -36,9 +36,8 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
 
-        # Tabela de Entregues / Histórico
+        # Tabela de Entregues / Historico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -52,12 +51,6 @@ def init_db():
             );
         ''')
 
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS retirado_por VARCHAR(100);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS rm_retirante VARCHAR(30);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS turma_curso VARCHAR(50);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS data_entrega VARCHAR(30);')
-        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS funcionario_responsavel VARCHAR(100);')
-
         conn.commit()
         cursor.close()
         conn.close()
@@ -67,13 +60,38 @@ def init_db():
 if DATABASE_URL:
     init_db()
 
-# ROTA PRINCIPAL: Abre o site index.html diretamente no navegador
-@app.route('/')
-def home():
-    return send_from_directory('.', 'index.html')
+def verificar_vencimento_doacoes():
+    print("--- INICIANDO VERIFICAÇÃO DE 90 DIAS ---")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, data_encontrado FROM itens WHERE status = 'DISPONÍVEL';")
+        itens = cursor.fetchall()
+        
+        hoje = datetime.now()
+        itens_atualizados = 0
+
+        for item in itens:
+            try:
+                data_item = datetime.strptime(item['data_encontrado'], "%d/%m/%Y")
+                dias_passados = (hoje - data_item).days
+                if dias_passados >= 90:
+                    cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = %s", (item['id'],))
+                    itens_atualizados += 1
+            except ValueError:
+                pass
+
+        if itens_atualizados > 0:
+            conn.commit()
+            
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"[ERRO CRÍTICO] Falha na automação: {e}")
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
+    verificar_vencimento_doacoes() 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -94,6 +112,20 @@ def get_itens():
         cursor.close()
         conn.close()
         return jsonify(itens)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ROTA NOVA: BUSCAR HISTÓRICO DE ENTREGAS
+@app.route('/api/entregues', methods=['GET'])
+def get_entregues():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
+        entregues = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(entregues)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -190,7 +222,7 @@ def atualizar_item(item_id):
             retirado_por = data.get('retirado_por', 'Não informado')
             rm_retirante = data.get('rm_retirante', 'Não informado')
             turma_curso = data.get('turma_curso', '-')
-            data_entrega = data.get('data_entrega', data_enc or '-')
+            data_entrega = data.get('data_entrega', data_enc)
             func_resp = data.get('funcionario_responsavel', 'Secretaria')
             
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
@@ -203,6 +235,30 @@ def atualizar_item(item_id):
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ROTA NOVA: RECUSAR SOLICITAÇÃO (LIMPA NOME E RM E VOLTA PARA DISPONÍVEL)
+@app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
+def recusar_solicitacao(item_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE itens 
+            SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL
+            WHERE id = %s;
+        ''', (item_id,))
+        
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Item não encontrado."}), 404
+            
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": "Solicitação recusada. O item voltou a ficar DISPONÍVEL."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -234,43 +290,55 @@ def concluir_doacoes():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+def enviar_notificacao(nome_aluno, rm_aluno, item_id):
+    email_institucional = f"{rm_aluno}@etec.sp.gov.br"
+    mensagem = f"""
+    [WHATSAPP / E-MAIL AUTOMÁTICO]
+    Para: {nome_aluno} ({email_institucional})
+    Assunto: Confirmação de Solicitação - Achados e Perdidos ETEC
+
+    Olá {nome_aluno},
+    Sua solicitação para o item #{item_id} foi registrada com sucesso!
+    Por favor, compareça à Secretaria da escola de segunda a sexta, 
+    entre 08h e 17h, para realizar a retirada.
+    """
+    print(mensagem)
+
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json
     item_id = data.get('id')
-    nome_aluno = data.get('nome')
-    rm_aluno = data.get('rm')
-    
-    if not item_id or not nome_aluno or not rm_aluno:
-        return jsonify({"success": False, "message": "Dados incompletos do aluno!"}), 400
-        
+    nome = data.get('nome')
+    rm = data.get('rm')
+
+    if not item_id or not nome or not rm:
+        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
+
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
-
-        status_atual = (item['status'] or 'DISPONÍVEL').upper()
-        if status_atual in ['SOLICITADO', 'ENTREGUE', 'PARA DOAÇÃO', 'DOAÇÃO FEITA']:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
-
+        cursor = conn.cursor()
+        
         cursor.execute('''
             UPDATE itens 
             SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s;
-        ''', (nome_aluno, rm_aluno, item_id))
-        
+            WHERE id = %s AND status = 'DISPONÍVEL';
+        ''', (nome, rm, item_id))
+
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "O item não está mais disponível para solicitação."}), 400
+
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
+
+        enviar_notificacao(nome, rm, item_id)
+
+        return jsonify({
+            "success": True, 
+            "message": "Solicitação realizada! Verifique seu e-mail institucional para ver o horário de atendimento."
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
