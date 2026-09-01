@@ -73,6 +73,14 @@
                     <input type="email" id="loginEmail" required placeholder="seu.nome@etec.sp.gov.br" class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition">
                 </div>
 
+                <!-- CAMPO LEMBRE-SE DE MIM -->
+                <div class="flex items-center justify-between pt-1">
+                    <label class="flex items-center space-x-2 text-xs text-muted cursor-pointer select-none">
+                        <input type="checkbox" id="loginLembreme" checked class="w-4 h-4 rounded border-color bg-header text-red-600 focus:ring-0 cursor-pointer">
+                        <span>Lembre-se de mim neste dispositivo</span>
+                    </label>
+                </div>
+
                 <button type="submit" id="btnEnviarEmail" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase transition flex items-center justify-center gap-2">
                     <span>ENVIAR CÓDIGO POR E-MAIL</span>
                     <i class="fas fa-envelope"></i>
