@@ -44,18 +44,15 @@ function atualizarUIUsuario() {
     const userInfo = document.getElementById('userInfo');
     const userName = document.getElementById('userName');
     const userRM = document.getElementById('userRM');
-    const btnId = document.getElementById('btnIdentificar');
     const btnNotif = document.getElementById('btnNotificacoes');
 
     if (alunoLogado) {
         userName.innerText = alunoLogado.nome;
         userRM.innerText = `RM: ${alunoLogado.rm}`;
         userInfo.classList.remove('hidden');
-        btnId.classList.add('hidden');
         btnNotif.classList.remove('hidden');
     } else {
         userInfo.classList.add('hidden');
-        btnId.classList.remove('hidden');
         btnNotif.classList.add('hidden');
     }
 }
@@ -68,7 +65,7 @@ function logout() {
 }
 
 // ==========================================
-// 2. MODAL DE IDENTIFICAÇÃO (Substitui o Login)
+// 2. MODAL DE IDENTIFICAÇÃO SILENCIOSA
 // ==========================================
 
 function abrirModalIdentificacao(acao = null) {
@@ -136,12 +133,12 @@ async function confirmarIdentificacao() {
             carregarNotificacoes();
             fecharModalIdentificacao();
 
-            // Executa a ação que ficou pendente
+            // Executa a ação que o aluno queria fazer
             setTimeout(() => {
                 if (acaoPendente === 'solicitar') {
                     abrirModalSolicitar();
                 } else if (acaoPendente === 'publicar') {
-                    document.getElementById('btnPublicarAviso').click(); // Re-dispara o submit
+                    document.getElementById('btnPublicarAviso').click(); // Re-dispara a publicação
                 }
                 acaoPendente = null;
             }, 400);
@@ -152,9 +149,12 @@ async function confirmarIdentificacao() {
             btnConfirmar.disabled = false;
         }
     } catch (err) {
-        errorMsg.innerText = "Erro de conexão.";
+        errorMsg.innerText = "Erro de conexão com o servidor.";
         errorMsg.classList.remove('hidden');
         btnConfirmar.disabled = false;
+        btnConfirmar.classList.remove('opacity-70', 'cursor-not-allowed');
+        document.getElementById('btnConfirmarIdText').innerText = 'Salvar e Continuar';
+        document.getElementById('btnConfirmarIdSpinner').classList.add('hidden');
     }
 }
 
@@ -170,6 +170,7 @@ function processarBotaoSolicitar() {
         return;
     }
     
+    // Pede nome e rm na hora se nao estiver logado
     if (!alunoLogado) {
         abrirModalIdentificacao('solicitar');
     } else {
@@ -498,22 +499,76 @@ async function lerNotificacao(id) {
     } catch (e) { console.error(e); }
 }
 
-
 // ==========================================
 // 6. ROTINAS DO CATÁLOGO E DETALHES GERAIS
 // ==========================================
 
-async function carregarItensDaAPI() {
-    try {
-        const response = await fetch(`${API_URL}/api/itens`);
-        if (response.ok) {
-            todosItens = await response.json();
-            renderizarItens();
-        }
-    } catch (error) {
-        console.error("Erro ao carregar itens da API:", error);
+function toggleConfigMenu() {
+    const menu = document.getElementById('configMenu');
+    if (menu) menu.classList.toggle('hidden');
+}
+
+window.addEventListener('click', function(e) {
+    const menu = document.getElementById('configMenu');
+    if (!menu) return;
+    const btn = e.target.closest('button');
+    if (!menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleConfigMenu'))) {
+        menu.classList.add('hidden');
+    }
+});
+
+function aplicarTemaVermelho() {
+    const root = document.documentElement;
+    root.style.setProperty('--primary-color', '#dc2626');
+    root.style.setProperty('--primary-hover', '#b91c1c');
+    root.style.setProperty('--primary-text', '#f87171');
+    root.style.setProperty('--primary-bg-subtle', '#450a0a');
+    root.style.setProperty('--primary-border', '#991b1b');
+}
+
+function alternarModoEscuroClaro() {
+    const label = document.getElementById('themeLabel');
+    const icon = document.getElementById('themeIcon');
+    const isLight = document.body.classList.contains('light-theme');
+
+    if (isLight) {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+        if (label) label.innerText = "Modo Escuro";
+        if (icon) icon.className = "fas fa-moon text-yellow-400";
+        localStorage.setItem('theme_mode', 'dark');
+    } else {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+        if (label) label.innerText = "Modo Claro";
+        if (icon) icon.className = "fas fa-sun text-yellow-500";
+        localStorage.setItem('theme_mode', 'light');
     }
 }
+
+function carregarPreferenciasAparencia() {
+    aplicarTemaVermelho();
+    const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
+    const label = document.getElementById('themeLabel');
+    const icon = document.getElementById('themeIcon');
+
+    if (modoSalvo === 'light') {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+        if (label) label.innerText = "Modo Claro";
+        if (icon) icon.className = "fas fa-sun text-yellow-500";
+    } else {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+        if (label) label.innerText = "Modo Escuro";
+        if (icon) icon.className = "fas fa-moon text-yellow-400";
+    }
+}
+
+window.addEventListener('resize', () => {
+    const activeBtn = document.querySelector('.cat-btn.text-white');
+    if (activeBtn) moveIndicator(activeBtn);
+});
 
 function filtrarPorPalavraChave() {
     const input = document.getElementById('searchInput');
@@ -722,77 +777,9 @@ function voltarParaCatalogo() {
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-
 // ==========================================
-// 7. FUNÇÕES DE UI E AVISOS GERAIS
+// FUNÇÕES DE UI CUSTOMIZADA (MODAIS)
 // ==========================================
-
-function toggleConfigMenu() {
-    const menu = document.getElementById('configMenu');
-    if (menu) menu.classList.toggle('hidden');
-}
-
-window.addEventListener('click', function(e) {
-    const menu = document.getElementById('configMenu');
-    if (!menu) return;
-    const btn = e.target.closest('button');
-    if (!menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleConfigMenu'))) {
-        menu.classList.add('hidden');
-    }
-});
-
-function aplicarTemaVermelho() {
-    const root = document.documentElement;
-    root.style.setProperty('--primary-color', '#dc2626');
-    root.style.setProperty('--primary-hover', '#b91c1c');
-    root.style.setProperty('--primary-text', '#f87171');
-    root.style.setProperty('--primary-bg-subtle', '#450a0a');
-    root.style.setProperty('--primary-border', '#991b1b');
-}
-
-function alternarModoEscuroClaro() {
-    const label = document.getElementById('themeLabel');
-    const icon = document.getElementById('themeIcon');
-    const isLight = document.body.classList.contains('light-theme');
-
-    if (isLight) {
-        document.body.classList.remove('light-theme');
-        document.body.classList.add('dark-theme');
-        if (label) label.innerText = "Modo Escuro";
-        if (icon) icon.className = "fas fa-moon text-yellow-400";
-        localStorage.setItem('theme_mode', 'dark');
-    } else {
-        document.body.classList.remove('dark-theme');
-        document.body.classList.add('light-theme');
-        if (label) label.innerText = "Modo Claro";
-        if (icon) icon.className = "fas fa-sun text-yellow-500";
-        localStorage.setItem('theme_mode', 'light');
-    }
-}
-
-function carregarPreferenciasAparencia() {
-    aplicarTemaVermelho();
-    const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
-    const label = document.getElementById('themeLabel');
-    const icon = document.getElementById('themeIcon');
-
-    if (modoSalvo === 'light') {
-        document.body.classList.remove('dark-theme');
-        document.body.classList.add('light-theme');
-        if (label) label.innerText = "Modo Claro";
-        if (icon) icon.className = "fas fa-sun text-yellow-500";
-    } else {
-        document.body.classList.remove('light-theme');
-        document.body.classList.add('dark-theme');
-        if (label) label.innerText = "Modo Escuro";
-        if (icon) icon.className = "fas fa-moon text-yellow-400";
-    }
-}
-
-window.addEventListener('resize', () => {
-    const activeBtn = document.querySelector('.cat-btn.text-white');
-    if (activeBtn) moveIndicator(activeBtn);
-});
 
 function mostrarAviso(titulo, mensagem, tipo = 'sucesso') {
     const modal = document.getElementById('modalAviso');
@@ -802,6 +789,7 @@ function mostrarAviso(titulo, mensagem, tipo = 'sucesso') {
     const msgEl = document.getElementById('modalAvisoMensagem');
 
     modal.classList.remove('hidden');
+    
     setTimeout(() => {
         modal.classList.remove('opacity-0');
         content.classList.remove('scale-95');
