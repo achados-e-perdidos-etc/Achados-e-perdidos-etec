@@ -1,6 +1,8 @@
 import os
 import json
 import psycopg2
+import requests
+import random
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -10,6 +12,9 @@ app = Flask(__name__)
 CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+
+codigos_verificacao = {}
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -37,7 +42,7 @@ def init_db():
             );
         ''')
 
-        # Tabela de Entregues / Historico
+        # Tabela de Entregues / Histórico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -51,6 +56,17 @@ def init_db():
             );
         ''')
 
+        # NOVA: Tabela de Usuários (Alunos)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(100) NOT NULL,
+                rm VARCHAR(20) UNIQUE NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -61,48 +77,136 @@ if DATABASE_URL:
     init_db()
 
 def verificar_vencimento_doacoes():
-    """
-    Verifica se há itens com status 'DISPONÍVEL' há mais de 90 dias
-    e altera o status para 'PARA DOAÇÃO'.
-    """
-    print("--- INICIANDO VERIFICAÇÃO DE 90 DIAS ---")
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT id, data_encontrado FROM itens WHERE status = 'DISPONÍVEL';")
         itens = cursor.fetchall()
-        print(f"-> Itens disponíveis encontrados no banco: {len(itens)}")
-
         hoje = datetime.now()
         itens_atualizados = 0
 
         for item in itens:
-            print(f"Verificando item #{item['id']} com data: '{item['data_encontrado']}'...")
             try:
-                # O formato salvo atualmente é DD/MM/YYYY
                 data_item = datetime.strptime(item['data_encontrado'], "%d/%m/%Y")
-                dias_passados = (hoje - data_item).days
-                print(f"   Dias passados: {dias_passados}")
-
-                if dias_passados >= 90:
+                if (hoje - data_item).days >= 90:
                     cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = %s", (item['id'],))
                     itens_atualizados += 1
-                    print(f"   [SUCESSO] Item #{item['id']} atualizado para PARA DOAÇÃO!")
             except ValueError:
-                print(f"   [ERRO] Formato de data inválido no item #{item['id']}. Esperado DD/MM/YYYY.")
+                pass 
 
         if itens_atualizados > 0:
             conn.commit()
-            print(f"-> Total de {itens_atualizados} itens salvos com novo status.")
-
         cursor.close()
         conn.close()
     except Exception as e:
         print(f"[ERRO CRÍTICO] Falha na automação: {e}")
 
+# =======================================================
+# INTEGRAÇÃO RESEND.COM E AUTENTICAÇÃO
+# =======================================================
+def enviar_email_resend(destinatario, assunto, corpo_html):
+    if not RESEND_API_KEY:
+        print("[ERRO] RESEND_API_KEY não configurada no Render.")
+        return False
+    
+    headers = {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        # ATENÇÃO: Se não tiver domínio próprio verificado na Resend, 
+        # mantenha este email padrão do onboarding.
+        "from": "Achados e Perdidos ETEC <onboarding@resend.dev>",
+        "to": destinatario,
+        "subject": assunto,
+        "html": corpo_html
+    }
+    
+    try:
+        response = requests.post("https://api.resend.com/emails", json=payload, headers=headers)
+        if response.status_code in [200, 201, 202]:
+            return True
+        else:
+            print(f"[ERRO RESEND] {response.text}")
+            return False
+    except Exception as e:
+        print(f"[ERRO REQUISIÇÃO RESEND] {e}")
+        return False
+
+@app.route('/api/auth/codigo', methods=['POST'])
+def gerar_codigo():
+    data = request.json
+    nome = data.get('nome')
+    email = data.get('email')
+
+    if not email or not email.endswith('@aluno.cps.sp.gov.br'):
+        return jsonify({"success": False, "message": "E-mail institucional inválido."}), 400
+
+    codigo_gerado = str(random.randint(100000, 999999))
+    codigos_verificacao[email] = codigo_gerado
+
+    assunto = "Código de Acesso - Achados e Perdidos ETEC"
+    corpo_html = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2>Olá, {nome}.</h2>
+        <p>Seu código de verificação para acessar o sistema de Achados e Perdidos é:</p>
+        <h1 style="background: #f4f4f4; padding: 15px; border-radius: 8px; letter-spacing: 5px; display: inline-block;">{codigo_gerado}</h1>
+        <p>Se você não solicitou este acesso, desconsidere este e-mail.</p>
+    </div>
+    """
+
+    enviado = enviar_email_resend(email, assunto, corpo_html)
+
+    if enviado:
+        return jsonify({"success": True, "message": "Código enviado para seu e-mail."})
+    else:
+        return jsonify({"success": False, "message": "Falha na API de e-mail. Contate a secretaria."}), 500
+
+@app.route('/api/auth/validar', methods=['POST'])
+def validar_codigo():
+    data = request.json
+    email = data.get('email')
+    codigo_digitado = data.get('codigo')
+    nome = data.get('nome') 
+    rm = data.get('rm')     
+
+    codigo_salvo = codigos_verificacao.get(email)
+
+    if codigo_salvo and str(codigo_salvo) == str(codigo_digitado):
+        del codigos_verificacao[email]
+        
+        # O código está certo! Agora gravamos ou atualizamos o usuário no Banco de Dados
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT id FROM usuarios WHERE email = %s;", (email,))
+            usuario_existe = cursor.fetchone()
+            
+            if not usuario_existe:
+                # Se for a primeira vez acessando, cadastra na tabela
+                cursor.execute(
+                    "INSERT INTO usuarios (nome, rm, email) VALUES (%s, %s, %s) ON CONFLICT (rm) DO NOTHING;", 
+                    (nome, rm, email)
+                )
+                conn.commit()
+                
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            print(f"[ERRO BANCO DE DADOS - USUÁRIOS] {e}")
+
+        return jsonify({"success": True, "message": "Login validado com sucesso!"})
+    else:
+        return jsonify({"success": False, "message": "Código incorreto ou expirado."}), 401
+
+# =======================================================
+# ROTAS DO CATÁLOGO E SECRETARIA
+# =======================================================
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
-    verificar_vencimento_doacoes() # Roda a automação de 90 dias toda vez que a lista for chamada
+    verificar_vencimento_doacoes() 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -263,30 +367,13 @@ def concluir_doacoes():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-def enviar_notificacao(nome_aluno, rm_aluno, item_id):
-    """
-    Simula o envio de E-mail/WhatsApp para o aluno usando o RM.
-    Na versão final, você pode integrar com smtplib para e-mail real.
-    """
-    email_institucional = f"{rm_aluno}@etec.sp.gov.br"
-    mensagem = f"""
-    [WHATSAPP / E-MAIL AUTOMÁTICO]
-    Para: {nome_aluno} ({email_institucional})
-    Assunto: Confirmação de Solicitação - Achados e Perdidos ETEC
-
-    Olá {nome_aluno},
-    Sua solicitação para o item #{item_id} foi registrada com sucesso!
-    Por favor, compareça à Secretaria da escola de segunda a sexta, 
-    entre 08h e 17h, para realizar a retirada.
-    """
-    print(mensagem) # Exibe no console do Render
-
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json
     item_id = data.get('id')
     nome = data.get('nome')
     rm = data.get('rm')
+    email = data.get('email') 
 
     if not item_id or not nome or not rm:
         return jsonify({"success": False, "message": "Dados incompletos!"}), 400
@@ -295,7 +382,6 @@ def solicitar_item():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Só permite solicitar se estiver DISPONÍVEL
         cursor.execute('''
             UPDATE itens 
             SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
@@ -311,8 +397,10 @@ def solicitar_item():
         cursor.close()
         conn.close()
 
-        # Dispara a notificação após o sucesso
-        enviar_notificacao(nome, rm, item_id)
+        if email:
+            assunto_solicitacao = "Confirmação de Solicitação - Achados e Perdidos ETEC"
+            corpo_html = f"<p>Sua solicitação para o item #{item_id} foi registrada com sucesso!<br>Compareça à Secretaria.</p>"
+            enviar_email_resend(email, assunto_solicitacao, corpo_html)
 
         return jsonify({
             "success": True, 
