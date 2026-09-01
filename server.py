@@ -1,20 +1,15 @@
 import os
 import json
 import psycopg2
-import requests
-import random
 from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from datetime import datetime
 
-app = Flask(__name__)
+# Configura o Flask para servir os arquivos estáticos da própria pasta do projeto
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
-
-codigos_verificacao = {}
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -41,6 +36,7 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
+        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
 
         # Tabela de Entregues / Histórico
         cursor.execute('''
@@ -56,16 +52,11 @@ def init_db():
             );
         ''')
 
-        # NOVA: Tabela de Usuários (Alunos)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(100) NOT NULL,
-                rm VARCHAR(20) UNIQUE NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL,
-                data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        ''')
+        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS retirado_por VARCHAR(100);')
+        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS rm_retirante VARCHAR(30);')
+        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS turma_curso VARCHAR(50);')
+        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS data_entrega VARCHAR(30);')
+        cursor.execute('ALTER TABLE entregues ADD COLUMN IF NOT EXISTS funcionario_responsavel VARCHAR(100);')
 
         conn.commit()
         cursor.close()
@@ -76,137 +67,13 @@ def init_db():
 if DATABASE_URL:
     init_db()
 
-def verificar_vencimento_doacoes():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, data_encontrado FROM itens WHERE status = 'DISPONÍVEL';")
-        itens = cursor.fetchall()
-        hoje = datetime.now()
-        itens_atualizados = 0
+# ROTA PRINCIPAL: Abre o site index.html diretamente no navegador
+@app.route('/')
+def home():
+    return send_from_directory('.', 'index.html')
 
-        for item in itens:
-            try:
-                data_item = datetime.strptime(item['data_encontrado'], "%d/%m/%Y")
-                if (hoje - data_item).days >= 90:
-                    cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = %s", (item['id'],))
-                    itens_atualizados += 1
-            except ValueError:
-                pass 
-
-        if itens_atualizados > 0:
-            conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"[ERRO CRÍTICO] Falha na automação: {e}")
-
-# =======================================================
-# INTEGRAÇÃO RESEND.COM E AUTENTICAÇÃO
-# =======================================================
-def enviar_email_resend(destinatario, assunto, corpo_html):
-    if not RESEND_API_KEY:
-        print("[ERRO] RESEND_API_KEY não configurada no Render.")
-        return False
-    
-    headers = {
-        "Authorization": f"Bearer {RESEND_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        # ATENÇÃO: Se não tiver domínio próprio verificado na Resend, 
-        # mantenha este email padrão do onboarding.
-        "from": "Achados e Perdidos ETEC <onboarding@resend.dev>",
-        "to": destinatario,
-        "subject": assunto,
-        "html": corpo_html
-    }
-    
-    try:
-        response = requests.post("https://api.resend.com/emails", json=payload, headers=headers)
-        if response.status_code in [200, 201, 202]:
-            return True
-        else:
-            print(f"[ERRO RESEND] {response.text}")
-            return False
-    except Exception as e:
-        print(f"[ERRO REQUISIÇÃO RESEND] {e}")
-        return False
-
-@app.route('/api/auth/codigo', methods=['POST'])
-def gerar_codigo():
-    data = request.json
-    nome = data.get('nome')
-    email = data.get('email')
-
-    if not email or not email.endswith('@aluno.cps.sp.gov.br'):
-        return jsonify({"success": False, "message": "E-mail institucional inválido."}), 400
-
-    codigo_gerado = str(random.randint(100000, 999999))
-    codigos_verificacao[email] = codigo_gerado
-
-    assunto = "Código de Acesso - Achados e Perdidos ETEC"
-    corpo_html = f"""
-    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <h2>Olá, {nome}.</h2>
-        <p>Seu código de verificação para acessar o sistema de Achados e Perdidos é:</p>
-        <h1 style="background: #f4f4f4; padding: 15px; border-radius: 8px; letter-spacing: 5px; display: inline-block;">{codigo_gerado}</h1>
-        <p>Se você não solicitou este acesso, desconsidere este e-mail.</p>
-    </div>
-    """
-
-    enviado = enviar_email_resend(email, assunto, corpo_html)
-
-    if enviado:
-        return jsonify({"success": True, "message": "Código enviado para seu e-mail."})
-    else:
-        return jsonify({"success": False, "message": "Falha na API de e-mail. Contate a secretaria."}), 500
-
-@app.route('/api/auth/validar', methods=['POST'])
-def validar_codigo():
-    data = request.json
-    email = data.get('email')
-    codigo_digitado = data.get('codigo')
-    nome = data.get('nome') 
-    rm = data.get('rm')     
-
-    codigo_salvo = codigos_verificacao.get(email)
-
-    if codigo_salvo and str(codigo_salvo) == str(codigo_digitado):
-        del codigos_verificacao[email]
-        
-        # O código está certo! Agora gravamos ou atualizamos o usuário no Banco de Dados
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT id FROM usuarios WHERE email = %s;", (email,))
-            usuario_existe = cursor.fetchone()
-            
-            if not usuario_existe:
-                # Se for a primeira vez acessando, cadastra na tabela
-                cursor.execute(
-                    "INSERT INTO usuarios (nome, rm, email) VALUES (%s, %s, %s) ON CONFLICT (rm) DO NOTHING;", 
-                    (nome, rm, email)
-                )
-                conn.commit()
-                
-            cursor.close()
-            conn.close()
-        except Exception as e:
-            print(f"[ERRO BANCO DE DADOS - USUÁRIOS] {e}")
-
-        return jsonify({"success": True, "message": "Login validado com sucesso!"})
-    else:
-        return jsonify({"success": False, "message": "Código incorreto ou expirado."}), 401
-
-# =======================================================
-# ROTAS DO CATÁLOGO E SECRETARIA
-# =======================================================
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
-    verificar_vencimento_doacoes() 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -323,7 +190,7 @@ def atualizar_item(item_id):
             retirado_por = data.get('retirado_por', 'Não informado')
             rm_retirante = data.get('rm_retirante', 'Não informado')
             turma_curso = data.get('turma_curso', '-')
-            data_entrega = data.get('data_entrega', data_enc)
+            data_entrega = data.get('data_entrega', data_enc or '-')
             func_resp = data.get('funcionario_responsavel', 'Secretaria')
             
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
@@ -371,41 +238,39 @@ def concluir_doacoes():
 def solicitar_item():
     data = request.json
     item_id = data.get('id')
-    nome = data.get('nome')
-    rm = data.get('rm')
-    email = data.get('email') 
-
-    if not item_id or not nome or not rm:
-        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
-
+    nome_aluno = data.get('nome')
+    rm_aluno = data.get('rm')
+    
+    if not item_id or not nome_aluno or not rm_aluno:
+        return jsonify({"success": False, "message": "Dados incompletos do aluno!"}), 400
+        
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
+        item = cursor.fetchone()
+
+        if not item:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
+
+        status_atual = (item['status'] or 'DISPONÍVEL').upper()
+        if status_atual in ['SOLICITADO', 'ENTREGUE', 'PARA DOAÇÃO', 'DOAÇÃO FEITA']:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
+
         cursor.execute('''
             UPDATE itens 
             SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s AND status = 'DISPONÍVEL';
-        ''', (nome, rm, item_id))
-
-        if cursor.rowcount == 0:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "O item não está mais disponível para solicitação."}), 400
-
+            WHERE id = %s;
+        ''', (nome_aluno, rm_aluno, item_id))
+        
         conn.commit()
         cursor.close()
         conn.close()
-
-        if email:
-            assunto_solicitacao = "Confirmação de Solicitação - Achados e Perdidos ETEC"
-            corpo_html = f"<p>Sua solicitação para o item #{item_id} foi registrada com sucesso!<br>Compareça à Secretaria.</p>"
-            enviar_email_resend(email, assunto_solicitacao, corpo_html)
-
-        return jsonify({
-            "success": True, 
-            "message": "Solicitação realizada! Verifique seu e-mail institucional para ver o horário de atendimento."
-        })
+        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
