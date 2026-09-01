@@ -7,11 +7,11 @@ from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import resend
+from datetime import datetime
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
-# Configuração da API Key do Resend
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
@@ -19,7 +19,6 @@ if RESEND_API_KEY:
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # Dicionário em memória para guardar códigos OTP temporários
-# Estrutura: { "email@etec.sp.gov.br": { "codigo": "123456", "expira": timestamp, "nome": "Nome", "rm": "123" } }
 codigos_otp = {}
 
 def get_db_connection():
@@ -32,6 +31,7 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Tabela principal de itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -48,6 +48,7 @@ def init_db():
         ''')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
 
+        # Tabela de entregues
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -61,21 +62,33 @@ def init_db():
             );
         ''')
 
+        # TABELA DE USUÁRIOS/ALUNOS CADASTRADOS
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(100) NOT NULL,
+                rm VARCHAR(20) UNIQUE NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                data_cadastro VARCHAR(30) NOT NULL,
+                ultimo_login VARCHAR(30) NOT NULL
+            );
+        ''')
+
         conn.commit()
         cursor.close()
         conn.close()
+        print("Tabelas inicializadas com sucesso no Neon PostgreSQL!")
     except Exception as e:
         print(f"Erro ao inicializar o banco de dados: {e}")
 
 if DATABASE_URL:
     init_db()
 
-# Rota principal para abrir o site
 @app.route('/')
 def home():
     return send_from_directory('.', 'index.html')
 
-# --- ROTAS DE LOGIN COM RESEND (E-MAIL OTP) ---
+# --- LOGIN E REGISTRO DE USUÁRIOS ---
 
 @app.route('/api/login/enviar-codigo', methods=['POST'])
 def enviar_codigo_email():
@@ -87,10 +100,8 @@ def enviar_codigo_email():
     if not email or not nome or not rm:
         return jsonify({"success": False, "message": "Preencha Nome, RM e E-mail!"}), 400
 
-    # Gera código aleatório de 6 dígitos
     codigo = str(random.randint(100000, 999999))
     
-    # Guarda o código válido por 10 minutos (600 segundos)
     codigos_otp[email] = {
         "codigo": codigo,
         "expira": time.time() + 600,
@@ -98,14 +109,13 @@ def enviar_codigo_email():
         "rm": rm
     }
 
-    # Envio do e-mail pelo Resend
     try:
         if not RESEND_API_KEY:
-            print(f"[TESTE SEM RESEND KEY] Código para {email}: {codigo}")
+            print(f"[TESTE SEM KEY] Código para {email}: {codigo}")
             return jsonify({"success": True, "message": f"Modo teste! Seu código é: {codigo}"})
 
         params = {
-            "from": "ETEC Achados <onboarding@resend.dev>",  # Domínio de teste padrão do Resend
+            "from": "ETEC Achados <onboarding@resend.dev>",
             "to": [email],
             "subject": "🔑 Seu Código de Acesso - Achados e Perdidos ETEC",
             "html": f"""
@@ -123,7 +133,7 @@ def enviar_codigo_email():
         resend.Emails.send(params)
         return jsonify({"success": True, "message": "Código enviado para o seu e-mail com sucesso!"})
     except Exception as e:
-        print(f"Erro ao enviar e-mail via Resend: {e}")
+        print(f"Erro no Resend: {e}")
         return jsonify({"success": False, "message": f"Erro ao enviar e-mail: {str(e)}"}), 500
 
 @app.route('/api/login/verificar-codigo', methods=['POST'])
@@ -142,12 +152,32 @@ def verificar_codigo_email():
         return jsonify({"success": False, "message": "Código expirado! Solicite um novo código."}), 400
 
     if otp_info["codigo"] == codigo_digitado:
+        nome_aluno = otp_info["nome"]
+        rm_aluno = otp_info["rm"]
+        agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+        # SALVA / ATUALIZA NA TABELA 'USUARIOS' DO BANCO DE DADOS
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO usuarios (nome, rm, email, data_cadastro, ultimo_login)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (rm) DO UPDATE 
+                SET nome = EXCLUDED.nome, email = EXCLUDED.email, ultimo_login = EXCLUDED.ultimo_login;
+            ''', (nome_aluno, rm_aluno, email, agora, agora))
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            print(f"Erro ao registrar usuário no banco: {e}")
+
         usuario = {
-            "nome": otp_info["nome"],
-            "rm": otp_info["rm"],
+            "nome": nome_aluno,
+            "rm": rm_aluno,
             "email": email
         }
-        del codigos_otp[email]  # Limpa o código após usar
+        del codigos_otp[email]
         return jsonify({"success": True, "message": "Login realizado com sucesso!", "usuario": usuario})
 
     return jsonify({"success": False, "message": "Código de verificação incorreto!"}), 400
