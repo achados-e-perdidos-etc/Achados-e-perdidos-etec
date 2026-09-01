@@ -1,4 +1,4 @@
-const API_URL = "https://achados-etec-api.onrender.com";
+const API_URL = "";
 let alunoLogado = null;
 let todosItens = [];
 let itemSelecionado = null;
