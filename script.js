@@ -260,10 +260,26 @@ function abrirDetalhes(item) {
         placeholder.classList.add('hidden');
         container.classList.remove('hidden');
 
+        // Container com overflow hidden para os slides absolutos
+        container.style.position = 'relative';
+        container.style.overflow = 'hidden';
+
         fotosAtuais.forEach((f, idx) => {
             const slide = document.createElement('div');
-            slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
-            slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
+            slide.className = "carousel-slide";
+            slide.style.cssText = `
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 8px;
+                opacity: ${idx === 0 ? '1' : '0'};
+                transform: translateX(${idx === 0 ? '0%' : '100%'});
+                transition: opacity 0.4s ease, transform 0.4s ease;
+                pointer-events: ${idx === 0 ? 'auto' : 'none'};
+            `;
+            slide.innerHTML = `<img src="${f}" style="max-height:100%;max-width:100%;object-fit:contain;border-radius:8px;">`;
             container.appendChild(slide);
         });
 
@@ -279,14 +295,8 @@ function abrirDetalhes(item) {
             btnNext.classList.add('hidden');
         }
 
-        container.onscroll = () => {
-            const width = container.clientWidth;
-            if (width > 0) {
-                const idx = Math.round(container.scrollLeft / width);
-                fotoIndiceAtual = idx;
-                document.getElementById('photoCurrentIdx').innerText = idx + 1;
-            }
-        };
+        // Remove onscroll antigo — não é mais necessário
+        container.onscroll = null;
 
     } else {
         container.classList.add('hidden');
@@ -328,13 +338,34 @@ function navegarFotos(direcao) {
     const container = document.getElementById('carouselContainer');
     if (!container || fotosAtuais.length === 0) return;
 
+    const slides = container.querySelectorAll('.carousel-slide');
+    const anterior = fotoIndiceAtual;
+
     let novoIndice = fotoIndiceAtual + direcao;
     if (novoIndice < 0) novoIndice = fotosAtuais.length - 1;
     if (novoIndice >= fotosAtuais.length) novoIndice = 0;
 
     fotoIndiceAtual = novoIndice;
-    const width = container.clientWidth;
-    container.scrollTo({ left: width * novoIndice, behavior: 'smooth' });
+
+    // Slide saindo — desliza para o lado oposto à direção
+    slides[anterior].style.opacity = '0';
+    slides[anterior].style.transform = `translateX(${direcao > 0 ? '-100%' : '100%'})`;
+    slides[anterior].style.pointerEvents = 'none';
+
+    // Slide entrando — começa do lado oposto e desliza para o centro
+    slides[novoIndice].style.transition = 'none';
+    slides[novoIndice].style.transform = `translateX(${direcao > 0 ? '100%' : '-100%'})`;
+    slides[novoIndice].style.opacity = '0';
+    slides[novoIndice].style.pointerEvents = 'auto';
+
+    // Força reflow para a transição funcionar corretamente
+    slides[novoIndice].getBoundingClientRect();
+
+    slides[novoIndice].style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    slides[novoIndice].style.opacity = '1';
+    slides[novoIndice].style.transform = 'translateX(0%)';
+
+    document.getElementById('photoCurrentIdx').innerText = novoIndice + 1;
 }
 
 function voltarParaCatalogo() {
