@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -102,7 +103,7 @@
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
-        <!-- PAINEL DE ANÚNCIOS - NOVO MODO DO SITE -->
+        <!-- PAINEL DE ANÚNCIOS -->
         <section id="adsScreen" class="hidden">
             <div class="relative min-h-[70vh] flex flex-col justify-center">
                 <div class="flex items-center justify-between mb-4">
@@ -125,21 +126,22 @@
 
                     <div id="adsContent" class="hidden min-h-[55vh]">
                         <div class="grid grid-cols-1 md:grid-cols-2 min-h-[55vh]">
+                            <!-- Área da Imagem com animação de fade -->
                             <div class="relative bg-black/20 min-h-[320px] md:min-h-[55vh] flex items-center justify-center overflow-hidden">
                                 <img id="adImage" src="" alt="Foto do item encontrado"
-                                     class="w-full h-full object-contain absolute inset-0 p-3 transition-opacity duration-500">
-                                <div id="adImagePlaceholder" class="hidden text-center text-muted">
+                                     class="w-full h-full object-contain absolute inset-0 p-3 transition-opacity duration-700 ease-in-out opacity-0">
+                                <div id="adImagePlaceholder" class="hidden text-center text-muted absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-700 opacity-0">
                                     <i class="fas fa-box-open text-7xl mb-3"></i>
                                     <p class="text-sm">Sem foto disponível</p>
                                 </div>
-                                <div id="adCounter" class="absolute top-4 right-4 bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                                <div id="adCounter" class="absolute top-4 right-4 bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10">
                                     1 / 1
                                 </div>
                             </div>
 
                             <div class="p-6 sm:p-10 flex flex-col justify-center">
-                                <span id="adCategory" class="inline-flex self-start px-3 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase mb-4"></span>
-                                <h3 id="adTitle" class="text-3xl sm:text-5xl font-black text-main leading-tight mb-5"></h3>
+                                <span id="adCategory" class="inline-flex self-start px-3 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] font-bold uppercase mb-4 transition-all duration-300"></span>
+                                <h3 id="adTitle" class="text-3xl sm:text-5xl font-black text-main leading-tight mb-5 transition-all duration-300"></h3>
 
                                 <div class="space-y-4">
                                     <div class="flex items-start gap-3">
@@ -169,10 +171,10 @@
                             </div>
                         </div>
 
-                        <button onclick="mudarAnuncio(-1)" class="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center transition z-10">
+                        <button onclick="mudarAnuncio(-1)" class="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center transition z-20">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <button onclick="mudarAnuncio(1)" class="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center transition z-10">
+                        <button onclick="mudarAnuncio(1)" class="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center transition z-20">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
@@ -197,8 +199,8 @@
             </div>
         </section>
 
-        <!-- TELA DE DETALHES COM CARROSSEL -->
-        <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
+        <!-- TELA DE DETALHES -->
+        <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6 shadow-lg">
             <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
 
             <div class="flex justify-between items-center mb-2">
@@ -208,17 +210,14 @@
 
             <!-- CARROSSEL DE FOTOS -->
             <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
-                <!-- Indicador 1/4 (Mostrado quando há fotos) -->
                 <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
                     <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
                 </div>
 
-                <!-- Container Deslizante com Suporte a Drag/Touch -->
                 <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth">
                     <!-- Fotos injetadas via JavaScript -->
                 </div>
 
-                <!-- Botões de navegação lateral para desktop -->
                 <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
                     <i class="fas fa-chevron-left text-xs"></i>
                 </button>
@@ -226,7 +225,6 @@
                     <i class="fas fa-chevron-right text-xs"></i>
                 </button>
 
-                <!-- Placeholder sem foto -->
                 <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
                     <i class="fas fa-box-open text-5xl mb-2"></i>
                     <p class="text-xs">Foto mantida no registro da secretaria</p>
@@ -243,7 +241,7 @@
                 </div>
 
                 <div class="pt-4">
-                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
+                    <button id="btnSolicitar" onclick="abrirModalSolicitar()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
                         ESTE É O MEU ITEM / SOLICITAR COLETA
                     </button>
                 </div>
@@ -251,15 +249,63 @@
         </section>
     </main>
 
+    <!-- ========================================== -->
+    <!-- MODAIS DE INTERFACE (SUBSTITUEM ALERT E PROMPT) -->
+    <!-- ========================================== -->
+
+    <!-- Modal Solicitar Coleta -->
+    <div id="modalSolicitar" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-color rounded-2xl p-6 w-full max-w-md shadow-2xl transform scale-95 transition-transform duration-300" id="modalSolicitarContent">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-black text-main"><i class="fas fa-hand-paper mr-2 dynamic-text"></i>Solicitar Retirada</h3>
+                <button onclick="fecharModalSolicitar()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <p class="text-sm text-muted mb-5">Preencha seus dados institucionais para reivindicar este item. Ele ficará reservado para você buscar na secretaria.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 ml-1">NOME COMPLETO</label>
+                    <input type="text" id="inputNomeSolicitante" class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm" placeholder="Ex: Maria Oliveira">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 ml-1">RM (NÚMERO DE MATRÍCULA)</label>
+                    <input type="number" id="inputRmSolicitante" class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 transition shadow-sm" placeholder="Ex: 12345">
+                </div>
+            </div>
+            
+            <div id="modalSolicitarError" class="hidden text-red-500 text-xs font-bold mt-3 text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20"></div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="fecharModalSolicitar()" class="flex-1 py-3 rounded-xl font-bold text-sm bg-header border border-color text-muted hover:text-main transition">Cancelar</button>
+                <button id="btnConfirmarSolicitacao" onclick="confirmarSolicitacao()" class="flex-1 dynamic-btn py-3 rounded-xl font-bold text-sm flex justify-center items-center">
+                    <span id="btnConfirmarText">Confirmar Dados</span>
+                    <i id="btnConfirmarSpinner" class="fas fa-spinner fa-spin hidden"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Aviso Global (Sucesso/Erro) -->
+    <div id="modalAviso" class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-color rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center transform scale-95 transition-transform duration-300" id="modalAvisoContent">
+            <div id="modalAvisoIcon" class="text-5xl mb-4"></div>
+            <h3 id="modalAvisoTitulo" class="text-xl font-black text-main mb-2"></h3>
+            <p id="modalAvisoMensagem" class="text-sm text-muted mb-6"></p>
+            <button onclick="fecharModalAviso()" class="w-full dynamic-btn py-3 rounded-xl font-bold text-sm uppercase">Entendi</button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 
-    <!-- FUNCIONALIDADE DO PAINEL DE ANÚNCIOS (ADICIONADA SEM REMOVER O SCRIPT ORIGINAL) -->
+    <!-- FUNCIONALIDADE DO PAINEL DE ANÚNCIOS (COM ANIMAÇÃO DE FADE) -->
     <script>
     (function () {
         const ADS_API_URL = "https://achados-etec-api.onrender.com";
         let anuncios = [];
         let anuncioAtual = 0;
         let intervaloAnuncios = null;
+        let isAnimating = false; // Controle para evitar spam de cliques
 
         function valorItem(item, ...chaves) {
             for (const chave of chaves) {
@@ -301,21 +347,15 @@
                 const dados = await resposta.json();
                 anuncios = Array.isArray(dados) ? dados : [];
 
-                // Mais recentes primeiro. O ID é usado como critério principal,
-                // pois é gerado no cadastro e também funciona quando a API não
-                // devolve um campo específico de criação.
                 anuncios.sort((a, b) => {
                     const idA = Number(valorItem(a, "id")) || 0;
                     const idB = Number(valorItem(b, "id")) || 0;
                     if (idA !== idB) return idB - idA;
-
                     const dataA = valorItem(a, "created_at", "data_cadastro", "data_criacao");
                     const dataB = valorItem(b, "created_at", "data_cadastro", "data_criacao");
                     return String(dataB).localeCompare(String(dataA));
                 });
 
-                // Anúncios mostram somente itens que ainda fazem sentido para
-                // divulgação pública.
                 anuncios = anuncios.filter(item => {
                     const status = String(valorItem(item, "status") || "DISPONÍVEL").toUpperCase();
                     return !["ENTREGUE", "DOAÇÃO FEITA"].includes(status);
@@ -332,7 +372,9 @@
 
                 loading.classList.add("hidden");
                 content.classList.remove("hidden");
-                renderizarAnuncio();
+                
+                // Primeira renderização forçada (sem animação longa)
+                renderizarDadosNoDOM(anuncios[0], true);
                 iniciarRotacao();
             } catch (erro) {
                 console.error("Painel de anúncios:", erro);
@@ -344,10 +386,7 @@
             }
         }
 
-        function renderizarAnuncio() {
-            if (!anuncios.length) return;
-
-            const item = anuncios[anuncioAtual];
+        function renderizarDadosNoDOM(item, primeiraVez = false) {
             const titulo = valorItem(item, "txt_descricao", "descricao", "description") || "Item encontrado";
             const categoria = valorItem(item, "categoria", "category") || "OUTROS";
             const local = valorItem(item, "txt_local", "local", "location") || "Não informado";
@@ -363,27 +402,69 @@
             document.getElementById("adDate").textContent = data;
             document.getElementById("adCounter").textContent = `${anuncioAtual + 1} / ${anuncios.length}`;
 
+            // Lógica de Foto com Animação
             if (fotos.length) {
                 img.src = fotos[0];
                 img.classList.remove("hidden");
                 placeholder.classList.add("hidden");
+                // Força o fade in quando a imagem carregar
+                img.onload = () => {
+                    img.classList.remove("opacity-0");
+                    img.classList.add("opacity-100");
+                };
+                // Fallback de segurança
+                if (img.complete) {
+                    img.classList.remove("opacity-0");
+                    img.classList.add("opacity-100");
+                }
             } else {
                 img.removeAttribute("src");
                 img.classList.add("hidden");
                 placeholder.classList.remove("hidden");
+                
+                placeholder.classList.remove("opacity-0");
+                placeholder.classList.add("opacity-100");
             }
 
+            atualizarDots();
+        }
+
+        function renderizarAnuncioComAnimacao() {
+            if (!anuncios.length || isAnimating) return;
+            isAnimating = true;
+
+            const img = document.getElementById("adImage");
+            const placeholder = document.getElementById("adImagePlaceholder");
+
+            // 1. Fade Out (Some com a foto/placeholder atual)
+            img.classList.remove("opacity-100");
+            img.classList.add("opacity-0");
+            placeholder.classList.remove("opacity-100");
+            placeholder.classList.add("opacity-0");
+
+            // 2. Espera a transição de fade out acabar (500ms pelo css duration-500)
+            setTimeout(() => {
+                const item = anuncios[anuncioAtual];
+                renderizarDadosNoDOM(item);
+                
+                // Libera a animação após o tempo do fade in
+                setTimeout(() => { isAnimating = false; }, 500); 
+            }, 500);
+        }
+
+        function atualizarDots() {
             const dots = document.getElementById("adsDots");
             dots.innerHTML = "";
             anuncios.forEach((_, i) => {
                 const dot = document.createElement("button");
                 dot.type = "button";
                 dot.title = `Anúncio ${i + 1}`;
-                dot.className = "w-2 h-2 rounded-full transition-all " +
-                    (i === anuncioAtual ? "bg-white w-5" : "bg-white/40 hover:bg-white/70");
+                dot.className = "w-2 h-2 rounded-full transition-all duration-300 " +
+                    (i === anuncioAtual ? "bg-white w-6" : "bg-white/40 hover:bg-white/70");
                 dot.onclick = () => {
+                    if (isAnimating || i === anuncioAtual) return;
                     anuncioAtual = i;
-                    renderizarAnuncio();
+                    renderizarAnuncioComAnimacao();
                     reiniciarRotacao();
                 };
                 dots.appendChild(dot);
@@ -391,9 +472,9 @@
         }
 
         function mudarAnuncio(direcao) {
-            if (!anuncios.length) return;
+            if (!anuncios.length || isAnimating) return;
             anuncioAtual = (anuncioAtual + direcao + anuncios.length) % anuncios.length;
-            renderizarAnuncio();
+            renderizarAnuncioComAnimacao();
             reiniciarRotacao();
         }
 
@@ -401,8 +482,10 @@
             pararRotacao();
             if (anuncios.length > 1) {
                 intervaloAnuncios = setInterval(() => {
-                    anuncioAtual = (anuncioAtual + 1) % anuncios.length;
-                    renderizarAnuncio();
+                    if (!isAnimating) {
+                        anuncioAtual = (anuncioAtual + 1) % anuncios.length;
+                        renderizarAnuncioComAnimacao();
+                    }
                 }, 6000);
             }
         }
@@ -448,26 +531,18 @@
             const id = valorItem(item, "id");
             pararRotacao();
 
-            // Aproveita a tela de detalhes que já existe no site.
             if (typeof window.mostrarDetalhesItem === "function") {
                 window.fecharPainelAnuncios();
                 window.mostrarDetalhesItem(id);
                 return;
             }
-
-            // Compatibilidade com possíveis nomes já usados pelo script original.
-            if (typeof window.verDetalhes === "function") {
+            if (typeof window.abrirDetalhes === "function") {
                 window.fecharPainelAnuncios();
-                window.verDetalhes(id);
+                window.abrirDetalhes(item); 
                 return;
             }
-
-            // Se o script original não expuser uma função pública, o painel
-            // continua funcionando normalmente sem quebrar o catálogo.
-            console.log("ID do anúncio selecionado:", id);
         };
 
-        // Teclas ← e → funcionam enquanto o painel estiver aberto.
         document.addEventListener("keydown", function (event) {
             const painel = document.getElementById("adsScreen");
             if (!painel || painel.classList.contains("hidden")) return;
@@ -480,3 +555,4 @@
     </script>
 </body>
 </html>
+```
