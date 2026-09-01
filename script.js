@@ -1,4 +1,5 @@
-const API_URL = "https://achados-etec-api.onrender.com";
+// Usando caminho relativo para que funcione direto no Render sem precisar da Vercel
+const API_URL = "";
 let alunoLogado = null;
 let todosItens = [];
 let itemSelecionado = null;
