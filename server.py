@@ -1,441 +1,308 @@
-import os
-import json
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from datetime import datetime
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETEC - Achados e Perdidos (Alunos)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme min-h-screen flex flex-col justify-between">
 
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
+    <!-- CABEÇALHO -->
+    <header class="bg-header border-b border-color p-4 sticky top-0 z-40 transition-colors shadow-sm">
+        <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center space-x-3 min-w-0">
+                <img id="siteLogo" src="logo.png" alt="Logo" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
+                <div class="min-w-0">
+                    <h1 class="font-bold text-lg dynamic-text leading-tight truncate">ACHADOS E PERDIDOS</h1>
+                    <p class="text-xs text-muted truncate">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
+                </div>
+            </div>
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+            <div class="flex items-center space-x-3 shrink-0">
+                
+                <!-- MENU DE NAVEGAÇÃO ENTRE ABAS -->
+                <div id="navTabs" class="flex items-center bg-header border border-color rounded-xl p-1 mr-2 hidden sm:flex">
+                    <button onclick="alternarAba('catalogo')" id="tabCatalogo" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-card text-main shadow-sm">Catálogo</button>
+                    <button onclick="alternarAba('mural')" id="tabMural" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-muted hover:text-main">Mural de Perdidos</button>
+                </div>
 
-# --- LÓGICA DE INTELIGÊNCIA (MATCHING) ---
-def extrair_palavras_chave(texto):
-    stop_words = {'o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'meu', 'minha', 'meus', 'minhas', 'perdi', 'ontem', 'hoje', 'escola', 'etec', 'laboratorio', 'sala', 'pátio', 'patio', 'cantina', 'frente', 'atras'}
-    # Remove pontuações e divide as palavras
-    palavras = texto.lower().replace(',', '').replace('.', '').split()
-    # Filtra palavras pequenas e stop words
-    return set([p for p in palavras if p not in stop_words and len(p) > 2])
+                <!-- MENU MOBILE -->
+                <button onclick="alternarAba(document.getElementById('catalogScreen').classList.contains('hidden') ? 'catalogo' : 'mural')" class="sm:hidden p-2 rounded-lg bg-card border border-color text-muted hover:text-main">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
 
-def verificar_match(desc1, desc2):
-    kw1 = extrair_palavras_chave(desc1)
-    kw2 = extrair_palavras_chave(desc2)
-    # Se houver pelo menos 1 palavra-chave igual e relevante, consideramos um "Match"
-    return len(kw1.intersection(kw2)) > 0
+                <!-- SININHO DE NOTIFICAÇÕES (APARECE QUANDO IDENTIFICADO) -->
+                <div class="relative">
+                    <button id="btnNotificacoes" onclick="abrirModalNotificacoes()" class="hidden p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition relative" title="Notificações">
+                        <i class="fas fa-bell"></i>
+                        <span id="badgeNotificacao" class="hidden absolute -top-1 -right-1 flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
+                        </span>
+                    </button>
+                </div>
 
-def get_db_connection():
-    if not DATABASE_URL:
-        raise ValueError("A variável de ambiente DATABASE_URL não foi configurada!")
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+                <!-- CONFIGURAÇÕES DE TEMA -->
+                <div class="relative">
+                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações de Aparência">
+                        <i class="fas fa-cog text-base"></i>
+                    </button>
 
-def init_db():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
+                            <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main hover:opacity-80 transition">
+                                <span id="themeLabel">Modo Escuro</span>
+                                <i id="themeIcon" class="fas fa-moon text-yellow-400"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DADOS DO ALUNO / BOTÃO DE IDENTIFICAR -->
+                <button id="btnIdentificar" onclick="abrirModalIdentificacao()" class="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition shadow-sm">
+                    Identificar-se
+                </button>
+
+                <div id="userInfo" class="hidden text-right border-l border-color pl-3 ml-2">
+                    <span id="userName" class="block font-bold text-sm dynamic-text max-w-[120px] truncate"></span>
+                    <span id="userRM" class="text-[10px] text-muted uppercase"></span>
+                    <button onclick="logout()" class="text-[10px] text-red-400 hover:text-red-500 underline block mt-0.5">Sair</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
         
-        # TABELA DE ITENS
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS itens (
-                id SERIAL PRIMARY KEY,
-                descricao TEXT NOT NULL,
-                categoria VARCHAR(50) NOT NULL,
-                data_encontrado VARCHAR(20) NOT NULL,
-                local_encontrado VARCHAR(100) NOT NULL,
-                foto_base64 TEXT,
-                fotos_json TEXT,
-                status VARCHAR(30) DEFAULT 'DISPONÍVEL',
-                solicitado_por VARCHAR(100),
-                rm_aluno VARCHAR(20)
-            );
-        ''')
+        <!-- CATÁLOGO DE ITENS (ABERTO POR PADRÃO) -->
+        <section id="catalogScreen" class="w-full space-y-6">
+            <div class="space-y-4">
+                <div class="relative w-full">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+                    <input type="text" id="searchInput" oninput="filtrarPorPalavraChave()" placeholder="Buscar por palavra-chave (ex: garrafa, casaco, chave)..." class="w-full bg-card border border-color text-main text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted">
+                    <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
 
-        # TABELA DE ENTREGUES
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS entregues (
-                id SERIAL PRIMARY KEY,
-                item_id INT NOT NULL,
-                nome_item TEXT NOT NULL,
-                retirado_por VARCHAR(100) NOT NULL,
-                rm_retirante VARCHAR(30) NOT NULL,
-                turma_curso VARCHAR(50),
-                data_entrega VARCHAR(30) NOT NULL,
-                funcionario_responsavel VARCHAR(100)
-            );
-        ''')
+                <div>
+                    <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
+                    <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
+                        <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
+                        <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
+                        <button onclick="filtrarCategoria('MOCHILA', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">MOCHILA</button>
+                        <button onclick="filtrarCategoria('ROUPAS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ROUPAS</button>
+                        <button onclick="filtrarCategoria('ACESSÓRIOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ACESSÓRIOS</button>
+                        <button onclick="filtrarCategoria('ESCOLARES', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ESCOLARES</button>
+                    </div>
+                </div>
 
-        # TABELA DE USUÁRIOS
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(100) NOT NULL,
-                rm VARCHAR(20) UNIQUE NOT NULL,
-                data_cadastro VARCHAR(30) NOT NULL,
-                ultimo_login VARCHAR(30) NOT NULL
-            );
-        ''')
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
+                    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
+                    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
+                        <option value="TODOS">TODOS OS STATUS</option>
+                        <option value="DISPONÍVEL">DISPONÍVEL</option>
+                        <option value="SOLICITADO">SOLICITADO</option>
+                        <option value="ENTREGUE">ENTREGUE</option>
+                        <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
+                        <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
+                    </select>
+                </div>
+            </div>
 
-        # TABELA DE MURAL DE AVISOS (PROCURO ALGO)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS avisos (
-                id SERIAL PRIMARY KEY,
-                rm_aluno VARCHAR(20) NOT NULL,
-                nome_aluno VARCHAR(100) NOT NULL,
-                descricao TEXT NOT NULL,
-                categoria VARCHAR(50) NOT NULL,
-                data_aviso VARCHAR(30) NOT NULL,
-                status VARCHAR(30) DEFAULT 'BUSCANDO'
-            );
-        ''')
+            <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
 
-        # TABELA DE NOTIFICAÇÕES (PARA O ALUNO)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS notificacoes (
-                id SERIAL PRIMARY KEY,
-                rm_aluno VARCHAR(20) NOT NULL,
-                titulo VARCHAR(100) NOT NULL,
-                mensagem TEXT NOT NULL,
-                lida BOOLEAN DEFAULT FALSE,
-                data_criacao VARCHAR(30) NOT NULL
-            );
-        ''')
+        <!-- TELA DO MURAL DE PERDIDOS (PROCURO ALGO) -->
+        <section id="muralScreen" class="hidden w-full space-y-6">
+            <div class="bg-card border border-color rounded-2xl p-6 mb-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center text-xl shrink-0">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-main">Mural de Perdidos</h2>
+                        <p class="text-sm text-muted">Perdeu alguma coisa? Poste um aviso aqui. Se a secretaria encontrar, nós te avisamos na hora!</p>
+                    </div>
+                </div>
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Erro ao inicializar o banco de dados: {e}")
+                <form onsubmit="publicarAvisoMural(event)" class="space-y-4 pt-4 border-t border-color">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-muted mb-1 ml-1">O QUE VOCÊ PERDEU?</label>
+                            <input type="text" id="avisoDescricao" required placeholder="Ex: Garrafa térmica azul com adesivo..." class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-muted mb-1 ml-1">CATEGORIA</label>
+                            <select id="avisoCategoria" class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500">
+                                <option value="MOCHILA">MOCHILA</option>
+                                <option value="ROUPAS">ROUPAS</option>
+                                <option value="ACESSÓRIOS">ACESSÓRIOS</option>
+                                <option value="ESCOLARES">ESCOLARES</option>
+                                <option value="OUTROS">OUTROS</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" id="btnPublicarAviso" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-6 rounded-xl text-sm uppercase transition flex items-center justify-center gap-2">
+                        <span id="btnPublicarText">Publicar no Mural</span>
+                        <i id="btnPublicarSpinner" class="fas fa-spinner fa-spin hidden"></i>
+                    </button>
+                </form>
+            </div>
 
-if DATABASE_URL:
-    init_db()
+            <h3 class="text-xs font-bold uppercase text-muted border-b border-color pb-2">Últimos avisos de alunos:</h3>
+            <div id="muralGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Injetado pelo JS -->
+            </div>
+        </section>
 
-@app.route('/')
-def home():
-    return send_from_directory('.', 'index.html')
+        <!-- TELA DE DETALHES -->
+        <section id="detailScreen" class="hidden w-full max-w-lg mx-auto bg-card border border-color rounded-2xl p-6 shadow-lg">
+            <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
 
-# --- ROTAS DE IDENTIFICAÇÃO (SEM SENHA) ---
-@app.route('/api/usuario/identificar', methods=['POST'])
-def identificar_usuario():
-    data = request.json
-    nome = (data.get('nome') or '').strip()
-    rm = (data.get('rm') or '').strip()
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-xs font-bold dynamic-text uppercase">INFORMAÇÕES DO ITEM</h2>
+                <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border"></span>
+            </div>
 
-    if not nome or not rm:
-        return jsonify({"success": False, "message": "Preencha Nome e RM!"}), 400
+            <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
+                <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
+                    <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
+                </div>
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO usuarios (nome, rm, data_cadastro, ultimo_login)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (rm) DO UPDATE 
-            SET nome = EXCLUDED.nome, ultimo_login = EXCLUDED.ultimo_login;
-        ''', (nome, rm, agora, agora))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "usuario": {"nome": nome, "rm": rm}})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+                <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"></div>
 
+                <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
+                    <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <button id="btnNextPhoto" onclick="navegarFotos(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </button>
 
-# --- ROTAS DO MURAL E NOTIFICAÇÕES ---
-@app.route('/api/avisos', methods=['GET'])
-def get_avisos():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM avisos ORDER BY id DESC;")
-        avisos = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(avisos)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+                <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
+                    <i class="fas fa-box-open text-5xl mb-2"></i>
+                    <p class="text-xs">Foto mantida no registro da secretaria</p>
+                </div>
+            </div>
 
-@app.route('/api/avisos', methods=['POST'])
-def cadastrar_aviso():
-    data = request.json
-    nome = data.get('nome')
-    rm = data.get('rm')
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-    agora = datetime.now().strftime("%d/%m/%Y")
+            <div class="space-y-3">
+                <h3 id="detailTitle" class="text-2xl font-black text-main"></h3>
+                <p id="detailDescription" class="text-sm text-muted bg-header p-3 rounded-lg border border-color"></p>
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+                <div class="flex justify-between items-center text-xs text-muted pt-2 border-t border-color">
+                    <span>Local: <strong id="detailLocal" class="text-main"></strong></span>
+                    <span>Data: <strong id="detailDate" class="text-main"></strong></span>
+                </div>
 
-        # 1. Salva o aviso no banco
-        cursor.execute('''
-            INSERT INTO avisos (rm_aluno, nome_aluno, descricao, categoria, data_aviso)
-            VALUES (%s, %s, %s, %s, %s) RETURNING id;
-        ''', (rm, nome, descricao, categoria, agora))
-        
-        # 2. MATCH IMEDIATO: Verifica se a secretaria já tem um item parecido!
-        cursor.execute("SELECT * FROM itens WHERE status = 'DISPONÍVEL' AND categoria = %s;", (categoria,))
-        itens_disponiveis = cursor.fetchall()
-        
-        matches = []
-        for item in itens_disponiveis:
-            if verificar_match(descricao, item['descricao']):
-                # Ajusta fotos para o frontend
-                item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([item['foto_base64']] if item.get('foto_base64') else [])
-                matches.append(item)
+                <div class="pt-4">
+                    <button id="btnSolicitar" onclick="processarBotaoSolicitar()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase transition">
+                        ESTE É O MEU ITEM / SOLICITAR COLETA
+                    </button>
+                </div>
+            </div>
+        </section>
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Aviso publicado no mural!", "matches_encontrados": matches})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    </main>
 
-@app.route('/api/avisos/<int:aviso_id>', methods=['DELETE'])
-def excluir_aviso(aviso_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM avisos WHERE id = %s;", (aviso_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    <!-- ========================================== -->
+    <!-- MODAIS DE INTERFACE -->
+    <!-- ========================================== -->
 
-@app.route('/api/notificacoes/<string:rm>', methods=['GET'])
-def get_notificacoes(rm):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM notificacoes WHERE rm_aluno = %s AND lida = FALSE ORDER BY id DESC;", (rm,))
-        notificacoes = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(notificacoes)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    <!-- Modal de Identificação (Pede Nome e RM) -->
+    <div id="modalIdentificacao" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-color rounded-2xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-300" id="modalIdentificacaoContent">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-black text-main"><i class="fas fa-id-card mr-2 text-amber-500"></i>Identificação</h3>
+                <button onclick="fecharModalIdentificacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <p class="text-sm text-muted mb-5">Para garantir que os itens voltem para o dono certo ou para receber notificações do Mural, informe seus dados.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 ml-1">NOME COMPLETO</label>
+                    <input type="text" id="inputIdNome" class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition shadow-sm" placeholder="Ex: Maria Oliveira">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted mb-1 ml-1">RM (NÚMERO DE MATRÍCULA)</label>
+                    <input type="number" id="inputIdRm" class="w-full bg-header border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition shadow-sm" placeholder="Ex: 12345">
+                </div>
+            </div>
+            
+            <div id="modalIdError" class="hidden text-red-500 text-xs font-bold mt-3 text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20"></div>
+            
+            <div class="mt-6">
+                <button id="btnConfirmarId" onclick="confirmarIdentificacao()" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold text-sm flex justify-center items-center transition">
+                    <span id="btnConfirmarIdText">Salvar e Continuar</span>
+                    <i id="btnConfirmarIdSpinner" class="fas fa-spinner fa-spin hidden"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
-@app.route('/api/notificacoes/<int:id_notificacao>/ler', methods=['PUT'])
-def ler_notificacao(id_notificacao):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE notificacoes SET lida = TRUE WHERE id = %s;", (id_notificacao,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    <!-- Modal de Solicitar Coleta (Confirmação) -->
+    <div id="modalSolicitar" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-color rounded-2xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-300" id="modalSolicitarContent">
+            <h3 class="text-xl font-black text-main text-center mb-2"><i class="fas fa-hand-paper text-red-500 mb-2 block text-3xl"></i>Confirmar Retirada</h3>
+            <p class="text-sm text-muted text-center mb-6">O item será reservado em nome de <strong id="resumoSolicitanteNome" class="text-main"></strong> (RM <strong id="resumoSolicitanteRm" class="text-main"></strong>).</p>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="fecharModalSolicitar()" class="flex-1 py-3 rounded-xl font-bold text-sm bg-header border border-color text-muted hover:text-main transition">Cancelar</button>
+                <button id="btnConfirmarSolicitacao" onclick="confirmarSolicitacao()" class="flex-1 dynamic-btn py-3 rounded-xl font-bold text-sm flex justify-center items-center">
+                    <span id="btnConfirmarText">Confirmar</span>
+                    <i id="btnConfirmarSpinner" class="fas fa-spinner fa-spin hidden ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Modal de Notificações -->
+    <div id="modalNotificacoes" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-color rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[80vh]" id="modalNotificacoesContent">
+            <div class="p-4 border-b border-color flex justify-between items-center bg-header">
+                <h3 class="text-base font-bold text-main"><i class="fas fa-bell text-amber-500 mr-2"></i>Suas Notificações</h3>
+                <button onclick="fecharModalNotificacoes()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="listaNotificacoes" class="p-4 overflow-y-auto flex-grow space-y-3">
+                <!-- Injetado por JS -->
+            </div>
+        </div>
+    </div>
 
-# --- ROTAS DE ITENS (CATÁLOGO) ---
-@app.route('/api/itens', methods=['GET'])
-def get_itens():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
-        itens = cursor.fetchall()
-        for item in itens:
-            fotos = json.loads(item['fotos_json']) if item.get('fotos_json') else []
-            if not fotos and item.get('foto'): fotos = [item['foto']]
-            item['fotos'] = fotos
-        cursor.close()
-        conn.close()
-        return jsonify(itens)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    <!-- Modal de Match Inteligente (Mural) -->
+    <div id="modalMatch" class="hidden fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-amber-500/50 rounded-2xl p-6 w-full max-w-lg shadow-[0_0_40px_rgba(245,158,11,0.2)] transform scale-95 transition-transform duration-300" id="modalMatchContent">
+            <div class="text-center mb-6">
+                <i class="fas fa-magic text-5xl text-amber-500 mb-3 animate-bounce"></i>
+                <h3 class="text-2xl font-black text-main">Pera aí! 🛑</h3>
+                <p class="text-sm text-muted mt-2">Encontramos no estoque da secretaria itens muito parecidos com o que você acabou de postar!</p>
+            </div>
+            
+            <div id="matchItemsContainer" class="space-y-3 max-h-60 overflow-y-auto mb-6 pr-2 scrollbar-none">
+                <!-- Injetado por JS -->
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="fecharModalMatch()" class="flex-1 py-3 rounded-xl font-bold text-sm bg-header border border-color text-muted hover:text-main transition">Nenhum é o meu</button>
+                <button onclick="irParaCatalogoAposMatch()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold text-sm">Ir para Catálogo</button>
+            </div>
+        </div>
+    </div>
 
-@app.route('/api/entregues', methods=['GET'])
-def get_entregues():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
-        entregues = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(entregues)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    <!-- Modal de Aviso Global (Sucesso/Erro) -->
+    <div id="modalAviso" class="hidden fixed inset-0 z-[130] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-card border border-color rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center transform scale-95 transition-transform duration-300" id="modalAvisoContent">
+            <div id="modalAvisoIcon" class="text-5xl mb-4"></div>
+            <h3 id="modalAvisoTitulo" class="text-xl font-black text-main mb-2"></h3>
+            <p id="modalAvisoMensagem" class="text-sm text-muted mb-6"></p>
+            <button onclick="fecharModalAviso()" class="w-full dynamic-btn py-3 rounded-xl font-bold text-sm uppercase">Entendi</button>
+        </div>
+    </div>
 
-@app.route('/api/itens', methods=['POST'])
-def cadastrar_item():
-    data = request.json
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-    data_enc = data.get('data')
-    local = data.get('local')
-    fotos = data.get('fotos', [])
-    status = data.get('status', 'DISPONÍVEL')
-
-    if not descricao or not data_enc or not local:
-        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
-
-    foto_capa = fotos[0] if len(fotos) > 0 else ''
-    fotos_json_str = json.dumps(fotos)
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''
-            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
-        ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
-        novo_id = cursor.fetchone()['id']
-
-        # MATCH REVERSO: Avisar alunos que estão procurando algo parecido!
-        if status == 'DISPONÍVEL':
-            cursor.execute("SELECT * FROM avisos WHERE status = 'BUSCANDO' AND categoria = %s;", (categoria,))
-            avisos = cursor.fetchall()
-            for aviso in avisos:
-                if verificar_match(descricao, aviso['descricao']):
-                    cursor.execute('''
-                        INSERT INTO notificacoes (rm_aluno, titulo, mensagem, data_criacao)
-                        VALUES (%s, %s, %s, %s);
-                    ''', (aviso['rm_aluno'], "Encontramos algo parecido!", f"A secretaria acabou de cadastrar um item parecido com o seu aviso: '{descricao}'. Verifique o catálogo!", agora))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/localizar/<int:item_id>', methods=['GET'])
-def localizar_item(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, status, solicitado_por, rm_aluno FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
-
-        if (item['status'] or '').upper() == 'ENTREGUE':
-            cursor.execute("SELECT retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel FROM entregues WHERE item_id = %s ORDER BY id DESC LIMIT 1;", (item_id,))
-            dados_entrega = cursor.fetchone()
-            if dados_entrega:
-                item['entrega'] = dados_entrega
-
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "item": item})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/<int:item_id>', methods=['PUT'])
-def atualizar_item(item_id):
-    data = request.json
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-    data_enc = data.get('data')
-    local = data.get('local')
-    fotos = data.get('fotos')
-    status = data.get('status', 'DISPONÍVEL')
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        if descricao and data_enc and local:
-            if fotos is not None and len(fotos) > 0:
-                cursor.execute('UPDATE itens SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s WHERE id = %s;', (descricao, categoria, data_enc, local, fotos[0], json.dumps(fotos), status, item_id))
-            else:
-                cursor.execute('UPDATE itens SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s WHERE id = %s;', (descricao, categoria, data_enc, local, status, item_id))
-        else:
-            cursor.execute("UPDATE itens SET status = %s WHERE id = %s;", (status, item_id))
-
-        if status.upper() == 'ENTREGUE':
-            cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-            cursor.execute('''
-                INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel)
-                VALUES (%s, %s, %s, %s, %s, %s, %s);
-            ''', (item_id, descricao or "Item", data.get('retirado_por', ''), data.get('rm_retirante', ''), data.get('turma_curso', '-'), data.get('data_entrega', data_enc), data.get('funcionario_responsavel', 'Secretaria')))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
-def recusar_solicitacao(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL WHERE id = %s;", (item_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/<int:item_id>', methods=['DELETE'])
-def excluir_item(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-        cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
-def concluir_doacoes():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
-        removidos = cursor.rowcount
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "removidos": removidos})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/solicitar', methods=['POST'])
-def solicitar_item():
-    data = request.json
-    item_id = data.get('id')
-    nome_aluno = data.get('nome')
-    rm_aluno = data.get('rm')
-    
-    if not item_id or not nome_aluno or not rm_aluno:
-        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
-        
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s WHERE id = %s AND status = 'DISPONÍVEL';", (nome_aluno, rm_aluno, item_id))
-        
-        if cursor.rowcount == 0:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "O item não está mais disponível para solicitação."}), 400
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    <script src="script.js"></script>
+</body>
+</html>
