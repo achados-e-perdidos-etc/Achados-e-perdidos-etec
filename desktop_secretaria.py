@@ -143,7 +143,7 @@ class AdminDesktopApp:
         top_bar = tk.Frame(self.table_frame, bg="#1e1e2e")
         top_bar.pack(fill="x", pady=(0, 10))
         
-        self.btn_alternar_tabela = tk.Button(top_bar, text="🔄 Alternar para: HISTÓRICO DE ENTREGAS", command=self.alternar_modo_tabela, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
+        self.btn_alternar_tabela = tk.Button(top_bar, text="🔄 Alternar: HISTÓRICO DE ENTREGAS", command=self.alternar_modo_tabela, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
         self.btn_alternar_tabela.pack(side="right")
 
         self.tree = ttk.Treeview(self.table_frame, show="headings", height=15)
@@ -178,31 +178,42 @@ class AdminDesktopApp:
         self.carregar_tabela()
 
     def alternar_modo_tabela(self):
+        # Transição: itens -> entregues -> avisos -> itens
         if self.tabela_visualizada == "itens":
             self.tabela_visualizada = "entregues"
-            self.btn_alternar_tabela.config(text="📦 Alternar para: ESTOQUE (ITENS)", bg="#8b5cf6")
-            self.table_frame.config(text=" Histórico Completo de Entregas ")
+            self.btn_alternar_tabela.config(text="🔄 Alternar: MURAL DE AVISOS", bg="#f59e0b", fg="#0f172a")
+            self.table_frame.config(text=" Histórico Completo de Entregas ", fg="#8b5cf6")
+            self.desativar_botoes()
             
-            # Desativa botões que não fazem sentido no histórico
-            self.btn_editar.config(state="disabled")
-            self.btn_localizar.config(state="disabled")
-            self.btn_excluir.config(state="disabled")
-            self.btn_doacao.config(state="disabled")
-            self.btn_recusar.config(state="disabled")
+        elif self.tabela_visualizada == "entregues":
+            self.tabela_visualizada = "avisos"
+            self.btn_alternar_tabela.config(text="📦 Alternar: ESTOQUE (ITENS)", bg="#10b981", fg="white")
+            self.table_frame.config(text=" Mural: Alunos Procurando Objetos ", fg="#f59e0b")
+            self.desativar_botoes()
+            self.btn_excluir.config(state="normal") # Secretária pode excluir um aviso se quiser limpar
+            
         else:
             self.tabela_visualizada = "itens"
-            self.btn_alternar_tabela.config(text="🔄 Alternar para: HISTÓRICO DE ENTREGAS", bg="#3b82f6")
-            self.table_frame.config(text=" Registros no Neon PostgreSQL (Itens) ")
-            
-            # Reativa os botões
-            self.btn_editar.config(state="normal")
-            self.btn_localizar.config(state="normal")
-            self.btn_excluir.config(state="normal")
-            self.btn_doacao.config(state="normal")
-            self.btn_recusar.config(state="normal")
+            self.btn_alternar_tabela.config(text="🔄 Alternar: HISTÓRICO DE ENTREGAS", bg="#3b82f6", fg="white")
+            self.table_frame.config(text=" Registros no Neon PostgreSQL (Itens) ", fg="#38bdf8")
+            self.reativar_botoes()
             
         self.configurar_colunas_tabela()
         self.carregar_tabela()
+
+    def desativar_botoes(self):
+        self.btn_editar.config(state="disabled")
+        self.btn_localizar.config(state="disabled")
+        self.btn_excluir.config(state="disabled")
+        self.btn_doacao.config(state="disabled")
+        self.btn_recusar.config(state="disabled")
+
+    def reativar_botoes(self):
+        self.btn_editar.config(state="normal")
+        self.btn_localizar.config(state="normal")
+        self.btn_excluir.config(state="normal")
+        self.btn_doacao.config(state="normal")
+        self.btn_recusar.config(state="normal")
 
     def configurar_colunas_tabela(self):
         # Limpa os dados visuais antigos
@@ -228,7 +239,8 @@ class AdminDesktopApp:
             self.tree.column("status", width=100, anchor="center")
             self.tree.column("solicitado_por", width=110)
             self.tree.column("rm_aluno", width=65, anchor="center")
-        else:
+            
+        elif self.tabela_visualizada == "entregues":
             self.tree["columns"] = ("id", "item_id", "nome_item", "retirado_por", "rm_retirante", "turma_curso", "data_entrega", "funcionario_responsavel")
             self.tree.heading("id", text="Recibo ID")
             self.tree.heading("item_id", text="Item ID")
@@ -247,6 +259,24 @@ class AdminDesktopApp:
             self.tree.column("turma_curso", width=70, anchor="center")
             self.tree.column("data_entrega", width=100, anchor="center")
             self.tree.column("funcionario_responsavel", width=110)
+            
+        elif self.tabela_visualizada == "avisos":
+            self.tree["columns"] = ("id", "rm", "nome", "categoria", "descricao", "data", "status")
+            self.tree.heading("id", text="ID Aviso")
+            self.tree.heading("rm", text="RM")
+            self.tree.heading("nome", text="Aluno")
+            self.tree.heading("categoria", text="Categoria Perda")
+            self.tree.heading("descricao", text="Descrição do que perdeu")
+            self.tree.heading("data", text="Data Aviso")
+            self.tree.heading("status", text="Status")
+
+            self.tree.column("id", width=60, anchor="center")
+            self.tree.column("rm", width=65, anchor="center")
+            self.tree.column("nome", width=120)
+            self.tree.column("categoria", width=100, anchor="center")
+            self.tree.column("descricao", width=180)
+            self.tree.column("data", width=80, anchor="center")
+            self.tree.column("status", width=80, anchor="center")
 
     def recusar_solicitacao(self):
         if self.tabela_visualizada != "itens":
@@ -634,6 +664,17 @@ __________________________________________________
 
         item_values = self.tree.item(selected[0], "values")
         item_id = item_values[0]
+        
+        if self.tabela_visualizada == "avisos":
+            desc = item_values[4]
+            if messagebox.askyesno("Confirmar Exclusão", f"Excluir aviso de perda: '{desc}'?"):
+                try:
+                    res = requests.delete(f"{API_URL}/api/avisos/{item_id}", timeout=10) # Rota precisaria existir no server.py ou apenas ignorar erros
+                    self.carregar_tabela()
+                except Exception as e:
+                    messagebox.showerror("Erro", str(e))
+            return
+
         item_desc = item_values[1]
 
         if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir o item '{item_desc}' (ID #{item_id})?"):
@@ -694,6 +735,21 @@ __________________________________________________
                             turma,
                             ent["data_entrega"],
                             ent["funcionario_responsavel"]
+                        ))
+            
+            elif self.tabela_visualizada == "avisos":
+                res = requests.get(f"{API_URL}/api/avisos", timeout=10)
+                if res.status_code == 200:
+                    avisos = res.json()
+                    for av in avisos:
+                        self.tree.insert("", tk.END, values=(
+                            av["id"], 
+                            av["rm_aluno"], 
+                            av["nome_aluno"], 
+                            av["categoria"], 
+                            av["descricao"], 
+                            av["data_aviso"],
+                            av["status"]
                         ))
                         
         except Exception as e:
