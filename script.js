@@ -1,4 +1,3 @@
-// Usando caminho relativo para que funcione direto no Render sem precisar da Vercel
 const API_URL = "";
 let alunoLogado = null;
 let todosItens = [];
@@ -9,6 +8,169 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
+// --- FLUXO DE LOGIN COM RESEND ---
+async function solicitarCodigoEmail(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('loginNome').value.trim();
+    const rm = document.getElementById('loginRM').value.trim();
+    const email = document.getElementById('loginEmail').value.trim();
+
+    if (!nome || !rm || !email) {
+        alert("Preencha todos os campos!");
+        return;
+    }
+
+    const btn = document.getElementById('btnEnviarEmail');
+    btn.disabled = true;
+    btn.innerHTML = `<span>ENVIANDO...</span><i class="fas fa-spinner fa-spin"></i>`;
+
+    try {
+        const response = await fetch(`${API_URL}/api/login/enviar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, rm, email })
+        });
+
+        const res = await response.json();
+
+        if (response.ok && res.success) {
+            window.dadosLoginTemp = { nome, rm, email };
+            document.getElementById('otpModal').classList.remove('hidden');
+            alert(res.message);
+        } else {
+            alert(res.message || "Erro ao enviar e-mail. Verifique o endereço digitado.");
+        }
+    } catch (err) {
+        alert("Erro de conexão ao solicitar código.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>ENVIAR CÓDIGO POR E-MAIL</span><i class="fas fa-envelope"></i>`;
+    }
+}
+
+async function verificarCodigoOTP() {
+    const codigo = document.getElementById('inputCodigoOTP').value.trim();
+
+    if (codigo.length < 6) {
+        alert("Digite o código de 6 dígitos enviado ao seu e-mail!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/login/verificar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: window.dadosLoginTemp.email,
+                codigo
+            })
+        });
+
+        const res = await response.json();
+
+        if (response.ok && res.success) {
+            alunoLogado = res.usuario;
+            localStorage.setItem('aluno_sessao', JSON.stringify(alunoLogado));
+            fecharModalOTP();
+            iniciarSessao();
+        } else {
+            alert(res.message || "Código inválido ou expirado.");
+        }
+    } catch (err) {
+        alert("Erro ao validar código.");
+    }
+}
+
+function fecharModalOTP() {
+    document.getElementById('otpModal').classList.add('hidden');
+}
+
+function iniciarSessao() {
+    if (!alunoLogado) return;
+
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('catalogScreen').classList.remove('hidden');
+
+    const userInfo = document.getElementById('userInfo');
+    const userName = document.getElementById('userName');
+    const userRM = document.getElementById('userRM');
+
+    if (userInfo && userName && userRM) {
+        userName.innerText = alunoLogado.nome;
+        userRM.innerText = `RM: ${alunoLogado.rm}`;
+        userInfo.classList.remove('hidden');
+    }
+
+    carregarItensDaAPI();
+}
+
+function logout() {
+    alunoLogado = null;
+    localStorage.removeItem('aluno_sessao');
+    document.getElementById('userInfo')?.classList.add('hidden');
+    document.getElementById('catalogScreen')?.classList.add('hidden');
+    document.getElementById('detailScreen')?.classList.add('hidden');
+    document.getElementById('loginScreen')?.classList.remove('hidden');
+}
+
+function checarSessaoSalva() {
+    const sessao = localStorage.getItem('aluno_sessao');
+    if (sessao) {
+        try {
+            alunoLogado = JSON.parse(sessao);
+            iniciarSessao();
+        } catch (e) {
+            localStorage.removeItem('aluno_sessao');
+        }
+    }
+}
+
+// --- SOLICITAÇÃO DIRETA COM DADOS DO ALUNO LOGADO ---
+async function solicitarColeta() {
+    if (!itemSelecionado) return;
+    if (!alunoLogado) {
+        alert("Sua sessão expirou. Faça login novamente.");
+        logout();
+        return;
+    }
+
+    const stUpper = normalizarStatus(itemSelecionado.status);
+    if (stUpper !== 'DISPONÍVEL') {
+        alert("Este item não está mais disponível para solicitação!");
+        return;
+    }
+
+    if (!confirm(`Deseja confirmar a solicitação do item "${itemSelecionado.txt_descricao}" em nome de ${alunoLogado.nome} (RM: ${alunoLogado.rm})?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/solicitar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: itemSelecionado.id,
+                nome: alunoLogado.nome,
+                rm: alunoLogado.rm
+            })
+        });
+
+        const res = await response.json();
+        
+        if (response.ok && res.success) {
+            alert(res.message);
+            voltarParaCatalogo();
+            carregarItensDaAPI();
+        } else {
+            alert(res.message || "Não foi possível realizar a solicitação.");
+        }
+    } catch (error) {
+        alert("Erro ao enviar a solicitação ao servidor.");
+    }
+}
+
+// --- CONFIGURAÇÕES DE APARÊNCIA E NAVEGAÇÃO ---
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
     if (menu) menu.classList.toggle('hidden');
@@ -84,36 +246,19 @@ async function carregarItensDaAPI() {
     }
 }
 
-function logout() {
-    alunoLogado = null;
-    document.getElementById('userInfo')?.classList.add('hidden');
-    document.getElementById('catalogScreen')?.classList.add('hidden');
-    document.getElementById('detailScreen')?.classList.add('hidden');
-}
-
 function filtrarPorPalavraChave() {
     const input = document.getElementById('searchInput');
     const btnClear = document.getElementById('btnClearSearch');
-    
     termoBusca = input.value.trim().toLowerCase();
-
-    if (termoBusca.length > 0) {
-        btnClear?.classList.remove('hidden');
-    } else {
-        btnClear?.classList.add('hidden');
-    }
-
+    if (btnClear) btnClear.classList.toggle('hidden', termoBusca.length === 0);
     renderizarItens();
 }
 
 function limparBusca() {
     const input = document.getElementById('searchInput');
-    const btnClear = document.getElementById('btnClearSearch');
-    
     if (input) input.value = '';
     termoBusca = '';
-    btnClear?.classList.add('hidden');
-    
+    document.getElementById('btnClearSearch')?.classList.add('hidden');
     renderizarItens();
 }
 
@@ -125,7 +270,6 @@ function filtrarStatus(status) {
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
     if (!indicator || !element) return;
-
     indicator.style.left = `${element.offsetLeft}px`;
     indicator.style.top = `${element.offsetTop}px`;
     indicator.style.width = `${element.offsetWidth}px`;
@@ -135,19 +279,15 @@ function moveIndicator(element) {
 
 function filtrarCategoria(cat, btnElement) {
     categoriaAtual = cat;
-    
     if (btnElement) {
         document.querySelectorAll('.cat-btn').forEach(b => {
             b.classList.remove('text-white', 'border-transparent');
             b.classList.add('text-muted', 'border-color', 'bg-card');
         });
-
         btnElement.classList.remove('text-muted', 'border-color', 'bg-card');
         btnElement.classList.add('text-white', 'border-transparent');
-
         moveIndicator(btnElement);
     }
-
     renderizarItens();
 }
 
@@ -160,27 +300,17 @@ function normalizarStatus(status) {
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
-
     grid.innerHTML = '';
 
     const filtrados = todosItens.filter(item => {
-        const atendeCategoria = categoriaAtual === 'TODOS' || 
-            (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
-
+        const atendeCategoria = categoriaAtual === 'TODOS' || (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
         const stUpper = normalizarStatus(item.status);
         const stFiltro = normalizarStatus(statusAtual);
-
         const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
-
         const desc = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
         const cat = (item.categoria || '').toLowerCase();
-        
-        const atendeBusca = !termoBusca || 
-            desc.includes(termoBusca) || 
-            local.includes(termoBusca) || 
-            cat.includes(termoBusca);
-
+        const atendeBusca = !termoBusca || desc.includes(termoBusca) || local.includes(termoBusca) || cat.includes(termoBusca);
         return atendeCategoria && atendeStatus && atendeBusca;
     });
 
@@ -189,7 +319,6 @@ function renderizarItens() {
             <div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl">
                 <i class="fas fa-search text-3xl mb-2 text-muted"></i>
                 <p class="text-sm font-semibold">Nenhum objeto encontrado.</p>
-                <p class="text-xs text-muted mt-1">Tente pesquisar com outros termos ou altere os filtros selecionados.</p>
             </div>
         `;
         return;
@@ -261,7 +390,7 @@ function abrirDetalhes(item) {
         placeholder.classList.add('hidden');
         container.classList.remove('hidden');
 
-        fotosAtuais.forEach((f, idx) => {
+        fotosAtuais.forEach((f) => {
             const slide = document.createElement('div');
             slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
             slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
@@ -272,13 +401,8 @@ function abrirDetalhes(item) {
         document.getElementById('photoTotalCount').innerText = fotosAtuais.length;
         counter.classList.remove('hidden');
 
-        if (fotosAtuais.length > 1) {
-            btnPrev.classList.remove('hidden');
-            btnNext.classList.remove('hidden');
-        } else {
-            btnPrev.classList.add('hidden');
-            btnNext.classList.add('hidden');
-        }
+        btnPrev.classList.toggle('hidden', fotosAtuais.length <= 1);
+        btnNext.classList.toggle('hidden', fotosAtuais.length <= 1);
 
         container.onscroll = () => {
             const width = container.clientWidth;
@@ -288,7 +412,6 @@ function abrirDetalhes(item) {
                 document.getElementById('photoCurrentIdx').innerText = idx + 1;
             }
         };
-
     } else {
         container.classList.add('hidden');
         counter.classList.add('hidden');
@@ -343,59 +466,7 @@ function voltarParaCatalogo() {
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-async function solicitarColeta() {
-    if (!itemSelecionado) return;
-
-    const stUpper = normalizarStatus(itemSelecionado.status);
-    if (stUpper !== 'DISPONÍVEL') {
-        alert("Este item não está mais disponível para solicitação!");
-        return;
-    }
-
-    let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
-    let rmDigitado = prompt("Por favor, digite seu RM:");
-
-    if (!nomeDigitado || !rmDigitado) {
-        alert("Você precisa informar seu Nome e RM para solicitar o item!");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/api/solicitar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: itemSelecionado.id,
-                nome: nomeDigitado,
-                rm: rmDigitado
-            })
-        });
-
-        const res = await response.json();
-        
-        if (response.ok && res.success) {
-            alert(res.message);
-            voltarParaCatalogo();
-            carregarItensDaAPI();
-        } else {
-            alert(res.message || "Não foi possível realizar a solicitação.");
-        }
-    } catch (error) {
-        alert("Erro ao enviar a solicitação ao servidor.");
-    }
-}
-
 window.onload = () => {
     carregarPreferenciasAparencia();
-    carregarItensDaAPI();
-
-    setTimeout(() => {
-        const defaultBtn = document.querySelector('.cat-btn');
-        if (defaultBtn) moveIndicator(defaultBtn);
-    }, 100);
+    checarSessaoSalva();
 };
-
-window.addEventListener('resize', () => {
-    const activeBtn = document.querySelector('.cat-btn.text-white');
-    if (activeBtn) moveIndicator(activeBtn);
-});
