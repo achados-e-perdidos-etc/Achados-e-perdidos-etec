@@ -19,7 +19,7 @@ class AdminDesktopApp:
 
         self.fotos_base64 = []
         self.item_editando_id = None
-        self.tabela_visualizada = "itens" # Controle de exibição (itens ou histórico)
+        self.tabela_visualizada = "itens" # Controle de exibição (itens, entregues ou avisos)
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -133,7 +133,7 @@ class AdminDesktopApp:
         self.btn_cancelar.grid_remove()
 
         # Lado Direito - Tabela e Ações
-        self.table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
+        self.table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL (Itens) ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
         self.table_frame.grid(row=0, column=1, sticky="nsew")
 
         container.columnconfigure(1, weight=1)
@@ -669,7 +669,7 @@ __________________________________________________
             desc = item_values[4]
             if messagebox.askyesno("Confirmar Exclusão", f"Excluir aviso de perda: '{desc}'?"):
                 try:
-                    res = requests.delete(f"{API_URL}/api/avisos/{item_id}", timeout=10) # Rota precisaria existir no server.py ou apenas ignorar erros
+                    res = requests.delete(f"{API_URL}/api/avisos/{item_id}", timeout=10)
                     self.carregar_tabela()
                 except Exception as e:
                     messagebox.showerror("Erro", str(e))
@@ -719,37 +719,24 @@ __________________________________________________
                         if status.upper() == "GUARDADO":
                             status = "DISPONÍVEL"
                         self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], status, solicitado_por, rm_aluno))
-            else:
-                # Busca da rota de entregues (histórico)
+            elif self.tabela_visualizada == "entregues":
                 res = requests.get(f"{API_URL}/api/entregues", timeout=10)
                 if res.status_code == 200:
                     entregues = res.json()
                     for ent in entregues:
                         turma = ent.get("turma_curso") or "-"
                         self.tree.insert("", tk.END, values=(
-                            ent["id"], 
-                            ent["item_id"], 
-                            ent["nome_item"], 
-                            ent["retirado_por"], 
-                            ent["rm_retirante"], 
-                            turma,
-                            ent["data_entrega"],
-                            ent["funcionario_responsavel"]
+                            ent["id"], ent["item_id"], ent["nome_item"], ent["retirado_por"], 
+                            ent["rm_retirante"], turma, ent["data_entrega"], ent["funcionario_responsavel"]
                         ))
-            
             elif self.tabela_visualizada == "avisos":
                 res = requests.get(f"{API_URL}/api/avisos", timeout=10)
                 if res.status_code == 200:
                     avisos = res.json()
                     for av in avisos:
                         self.tree.insert("", tk.END, values=(
-                            av["id"], 
-                            av["rm_aluno"], 
-                            av["nome_aluno"], 
-                            av["categoria"], 
-                            av["descricao"], 
-                            av["data_aviso"],
-                            av["status"]
+                            av["id"], av["rm_aluno"], av["nome_aluno"], av["categoria"], 
+                            av["descricao"], av["data_aviso"], av["status"]
                         ))
                         
         except Exception as e:
