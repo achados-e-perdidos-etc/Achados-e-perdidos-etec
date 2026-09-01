@@ -1,4 +1,4 @@
-const API_URL = "";
+const API_URL = "https://achados-etec-api.onrender.com";
 let alunoLogado = null;
 let todosItens = [];
 let itemSelecionado = null;
@@ -260,26 +260,10 @@ function abrirDetalhes(item) {
         placeholder.classList.add('hidden');
         container.classList.remove('hidden');
 
-        // Container com overflow hidden para os slides absolutos
-        container.style.position = 'relative';
-        container.style.overflow = 'hidden';
-
         fotosAtuais.forEach((f, idx) => {
             const slide = document.createElement('div');
-            slide.className = "carousel-slide";
-            slide.style.cssText = `
-                position: absolute;
-                inset: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 8px;
-                opacity: ${idx === 0 ? '1' : '0'};
-                transform: translateX(${idx === 0 ? '0%' : '100%'});
-                transition: opacity 0.4s ease, transform 0.4s ease;
-                pointer-events: ${idx === 0 ? 'auto' : 'none'};
-            `;
-            slide.innerHTML = `<img src="${f}" style="max-height:100%;max-width:100%;object-fit:contain;border-radius:8px;">`;
+            slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
+            slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
             container.appendChild(slide);
         });
 
@@ -295,8 +279,14 @@ function abrirDetalhes(item) {
             btnNext.classList.add('hidden');
         }
 
-        // Remove onscroll antigo — não é mais necessário
-        container.onscroll = null;
+        container.onscroll = () => {
+            const width = container.clientWidth;
+            if (width > 0) {
+                const idx = Math.round(container.scrollLeft / width);
+                fotoIndiceAtual = idx;
+                document.getElementById('photoCurrentIdx').innerText = idx + 1;
+            }
+        };
 
     } else {
         container.classList.add('hidden');
@@ -338,34 +328,13 @@ function navegarFotos(direcao) {
     const container = document.getElementById('carouselContainer');
     if (!container || fotosAtuais.length === 0) return;
 
-    const slides = container.querySelectorAll('.carousel-slide');
-    const anterior = fotoIndiceAtual;
-
     let novoIndice = fotoIndiceAtual + direcao;
     if (novoIndice < 0) novoIndice = fotosAtuais.length - 1;
     if (novoIndice >= fotosAtuais.length) novoIndice = 0;
 
     fotoIndiceAtual = novoIndice;
-
-    // Slide saindo — desliza para o lado oposto à direção
-    slides[anterior].style.opacity = '0';
-    slides[anterior].style.transform = `translateX(${direcao > 0 ? '-100%' : '100%'})`;
-    slides[anterior].style.pointerEvents = 'none';
-
-    // Slide entrando — começa do lado oposto e desliza para o centro
-    slides[novoIndice].style.transition = 'none';
-    slides[novoIndice].style.transform = `translateX(${direcao > 0 ? '100%' : '-100%'})`;
-    slides[novoIndice].style.opacity = '0';
-    slides[novoIndice].style.pointerEvents = 'auto';
-
-    // Força reflow para a transição funcionar corretamente
-    slides[novoIndice].getBoundingClientRect();
-
-    slides[novoIndice].style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-    slides[novoIndice].style.opacity = '1';
-    slides[novoIndice].style.transform = 'translateX(0%)';
-
-    document.getElementById('photoCurrentIdx').innerText = novoIndice + 1;
+    const width = container.clientWidth;
+    container.scrollTo({ left: width * novoIndice, behavior: 'smooth' });
 }
 
 function voltarParaCatalogo() {
@@ -373,22 +342,124 @@ function voltarParaCatalogo() {
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-async function solicitarColeta() {
-    if (!itemSelecionado) return;
 
+// ==========================================
+// FUNÇÕES DE UI CUSTOMIZADA (MODAIS)
+// ==========================================
+
+function mostrarAviso(titulo, mensagem, tipo = 'sucesso') {
+    const modal = document.getElementById('modalAviso');
+    const content = document.getElementById('modalAvisoContent');
+    const icone = document.getElementById('modalAvisoIcon');
+    const tituloEl = document.getElementById('modalAvisoTitulo');
+    const msgEl = document.getElementById('modalAvisoMensagem');
+
+    modal.classList.remove('hidden');
+    
+    // Animação de entrada
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+    }, 10);
+
+    tituloEl.innerText = titulo;
+    msgEl.innerText = mensagem;
+
+    if (tipo === 'sucesso') {
+        icone.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+    } else if (tipo === 'erro') {
+        icone.innerHTML = '<i class="fas fa-exclamation-circle text-red-500"></i>';
+    } else {
+        icone.innerHTML = '<i class="fas fa-info-circle text-blue-500"></i>';
+    }
+}
+
+function fecharModalAviso() {
+    const modal = document.getElementById('modalAviso');
+    const content = document.getElementById('modalAvisoContent');
+
+    // Animação de saída
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function abrirModalSolicitar() {
+    if (!itemSelecionado) return;
     const stUpper = normalizarStatus(itemSelecionado.status);
     if (stUpper !== 'DISPONÍVEL') {
-        alert("Este item não está mais disponível para solicitação!");
+        mostrarAviso('Atenção', 'Este item não está mais disponível para solicitação.', 'erro');
         return;
     }
 
-    let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
-    let rmDigitado = prompt("Por favor, digite seu RM:");
+    const modal = document.getElementById('modalSolicitar');
+    const content = document.getElementById('modalSolicitarContent');
+    const errorMsg = document.getElementById('modalSolicitarError');
+    
+    // Limpa campos
+    document.getElementById('inputNomeSolicitante').value = '';
+    document.getElementById('inputRmSolicitante').value = '';
+    errorMsg.classList.add('hidden');
+    
+    // Reseta estado do botão
+    const btnConfirmar = document.getElementById('btnConfirmarSolicitacao');
+    const btnText = document.getElementById('btnConfirmarText');
+    const btnSpinner = document.getElementById('btnConfirmarSpinner');
+    btnConfirmar.disabled = false;
+    btnConfirmar.classList.remove('opacity-70', 'cursor-not-allowed');
+    btnText.innerText = 'Confirmar Dados';
+    btnSpinner.classList.add('hidden');
 
-    if (!nomeDigitado || !rmDigitado) {
-        alert("Você precisa informar seu Nome e RM para solicitar o item!");
+    modal.classList.remove('hidden');
+    
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+    }, 10);
+}
+
+function fecharModalSolicitar() {
+    const modal = document.getElementById('modalSolicitar');
+    const content = document.getElementById('modalSolicitarContent');
+
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+async function confirmarSolicitacao() {
+    const inputNome = document.getElementById('inputNomeSolicitante').value.trim();
+    const inputRm = document.getElementById('inputRmSolicitante').value.trim();
+    const errorMsg = document.getElementById('modalSolicitarError');
+    const btnConfirmar = document.getElementById('btnConfirmarSolicitacao');
+    const btnText = document.getElementById('btnConfirmarText');
+    const btnSpinner = document.getElementById('btnConfirmarSpinner');
+
+    if (!inputNome || !inputRm) {
+        errorMsg.innerText = "Você precisa preencher seu Nome e RM!";
+        errorMsg.classList.remove('hidden');
         return;
     }
+    
+    if (inputRm.length < 4) {
+        errorMsg.innerText = "Digite um RM válido!";
+        errorMsg.classList.remove('hidden');
+        return;
+    }
+
+    errorMsg.classList.add('hidden');
+
+    // UI DE CARREGAMENTO NO BOTÃO (Protege contra múltiplos cliques)
+    btnConfirmar.disabled = true;
+    btnConfirmar.classList.add('opacity-70', 'cursor-not-allowed');
+    btnText.innerText = 'Enviando...';
+    btnSpinner.classList.remove('hidden');
 
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
@@ -396,22 +467,32 @@ async function solicitarColeta() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: itemSelecionado.id,
-                nome: nomeDigitado,
-                rm: rmDigitado
+                nome: inputNome,
+                rm: inputRm
             })
         });
 
         const res = await response.json();
         
+        fecharModalSolicitar(); // Fecha o modal de formulário
+
         if (response.ok && res.success) {
-            alert(res.message);
-            voltarParaCatalogo();
-            carregarItensDaAPI();
+            // Em vez do alert() feio, chama nosso modal bonito
+            setTimeout(() => {
+                mostrarAviso('Solicitação Concluída!', res.message, 'sucesso');
+                voltarParaCatalogo();
+                carregarItensDaAPI();
+            }, 300);
         } else {
-            alert(res.message || "Não foi possível realizar a solicitação.");
+            setTimeout(() => {
+                mostrarAviso('Erro na Solicitação', res.message || "Não foi possível realizar a solicitação.", 'erro');
+            }, 300);
         }
     } catch (error) {
-        alert("Erro ao enviar a solicitação ao servidor.");
+        fecharModalSolicitar();
+        setTimeout(() => {
+            mostrarAviso('Erro de Conexão', 'Não foi possível conectar ao servidor. Tente novamente.', 'erro');
+        }, 300);
     }
 }
 
