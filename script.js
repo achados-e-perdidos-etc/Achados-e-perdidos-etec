@@ -7,6 +7,12 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
+// Variáveis do Modo Apresentação
+let apresentacaoItens = [];
+let apresentacaoIndice = 0;
+let apresentacaoTimer = null;
+let modoApresentacaoAtivo = false;
+
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
     if (menu) menu.classList.toggle('hidden');
@@ -76,6 +82,7 @@ async function carregarItensDaAPI() {
         if (response.ok) {
             todosItens = await response.json();
             renderizarItens();
+            atualizarItensApresentacao();
         }
     } catch (error) {
         console.error("Erro ao carregar itens da API:", error);
@@ -203,6 +210,7 @@ function renderizarItens() {
 function abrirDetalhes(item) {
     itemSelecionado = item;
     document.getElementById('catalogScreen')?.classList.add('hidden');
+    document.getElementById('apresentacaoScreen')?.classList.add('hidden');
     document.getElementById('detailScreen')?.classList.remove('hidden');
 
     document.getElementById('detailTitle').innerText = item.categoria;
@@ -294,10 +302,149 @@ function navegarFotos(direcao) {
 
 function voltarParaCatalogo() {
     document.getElementById('detailScreen')?.classList.add('hidden');
+    document.getElementById('apresentacaoScreen')?.classList.add('hidden');
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-// LÓGICA DE SOLICITAÇÃO (MODAL)
+// ==============================================================
+// LÓGICA DO MODO APRESENTAÇÃO (CARROSSEL AUTOMÁTICO COM TRANSIÇÃO)
+// ==============================================================
+
+function atualizarItensApresentacao() {
+    // Exibe preferencialmente itens ativos no carrossel
+    apresentacaoItens = todosItens.filter(i => {
+        const st = normalizarStatus(i.status);
+        return st === 'DISPONÍVEL' || st === 'SOLICITADO' || st === 'PARA DOAÇÃO';
+    });
+    if (apresentacaoItens.length === 0) apresentacaoItens = todosItens;
+}
+
+function alternarModoApresentacao() {
+    modoApresentacaoAtivo = !modoApresentacaoAtivo;
+    const catScreen = document.getElementById('catalogScreen');
+    const apScreen = document.getElementById('apresentacaoScreen');
+    const detScreen = document.getElementById('detailScreen');
+    const btn = document.getElementById('btnModoApresentacao');
+
+    if (modoApresentacaoAtivo) {
+        atualizarItensApresentacao();
+        if (apresentacaoItens.length === 0) {
+            alert("Nenhum item cadastrado para apresentar no momento.");
+            modoApresentacaoAtivo = false;
+            return;
+        }
+
+        catScreen.classList.add('hidden');
+        detScreen.classList.add('hidden');
+        apScreen.classList.remove('hidden');
+
+        btn.classList.add('border-red-500', 'text-red-500');
+        btn.querySelector('span').innerText = "Parar Apresentação";
+        btn.querySelector('i').className = "fas fa-stop text-red-500";
+
+        apresentacaoIndice = 0;
+        exibirItemApresentacao(apresentacaoIndice);
+        iniciarTemporizadorApresentacao();
+    } else {
+        pararTemporizadorApresentacao();
+        apScreen.classList.add('hidden');
+        detScreen.classList.add('hidden');
+        catScreen.classList.remove('hidden');
+
+        btn.classList.remove('border-red-500', 'text-red-500');
+        btn.querySelector('span').innerText = "Apresentação";
+        btn.querySelector('i').className = "fas fa-play text-red-500";
+    }
+}
+
+function exibirItemApresentacao(idx) {
+    if (apresentacaoItens.length === 0) return;
+    const item = apresentacaoItens[idx];
+
+    const imgEl = document.getElementById('apresentacaoImg');
+    const placeholderEl = document.getElementById('apresentacaoPlaceholder');
+    const tituloEl = document.getElementById('apresentacaoTitulo');
+    const catEl = document.getElementById('apresentacaoCategoria');
+    const localEl = document.getElementById('apresentacaoLocal');
+    const dataEl = document.getElementById('apresentacaoData');
+    const contadorEl = document.getElementById('apresentacaoContador');
+    const statusEl = document.getElementById('apresentacaoStatus');
+
+    // 1. Inicia animação suave de Fade-out
+    imgEl.classList.add('opacity-0', 'scale-95');
+
+    setTimeout(() => {
+        // 2. Atualiza os dados durante a transição
+        tituloEl.innerText = item.txt_descricao || "Item sem descrição";
+        catEl.innerText = item.categoria || "OUTROS";
+        localEl.innerText = item.txt_local || "Não informado";
+        dataEl.innerText = item.txt_data || "Data recente";
+        contadorEl.innerText = `${idx + 1} / ${apresentacaoItens.length}`;
+
+        const st = normalizarStatus(item.status);
+        statusEl.innerText = st;
+        if (st === 'SOLICITADO') {
+            statusEl.className = 'text-xs font-bold px-3 py-1 rounded-full uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
+        } else {
+            statusEl.className = 'text-xs font-bold px-3 py-1 rounded-full uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
+        }
+
+        const fotosArr = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
+        if (fotosArr.length > 0 && fotosArr[0]) {
+            placeholderEl.classList.add('hidden');
+            imgEl.src = fotosArr[0];
+            imgEl.classList.remove('hidden');
+        } else {
+            imgEl.src = '';
+            imgEl.classList.add('hidden');
+            placeholderEl.classList.remove('hidden');
+        }
+
+        // 3. Conclui com animação de Fade-in
+        imgEl.classList.remove('opacity-0', 'scale-95');
+        imgEl.classList.add('opacity-100', 'scale-100');
+    }, 300);
+}
+
+function navegarApresentacao(direcao) {
+    if (apresentacaoItens.length === 0) return;
+    apresentacaoIndice = (apresentacaoIndice + direcao + apresentacaoItens.length) % apresentacaoItens.length;
+    exibirItemApresentacao(apresentacaoIndice);
+    iniciarTemporizadorApresentacao();
+}
+
+function iniciarTemporizadorApresentacao() {
+    pararTemporizadorApresentacao();
+    // Troca automática suave a cada 5 segundos
+    apresentacaoTimer = setInterval(() => {
+        navegarApresentacao(1);
+    }, 5000);
+}
+
+function pararTemporizadorApresentacao() {
+    if (apresentacaoTimer) {
+        clearInterval(apresentacaoTimer);
+        apresentacaoTimer = null;
+    }
+}
+
+function abrirDetalhesDoItemAtualApresentacao() {
+    if (apresentacaoItens.length === 0) return;
+    const item = apresentacaoItens[apresentacaoIndice];
+    alternarModoApresentacao();
+    abrirDetalhes(item);
+}
+
+// Pausa automática da rotação ao passar o mouse sobre o cartão
+document.getElementById('apresentacaoCard')?.addEventListener('mouseenter', pararTemporizadorApresentacao);
+document.getElementById('apresentacaoCard')?.addEventListener('mouseleave', () => {
+    if (modoApresentacaoAtivo) iniciarTemporizadorApresentacao();
+});
+
+// ==========================================
+// LÓGICA DO MODAL DE SOLICITAÇÃO
+// ==========================================
+
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
