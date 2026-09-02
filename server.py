@@ -21,6 +21,7 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Tabela principal de Itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -36,7 +37,10 @@ def init_db():
             );
         ''')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
+        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS solicitado_por VARCHAR(100);')
+        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS rm_aluno VARCHAR(20);')
 
+        # Tabela de Entregues / Histórico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -50,16 +54,8 @@ def init_db():
             );
         ''')
 
-        # Tabela de solicitações / mural simplificada sem obrigação de e-mail
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(100) NOT NULL,
-                rm VARCHAR(20) UNIQUE NOT NULL,
-                ultimo_acesso VARCHAR(30)
-            );
-        ''')
-        cursor.execute('ALTER TABLE usuarios DROP COLUMN IF EXISTS email;')
+        # Remove a tabela usuarios se ainda existir
+        cursor.execute('DROP TABLE IF EXISTS usuarios CASCADE;')
 
         conn.commit()
         cursor.close()
@@ -70,7 +66,6 @@ def init_db():
 if DATABASE_URL:
     init_db()
 
-# Rota principal para servir a página estática no Render
 @app.route('/')
 def home():
     return send_from_directory('.', 'index.html')
@@ -267,38 +262,42 @@ def concluir_doacoes():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# ROTA DE SOLICITAÇÃO DIRETA NA TABELA ITENS
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
-    data = request.json
+    data = request.json or {}
     item_id = data.get('id')
-    nome = data.get('nome')
-    rm = data.get('rm')
+    nome = (data.get('nome') or '').strip()
+    rm = str(data.get('rm') or '').strip()
 
     if not item_id or not nome or not rm:
-        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
+        return jsonify({"success": False, "message": "Nome e RM são obrigatórios!"}), 400
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Checa status atual do item
+        cursor.execute("SELECT id, status FROM itens WHERE id = %s;", (item_id,))
+        item = cursor.fetchone()
+
+        if not item:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Item não encontrado no banco de dados."}), 404
+
+        status_atual = (item['status'] or 'DISPONÍVEL').upper()
+        if status_atual != 'DISPONÍVEL':
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
+
+        # Grava solicitante exclusivamente na tabela itens
         cursor.execute('''
             UPDATE itens 
             SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s AND status = 'DISPONÍVEL';
+            WHERE id = %s;
         ''', (nome, rm, item_id))
-
-        if cursor.rowcount == 0:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "O item não está mais disponível para solicitação."}), 400
-
-        # Registra o aluno na tabela usuarios sem erro de email
-        cursor.execute('''
-            INSERT INTO usuarios (nome, rm, ultimo_acesso)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (rm) DO UPDATE 
-            SET nome = EXCLUDED.nome, ultimo_acesso = EXCLUDED.ultimo_acesso;
-        ''', (nome, rm, datetime.now().strftime("%d/%m/%Y %H:%M")))
 
         conn.commit()
         cursor.close()
@@ -306,10 +305,10 @@ def solicitar_item():
 
         return jsonify({
             "success": True, 
-            "message": "Solicitação realizada com sucesso! Compareça à secretaria para retirar seu item."
+            "message": "Solicitação realizada com sucesso! Compareça à secretaria da ETEC para retirar o item."
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "message": f"Erro interno no servidor: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
