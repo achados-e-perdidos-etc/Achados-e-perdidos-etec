@@ -306,12 +306,8 @@ function voltarParaCatalogo() {
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-// ==============================================================
-// LÓGICA DO MODO APRESENTAÇÃO (CARROSSEL AUTOMÁTICO COM TRANSIÇÃO)
-// ==============================================================
-
+// MODO APRESENTAÇÃO
 function atualizarItensApresentacao() {
-    // Exibe preferencialmente itens ativos no carrossel
     apresentacaoItens = todosItens.filter(i => {
         const st = normalizarStatus(i.status);
         return st === 'DISPONÍVEL' || st === 'SOLICITADO' || st === 'PARA DOAÇÃO';
@@ -370,11 +366,9 @@ function exibirItemApresentacao(idx) {
     const contadorEl = document.getElementById('apresentacaoContador');
     const statusEl = document.getElementById('apresentacaoStatus');
 
-    // 1. Inicia animação suave de Fade-out
     imgEl.classList.add('opacity-0', 'scale-95');
 
     setTimeout(() => {
-        // 2. Atualiza os dados durante a transição
         tituloEl.innerText = item.txt_descricao || "Item sem descrição";
         catEl.innerText = item.categoria || "OUTROS";
         localEl.innerText = item.txt_local || "Não informado";
@@ -400,7 +394,6 @@ function exibirItemApresentacao(idx) {
             placeholderEl.classList.remove('hidden');
         }
 
-        // 3. Conclui com animação de Fade-in
         imgEl.classList.remove('opacity-0', 'scale-95');
         imgEl.classList.add('opacity-100', 'scale-100');
     }, 300);
@@ -415,7 +408,6 @@ function navegarApresentacao(direcao) {
 
 function iniciarTemporizadorApresentacao() {
     pararTemporizadorApresentacao();
-    // Troca automática suave a cada 5 segundos
     apresentacaoTimer = setInterval(() => {
         navegarApresentacao(1);
     }, 5000);
@@ -435,16 +427,12 @@ function abrirDetalhesDoItemAtualApresentacao() {
     abrirDetalhes(item);
 }
 
-// Pausa automática da rotação ao passar o mouse sobre o cartão
 document.getElementById('apresentacaoCard')?.addEventListener('mouseenter', pararTemporizadorApresentacao);
 document.getElementById('apresentacaoCard')?.addEventListener('mouseleave', () => {
     if (modoApresentacaoAtivo) iniciarTemporizadorApresentacao();
 });
 
-// ==========================================
-// LÓGICA DO MODAL DE SOLICITAÇÃO
-// ==========================================
-
+// MODAL DE SOLICITAÇÃO
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
@@ -466,7 +454,7 @@ async function enviarSolicitacao() {
     const btn = document.getElementById('btnConfirmarSolicitacao');
 
     if (!nome || !rm) {
-        erroEl.innerText = "Preencha Nome e RM!";
+        erroEl.innerText = "Preencha o Nome e o RM!";
         erroEl.classList.remove('hidden');
         return;
     }
@@ -498,7 +486,7 @@ async function enviarSolicitacao() {
             erroEl.classList.remove('hidden');
         }
     } catch (err) {
-        erroEl.innerText = "Erro ao conectar com o servidor.";
+        erroEl.innerText = "Erro ao conectar com o servidor Render.";
         erroEl.classList.remove('hidden');
     } finally {
         btn.disabled = false;
