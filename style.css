@@ -2,170 +2,168 @@
 ETEC ACHADOS E PERDIDOS - ESTILOS GERAIS E TEMAS
 ========================================================== */
 
-/* --- 1. VARIÁVEIS GERAIS E FALLBACKS --- /
+/* --- 1. VARIÁVEIS GERAIS E FALLBACKS --- */
 :root {
-/ Cores primárias de destaque (Sobrescritas pelo JS, mas seguras aqui como fallback) */
---primary-color: #dc2626;
---primary-hover: #b91c1c;
---primary-text: #f87171;
---primary-bg-subtle: rgba(220, 38, 38, 0.1);
---primary-border: rgba(220, 38, 38, 0.3);
+  /* Cores primárias de destaque (Sobrescritas pelo JS, mas seguras aqui como fallback) */
+  --primary-color: #dc2626;
+  --primary-hover: #b91c1c;
+  --primary-text: #f87171;
+  --primary-bg-subtle: rgba(220, 38, 38, 0.1);
+  --primary-border: rgba(220, 38, 38, 0.3);
 
---transition-speed: 0.3s;
-
-
+  --transition-speed: 0.3s;
 }
 
-/* --- 2. MODO ESCURO (DARK THEME - DEFAULT) --- /
+/* --- 2. MODO ESCURO (DARK THEME - DEFAULT) --- */
 body.dark-theme {
---bg-main: #0f172a;      / Fundo principal: Slate 900 /
---bg-header: #020617;    / Cabeçalho: Slate 950 /
---bg-card: #1e293b;      / Cartões: Slate 800 /
---text-main: #f8fafc;    / Texto principal: Slate 50 /
---text-muted: #94a3b8;   / Texto secundário: Slate 400 /
---border-color: #334155; / Bordas: Slate 700 */
---shadow-color: rgba(0, 0, 0, 0.4);
+  --bg-main: #0f172a;      /* Fundo principal: Slate 900 */
+  --bg-header: #020617;    /* Cabeçalho: Slate 950 */
+  --bg-card: #1e293b;      /* Cartões: Slate 800 */
+  --text-main: #f8fafc;    /* Texto principal: Slate 50 */
+  --text-muted: #94a3b8;   /* Texto secundário: Slate 400 */
+  --border-color: #334155; /* Bordas: Slate 700 */
+  --shadow-color: rgba(0, 0, 0, 0.4);
 }
 
-/* --- 3. MODO CLARO (LIGHT THEME) --- /
+/* --- 3. MODO CLARO (LIGHT THEME) --- */
 body.light-theme {
---bg-main: #f8fafc;      / Fundo principal: Slate 50 /
---bg-header: #ffffff;    / Cabeçalho: Branco /
---bg-card: #ffffff;      / Cartões: Branco /
---text-main: #0f172a;    / Texto principal: Slate 900 /
---text-muted: #64748b;   / Texto secundário: Slate 500 /
---border-color: #e2e8f0; / Bordas: Slate 200 */
---shadow-color: rgba(15, 23, 42, 0.08);
+  --bg-main: #f8fafc;      /* Fundo principal: Slate 50 */
+  --bg-header: #ffffff;    /* Cabeçalho: Branco */
+  --bg-card: #ffffff;      /* Cartões: Branco */
+  --text-main: #0f172a;    /* Texto principal: Slate 900 */
+  --text-muted: #64748b;   /* Texto secundário: Slate 500 */
+  --border-color: #e2e8f0; /* Bordas: Slate 200 */
+  --shadow-color: rgba(15, 23, 42, 0.08);
 }
 
 /* --- 4. RESET E BASE DO BODY --- */
 body {
-background-color: var(--bg-main) !important;
-color: var(--text-main) !important;
-font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* --- 5. CLASSES UTILITÁRIAS PARA O TAILWIND --- /
-/ Forçamos as cores do tema sobre as classes do HTML */
+/* --- 5. CLASSES UTILITÁRIAS PARA O TAILWIND --- */
+/* Forçamos as cores do tema sobre as classes do HTML */
 .bg-header {
-background-color: var(--bg-header) !important;
+  background-color: var(--bg-header) !important;
 }
 
 .bg-card {
-background-color: var(--bg-card) !important;
-box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color) !important;
-transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+  background-color: var(--bg-card) !important;
+  box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color) !important;
+  transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
 }
 
 .border-color {
-border-color: var(--border-color) !important;
+  border-color: var(--border-color) !important;
 }
 
 .text-main {
-color: var(--text-main) !important;
+  color: var(--text-main) !important;
 }
 
 .text-muted {
-color: var(--text-muted) !important;
+  color: var(--text-muted) !important;
 }
 
 /* --- 6. COMPONENTES DINÂMICOS E BOTÕES --- */
 .dynamic-text {
-color: var(--primary-text) !important;
+  color: var(--primary-text) !important;
 }
 
 .dynamic-badge {
-background-color: var(--primary-bg-subtle) !important;
-color: var(--primary-text) !important;
-border: 1px solid var(--primary-border) !important;
+  background-color: var(--primary-bg-subtle) !important;
+  color: var(--primary-text) !important;
+  border: 1px solid var(--primary-border) !important;
 }
 
 .dynamic-btn {
-background-color: var(--primary-color) !important;
-color: #ffffff !important;
-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-box-shadow: 0 4px 14px 0 var(--primary-bg-subtle) !important;
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 14px 0 var(--primary-bg-subtle) !important;
 }
 
 .dynamic-btn:hover:not(:disabled) {
-background-color: var(--primary-hover) !important;
-transform: translateY(-2px);
-box-shadow: 0 6px 20px 0 var(--primary-bg-subtle) !important;
+  background-color: var(--primary-hover) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 var(--primary-bg-subtle) !important;
 }
 
 .dynamic-btn:active:not(:disabled) {
-transform: translateY(0);
+  transform: translateY(0);
 }
 
 .dynamic-btn:disabled {
-opacity: 0.6;
-cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* --- 7. REGRAS DA LOGO E COMPONENTES VISUAIS --- */
 #siteLogo {
-width: 40px !important;
-height: 40px !important;
-min-width: 40px !important;
-min-height: 40px !important;
-max-width: 40px !important;
-max-height: 40px !important;
-object-fit: cover !important;
-border-radius: 9999px !important;
-display: block !important;
-flex-shrink: 0 !important;
-border: 2px solid var(--primary-border);
-padding: 2px;
-background-color: var(--bg-card);
-transition: border-color 0.3s ease;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  object-fit: cover !important;
+  border-radius: 9999px !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+  border: 2px solid var(--primary-border);
+  padding: 2px;
+  background-color: var(--bg-card);
+  transition: border-color 0.3s ease;
 }
 
-/* Bolha animada que desliza nas categorias /
+/* Bolha animada que desliza nas categorias */
 .sliding-pill {
-background-color: var(--primary-color) !important;
-/ Efeito elástico suave na transição */
-transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-box-shadow: 0 2px 10px var(--primary-bg-subtle);
+  background-color: var(--primary-color) !important;
+  /* Efeito elástico suave na transição */
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 10px var(--primary-bg-subtle);
 }
 
 /* Efeito Hover nos botões de categoria inativos */
 .cat-btn {
-transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 .cat-btn:hover:not(.text-white) {
-transform: translateY(-1px);
+  transform: translateY(-1px);
 }
 
 /* --- 8. SCROLLBARS (BARRAS DE ROLAGEM) --- */
 
 /* Esconde barra de rolagem horizontal (Usado no carrossel de fotos) */
 .scrollbar-none::-webkit-scrollbar {
-display: none;
+  display: none;
 }
 .scrollbar-none {
--ms-overflow-style: none;
-scrollbar-width: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Customização global da barra de rolagem da página inteira */
 ::-webkit-scrollbar {
-width: 10px;
-height: 10px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-background: var(--bg-main);
+  background: var(--bg-main);
 }
 
 ::-webkit-scrollbar-thumb {
-background: var(--border-color);
-border-radius: 10px;
-border: 3px solid var(--bg-main); /* Cria um espaço (gap) visual */
+  background: var(--border-color);
+  border-radius: 10px;
+  border: 3px solid var(--bg-main); /* Cria um espaço (gap) visual */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-background: var(--text-muted);
+  background: var(--text-muted);
 }
