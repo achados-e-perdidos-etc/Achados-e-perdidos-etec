@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETEC - Achados e Perdidos (Alunos)</title>
+    <title>ETEC - Achados e Perdidos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -37,20 +37,13 @@
                         </div>
                     </div>
                 </div>
-
-                <div id="userInfo" class="hidden text-right">
-                    <span id="userName" class="block font-bold text-sm dynamic-text"></span>
-                    <span id="userRM" class="text-xs text-muted"></span>
-                    <button onclick="logout()" class="text-xs text-red-400 underline block mt-1">Sair</button>
-                </div>
             </div>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
+        <!-- CATÁLOGO -->
         <section id="catalogScreen" class="space-y-6">
-            
-            <!-- BUSCA E FILTROS -->
             <div class="space-y-4">
                 <div class="relative w-full">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
@@ -98,7 +91,7 @@
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
-        <!-- TELA DE DETALHES COM CARROSSEL -->
+        <!-- TELA DE DETALHES -->
         <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
             <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
 
@@ -109,17 +102,12 @@
 
             <!-- CARROSSEL DE FOTOS -->
             <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
-                <!-- Indicador 1/4 (Mostrado quando há fotos) -->
                 <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
                     <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
                 </div>
 
-                <!-- Container Deslizante com Suporte a Drag/Touch -->
-                <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth">
-                    <!-- Fotos injetadas via JavaScript -->
-                </div>
+                <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"></div>
 
-                <!-- Botões de navegação lateral para desktop -->
                 <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
                     <i class="fas fa-chevron-left text-xs"></i>
                 </button>
@@ -127,7 +115,6 @@
                     <i class="fas fa-chevron-right text-xs"></i>
                 </button>
 
-                <!-- Placeholder sem foto -->
                 <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
                     <i class="fas fa-box-open text-5xl mb-2"></i>
                     <p class="text-xs">Foto mantida no registro da secretaria</p>
@@ -144,13 +131,45 @@
                 </div>
 
                 <div class="pt-4">
-                    <button id="btnSolicitar" onclick="solicitarColeta()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
+                    <button id="btnSolicitar" onclick="abrirModalSolicitacao()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
                         ESTE É O MEU ITEM / SOLICITAR COLETA
                     </button>
                 </div>
             </div>
         </section>
     </main>
+
+    <!-- MODAL DE SOLICITAÇÃO (Substitui prompt nativo) -->
+    <div id="modalSolicitacao" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-main text-lg"><i class="fas fa-id-card text-red-500 mr-2"></i>Identificação do Aluno</h3>
+                <button onclick="fecharModalSolicitacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <p class="text-xs text-muted">Informe seu Nome e RM para registrar o pedido de retirada deste objeto na secretaria.</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">Nome Completo</label>
+                    <input type="text" id="solicitaNome" placeholder="Ex: Gustavo Henrique" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">RM (Número de Matrícula)</label>
+                    <input type="number" id="solicitaRM" placeholder="Ex: 25238" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                </div>
+            </div>
+
+            <div id="solicitaMsgErro" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="fecharModalSolicitacao()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase hover:text-main">Cancelar</button>
+                <button id="btnConfirmarSolicitacao" onclick="enviarSolicitacao()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2">
+                    <span>Confirmar</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
