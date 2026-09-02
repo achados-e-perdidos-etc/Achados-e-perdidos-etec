@@ -76,7 +76,7 @@ class AdminDesktopApp:
         header = tk.Frame(self.root, bg="#0f172a", height=70)
         header.pack(fill="x", side="top")
         
-        lbl_title = tk.Label(header, text="SECRETARIA - BANCO DE DADOS NEON (POSTGRESQL)", font=("Helvetica", 14, "bold"), bg="#0f172a", fg="#38bdf8")
+        lbl_title = tk.Label(header, text="SECRETARIA - ETEC", font=("Helvetica", 14, "bold"), bg="#0f172a", fg="#38bdf8")
         lbl_title.pack(pady=8)
         lbl_sub = tk.Label(header, text="ETEC Prof.º José Ignácio Azevedo Filho", font=("Helvetica", 9), bg="#0f172a", fg="#94a3b8")
         lbl_sub.pack()
@@ -133,7 +133,7 @@ class AdminDesktopApp:
         self.btn_cancelar.grid_remove()
 
         # TABELA
-        self.table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
+        self.table_frame = tk.LabelFrame(container, text=" Registros Tabela Itens ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
         self.table_frame.grid(row=0, column=1, sticky="nsew")
 
         container.columnconfigure(1, weight=1)
@@ -187,7 +187,7 @@ class AdminDesktopApp:
         else:
             self.tabela_visualizada = "itens"
             self.btn_alternar_tabela.config(text="🔄 Ver Tabela: HISTÓRICO DE ENTREGAS", bg="#3b82f6")
-            self.table_frame.config(text=" Registros no Neon PostgreSQL ")
+            self.table_frame.config(text=" Registros Tabela Itens ")
             self.btn_editar.config(state="normal")
             self.btn_localizar.config(state="normal")
             self.btn_recusar.config(state="normal")
