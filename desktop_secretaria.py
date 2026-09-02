@@ -19,6 +19,7 @@ class AdminDesktopApp:
 
         self.fotos_base64 = []
         self.item_editando_id = None
+        self.tabela_visualizada = "itens" # Controle de exibição (itens, entregues ou avisos)
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -69,7 +70,7 @@ class AdminDesktopApp:
 
     def iniciar_painel_principal(self):
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("1180x730")
+        self.root.geometry("1280x730")
         self.root.resizable(True, True)
 
         header = tk.Frame(self.root, bg="#0f172a", height=70)
@@ -83,6 +84,7 @@ class AdminDesktopApp:
         container = tk.Frame(self.root, bg="#1e1e2e")
         container.pack(fill="both", expand=True, padx=20, pady=20)
 
+        # Lado Esquerdo - Formulário
         self.form_frame = tk.LabelFrame(container, text=" Cadastro / Edição de Objeto ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=15, pady=15)
         self.form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
@@ -130,56 +132,182 @@ class AdminDesktopApp:
         self.btn_cancelar.grid(row=14, column=0, columnspan=2, sticky="ew")
         self.btn_cancelar.grid_remove()
 
-        table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
-        table_frame.grid(row=0, column=1, sticky="nsew")
+        # Lado Direito - Tabela e Ações
+        self.table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL (Itens) ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
+        self.table_frame.grid(row=0, column=1, sticky="nsew")
 
         container.columnconfigure(1, weight=1)
         container.rowconfigure(0, weight=1)
-
-        columns = ("id", "descricao", "categoria", "data", "local", "status", "solicitado_por", "rm_aluno")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
-        self.tree.heading("id", text="ID")
-        self.tree.heading("descricao", text="Descrição")
-        self.tree.heading("categoria", text="Categoria")
-        self.tree.heading("data", text="Data")
-        self.tree.heading("local", text="Local")
-        self.tree.heading("status", text="Status")
-        self.tree.heading("solicitado_por", text="Solicitante")
-        self.tree.heading("rm_aluno", text="RM")
+        # Botão Superior - Alternar Tabela
+        top_bar = tk.Frame(self.table_frame, bg="#1e1e2e")
+        top_bar.pack(fill="x", pady=(0, 10))
+        
+        self.btn_alternar_tabela = tk.Button(top_bar, text="🔄 Alternar: HISTÓRICO DE ENTREGAS", command=self.alternar_modo_tabela, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
+        self.btn_alternar_tabela.pack(side="right")
 
-        self.tree.column("id", width=35, anchor="center")
-        self.tree.column("descricao", width=140)
-        self.tree.column("categoria", width=90)
-        self.tree.column("data", width=80, anchor="center")
-        self.tree.column("local", width=90)
-        self.tree.column("status", width=100, anchor="center")
-        self.tree.column("solicitado_por", width=110)
-        self.tree.column("rm_aluno", width=65, anchor="center")
-
+        self.tree = ttk.Treeview(self.table_frame, show="headings", height=15)
         self.tree.pack(fill="both", expand=True)
 
-        self.tree.bind("<Double-1>", lambda event: self.preparar_edicao_item())
+        self.tree.bind("<Double-1>", lambda event: self.preparar_edicao_item() if self.tabela_visualizada == "itens" else None)
 
-        actions_frame = tk.Frame(table_frame, bg="#1e1e2e")
-        actions_frame.pack(fill="x", pady=(10, 0))
+        # Botões de Ação Inferiores
+        self.actions_frame = tk.Frame(self.table_frame, bg="#1e1e2e")
+        self.actions_frame.pack(fill="x", pady=(10, 0))
 
-        btn_editar = tk.Button(actions_frame, text="✏ Editar Item", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+        self.btn_editar = tk.Button(self.actions_frame, text="✏ Editar Item", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
 
-        btn_localizar = tk.Button(actions_frame, text="🔍 Localizar / Dar Baixa", command=self.abrir_janela_localizar, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_localizar.pack(side="left", expand=True, fill="x", padx=(2, 2))
+        self.btn_localizar = tk.Button(self.actions_frame, text="🔍 Localizar", command=self.abrir_janela_localizar, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_localizar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
-        btn_excluir = tk.Button(actions_frame, text="🗑 Excluir Item", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
+        self.btn_excluir = tk.Button(self.actions_frame, text="🗑 Excluir", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
-        btn_doacao = tk.Button(actions_frame, text="🎁 Concluir Doações", command=self.concluir_doacoes, bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_doacao.pack(side="left", expand=True, fill="x", padx=(2, 2))
+        self.btn_recusar = tk.Button(self.actions_frame, text="❌ Recusar Solicitação", command=self.recusar_solicitacao, bg="#f97316", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_recusar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
-        btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
+        self.btn_doacao = tk.Button(self.actions_frame, text="🎁 Limpar Doações", command=self.concluir_doacoes, bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_doacao.pack(side="left", expand=True, fill="x", padx=(2, 2))
+
+        btn_refresh = tk.Button(self.actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
         btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
 
+        # Configura as colunas iniciais (itens)
+        self.configurar_colunas_tabela()
         self.carregar_tabela()
+
+    def alternar_modo_tabela(self):
+        # Transição: itens -> entregues -> avisos -> itens
+        if self.tabela_visualizada == "itens":
+            self.tabela_visualizada = "entregues"
+            self.btn_alternar_tabela.config(text="🔄 Alternar: MURAL DE AVISOS", bg="#f59e0b", fg="#0f172a")
+            self.table_frame.config(text=" Histórico Completo de Entregas ", fg="#8b5cf6")
+            self.desativar_botoes()
+            
+        elif self.tabela_visualizada == "entregues":
+            self.tabela_visualizada = "avisos"
+            self.btn_alternar_tabela.config(text="📦 Alternar: ESTOQUE (ITENS)", bg="#10b981", fg="white")
+            self.table_frame.config(text=" Mural: Alunos Procurando Objetos ", fg="#f59e0b")
+            self.desativar_botoes()
+            self.btn_excluir.config(state="normal") # Secretária pode excluir um aviso se quiser limpar
+            
+        else:
+            self.tabela_visualizada = "itens"
+            self.btn_alternar_tabela.config(text="🔄 Alternar: HISTÓRICO DE ENTREGAS", bg="#3b82f6", fg="white")
+            self.table_frame.config(text=" Registros no Neon PostgreSQL (Itens) ", fg="#38bdf8")
+            self.reativar_botoes()
+            
+        self.configurar_colunas_tabela()
+        self.carregar_tabela()
+
+    def desativar_botoes(self):
+        self.btn_editar.config(state="disabled")
+        self.btn_localizar.config(state="disabled")
+        self.btn_excluir.config(state="disabled")
+        self.btn_doacao.config(state="disabled")
+        self.btn_recusar.config(state="disabled")
+
+    def reativar_botoes(self):
+        self.btn_editar.config(state="normal")
+        self.btn_localizar.config(state="normal")
+        self.btn_excluir.config(state="normal")
+        self.btn_doacao.config(state="normal")
+        self.btn_recusar.config(state="normal")
+
+    def configurar_colunas_tabela(self):
+        # Limpa os dados visuais antigos
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+            
+        if self.tabela_visualizada == "itens":
+            self.tree["columns"] = ("id", "descricao", "categoria", "data", "local", "status", "solicitado_por", "rm_aluno")
+            self.tree.heading("id", text="ID")
+            self.tree.heading("descricao", text="Descrição")
+            self.tree.heading("categoria", text="Categoria")
+            self.tree.heading("data", text="Data")
+            self.tree.heading("local", text="Local")
+            self.tree.heading("status", text="Status")
+            self.tree.heading("solicitado_por", text="Solicitante (Nome)")
+            self.tree.heading("rm_aluno", text="RM")
+
+            self.tree.column("id", width=35, anchor="center")
+            self.tree.column("descricao", width=140)
+            self.tree.column("categoria", width=90)
+            self.tree.column("data", width=80, anchor="center")
+            self.tree.column("local", width=90)
+            self.tree.column("status", width=100, anchor="center")
+            self.tree.column("solicitado_por", width=110)
+            self.tree.column("rm_aluno", width=65, anchor="center")
+            
+        elif self.tabela_visualizada == "entregues":
+            self.tree["columns"] = ("id", "item_id", "nome_item", "retirado_por", "rm_retirante", "turma_curso", "data_entrega", "funcionario_responsavel")
+            self.tree.heading("id", text="Recibo ID")
+            self.tree.heading("item_id", text="Item ID")
+            self.tree.heading("nome_item", text="Descrição do Item")
+            self.tree.heading("retirado_por", text="Retirado Por")
+            self.tree.heading("rm_retirante", text="RM/Doc")
+            self.tree.heading("turma_curso", text="Turma")
+            self.tree.heading("data_entrega", text="Data da Entrega")
+            self.tree.heading("funcionario_responsavel", text="Atendente")
+
+            self.tree.column("id", width=65, anchor="center")
+            self.tree.column("item_id", width=60, anchor="center")
+            self.tree.column("nome_item", width=130)
+            self.tree.column("retirado_por", width=130)
+            self.tree.column("rm_retirante", width=70, anchor="center")
+            self.tree.column("turma_curso", width=70, anchor="center")
+            self.tree.column("data_entrega", width=100, anchor="center")
+            self.tree.column("funcionario_responsavel", width=110)
+            
+        elif self.tabela_visualizada == "avisos":
+            self.tree["columns"] = ("id", "rm", "nome", "categoria", "descricao", "data", "status")
+            self.tree.heading("id", text="ID Aviso")
+            self.tree.heading("rm", text="RM")
+            self.tree.heading("nome", text="Aluno")
+            self.tree.heading("categoria", text="Categoria Perda")
+            self.tree.heading("descricao", text="Descrição do que perdeu")
+            self.tree.heading("data", text="Data Aviso")
+            self.tree.heading("status", text="Status")
+
+            self.tree.column("id", width=60, anchor="center")
+            self.tree.column("rm", width=65, anchor="center")
+            self.tree.column("nome", width=120)
+            self.tree.column("categoria", width=100, anchor="center")
+            self.tree.column("descricao", width=180)
+            self.tree.column("data", width=80, anchor="center")
+            self.tree.column("status", width=80, anchor="center")
+
+    def recusar_solicitacao(self):
+        if self.tabela_visualizada != "itens":
+            messagebox.showwarning("Aviso", "Mude para a tabela de ESTOQUE para usar esta função.")
+            return
+
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um item da tabela para recusar!")
+            return
+
+        valores = self.tree.item(selected[0], "values")
+        item_id = valores[0]
+        descricao = valores[1]
+        status = valores[5].upper()
+
+        if status != "SOLICITADO":
+            messagebox.showinfo("Aviso", f"O item '{descricao}' não possui solicitações pendentes (Status: {status}).")
+            return
+            
+        resposta = messagebox.askyesno("Recusar Solicitação", f"Deseja realmente RECUSAR a solicitação do item:\n\nID: #{item_id} - {descricao}?\n\nOs dados do solicitante serão apagados e o item voltará a ficar 'DISPONÍVEL'.")
+        if resposta:
+            try:
+                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar", timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Solicitação cancelada e item retornado ao estoque!")
+                    self.carregar_tabela()
+                else:
+                    messagebox.showerror("Erro", f"Erro no servidor: {res.text}")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", f"Falha ao conectar na API: {e}")
 
     def carregar_fotos(self):
         filenames = filedialog.askopenfilenames(
@@ -257,6 +385,10 @@ class AdminDesktopApp:
             messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
 
     def preparar_edicao_item(self, id_direto=None):
+        if self.tabela_visualizada != "itens":
+            messagebox.showwarning("Aviso", "Não é possível editar itens enquanto estiver visualizando o histórico.")
+            return
+
         if id_direto is not None:
             for child in self.tree.get_children():
                 if str(self.tree.item(child, "values")[0]) == str(id_direto):
@@ -349,25 +481,21 @@ class AdminDesktopApp:
 
                     options_frame.pack(fill="x", padx=20, pady=10)
 
-                    # OPÇÃO 1: Imprimir / Gerar Comprovante
                     btn_comp = tk.Button(options_frame, text="📄 Imprimir / Gerar Comprovante de Retirada", 
                                          command=lambda: self.exibir_comprovante_retirada(data.get('id'), data.get('txt_descricao'), data.get('solicitado_por'), data.get('rm_aluno')), 
                                          bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
                     btn_comp.pack(fill="x", pady=3)
 
-                    # OPÇÃO 2: Editar Informações do Objeto
                     btn_edit = tk.Button(options_frame, text="✏ Editar Informações do Objeto", 
                                          command=lambda: [top.destroy(), self.preparar_edicao_item(data.get('id'))], 
                                          bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
                     btn_edit.pack(fill="x", pady=3)
 
-                    # OPÇÃO 3: Confirmar "Doação Realizada"
                     btn_doar = tk.Button(options_frame, text="🎁 Confirmar 'Doação Realizada'", 
                                          command=lambda: self.confirmar_doacao_item(data.get('id'), top), 
                                          bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
                     btn_doar.pack(fill="x", pady=3)
 
-                    # OPÇÃO 4: Dar Baixa como "Entregue ao Dono"
                     btn_baixa = tk.Button(options_frame, text="✅ Dar Baixa como 'Entregue ao Dono'", 
                                           command=lambda: self.dar_baixa_entregue(data.get('id'), data.get('txt_descricao'), top), 
                                           bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=5)
@@ -536,6 +664,17 @@ __________________________________________________
 
         item_values = self.tree.item(selected[0], "values")
         item_id = item_values[0]
+        
+        if self.tabela_visualizada == "avisos":
+            desc = item_values[4]
+            if messagebox.askyesno("Confirmar Exclusão", f"Excluir aviso de perda: '{desc}'?"):
+                try:
+                    res = requests.delete(f"{API_URL}/api/avisos/{item_id}", timeout=10)
+                    self.carregar_tabela()
+                except Exception as e:
+                    messagebox.showerror("Erro", str(e))
+            return
+
         item_desc = item_values[1]
 
         if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir o item '{item_desc}' (ID #{item_id})?"):
@@ -568,17 +707,38 @@ __________________________________________________
             self.tree.delete(item)
 
         try:
-            res = requests.get(f"{API_URL}/api/itens", timeout=10)
-            if res.status_code == 200:
-                itens = res.json()
-                for i in itens:
-                    categoria = i.get("categoria", "OUTROS")
-                    solicitado_por = i.get("solicitado_por") or "-"
-                    rm_aluno = i.get("rm_aluno") or "-"
-                    status = i.get("status", "DISPONÍVEL")
-                    if status.upper() == "GUARDADO":
-                        status = "DISPONÍVEL"
-                    self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], status, solicitado_por, rm_aluno))
+            if self.tabela_visualizada == "itens":
+                res = requests.get(f"{API_URL}/api/itens", timeout=10)
+                if res.status_code == 200:
+                    itens = res.json()
+                    for i in itens:
+                        categoria = i.get("categoria", "OUTROS")
+                        solicitado_por = i.get("solicitado_por") or "-"
+                        rm_aluno = i.get("rm_aluno") or "-"
+                        status = i.get("status", "DISPONÍVEL")
+                        if status.upper() == "GUARDADO":
+                            status = "DISPONÍVEL"
+                        self.tree.insert("", tk.END, values=(i["id"], i["txt_descricao"], categoria, i["txt_data"], i["txt_local"], status, solicitado_por, rm_aluno))
+            elif self.tabela_visualizada == "entregues":
+                res = requests.get(f"{API_URL}/api/entregues", timeout=10)
+                if res.status_code == 200:
+                    entregues = res.json()
+                    for ent in entregues:
+                        turma = ent.get("turma_curso") or "-"
+                        self.tree.insert("", tk.END, values=(
+                            ent["id"], ent["item_id"], ent["nome_item"], ent["retirado_por"], 
+                            ent["rm_retirante"], turma, ent["data_entrega"], ent["funcionario_responsavel"]
+                        ))
+            elif self.tabela_visualizada == "avisos":
+                res = requests.get(f"{API_URL}/api/avisos", timeout=10)
+                if res.status_code == 200:
+                    avisos = res.json()
+                    for av in avisos:
+                        self.tree.insert("", tk.END, values=(
+                            av["id"], av["rm_aluno"], av["nome_aluno"], av["categoria"], 
+                            av["descricao"], av["data_aviso"], av["status"]
+                        ))
+                        
         except Exception as e:
             print(f"Aguardando conexão... {e}")
 
