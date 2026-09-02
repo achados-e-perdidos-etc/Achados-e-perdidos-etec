@@ -22,7 +22,6 @@
             </div>
 
             <div class="flex items-center space-x-3 shrink-0">
-                <!-- BOTÃO DO CARROSSEL AUTOMÁTICO -->
                 <button onclick="alternarModoApresentacao()" id="btnModoApresentacao" class="px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-2">
                     <i class="fas fa-play text-red-500"></i>
                     <span class="hidden sm:inline">Apresentação</span>
@@ -48,7 +47,7 @@
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-        <!-- SEÇÃO: MODO APRESENTAÇÃO AUTOMÁTICA -->
+        <!-- SEÇÃO MODO APRESENTAÇÃO -->
         <section id="apresentacaoScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center bg-card border border-color p-3 rounded-2xl">
                 <div class="flex items-center gap-2">
@@ -61,7 +60,6 @@
             </div>
 
             <div id="apresentacaoCard" class="relative bg-card border border-color rounded-3xl overflow-hidden p-4 sm:p-6 shadow-2xl">
-                <!-- Foto em Destaque com Efeito de Transição Suave -->
                 <div class="relative w-full h-80 sm:h-96 rounded-2xl overflow-hidden bg-header border border-color flex items-center justify-center">
                     <img id="apresentacaoImg" src="" alt="Foto do Item" class="w-full h-full object-contain transition-all duration-700 ease-in-out opacity-100 scale-100">
                     <div id="apresentacaoPlaceholder" class="hidden text-center text-muted p-4">
@@ -69,13 +67,11 @@
                         <p class="text-sm">Item sem registro de imagem</p>
                     </div>
 
-                    <!-- Indicador de Posição -->
                     <span id="apresentacaoContador" class="absolute top-3 right-3 bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full">
                         1 / 1
                     </span>
                 </div>
 
-                <!-- Informações do Item em Destaque -->
                 <div class="pt-5 space-y-3">
                     <div class="flex flex-wrap justify-between items-center gap-2">
                         <span id="apresentacaoCategoria" class="text-xs font-bold dynamic-badge px-3 py-1 rounded-full uppercase"></span>
@@ -96,7 +92,6 @@
                     </div>
                 </div>
 
-                <!-- Controles Manuais do Carrossel -->
                 <button onclick="navegarApresentacao(-1)" class="absolute left-6 top-44 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition border border-white/10">
                     <i class="fas fa-chevron-left text-sm"></i>
                 </button>
@@ -151,7 +146,6 @@
                 </div>
             </div>
 
-            <!-- GRID DE ITENS -->
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
@@ -211,16 +205,16 @@
                 <button onclick="fecharModalSolicitacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
             </div>
             
-            <p class="text-xs text-muted">Informe seu Nome e RM para registrar o pedido de retirada deste objeto na secretaria.</p>
+            <p class="text-xs text-muted">Informe seus dados para registrar a solicitação deste objeto na secretaria.</p>
             
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">Nome Completo</label>
-                    <input type="text" id="solicitaNome" placeholder="Ex: Gustavo Henrique" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">Nome:</label>
+                    <input type="text" id="solicitaNome" placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">RM (Número de Matrícula)</label>
-                    <input type="number" id="solicitaRM" placeholder="Ex: 25238" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">RM:</label>
+                    <input type="number" id="solicitaRM" placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
                 </div>
             </div>
 
