@@ -1,5 +1,4 @@
 const API_URL = "";
-let alunoLogado = null;
 let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
@@ -83,36 +82,19 @@ async function carregarItensDaAPI() {
     }
 }
 
-function logout() {
-    alunoLogado = null;
-    document.getElementById('userInfo')?.classList.add('hidden');
-    document.getElementById('catalogScreen')?.classList.add('hidden');
-    document.getElementById('detailScreen')?.classList.add('hidden');
-}
-
 function filtrarPorPalavraChave() {
     const input = document.getElementById('searchInput');
     const btnClear = document.getElementById('btnClearSearch');
-    
     termoBusca = input.value.trim().toLowerCase();
-
-    if (termoBusca.length > 0) {
-        btnClear?.classList.remove('hidden');
-    } else {
-        btnClear?.classList.add('hidden');
-    }
-
+    if (btnClear) btnClear.classList.toggle('hidden', termoBusca.length === 0);
     renderizarItens();
 }
 
 function limparBusca() {
     const input = document.getElementById('searchInput');
-    const btnClear = document.getElementById('btnClearSearch');
-    
     if (input) input.value = '';
     termoBusca = '';
-    btnClear?.classList.add('hidden');
-    
+    document.getElementById('btnClearSearch')?.classList.add('hidden');
     renderizarItens();
 }
 
@@ -124,7 +106,6 @@ function filtrarStatus(status) {
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
     if (!indicator || !element) return;
-
     indicator.style.left = `${element.offsetLeft}px`;
     indicator.style.top = `${element.offsetTop}px`;
     indicator.style.width = `${element.offsetWidth}px`;
@@ -134,19 +115,15 @@ function moveIndicator(element) {
 
 function filtrarCategoria(cat, btnElement) {
     categoriaAtual = cat;
-    
     if (btnElement) {
         document.querySelectorAll('.cat-btn').forEach(b => {
             b.classList.remove('text-white', 'border-transparent');
             b.classList.add('text-muted', 'border-color', 'bg-card');
         });
-
         btnElement.classList.remove('text-muted', 'border-color', 'bg-card');
         btnElement.classList.add('text-white', 'border-transparent');
-
         moveIndicator(btnElement);
     }
-
     renderizarItens();
 }
 
@@ -159,27 +136,17 @@ function normalizarStatus(status) {
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     if (!grid) return;
-
     grid.innerHTML = '';
 
     const filtrados = todosItens.filter(item => {
-        const atendeCategoria = categoriaAtual === 'TODOS' || 
-            (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
-
+        const atendeCategoria = categoriaAtual === 'TODOS' || (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
         const stUpper = normalizarStatus(item.status);
         const stFiltro = normalizarStatus(statusAtual);
-
         const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
-
         const desc = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
         const cat = (item.categoria || '').toLowerCase();
-        
-        const atendeBusca = !termoBusca || 
-            desc.includes(termoBusca) || 
-            local.includes(termoBusca) || 
-            cat.includes(termoBusca);
-
+        const atendeBusca = !termoBusca || desc.includes(termoBusca) || local.includes(termoBusca) || cat.includes(termoBusca);
         return atendeCategoria && atendeStatus && atendeBusca;
     });
 
@@ -188,7 +155,6 @@ function renderizarItens() {
             <div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl">
                 <i class="fas fa-search text-3xl mb-2 text-muted"></i>
                 <p class="text-sm font-semibold">Nenhum objeto encontrado.</p>
-                <p class="text-xs text-muted mt-1">Tente pesquisar com outros termos ou altere os filtros selecionados.</p>
             </div>
         `;
         return;
@@ -260,7 +226,7 @@ function abrirDetalhes(item) {
         placeholder.classList.add('hidden');
         container.classList.remove('hidden');
 
-        fotosAtuais.forEach((f, idx) => {
+        fotosAtuais.forEach((f) => {
             const slide = document.createElement('div');
             slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
             slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
@@ -271,13 +237,8 @@ function abrirDetalhes(item) {
         document.getElementById('photoTotalCount').innerText = fotosAtuais.length;
         counter.classList.remove('hidden');
 
-        if (fotosAtuais.length > 1) {
-            btnPrev.classList.remove('hidden');
-            btnNext.classList.remove('hidden');
-        } else {
-            btnPrev.classList.add('hidden');
-            btnNext.classList.add('hidden');
-        }
+        btnPrev.classList.toggle('hidden', fotosAtuais.length <= 1);
+        btnNext.classList.toggle('hidden', fotosAtuais.length <= 1);
 
         container.onscroll = () => {
             const width = container.clientWidth;
@@ -287,7 +248,6 @@ function abrirDetalhes(item) {
                 document.getElementById('photoCurrentIdx').innerText = idx + 1;
             }
         };
-
     } else {
         container.classList.add('hidden');
         counter.classList.add('hidden');
@@ -327,14 +287,9 @@ function abrirDetalhes(item) {
 function navegarFotos(direcao) {
     const container = document.getElementById('carouselContainer');
     if (!container || fotosAtuais.length === 0) return;
-
-    let novoIndice = fotoIndiceAtual + direcao;
-    if (novoIndice < 0) novoIndice = fotosAtuais.length - 1;
-    if (novoIndice >= fotosAtuais.length) novoIndice = 0;
-
+    let novoIndice = (fotoIndiceAtual + direcao + fotosAtuais.length) % fotosAtuais.length;
     fotoIndiceAtual = novoIndice;
-    const width = container.clientWidth;
-    container.scrollTo({ left: width * novoIndice, behavior: 'smooth' });
+    container.scrollTo({ left: container.clientWidth * novoIndice, behavior: 'smooth' });
 }
 
 function voltarParaCatalogo() {
@@ -342,22 +297,35 @@ function voltarParaCatalogo() {
     document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-async function solicitarColeta() {
+// LÓGICA DE SOLICITAÇÃO (MODAL)
+function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
+    const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
+    if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
+    if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
+    
+    document.getElementById('solicitaMsgErro').classList.add('hidden');
+    document.getElementById('modalSolicitacao').classList.remove('hidden');
+}
 
-    const stUpper = normalizarStatus(itemSelecionado.status);
-    if (stUpper !== 'DISPONÍVEL') {
-        alert("Este item não está mais disponível para solicitação!");
+function fecharModalSolicitacao() {
+    document.getElementById('modalSolicitacao').classList.add('hidden');
+}
+
+async function enviarSolicitacao() {
+    const nome = document.getElementById('solicitaNome').value.trim();
+    const rm = document.getElementById('solicitaRM').value.trim();
+    const erroEl = document.getElementById('solicitaMsgErro');
+    const btn = document.getElementById('btnConfirmarSolicitacao');
+
+    if (!nome || !rm) {
+        erroEl.innerText = "Preencha Nome e RM!";
+        erroEl.classList.remove('hidden');
         return;
     }
 
-    let nomeDigitado = prompt("Por favor, digite seu Nome completo:");
-    let rmDigitado = prompt("Por favor, digite seu RM:");
-
-    if (!nomeDigitado || !rmDigitado) {
-        alert("Você precisa informar seu Nome e RM para solicitar o item!");
-        return;
-    }
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`;
 
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
@@ -365,22 +333,29 @@ async function solicitarColeta() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: itemSelecionado.id,
-                nome: nomeDigitado,
-                rm: rmDigitado
+                nome,
+                rm
             })
         });
 
         const res = await response.json();
-        
+
         if (response.ok && res.success) {
+            localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
+            fecharModalSolicitacao();
             voltarParaCatalogo();
             carregarItensDaAPI();
         } else {
-            alert(res.message || "Não foi possível realizar a solicitação.");
+            erroEl.innerText = res.message || "Erro na solicitação.";
+            erroEl.classList.remove('hidden');
         }
-    } catch (error) {
-        alert("Erro ao enviar a solicitação ao servidor.");
+    } catch (err) {
+        erroEl.innerText = "Erro ao conectar com o servidor.";
+        erroEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `Confirmar`;
     }
 }
 
