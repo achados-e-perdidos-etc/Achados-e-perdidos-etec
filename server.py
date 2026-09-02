@@ -2,11 +2,10 @@ import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__)
 CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -21,7 +20,7 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # TABELA DE ITENS
+        # Tabela principal de Itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -36,9 +35,8 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
 
-        # TABELA DE ENTREGUES (HISTÓRICO)
+        # Tabela de Entregues / Historico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -52,199 +50,15 @@ def init_db():
             );
         ''')
 
-        # TABELA DE USUÁRIOS
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(100) NOT NULL,
-                rm VARCHAR(20) UNIQUE NOT NULL,
-                data_cadastro VARCHAR(30) NOT NULL,
-                ultimo_login VARCHAR(30) NOT NULL
-            );
-        ''')
-
-        # FIX: Remove a coluna 'email' caso tenha sobrado da tentativa anterior com Resend
-        # Isso resolve o erro 500 ao tentar salvar a identificação!
-        try:
-            cursor.execute('ALTER TABLE usuarios DROP COLUMN IF EXISTS email;')
-        except Exception as e:
-            pass
-
-        # TABELA DE MURAL DE AVISOS (PROCURO ALGO)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS avisos (
-                id SERIAL PRIMARY KEY,
-                nome_aluno VARCHAR(100) NOT NULL,
-                rm_aluno VARCHAR(20) NOT NULL,
-                descricao TEXT NOT NULL,
-                categoria VARCHAR(50) NOT NULL,
-                data_aviso VARCHAR(30) NOT NULL,
-                status VARCHAR(20) DEFAULT 'ATIVO'
-            );
-        ''')
-
-        # TABELA DE NOTIFICAÇÕES (SINO NO SITE)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS notificacoes (
-                id SERIAL PRIMARY KEY,
-                rm_aluno VARCHAR(20) NOT NULL,
-                titulo VARCHAR(100) NOT NULL,
-                mensagem TEXT NOT NULL,
-                data_criacao VARCHAR(30) NOT NULL,
-                lida BOOLEAN DEFAULT FALSE
-            );
-        ''')
-
         conn.commit()
         cursor.close()
         conn.close()
-        print("Tabelas inicializadas e limpas com sucesso!")
     except Exception as e:
         print(f"Erro ao inicializar o banco de dados: {e}")
 
 if DATABASE_URL:
     init_db()
 
-@app.route('/')
-def home():
-    return send_from_directory('.', 'index.html')
-
-
-# ==========================================
-# ROTAS DE USUÁRIO E IDENTIFICAÇÃO (SEM EMAIL)
-# ==========================================
-@app.route('/api/usuario/identificar', methods=['POST'])
-def identificar_usuario():
-    data = request.json
-    nome = data.get('nome', '').strip()
-    rm = data.get('rm', '').strip()
-
-    if not nome or not rm:
-        return jsonify({"success": False, "message": "Preencha Nome e RM!"}), 400
-
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        # Salva o usuário sem precisar de e-mail. Funciona perfeitamente.
-        cursor.execute('''
-            INSERT INTO usuarios (nome, rm, data_cadastro, ultimo_login)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (rm) DO UPDATE 
-            SET nome = EXCLUDED.nome, ultimo_login = EXCLUDED.ultimo_login;
-        ''', (nome, rm, agora, agora))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "usuario": {"nome": nome, "rm": rm}})
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Erro interno: {e}"}), 500
-
-
-# ==========================================
-# ROTAS DO MURAL E NOTIFICAÇÕES
-# ==========================================
-@app.route('/api/avisos', methods=['GET'])
-def get_avisos():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM avisos ORDER BY id DESC;")
-        avisos = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(avisos)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/avisos', methods=['POST'])
-def criar_aviso():
-    data = request.json
-    nome = data.get('nome')
-    rm = data.get('rm')
-    descricao = data.get('descricao')
-    categoria = data.get('categoria')
-
-    if not all([nome, rm, descricao, categoria]):
-        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
-
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        # Salva o aviso
-        cursor.execute('''
-            INSERT INTO avisos (nome_aluno, rm_aluno, descricao, categoria, data_aviso, status)
-            VALUES (%s, %s, %s, %s, %s, 'ATIVO') RETURNING id;
-        ''', (nome, rm, descricao, categoria, agora))
-        
-        # MATCH IMEDIATO: Procura se a secretaria já tem algo daquela categoria guardado
-        cursor.execute("SELECT id, descricao as txt_descricao, local_encontrado as txt_local, data_encontrado as txt_data, foto_base64 as foto, fotos_json FROM itens WHERE status = 'DISPONÍVEL' AND categoria = %s ORDER BY id DESC LIMIT 5;", (categoria,))
-        matches = cursor.fetchall()
-        
-        for m in matches:
-            fotos = []
-            if m.get('fotos_json'):
-                try:
-                    fotos = json.loads(m['fotos_json'])
-                except:
-                    pass
-            if not fotos and m.get('foto'):
-                fotos = [m['foto']]
-            m['fotos'] = fotos
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        return jsonify({"success": True, "message": "Aviso publicado no Mural!", "matches_encontrados": matches})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/api/avisos/<int:aviso_id>', methods=['DELETE'])
-def delete_aviso(aviso_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM avisos WHERE id = %s;", (aviso_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/notificacoes/<rm>', methods=['GET'])
-def get_notificacoes(rm):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM notificacoes WHERE rm_aluno = %s AND lida = FALSE ORDER BY id DESC;", (rm,))
-        notifs = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(notifs)
-    except:
-        return jsonify([])
-
-@app.route('/api/notificacoes/<int:notif_id>/ler', methods=['PUT'])
-def ler_notificacao(notif_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE notificacoes SET lida = TRUE WHERE id = %s;", (notif_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except:
-        return jsonify({"success": False})
-
-
-# ==========================================
-# ROTAS DO CATÁLOGO DE ITENS
-# ==========================================
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
     try:
@@ -267,19 +81,6 @@ def get_itens():
         cursor.close()
         conn.close()
         return jsonify(itens)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/entregues', methods=['GET'])
-def get_entregues():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
-        entregues = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(entregues)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -307,18 +108,6 @@ def cadastrar_item():
             VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
         ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
         novo_id = cursor.fetchone()[0]
-
-        # MATCH REVERSO: Avisar alunos que procuram algo dessa categoria
-        try:
-            agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-            cursor.execute("SELECT rm_aluno, nome_aluno, descricao FROM avisos WHERE categoria = %s AND status = 'ATIVO';", (categoria,))
-            avisos = cursor.fetchall()
-            for aviso in avisos:
-                titulo = "Encontramos algo parecido! 🔎"
-                msg = f"Olá {aviso['nome_aluno'].split()[0]}, a secretaria acabou de cadastrar um item na categoria '{categoria}' que pode ser o que você procura: '{descricao}'. Acesse o catálogo!"
-                cursor.execute("INSERT INTO notificacoes (rm_aluno, titulo, mensagem, data_criacao) VALUES (%s, %s, %s, %s);", (aviso['rm_aluno'], titulo, msg, agora))
-        except Exception as e:
-            print("Erro no match reverso:", e)
 
         conn.commit()
         cursor.close()
@@ -404,29 +193,6 @@ def atualizar_item(item_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
-def recusar_solicitacao(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL
-            WHERE id = %s;
-        ''', (item_id,))
-        
-        if cursor.rowcount == 0:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado."}), 404
-            
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação recusada. O item voltou a ficar DISPONÍVEL."})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
 @app.route('/api/itens/<int:item_id>', methods=['DELETE'])
 def excluir_item(item_id):
     try:
@@ -452,46 +218,6 @@ def concluir_doacoes():
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/solicitar', methods=['POST'])
-def solicitar_item():
-    data = request.json
-    item_id = data.get('id')
-    nome_aluno = data.get('nome')
-    rm_aluno = data.get('rm')
-    
-    if not item_id or not nome_aluno or not rm_aluno:
-        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
-        
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT status FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
-
-        status_atual = (item['status'] or 'DISPONÍVEL').upper()
-        if status_atual in ['SOLICITADO', 'ENTREGUE', 'PARA DOAÇÃO', 'DOAÇÃO FEITA']:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Este item não está disponível para solicitação!"}), 400
-
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s;
-        ''', (nome_aluno, rm_aluno, item_id))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação registrada! Compareça à secretaria para retirada."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
