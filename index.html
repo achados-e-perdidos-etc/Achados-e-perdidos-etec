@@ -12,7 +12,7 @@
 
     <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
-        <div class="max-w-4xl mx-auto flex justify-between items-center gap-4">
+        <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
                 <img id="siteLogo" src="logo.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
                 <div class="min-w-0">
@@ -21,17 +21,28 @@
                 </div>
             </div>
 
-            <div class="flex items-center space-x-3 shrink-0">
-                <button onclick="alternarModoApresentacao()" id="btnModoApresentacao" class="px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-2">
+            <!-- NAVEGAÇÃO DE ABAS -->
+            <div class="flex items-center space-x-2 shrink-0">
+                <button onclick="mudarAba('catalogo')" id="tabBtnCatalogo" class="px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5">
+                    <i class="fas fa-boxes"></i>
+                    <span class="hidden sm:inline">Catálogo</span>
+                </button>
+
+                <button onclick="mudarAba('mural')" id="tabBtnMural" class="relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5">
+                    <i class="fas fa-bullhorn text-amber-500"></i>
+                    <span class="hidden sm:inline">Perdi Algo</span>
+                    <span id="badgeNotificacaoMural" class="hidden absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span>
+                </button>
+
+                <button onclick="alternarModoApresentacao()" id="btnModoApresentacao" class="px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5">
                     <i class="fas fa-play text-red-500"></i>
                     <span class="hidden sm:inline">Apresentação</span>
                 </button>
 
                 <div class="relative">
-                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações de Aparência">
+                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações">
                         <i class="fas fa-cog text-base"></i>
                     </button>
-
                     <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
                         <div>
                             <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
@@ -47,7 +58,7 @@
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-        <!-- SEÇÃO MODO APRESENTAÇÃO -->
+        <!-- SEÇÃO: MODO APRESENTAÇÃO -->
         <section id="apresentacaoScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center bg-card border border-color p-3 rounded-2xl">
                 <div class="flex items-center gap-2">
@@ -55,7 +66,7 @@
                     <span class="text-xs font-bold uppercase text-main">Exibição de Itens Cadastrados</span>
                 </div>
                 <button onclick="alternarModoApresentacao()" class="text-xs font-bold text-muted hover:text-main px-3 py-1.5 rounded-lg bg-header border border-color transition">
-                    <i class="fas fa-arrow-left mr-1"></i> Voltar ao Catálogo
+                    <i class="fas fa-arrow-left mr-1"></i> Voltar
                 </button>
             </div>
 
@@ -66,7 +77,6 @@
                         <i class="fas fa-box-open text-6xl mb-3 text-muted"></i>
                         <p class="text-sm">Item sem registro de imagem</p>
                     </div>
-
                     <span id="apresentacaoContador" class="absolute top-3 right-3 bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full">
                         1 / 1
                     </span>
@@ -101,7 +111,7 @@
             </div>
         </section>
 
-        <!-- CATÁLOGO -->
+        <!-- SEÇÃO: CATÁLOGO -->
         <section id="catalogScreen" class="space-y-6">
             <div class="space-y-4">
                 <div class="relative w-full">
@@ -118,12 +128,10 @@
                     </button>
                 </div>
 
-                <!-- CATEGORIAS -->
                 <div>
                     <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
                     <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
                         <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
-
                         <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
                         <button onclick="filtrarCategoria('MOCHILA', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">MOCHILA</button>
                         <button onclick="filtrarCategoria('ROUPAS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ROUPAS</button>
@@ -132,7 +140,6 @@
                     </div>
                 </div>
 
-                <!-- FILTRO DE STATUS -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
                     <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
                     <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
@@ -149,16 +156,71 @@
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
+        <!-- SEÇÃO: MURAL "PERDI ALGO" -->
+        <section id="muralScreen" class="hidden space-y-6">
+            <!-- Formulário de Cadastro do Aviso de Perda -->
+            <div class="bg-card border border-color rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div>
+                    <h2 class="text-xl font-black text-main flex items-center gap-2">
+                        <i class="fas fa-search-location text-amber-500"></i>
+                        Perdeu algum pertence na escola?
+                    </h2>
+                    <p class="text-xs text-muted mt-1">
+                        Cadastre aqui o que você perdeu. Se o item já estiver guardado na secretaria, avisamos na mesma hora. Se a secretaria encontrar depois, você recebe a notificação!
+                    </p>
+                </div>
+
+                <form id="formMural" onsubmit="enviarAvisoMural(event)" class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-muted uppercase mb-1">Nome:</label>
+                            <input type="text" id="muralNome" required placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-muted uppercase mb-1">RM:</label>
+                            <input type="number" id="muralRM" required placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-muted uppercase mb-1">Categoria:</label>
+                        <select id="muralCategoria" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                            <option value="ESCOLARES">ESCOLARES (Estojo, Caderno, Livro, Garrafa...)</option>
+                            <option value="ROUPAS">ROUPAS (Casaco, Moletom, Uniforme...)</option>
+                            <option value="MOCHILA">MOCHILA</option>
+                            <option value="ACESSÓRIOS">ACESSÓRIOS (Chaves, Fone, Óculos, Carteira...)</option>
+                            <option value="OUTROS">OUTROS</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-muted uppercase mb-1">Descreva o que você perdeu:</label>
+                        <textarea id="muralDescricao" required rows="3" placeholder="Ex: perdi minha garrafinha termica azul no laboratorio ontem com adesivo do homem de ferro" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
+                    </div>
+
+                    <button type="submit" id="btnPublicarMural" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase flex items-center justify-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Publicar no Mural e Buscar no Sistema</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Mural de Avisos Cadastrados -->
+            <div class="space-y-3">
+                <h3 class="text-xs font-bold uppercase text-muted">Avisos Recentes de Objetos Procurados:</h3>
+                <div id="muralFeed" class="space-y-3"></div>
+            </div>
+        </section>
+
         <!-- TELA DE DETALHES -->
         <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
-            <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar ao catálogo</button>
+            <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar</button>
 
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-xs font-bold dynamic-text uppercase">INFORMAÇÕES DO ITEM</h2>
                 <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border"></span>
             </div>
 
-            <!-- CARROSSEL DE FOTOS -->
             <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
                 <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
                     <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
@@ -196,6 +258,25 @@
             </div>
         </section>
     </main>
+
+    <!-- MODAL MATCH IMEDIATO (Quando o item procurado já existe no estoque) -->
+    <div id="modalMatchImediato" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-card border border-amber-500/50 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="text-center space-y-1">
+                <i class="fas fa-check-circle text-4xl text-emerald-400 mb-1"></i>
+                <h3 class="font-black text-main text-xl">Encontramos algo parecido!</h3>
+                <p class="text-xs text-muted">A secretaria já possui item(ns) com características correspondentes ao seu pedido:</p>
+            </div>
+
+            <div id="matchItensLista" class="space-y-3"></div>
+
+            <div class="pt-2">
+                <button onclick="fecharModalMatch()" class="w-full bg-header border border-color text-main font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-card transition">
+                    Fechar / Meu item não é nenhum desses
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL DE SOLICITAÇÃO -->
     <div id="modalSolicitacao" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
