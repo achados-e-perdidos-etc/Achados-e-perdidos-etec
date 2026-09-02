@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
@@ -16,12 +17,40 @@ def get_db_connection():
         raise ValueError("A variável de ambiente DATABASE_URL não foi configurada!")
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
+STOPWORDS = {
+    'perdi', 'minha', 'meu', 'meus', 'minhas', 'uma', 'um', 'uns', 'umas',
+    'no', 'na', 'nos', 'nas', 'em', 'de', 'da', 'do', 'das', 'dos', 'por',
+    'para', 'com', 'sem', 'ontem', 'hoje', 'favor', 'ajuda', 'acho', 'que'
+}
+
+def extrair_termos(texto):
+    if not texto:
+        return set()
+    palavras = re.findall(r'[a-zA-Z0-9áéíóúãõâêîôûç]+', texto.lower())
+    termos = set()
+    for p in palavras:
+        if len(p) >= 3 and p not in STOPWORDS:
+            # Normalização simples de diminutivos frequentes
+            if p.endswith('zinha') or p.endswith('zinho'):
+                p = p[:-5]
+            elif p.endswith('inha') or p.endswith('inho'):
+                p = p[:-4]
+            termos.add(p)
+    return termos
+
+def calcular_similaridade(texto1, texto2):
+    t1 = extrair_termos(texto1)
+    t2 = extrair_termos(texto2)
+    if not t1 or not t2:
+        return 0
+    intersecao = t1.intersection(t2)
+    return len(intersecao)
+
 def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabela principal de Itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -40,7 +69,6 @@ def init_db():
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS solicitado_por VARCHAR(100);')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS rm_aluno VARCHAR(20);')
 
-        # Tabela de Entregues / Histórico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -54,7 +82,20 @@ def init_db():
             );
         ''')
 
-        # Remove a tabela usuarios se ainda existir
+        # Tabela do Mural de Avisos de Perda dos Alunos
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS mural_perdidos (
+                id SERIAL PRIMARY KEY,
+                nome_aluno VARCHAR(100) NOT NULL,
+                rm_aluno VARCHAR(20) NOT NULL,
+                categoria VARCHAR(50) NOT NULL,
+                descricao TEXT NOT NULL,
+                data_registro VARCHAR(30) NOT NULL,
+                status VARCHAR(30) DEFAULT 'PROCURANDO',
+                item_encontrado_id INT
+            );
+        ''')
+
         cursor.execute('DROP TABLE IF EXISTS usuarios CASCADE;')
 
         conn.commit()
@@ -95,22 +136,9 @@ def get_itens():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/entregues', methods=['GET'])
-def get_entregues():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
-        entregues = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(entregues)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
 @app.route('/api/itens', methods=['POST'])
 def cadastrar_item():
-    data = request.json
+    data = request.json or {}
     descricao = data.get('descricao')
     categoria = data.get('categoria')
     data_enc = data.get('data')
@@ -126,17 +154,181 @@ def cadastrar_item():
 
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute('''
             INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status)
             VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
         ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
-        novo_id = cursor.fetchone()[0]
+        novo_id = cursor.fetchone()['id']
+
+        # MATCH REVERSO: Cruza com avisos ativos do Mural
+        cursor.execute("SELECT id, descricao, categoria FROM mural_perdidos WHERE status = 'PROCURANDO';")
+        pedidos = cursor.fetchall()
+
+        for p in pedidos:
+            mesma_cat = (categoria or '').upper() == (p.get('categoria') or '').upper()
+            sim = calcular_similaridade(descricao, p.get('descricao', ''))
+            if mesma_cat or sim >= 2:
+                cursor.execute('''
+                    UPDATE mural_perdidos 
+                    SET status = 'LOCALIZADO', item_encontrado_id = %s 
+                    WHERE id = %s;
+                ''', (novo_id, p['id']))
 
         conn.commit()
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/mural', methods=['GET'])
+def listar_mural():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM mural_perdidos ORDER BY id DESC;")
+        avisos = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(avisos)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/mural', methods=['POST'])
+def cadastrar_aviso_mural():
+    data = request.json or {}
+    nome = (data.get('nome') or '').strip()
+    rm = str(data.get('rm') or '').strip()
+    categoria = (data.get('categoria') or 'OUTROS').strip()
+    descricao = (data.get('descricao') or '').strip()
+
+    if not nome or not rm or not descricao:
+        return jsonify({"success": False, "message": "Preencha Nome, RM e Descrição do que perdeu!"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # MATCH IMEDIATO: Procura no acervo atual da secretaria
+        cursor.execute('''
+            SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status 
+            FROM itens 
+            WHERE status = 'DISPONÍVEL';
+        ''')
+        disponiveis = cursor.fetchall()
+
+        matches = []
+        for item in disponiveis:
+            sim = calcular_similaridade(descricao, item['txt_descricao'])
+            cat_match = categoria != 'OUTROS' and item['categoria'].upper() == categoria.upper()
+            if sim >= 1 or cat_match:
+                fotos = []
+                if item.get('fotos_json'):
+                    try:
+                        fotos = json.loads(item['fotos_json'])
+                    except:
+                        fotos = []
+                if not fotos and item.get('foto'):
+                    fotos = [item['foto']]
+                item['fotos'] = fotos
+                matches.append(item)
+
+        status_inicial = 'LOCALIZADO' if matches else 'PROCURANDO'
+        item_vinculado = matches[0]['id'] if matches else None
+
+        cursor.execute('''
+            INSERT INTO mural_perdidos (nome_aluno, rm_aluno, categoria, descricao, data_registro, status, item_encontrado_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
+        ''', (nome, rm, categoria, descricao, datetime.now().strftime("%d/%m/%Y %H:%M"), status_inicial, item_vinculado))
+        
+        aviso_id = cursor.fetchone()['id']
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "aviso_id": aviso_id,
+            "matches_encontrados": matches,
+            "message": "Aviso registrado no Mural com sucesso!"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
+
+@app.route('/api/mural/notificacoes/<string:rm>', methods=['GET'])
+def checar_notificacoes(rm):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute('''
+            SELECT m.id as mural_id, m.descricao as pedido_aluno, i.id as item_id, i.descricao as item_nome, i.local_encontrado
+            FROM mural_perdidos m
+            JOIN itens i ON m.item_encontrado_id = i.id
+            WHERE m.rm_aluno = %s AND m.status = 'LOCALIZADO' AND i.status = 'DISPONÍVEL';
+        ''', (rm,))
+        notificacoes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(notificacoes)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/solicitar', methods=['POST'])
+def solicitar_item():
+    data = request.json or {}
+    item_id = data.get('id')
+    nome = (data.get('nome') or '').strip()
+    rm = str(data.get('rm') or '').strip()
+
+    if not item_id or not nome or not rm:
+        return jsonify({"success": False, "message": "Nome e RM são obrigatórios!"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT id, status FROM itens WHERE id = %s;", (item_id,))
+        item = cursor.fetchone()
+
+        if not item:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Item não encontrado no banco de dados."}), 404
+
+        status_atual = (item['status'] or 'DISPONÍVEL').upper()
+        if status_atual != 'DISPONÍVEL':
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
+
+        cursor.execute('''
+            UPDATE itens 
+            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
+            WHERE id = %s;
+        ''', (nome, rm, item_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "success": True, 
+            "message": "Solicitação realizada com sucesso! Compareça à secretaria da ETEC para retirar o item."
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
+
+@app.route('/api/entregues', methods=['GET'])
+def get_entregues():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
+        entregues = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(entregues)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -261,54 +453,6 @@ def concluir_doacoes():
         return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-# ROTA DE SOLICITAÇÃO DIRETA NA TABELA ITENS
-@app.route('/api/solicitar', methods=['POST'])
-def solicitar_item():
-    data = request.json or {}
-    item_id = data.get('id')
-    nome = (data.get('nome') or '').strip()
-    rm = str(data.get('rm') or '').strip()
-
-    if not item_id or not nome or not rm:
-        return jsonify({"success": False, "message": "Nome e RM são obrigatórios!"}), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        # Checa status atual do item
-        cursor.execute("SELECT id, status FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado no banco de dados."}), 404
-
-        status_atual = (item['status'] or 'DISPONÍVEL').upper()
-        if status_atual != 'DISPONÍVEL':
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
-
-        # Grava solicitante exclusivamente na tabela itens
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s;
-        ''', (nome, rm, item_id))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            "success": True, 
-            "message": "Solicitação realizada com sucesso! Compareça à secretaria da ETEC para retirar o item."
-        })
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Erro interno no servidor: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
