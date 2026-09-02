@@ -48,58 +48,6 @@ Muitos alunos perdem pertences no ambiente escolar e têm dificuldade em encontr
 ```
 
 ---
-
-## 🚀 Como Executar Localmente
-
-### Pré-requisitos
-- Python 3.10+
-- PostgreSQL ou conta no [Neon](https://neon.tech)
-
-### 1. Clone o repositório
-```bash
-git clone https://github.com/seu-usuario/Achados-e-perdidos-etec.git
-cd Achados-e-perdidos-etec
-```
-
-### 2. Instale as dependências
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure a variável de ambiente
-```bash
-export DATABASE_URL="sua_url_de_conexao_neon"
-```
-
-### 4. Inicie o servidor
-```bash
-python server.py
-```
-
-### 5. Acesse no navegador
-```
-http://localhost:5000
-```
-
-> Para usar o app desktop da secretaria, execute:
-> ```bash
-> python desktop_secretaria.py
-> ```
-
----
-
-## 🔌 Endpoints da API
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/itens` | Lista todos os itens cadastrados |
-| `POST` | `/api/itens` | Cadastra um novo item |
-| `PUT` | `/api/itens/<id>` | Atualiza dados de um item |
-| `DELETE` | `/api/itens/<id>` | Remove um item |
-| `POST` | `/api/solicitar` | Aluno solicita retirada de um item |
-
----
-
 ## 👥 Como Usar
 
 ### Alunos
