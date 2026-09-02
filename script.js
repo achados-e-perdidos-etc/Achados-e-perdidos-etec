@@ -7,11 +7,46 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
-// Variáveis do Modo Apresentação
+// Modo Apresentação
 let apresentacaoItens = [];
 let apresentacaoIndice = 0;
 let apresentacaoTimer = null;
 let modoApresentacaoAtivo = false;
+
+// Controle de Abas
+let abaAtiva = 'catalogo';
+
+function mudarAba(aba) {
+    abaAtiva = aba;
+    pararTemporizadorApresentacao();
+
+    const catScreen = document.getElementById('catalogScreen');
+    const muralScreen = document.getElementById('muralScreen');
+    const apScreen = document.getElementById('apresentacaoScreen');
+    const detScreen = document.getElementById('detailScreen');
+
+    const btnCat = document.getElementById('tabBtnCatalogo');
+    const btnMural = document.getElementById('tabBtnMural');
+
+    apScreen.classList.add('hidden');
+    detScreen.classList.add('hidden');
+
+    if (aba === 'catalogo') {
+        catScreen.classList.remove('hidden');
+        muralScreen.classList.add('hidden');
+
+        btnCat.className = "px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5";
+        btnMural.className = "relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
+    } else {
+        catScreen.classList.add('hidden');
+        muralScreen.classList.remove('hidden');
+
+        btnMural.className = "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main transition flex items-center gap-1.5";
+        btnCat.className = "px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
+
+        carregarFeedMural();
+    }
+}
 
 function toggleConfigMenu() {
     const menu = document.getElementById('configMenu');
@@ -58,7 +93,6 @@ function alternarModoEscuroClaro() {
 
 function carregarPreferenciasAparencia() {
     aplicarTemaVermelho();
-
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
     const label = document.getElementById('themeLabel');
     const icon = document.getElementById('themeIcon');
@@ -83,6 +117,7 @@ async function carregarItensDaAPI() {
             todosItens = await response.json();
             renderizarItens();
             atualizarItensApresentacao();
+            verificarNotificacoesAutomaticas();
         }
     } catch (error) {
         console.error("Erro ao carregar itens da API:", error);
@@ -210,6 +245,7 @@ function renderizarItens() {
 function abrirDetalhes(item) {
     itemSelecionado = item;
     document.getElementById('catalogScreen')?.classList.add('hidden');
+    document.getElementById('muralScreen')?.classList.add('hidden');
     document.getElementById('apresentacaoScreen')?.classList.add('hidden');
     document.getElementById('detailScreen')?.classList.remove('hidden');
 
@@ -303,10 +339,17 @@ function navegarFotos(direcao) {
 function voltarParaCatalogo() {
     document.getElementById('detailScreen')?.classList.add('hidden');
     document.getElementById('apresentacaoScreen')?.classList.add('hidden');
-    document.getElementById('catalogScreen')?.classList.remove('hidden');
+    if (abaAtiva === 'mural') {
+        document.getElementById('muralScreen')?.classList.remove('hidden');
+    } else {
+        document.getElementById('catalogScreen')?.classList.remove('hidden');
+    }
 }
 
-// MODO APRESENTAÇÃO
+// ==========================================
+// MODO APRESENTAÇÃO (CARROSSEL COM TRANSIÇÃO)
+// ==========================================
+
 function atualizarItensApresentacao() {
     apresentacaoItens = todosItens.filter(i => {
         const st = normalizarStatus(i.status);
@@ -318,6 +361,7 @@ function atualizarItensApresentacao() {
 function alternarModoApresentacao() {
     modoApresentacaoAtivo = !modoApresentacaoAtivo;
     const catScreen = document.getElementById('catalogScreen');
+    const muralScreen = document.getElementById('muralScreen');
     const apScreen = document.getElementById('apresentacaoScreen');
     const detScreen = document.getElementById('detailScreen');
     const btn = document.getElementById('btnModoApresentacao');
@@ -331,11 +375,12 @@ function alternarModoApresentacao() {
         }
 
         catScreen.classList.add('hidden');
+        muralScreen.classList.add('hidden');
         detScreen.classList.add('hidden');
         apScreen.classList.remove('hidden');
 
         btn.classList.add('border-red-500', 'text-red-500');
-        btn.querySelector('span').innerText = "Parar Apresentação";
+        btn.querySelector('span').innerText = "Parar";
         btn.querySelector('i').className = "fas fa-stop text-red-500";
 
         apresentacaoIndice = 0;
@@ -345,7 +390,12 @@ function alternarModoApresentacao() {
         pararTemporizadorApresentacao();
         apScreen.classList.add('hidden');
         detScreen.classList.add('hidden');
-        catScreen.classList.remove('hidden');
+
+        if (abaAtiva === 'mural') {
+            muralScreen.classList.remove('hidden');
+        } else {
+            catScreen.classList.remove('hidden');
+        }
 
         btn.classList.remove('border-red-500', 'text-red-500');
         btn.querySelector('span').innerText = "Apresentação";
@@ -432,12 +482,179 @@ document.getElementById('apresentacaoCard')?.addEventListener('mouseleave', () =
     if (modoApresentacaoAtivo) iniciarTemporizadorApresentacao();
 });
 
-// MODAL DE SOLICITAÇÃO
+// ==========================================
+// MURAL DE PERDIDOS & MATCH INTELIGENTE
+// ==========================================
+
+async function enviarAvisoMural(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('muralNome').value.trim();
+    const rm = document.getElementById('muralRM').value.trim();
+    const categoria = document.getElementById('muralCategoria').value;
+    const descricao = document.getElementById('muralDescricao').value.trim();
+    const btn = document.getElementById('btnPublicarMural');
+
+    if (!nome || !rm || !descricao) {
+        alert("Preencha todos os campos do formulário!");
+        return;
+    }
+
+    localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Analisando acervo...`;
+
+    try {
+        const response = await fetch(`${API_URL}/api/mural`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, rm, categoria, descricao })
+        });
+
+        const res = await response.json();
+
+        if (response.ok && res.success) {
+            document.getElementById('muralDescricao').value = '';
+
+            // MATCH IMEDIATO: Exibe janela de itens similares
+            if (res.matches_encontrados && res.matches_encontrados.length > 0) {
+                exibirMatchesImediatos(res.matches_encontrados);
+            } else {
+                alert("Aviso registrado no Mural! Se a secretaria cadastrar um item compatível com o seu relato, você será avisado.");
+            }
+
+            carregarFeedMural();
+        } else {
+            alert(res.message || "Erro ao publicar no Mural.");
+        }
+    } catch (err) {
+        alert("Erro de comunicação ao publicar no mural.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fas fa-paper-plane"></i> <span>Publicar no Mural e Buscar no Sistema</span>`;
+    }
+}
+
+function exibirMatchesImediatos(itens) {
+    const lista = document.getElementById('matchItensLista');
+    lista.innerHTML = '';
+
+    itens.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-header border border-color rounded-xl p-3 flex items-center justify-between gap-3";
+
+        const fotoUrl = item.fotos && item.fotos.length > 0 ? item.fotos[0] : item.foto;
+        const imgTag = fotoUrl 
+            ? `<img src="${fotoUrl}" class="w-16 h-16 object-cover rounded-lg shrink-0">`
+            : `<div class="w-16 h-16 bg-card border border-color rounded-lg flex items-center justify-center shrink-0 text-muted"><i class="fas fa-box text-xl"></i></div>`;
+
+        card.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0">
+                ${imgTag}
+                <div class="min-w-0">
+                    <span class="text-[10px] font-bold dynamic-badge px-2 py-0.5 rounded uppercase">${item.categoria}</span>
+                    <h4 class="font-bold text-sm text-main truncate mt-1">${item.txt_descricao}</h4>
+                    <p class="text-xs text-muted"><i class="fas fa-map-marker-alt"></i> Local: ${item.txt_local}</p>
+                </div>
+            </div>
+            <button onclick="selecionarMatchDirect('${item.id}')" class="dynamic-btn text-xs font-bold px-3 py-2 rounded-lg shrink-0">
+                É MEU!
+            </button>
+        `;
+        lista.appendChild(card);
+    });
+
+    document.getElementById('modalMatchImediato').classList.remove('hidden');
+}
+
+function fecharModalMatch() {
+    document.getElementById('modalMatchImediato').classList.add('hidden');
+}
+
+function selecionarMatchDirect(itemId) {
+    const item = todosItens.find(i => String(i.id) === String(itemId));
+    fecharModalMatch();
+    if (item) {
+        abrirDetalhes(item);
+    }
+}
+
+async function carregarFeedMural() {
+    const feed = document.getElementById('muralFeed');
+    if (!feed) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/mural`);
+        if (!res.ok) return;
+        const avisos = await res.json();
+
+        if (!avisos || avisos.length === 0) {
+            feed.innerHTML = `<p class="text-xs text-muted italic bg-card p-4 rounded-xl border border-color">Nenhum aviso no mural até o momento.</p>`;
+            return;
+        }
+
+        feed.innerHTML = '';
+        avisos.forEach(a => {
+            const el = document.createElement('div');
+            el.className = "bg-card border border-color rounded-xl p-4 space-y-1.5";
+            const statusClass = a.status === 'LOCALIZADO' 
+                ? 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50' 
+                : 'bg-amber-900/40 text-amber-400 border-amber-700/50';
+
+            el.innerHTML = `
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-main">${a.nome_aluno} (RM: ${a.rm_aluno})</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${statusClass}">${a.status}</span>
+                </div>
+                <p class="text-xs text-muted italic">"${a.descricao}"</p>
+                <div class="flex justify-between items-center text-[10px] text-muted pt-1 border-t border-color/40">
+                    <span>Categoria: ${a.categoria}</span>
+                    <span>Registrado em: ${a.data_registro}</span>
+                </div>
+            `;
+            feed.appendChild(el);
+        });
+    } catch (e) {
+        console.error("Erro ao carregar mural:", e);
+    }
+}
+
+async function verificarNotificacoesAutomaticas() {
+    const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
+    if (!salvo.rm) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/mural/notificacoes/${salvo.rm}`);
+        if (res.ok) {
+            const notifs = await res.json();
+            const badge = document.getElementById('badgeNotificacaoMural');
+            if (notifs && notifs.length > 0) {
+                badge.classList.remove('hidden');
+                badge.innerText = notifs.length;
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    } catch (e) {
+        console.error("Erro na verificação de notificações:", e);
+    }
+}
+
+// ==========================================
+// MODAL DE SOLICITAÇÃO (SOMENTE TABELA ITENS)
+// ==========================================
+
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
-    if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
+    if (salvo.nome) {
+        document.getElementById('solicitaNome').value = salvo.nome;
+        document.getElementById('muralNome').value = salvo.nome;
+    }
+    if (salvo.rm) {
+        document.getElementById('solicitaRM').value = salvo.rm;
+        document.getElementById('muralRM').value = salvo.rm;
+    }
     
     document.getElementById('solicitaMsgErro').classList.add('hidden');
     document.getElementById('modalSolicitacao').classList.remove('hidden');
@@ -497,6 +714,10 @@ async function enviarSolicitacao() {
 window.onload = () => {
     carregarPreferenciasAparencia();
     carregarItensDaAPI();
+
+    const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
+    if (salvo.nome && document.getElementById('muralNome')) document.getElementById('muralNome').value = salvo.nome;
+    if (salvo.rm && document.getElementById('muralRM')) document.getElementById('muralRM').value = salvo.rm;
 
     setTimeout(() => {
         const defaultBtn = document.querySelector('.cat-btn');
