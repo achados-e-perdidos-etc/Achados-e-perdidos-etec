@@ -2,10 +2,11 @@ import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -20,7 +21,6 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabela principal de Itens
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -35,8 +35,8 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
+        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
 
-        # Tabela de Entregues / Historico
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
                 id SERIAL PRIMARY KEY,
@@ -50,6 +50,17 @@ def init_db():
             );
         ''')
 
+        # Tabela de solicitações / mural simplificada sem obrigação de e-mail
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(100) NOT NULL,
+                rm VARCHAR(20) UNIQUE NOT NULL,
+                ultimo_acesso VARCHAR(30)
+            );
+        ''')
+        cursor.execute('ALTER TABLE usuarios DROP COLUMN IF EXISTS email;')
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -58,6 +69,11 @@ def init_db():
 
 if DATABASE_URL:
     init_db()
+
+# Rota principal para servir a página estática no Render
+@app.route('/')
+def home():
+    return send_from_directory('.', 'index.html')
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
@@ -81,6 +97,19 @@ def get_itens():
         cursor.close()
         conn.close()
         return jsonify(itens)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/entregues', methods=['GET'])
+def get_entregues():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
+        entregues = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(entregues)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -177,7 +206,7 @@ def atualizar_item(item_id):
             retirado_por = data.get('retirado_por', 'Não informado')
             rm_retirante = data.get('rm_retirante', 'Não informado')
             turma_curso = data.get('turma_curso', '-')
-            data_entrega = data.get('data_entrega', data_enc)
+            data_entrega = data.get('data_entrega', data_enc or datetime.now().strftime("%d/%m/%Y %H:%M"))
             func_resp = data.get('funcionario_responsavel', 'Secretaria')
             
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
@@ -190,6 +219,23 @@ def atualizar_item(item_id):
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
+def recusar_solicitacao(item_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE itens 
+            SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL
+            WHERE id = %s;
+        ''', (item_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": "Solicitação recusada com sucesso!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -218,6 +264,50 @@ def concluir_doacoes():
         cursor.close()
         conn.close()
         return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/solicitar', methods=['POST'])
+def solicitar_item():
+    data = request.json
+    item_id = data.get('id')
+    nome = data.get('nome')
+    rm = data.get('rm')
+
+    if not item_id or not nome or not rm:
+        return jsonify({"success": False, "message": "Dados incompletos!"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE itens 
+            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
+            WHERE id = %s AND status = 'DISPONÍVEL';
+        ''', (nome, rm, item_id))
+
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "message": "O item não está mais disponível para solicitação."}), 400
+
+        # Registra o aluno na tabela usuarios sem erro de email
+        cursor.execute('''
+            INSERT INTO usuarios (nome, rm, ultimo_acesso)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (rm) DO UPDATE 
+            SET nome = EXCLUDED.nome, ultimo_acesso = EXCLUDED.ultimo_acesso;
+        ''', (nome, rm, datetime.now().strftime("%d/%m/%Y %H:%M")))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "success": True, 
+            "message": "Solicitação realizada com sucesso! Compareça à secretaria para retirar seu item."
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
