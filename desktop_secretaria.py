@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 import requests
 import base64
 from datetime import datetime
+import threading
+import time
 
 API_URL = "https://achados-etec-api.onrender.com"
 
@@ -20,6 +22,9 @@ class AdminDesktopApp:
         self.fotos_base64 = []
         self.item_editando_id = None
         self.tabela_visualizada = "itens"
+        self.janela_chat_aberta = False
+        self.rm_chat_ativo = None
+        self.chat_polling_ativo = False
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -76,7 +81,7 @@ class AdminDesktopApp:
         header = tk.Frame(self.root, bg="#0f172a", height=70)
         header.pack(fill="x", side="top")
         
-        lbl_title = tk.Label(header, text="SECRETARIA - ETEC", font=("Helvetica", 14, "bold"), bg="#0f172a", fg="#38bdf8")
+        lbl_title = tk.Label(header, text="SECRETARIA - BANCO DE DADOS NEON (POSTGRESQL)", font=("Helvetica", 14, "bold"), bg="#0f172a", fg="#38bdf8")
         lbl_title.pack(pady=8)
         lbl_sub = tk.Label(header, text="ETEC Prof.º José Ignácio Azevedo Filho", font=("Helvetica", 9), bg="#0f172a", fg="#94a3b8")
         lbl_sub.pack()
@@ -133,7 +138,7 @@ class AdminDesktopApp:
         self.btn_cancelar.grid_remove()
 
         # TABELA
-        self.table_frame = tk.LabelFrame(container, text=" Registros Tabela Itens ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
+        self.table_frame = tk.LabelFrame(container, text=" Registros no Neon PostgreSQL ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=10, pady=10)
         self.table_frame.grid(row=0, column=1, sticky="nsew")
 
         container.columnconfigure(1, weight=1)
@@ -141,6 +146,10 @@ class AdminDesktopApp:
 
         top_actions = tk.Frame(self.table_frame, bg="#1e1e2e")
         top_actions.pack(fill="x", pady=(0, 5))
+
+        # BOTÃO DO CHAT COM ALUNOS
+        self.btn_chat = tk.Button(top_actions, text="💬 Abrir Chat com Alunos", command=self.abrir_janela_chat, bg="#ec4899", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4)
+        self.btn_chat.pack(side="left", padx=(0, 5))
 
         self.btn_alternar_tabela = tk.Button(top_actions, text="🔄 Ver Tabela: HISTÓRICO DE ENTREGAS", command=self.alternar_modo_tabela, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4)
         self.btn_alternar_tabela.pack(side="right")
@@ -174,6 +183,155 @@ class AdminDesktopApp:
         self.configurar_colunas()
         self.carregar_tabela()
 
+    # ==============================================================
+    # JANELA DE CHAT MULTI-ALUNOS
+    # ==============================================================
+    def abrir_janela_chat(self):
+        if self.janela_chat_aberta:
+            return
+
+        self.janela_chat_aberta = True
+        self.top_chat = tk.Toplevel(self.root)
+        self.top_chat.title("Central de Atendimento - Chat com Alunos")
+        self.top_chat.geometry("780x520")
+        self.top_chat.configure(bg="#1e1e2e")
+
+        def ao_fechar():
+            self.janela_chat_aberta = False
+            self.chat_polling_ativo = False
+            self.top_chat.destroy()
+
+        self.top_chat.protocol("WM_DELETE_WINDOW", ao_fechar)
+
+        # Lado Esquerdo: Lista de Conversas por Aluno
+        frame_conversas = tk.LabelFrame(self.top_chat, text=" Conversas de Alunos ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"), width=280)
+        frame_conversas.pack(side="left", fill="y", padx=10, pady=10)
+
+        self.tree_conversas = ttk.Treeview(frame_conversas, columns=("rm", "nome", "novas"), show="headings", height=15)
+        self.tree_conversas.heading("rm", text="RM")
+        self.tree_conversas.heading("nome", text="Nome")
+        self.tree_conversas.heading("novas", text="Novas")
+        self.tree_conversas.column("rm", width=65, anchor="center")
+        self.tree_conversas.column("nome", width=120)
+        self.tree_conversas.column("novas", width=50, anchor="center")
+        self.tree_conversas.pack(fill="both", expand=True)
+
+        self.tree_conversas.bind("<<TreeviewSelect>>", self.ao_selecionar_aluno_chat)
+
+        btn_atualizar_conv = tk.Button(frame_conversas, text="🔄 Recarregar Alunos", command=self.carregar_lista_conversas, bg="#334155", fg="white", font=("Helvetica", 8, "bold"), relief="flat")
+        btn_atualizar_conv.pack(fill="x", pady=5)
+
+        # Lado Direito: Histórico de Mensagens e Input
+        frame_mensagens = tk.LabelFrame(self.top_chat, text=" Mensagens ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"))
+        frame_mensagens.pack(side="right", fill="both", expand=True, padx=(0, 10), pady=10)
+
+        self.lbl_aluno_atual = tk.Label(frame_mensagens, text="Selecione um aluno à esquerda para conversar", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10, "bold"))
+        self.lbl_aluno_atual.pack(anchor="w", padx=10, pady=(5, 5))
+
+        self.txt_chat_historico = tk.Text(frame_mensagens, bg="#0f172a", fg="#ffffff", font=("Helvetica", 10), state="disabled", wrap="word", padx=10, pady=10)
+        self.txt_chat_historico.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        frame_input = tk.Frame(frame_mensagens, bg="#1e1e2e")
+        frame_input.pack(fill="x", padx=10, pady=(0, 10))
+
+        self.txt_chat_resposta = tk.Entry(frame_input, font=("Helvetica", 11), bg="#334155", fg="white", insertbackground="white")
+        self.txt_chat_resposta.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.txt_chat_resposta.bind("<Return>", lambda e: self.enviar_resposta_secretaria())
+
+        btn_enviar_chat = tk.Button(frame_input, text="Enviar 💬", command=self.enviar_resposta_secretaria, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", padx=10)
+        btn_enviar_chat.pack(side="right")
+
+        self.carregar_lista_conversas()
+        self.chat_polling_ativo = True
+        self.iniciar_loop_polling_chat()
+
+    def carregar_lista_conversas(self):
+        for item in self.tree_conversas.get_children():
+            self.tree_conversas.delete(item)
+
+        try:
+            res = requests.get(f"{API_URL}/api/chat/conversas", timeout=6)
+            if res.status_code == 200:
+                conversas = res.json()
+                for c in conversas:
+                    novas = f"🔥 {c['nao_lidas']}" if c['nao_lidas'] > 0 else "0"
+                    self.tree_conversas.insert("", tk.END, values=(c['rm_aluno'], c['nome_aluno'], novas))
+        except Exception as e:
+            print("Erro ao carregar conversas:", e)
+
+    def ao_selecionar_aluno_chat(self, event):
+        sel = self.tree_conversas.selection()
+        if not sel:
+            return
+        vals = self.tree_conversas.item(sel[0], "values")
+        self.rm_chat_ativo = str(vals[0])
+        nome_aluno = vals[1]
+        self.lbl_aluno_atual.config(text=f"Conversando com: {nome_aluno} (RM: {self.rm_chat_ativo})", fg="#38bdf8")
+        self.carregar_mensagens_aluno_ativo()
+
+    def carregar_mensagens_aluno_ativo(self):
+        if not self.rm_chat_ativo:
+            return
+
+        try:
+            res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true&origem=SECRETARIA", timeout=6)
+            if res.status_code == 200:
+                mensagens = res.json()
+                self.txt_chat_historico.config(state="normal")
+                self.txt_chat_historico.delete("1.0", tk.END)
+
+                for m in mensagens:
+                    autor = "VOCÊ (Secretaria)" if m['remetente'] == 'SECRETARIA' else f"{m['nome_aluno']} (Aluno)"
+                    horario = m['data_envio']
+                    self.txt_chat_historico.insert(tk.END, f"[{horario}] {autor}:\n", "header")
+                    self.txt_chat_historico.insert(tk.END, f"{m['mensagem']}\n\n", "corpo")
+
+                self.txt_chat_historico.tag_config("header", foreground="#38bdf8", font=("Helvetica", 9, "bold"))
+                self.txt_chat_historico.tag_config("corpo", foreground="#f1f5f9", font=("Helvetica", 10))
+                self.txt_chat_historico.see(tk.END)
+                self.txt_chat_historico.config(state="disabled")
+        except Exception as e:
+            print("Erro ao carregar histórico do chat:", e)
+
+    def enviar_resposta_secretaria(self):
+        if not self.rm_chat_ativo:
+            messagebox.showwarning("Aviso", "Selecione um aluno da lista para responder!", parent=self.top_chat)
+            return
+
+        texto = self.txt_chat_resposta.get().strip()
+        if not texto:
+            return
+
+        self.txt_chat_resposta.delete(0, tk.END)
+
+        payload = {
+            "rm": self.rm_chat_ativo,
+            "nome": "Secretaria ETEC",
+            "remetente": "SECRETARIA",
+            "mensagem": texto
+        }
+
+        try:
+            res = requests.post(f"{API_URL}/api/chat/enviar", json=payload, timeout=6)
+            if res.status_code == 200:
+                self.carregar_mensagens_aluno_ativo()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao enviar mensagem: {e}", parent=self.top_chat)
+
+    def iniciar_loop_polling_chat(self):
+        def loop():
+            while self.chat_polling_ativo:
+                time.sleep(3)
+                if self.janela_chat_aberta and self.rm_chat_ativo:
+                    try:
+                        self.carregar_mensagens_aluno_ativo()
+                    except Exception:
+                        pass
+        threading.Thread(target=loop, daemon=True).start()
+
+    # ==============================================================
+    # DEMAIS FUNÇÕES DO SISTEMA (ESTOQUE, HISTÓRICO, LOCALIZAR)
+    # ==============================================================
     def alternar_modo_tabela(self):
         if self.tabela_visualizada == "itens":
             self.tabela_visualizada = "entregues"
@@ -187,7 +345,7 @@ class AdminDesktopApp:
         else:
             self.tabela_visualizada = "itens"
             self.btn_alternar_tabela.config(text="🔄 Ver Tabela: HISTÓRICO DE ENTREGAS", bg="#3b82f6")
-            self.table_frame.config(text=" Registros Tabela Itens ")
+            self.table_frame.config(text=" Registros no Neon PostgreSQL ")
             self.btn_editar.config(state="normal")
             self.btn_localizar.config(state="normal")
             self.btn_recusar.config(state="normal")
