@@ -58,7 +58,7 @@
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-        <!-- SEÇÃO: MODO APRESENTAÇÃO -->
+        <!-- SEÇÃO MODO APRESENTAÇÃO -->
         <section id="apresentacaoScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center bg-card border border-color p-3 rounded-2xl">
                 <div class="flex items-center gap-2">
@@ -82,15 +82,20 @@
                     </span>
                 </div>
 
-                <div class="pt-5 space-y-3">
+                <div class="pt-5 space-y-2">
                     <div class="flex flex-wrap justify-between items-center gap-2">
                         <span id="apresentacaoCategoria" class="text-xs font-bold dynamic-badge px-3 py-1 rounded-full uppercase"></span>
                         <span id="apresentacaoStatus" class="text-xs font-bold px-3 py-1 rounded-full uppercase border"></span>
                     </div>
 
                     <h2 id="apresentacaoTitulo" class="text-2xl sm:text-3xl font-black text-main leading-snug"></h2>
+                    <p id="apresentacaoDescricao" class="text-sm text-muted italic border-l-4 border-red-500 pl-3 py-1 bg-black/10 rounded-r-lg"></p>
+                    
+                    <div id="apresentacaoRegraEletronico" class="hidden text-[10px] text-amber-500 font-bold bg-amber-500/10 p-2 rounded-lg mt-1 inline-block">
+                        <i class="fas fa-exclamation-triangle"></i> Atenção: Apenas pais ou responsáveis podem buscar na secretaria.
+                    </div>
 
-                    <div class="flex flex-wrap items-center justify-between text-xs sm:text-sm text-muted pt-3 border-t border-color gap-2">
+                    <div class="flex flex-wrap items-center justify-between text-xs sm:text-sm text-muted pt-3 border-t border-color gap-2 mt-2">
                         <span><i class="fas fa-map-marker-alt text-red-500 mr-1.5"></i> Local: <strong id="apresentacaoLocal" class="text-main"></strong></span>
                         <span><i class="fas fa-calendar-alt text-red-500 mr-1.5"></i> Data: <strong id="apresentacaoData" class="text-main"></strong></span>
                     </div>
@@ -120,7 +125,7 @@
                         type="text" 
                         id="searchInput" 
                         oninput="filtrarPorPalavraChave()" 
-                        placeholder="Buscar por palavra-chave (ex: garrafa, casaco, chave)..." 
+                        placeholder="Buscar por palavra-chave..." 
                         class="w-full bg-card border border-color text-main text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted"
                     >
                     <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1">
@@ -128,18 +133,17 @@
                     </button>
                 </div>
 
+                <!-- FILTRO CATEGORIAS DINÂMICO -->
                 <div>
                     <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
                     <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
                         <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                         <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
-                        <button onclick="filtrarCategoria('MOCHILA', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">MOCHILA</button>
-                        <button onclick="filtrarCategoria('ROUPAS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ROUPAS</button>
-                        <button onclick="filtrarCategoria('ACESSÓRIOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ACESSÓRIOS</button>
-                        <button onclick="filtrarCategoria('ESCOLARES', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200">ESCOLARES</button>
+                        <!-- Inseridas dinamicamente via JS -->
                     </div>
                 </div>
 
+                <!-- FILTRO DE STATUS -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
                     <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
                     <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
@@ -165,7 +169,7 @@
                         Perdeu algum pertence na escola?
                     </h2>
                     <p class="text-xs text-muted mt-1">
-                        Cadastre aqui o que você perdeu. Se o item já estiver guardado na secretaria, avisamos na mesma hora. Se a secretaria encontrar depois, você recebe a notificação!
+                        Cadastre aqui o que você perdeu. Avisamos automaticamente se ele aparecer na secretaria.
                     </p>
                 </div>
 
@@ -184,28 +188,23 @@
                     <div>
                         <label class="block text-xs font-bold text-muted uppercase mb-1">Categoria:</label>
                         <select id="muralCategoria" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                            <option value="ESCOLARES">ESCOLARES (Estojo, Caderno, Livro, Garrafa...)</option>
-                            <option value="ROUPAS">ROUPAS (Casaco, Moletom, Uniforme...)</option>
-                            <option value="MOCHILA">MOCHILA</option>
-                            <option value="ACESSÓRIOS">ACESSÓRIOS (Chaves, Fone, Óculos, Carteira...)</option>
-                            <option value="OUTROS">OUTROS</option>
+                            <!-- Inseridas dinamicamente via JS -->
                         </select>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-muted uppercase mb-1">Descreva o que você perdeu:</label>
-                        <textarea id="muralDescricao" required rows="3" placeholder="Ex: perdi minha garrafinha termica azul no laboratorio ontem com adesivo do homem de ferro" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
+                        <textarea id="muralDescricao" required rows="3" placeholder="Ex: perdi minha garrafinha termica azul no laboratorio..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
                     </div>
 
                     <button type="submit" id="btnPublicarMural" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase flex items-center justify-center gap-2">
                         <i class="fas fa-paper-plane"></i>
-                        <span>Publicar no Mural e Buscar no Sistema</span>
+                        <span>Publicar no Mural</span>
                     </button>
                 </form>
             </div>
-
             <div class="space-y-3">
-                <h3 class="text-xs font-bold uppercase text-muted">Avisos Recentes de Objetos Procurados:</h3>
+                <h3 class="text-xs font-bold uppercase text-muted">Avisos Recentes:</h3>
                 <div id="muralFeed" class="space-y-3"></div>
             </div>
         </section>
@@ -223,25 +222,27 @@
                 <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
                     <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
                 </div>
-
                 <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"></div>
-
                 <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
                     <i class="fas fa-chevron-left text-xs"></i>
                 </button>
                 <button id="btnNextPhoto" onclick="navegarFotos(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
                     <i class="fas fa-chevron-right text-xs"></i>
                 </button>
-
                 <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
                     <i class="fas fa-box-open text-5xl mb-2"></i>
-                    <p class="text-xs">Foto mantida no registro da secretaria</p>
+                    <p class="text-xs">Sem registro de imagem</p>
                 </div>
             </div>
 
             <div class="space-y-3">
                 <h3 id="detailTitle" class="text-2xl font-black text-main"></h3>
                 <p id="detailDescription" class="text-sm text-muted bg-header p-3 rounded-lg border border-color"></p>
+                
+                <div id="detailRegraEletronico" class="hidden text-xs text-amber-500 font-bold bg-amber-500/10 p-3 rounded-lg flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                    <p>Atenção: Por medida de segurança, somente os pais ou responsáveis legais podem retirar este item na secretaria da escola.</p>
+                </div>
 
                 <div class="flex justify-between items-center text-xs text-muted pt-2 border-t border-color">
                     <span>Local: <strong id="detailLocal" class="text-main"></strong></span>
@@ -261,7 +262,7 @@
         </section>
     </main>
 
-    <!-- WIDGET FLUTUANTE DE CHAT (DIRETO COM A SECRETARIA) -->
+    <!-- WIDGET FLUTUANTE DE CHAT -->
     <div class="fixed bottom-5 right-5 z-50">
         <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-2xl transition transform hover:scale-105">
             <i class="fas fa-comment-dots text-2xl"></i>
@@ -277,25 +278,18 @@
                         <p id="chatSubtitulo" class="text-[10px] text-muted">Tire dúvidas sobre itens perdidos</p>
                     </div>
                 </div>
-                <button onclick="alternarJanelaChat()" class="text-muted hover:text-main text-xs p-1">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button onclick="alternarJanelaChat()" class="text-muted hover:text-main text-xs p-1"><i class="fas fa-times"></i></button>
             </div>
 
-            <!-- Identificação rápida no chat (caso não informado ainda) -->
             <div id="chatAuthBar" class="bg-card border-b border-color p-2.5 flex gap-2">
                 <input type="text" id="chatInputNome" placeholder="Seu Nome" class="w-1/2 bg-header border border-color text-xs rounded-lg px-2.5 py-1.5 text-main focus:outline-none focus:border-red-500">
                 <input type="number" id="chatInputRM" placeholder="Seu RM" class="w-1/2 bg-header border border-color text-xs rounded-lg px-2.5 py-1.5 text-main focus:outline-none focus:border-red-500">
             </div>
 
-            <!-- Corpo com Mensagens -->
             <div id="chatMensagens" class="flex-grow p-3 space-y-2 overflow-y-auto text-xs scrollbar-none bg-black/10">
-                <div class="text-center text-muted italic my-4 text-[11px]">
-                    Inicie a conversa com a secretaria informando seus dados e a dúvida sobre o item.
-                </div>
+                <div class="text-center text-muted italic my-4 text-[11px]">Inicie a conversa informando seus dados acima.</div>
             </div>
 
-            <!-- Input de Envio -->
             <form id="formChat" onsubmit="enviarMensagemChat(event)" class="p-2.5 bg-header border-t border-color flex gap-2">
                 <input type="text" id="chatInputTexto" placeholder="Digite sua mensagem..." class="flex-grow bg-card border border-color rounded-xl px-3 py-2 text-xs text-main focus:outline-none focus:border-red-500">
                 <button type="submit" class="dynamic-btn w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
@@ -311,14 +305,9 @@
             <div class="text-center space-y-1">
                 <i class="fas fa-check-circle text-4xl text-emerald-400 mb-1"></i>
                 <h3 class="font-black text-main text-xl">Encontramos algo parecido!</h3>
-                <p class="text-xs text-muted">A secretaria já possui item(ns) com características correspondentes ao seu pedido:</p>
             </div>
             <div id="matchItensLista" class="space-y-3"></div>
-            <div class="pt-2">
-                <button onclick="fecharModalMatch()" class="w-full bg-header border border-color text-main font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-card transition">
-                    Fechar / Meu item não é nenhum desses
-                </button>
-            </div>
+            <button onclick="fecharModalMatch()" class="w-full bg-header border border-color text-main font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-card">Fechar / Não é o meu</button>
         </div>
     </div>
 
@@ -329,27 +318,14 @@
                 <h3 class="font-bold text-main text-lg"><i class="fas fa-id-card text-red-500 mr-2"></i>Identificação do Aluno</h3>
                 <button onclick="fecharModalSolicitacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
             </div>
-            
-            <p class="text-xs text-muted">Informe seus dados para registrar a solicitação deste objeto na secretaria.</p>
-            
             <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">Nome:</label>
-                    <input type="text" id="solicitaNome" placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">RM:</label>
-                    <input type="number" id="solicitaRM" placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                </div>
+                <input type="text" id="solicitaNome" placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
+                <input type="number" id="solicitaRM" placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
             </div>
-
             <div id="solicitaMsgErro" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
-
             <div class="flex gap-2 pt-2">
-                <button onclick="fecharModalSolicitacao()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase hover:text-main">Cancelar</button>
-                <button id="btnConfirmarSolicitacao" onclick="enviarSolicitacao()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2">
-                    <span>Confirmar</span>
-                </button>
+                <button onclick="fecharModalSolicitacao()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button>
+                <button id="btnConfirmarSolicitacao" onclick="enviarSolicitacao()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Confirmar</button>
             </div>
         </div>
     </div>
