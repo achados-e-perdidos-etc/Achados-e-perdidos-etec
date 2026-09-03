@@ -73,9 +73,43 @@ class AdminDesktopApp:
         else:
             messagebox.showerror("Acesso Negado", "E-mail ou senha incorretos!\nApenas a secretaria tem acesso a este sistema.")
 
+    def carregar_categorias_api(self):
+        try:
+            res = requests.get(f"{API_URL}/api/categorias", timeout=5)
+            if res.status_code == 200:
+                cats = [c["nome"] for c in res.json()]
+                if cats:
+                    self.cb_categoria["values"] = cats
+                    if self.cb_categoria.get() not in cats:
+                        self.cb_categoria.current(0)
+        except Exception as e:
+            print("Erro ao puxar categorias:", e)
+
+    def adicionar_nova_categoria(self):
+        nova_cat = simpledialog.askstring("Nova Categoria", "Digite o nome da nova categoria (Ex: FERRAMENTAS):", parent=self.root)
+        if nova_cat:
+            nova_cat = nova_cat.strip().upper()
+            try:
+                res = requests.post(f"{API_URL}/api/categorias", json={"nome": nova_cat}, timeout=5)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", f"Categoria '{nova_cat}' adicionada!")
+                    self.carregar_categorias_api()
+                    self.cb_categoria.set(nova_cat)
+                else:
+                    messagebox.showerror("Erro", "Falha ao adicionar categoria.")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", str(e))
+
+    def verificar_regra_eletronicos(self, event):
+        cat = self.cb_categoria.get()
+        if cat == "ELETRÔNICOS":
+            desc = self.txt_descricao.get()
+            if "somente os pais" not in desc.lower():
+                self.txt_descricao.insert(tk.END, "\n(Atenção: Somente os pais ou responsáveis podem retirar na secretaria).")
+
     def iniciar_painel_principal(self):
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("1260x730")
+        self.root.geometry("1280x740")
         self.root.resizable(True, True)
 
         header = tk.Frame(self.root, bg="#0f172a", height=70)
@@ -93,48 +127,58 @@ class AdminDesktopApp:
         self.form_frame = tk.LabelFrame(container, text=" Cadastro / Edição de Objeto ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold"), padx=15, pady=15)
         self.form_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        tk.Label(self.form_frame, text="Descrição do Item:", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
+        tk.Label(self.form_frame, text="Nome do Item (Curto/Título):", bg="#1e1e2e", fg="#e2e8f0").grid(row=0, column=0, sticky="w", pady=(5,2))
+        self.txt_nome = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11, "bold"), bg="#334155", fg="#ffffff", insertbackground="white")
+        self.txt_nome.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky="w")
+
+        tk.Label(self.form_frame, text="Descrição Detalhada:", bg="#1e1e2e", fg="#e2e8f0").grid(row=2, column=0, sticky="w", pady=(5,2))
         self.txt_descricao = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
-        self.txt_descricao.grid(row=1, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.txt_descricao.grid(row=3, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        tk.Label(self.form_frame, text="Categoria:", bg="#1e1e2e", fg="#e2e8f0").grid(row=2, column=0, sticky="w", pady=(5,2))
-        self.cb_categoria = ttk.Combobox(self.form_frame, values=["MOCHILA", "ROUPAS", "ACESSÓRIOS", "ESCOLARES", "OUTROS"], state="readonly", width=30)
-        self.cb_categoria.current(0)
-        self.cb_categoria.grid(row=3, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        tk.Label(self.form_frame, text="Categoria:", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
+        
+        frame_cat = tk.Frame(self.form_frame, bg="#1e1e2e")
+        frame_cat.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        self.cb_categoria = ttk.Combobox(frame_cat, state="readonly", width=25)
+        self.cb_categoria.pack(side="left")
+        self.cb_categoria.bind("<<ComboboxSelected>>", self.verificar_regra_eletronicos)
+        
+        btn_add_cat = tk.Button(frame_cat, text="+", command=self.adicionar_nova_categoria, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_add_cat.pack(side="left", padx=(5,0))
 
-        tk.Label(self.form_frame, text="Data Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=4, column=0, sticky="w", pady=(5,2))
+        tk.Label(self.form_frame, text="Data Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
         self.txt_data = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
         self.txt_data.insert(0, datetime.now().strftime("%d/%m/%Y"))
-        self.txt_data.grid(row=5, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.txt_data.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        tk.Label(self.form_frame, text="Local Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
+        tk.Label(self.form_frame, text="Local Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
         self.txt_local = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
-        self.txt_local.grid(row=7, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.txt_local.grid(row=9, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        tk.Label(self.form_frame, text="Status do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=8, column=0, sticky="w", pady=(5,2))
+        tk.Label(self.form_frame, text="Status do Objeto:", bg="#1e1e2e", fg="#e2e8f0").grid(row=10, column=0, sticky="w", pady=(5,2))
         self.cb_status = ttk.Combobox(self.form_frame, values=["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO", "DOAÇÃO FEITA"], state="readonly", width=30)
         self.cb_status.current(0)
-        self.cb_status.grid(row=9, column=0, columnspan=2, pady=(0, 10), sticky="w")
+        self.cb_status.grid(row=11, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        tk.Label(self.form_frame, text="Fotos do Objeto (Até 4):", bg="#1e1e2e", fg="#e2e8f0").grid(row=10, column=0, sticky="w", pady=(5,2))
+        tk.Label(self.form_frame, text="Fotos do Objeto (Até 4):", bg="#1e1e2e", fg="#e2e8f0").grid(row=12, column=0, sticky="w", pady=(5,2))
         
         btn_foto_frame = tk.Frame(self.form_frame, bg="#1e1e2e")
-        btn_foto_frame.grid(row=11, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        btn_foto_frame.grid(row=13, column=0, columnspan=2, sticky="w", pady=(0, 10))
         
-        btn_foto = tk.Button(btn_foto_frame, text="📷 Selecionar Fotos...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        btn_foto = tk.Button(btn_foto_frame, text="📷 Selecionar...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         btn_foto.pack(side="left", padx=(0, 5))
 
-        btn_limpar_fotos = tk.Button(btn_foto_frame, text="🗑 Limpar Fotos", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2")
+        btn_limpar_fotos = tk.Button(btn_foto_frame, text="🗑 Limpar", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2")
         btn_limpar_fotos.pack(side="left")
 
-        self.lbl_status_foto = tk.Label(self.form_frame, text="0 / 4 fotos selecionadas", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
-        self.lbl_status_foto.grid(row=12, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        self.lbl_status_foto = tk.Label(self.form_frame, text="0 / 4 fotos", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
+        self.lbl_status_foto.grid(row=14, column=0, columnspan=2, sticky="w", pady=(0, 10))
 
         self.btn_salvar = tk.Button(self.form_frame, text="✔ Gravar no Banco Nuvem", command=self.salvar_item, bg="#16a34a", fg="white", font=("Helvetica", 11, "bold"), relief="flat", padx=10, pady=8, cursor="hand2")
-        self.btn_salvar.grid(row=13, column=0, columnspan=2, sticky="ew", pady=(10, 5))
+        self.btn_salvar.grid(row=15, column=0, columnspan=2, sticky="ew", pady=(10, 5))
 
         self.btn_cancelar = tk.Button(self.form_frame, text="✖ Cancelar Edição", command=self.limpar_formulario, bg="#64748b", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        self.btn_cancelar.grid(row=14, column=0, columnspan=2, sticky="ew")
+        self.btn_cancelar.grid(row=16, column=0, columnspan=2, sticky="ew")
         self.btn_cancelar.grid_remove()
 
         # TABELA
@@ -147,7 +191,6 @@ class AdminDesktopApp:
         top_actions = tk.Frame(self.table_frame, bg="#1e1e2e")
         top_actions.pack(fill="x", pady=(0, 5))
 
-        # BOTÃO DO CHAT COM ALUNOS
         self.btn_chat = tk.Button(top_actions, text="💬 Abrir Chat com Alunos", command=self.abrir_janela_chat, bg="#ec4899", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4)
         self.btn_chat.pack(side="left", padx=(0, 5))
 
@@ -180,16 +223,15 @@ class AdminDesktopApp:
         btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
         btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
 
+        self.carregar_categorias_api()
         self.configurar_colunas()
         self.carregar_tabela()
 
     # ==============================================================
-    # JANELA DE CHAT MULTI-ALUNOS
+    # JANELA DE CHAT
     # ==============================================================
     def abrir_janela_chat(self):
-        if self.janela_chat_aberta:
-            return
-
+        if self.janela_chat_aberta: return
         self.janela_chat_aberta = True
         self.top_chat = tk.Toplevel(self.root)
         self.top_chat.title("Central de Atendimento - Chat com Alunos")
@@ -203,8 +245,7 @@ class AdminDesktopApp:
 
         self.top_chat.protocol("WM_DELETE_WINDOW", ao_fechar)
 
-        # Lado Esquerdo: Lista de Conversas por Aluno
-        frame_conversas = tk.LabelFrame(self.top_chat, text=" Conversas de Alunos ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"), width=280)
+        frame_conversas = tk.LabelFrame(self.top_chat, text=" Conversas ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"), width=280)
         frame_conversas.pack(side="left", fill="y", padx=10, pady=10)
 
         self.tree_conversas = ttk.Treeview(frame_conversas, columns=("rm", "nome", "novas"), show="headings", height=15)
@@ -218,10 +259,8 @@ class AdminDesktopApp:
 
         self.tree_conversas.bind("<<TreeviewSelect>>", self.ao_selecionar_aluno_chat)
 
-        btn_atualizar_conv = tk.Button(frame_conversas, text="🔄 Recarregar Alunos", command=self.carregar_lista_conversas, bg="#334155", fg="white", font=("Helvetica", 8, "bold"), relief="flat")
-        btn_atualizar_conv.pack(fill="x", pady=5)
+        tk.Button(frame_conversas, text="🔄 Recarregar Alunos", command=self.carregar_lista_conversas, bg="#334155", fg="white", font=("Helvetica", 8, "bold"), relief="flat").pack(fill="x", pady=5)
 
-        # Lado Direito: Histórico de Mensagens e Input
         frame_mensagens = tk.LabelFrame(self.top_chat, text=" Mensagens ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"))
         frame_mensagens.pack(side="right", fill="both", expand=True, padx=(0, 10), pady=10)
 
@@ -238,99 +277,68 @@ class AdminDesktopApp:
         self.txt_chat_resposta.pack(side="left", fill="x", expand=True, padx=(0, 5))
         self.txt_chat_resposta.bind("<Return>", lambda e: self.enviar_resposta_secretaria())
 
-        btn_enviar_chat = tk.Button(frame_input, text="Enviar 💬", command=self.enviar_resposta_secretaria, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", padx=10)
-        btn_enviar_chat.pack(side="right")
+        tk.Button(frame_input, text="Enviar 💬", command=self.enviar_resposta_secretaria, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", padx=10).pack(side="right")
 
         self.carregar_lista_conversas()
         self.chat_polling_ativo = True
         self.iniciar_loop_polling_chat()
 
     def carregar_lista_conversas(self):
-        for item in self.tree_conversas.get_children():
-            self.tree_conversas.delete(item)
-
+        for item in self.tree_conversas.get_children(): self.tree_conversas.delete(item)
         try:
             res = requests.get(f"{API_URL}/api/chat/conversas", timeout=6)
             if res.status_code == 200:
-                conversas = res.json()
-                for c in conversas:
+                for c in res.json():
                     novas = f"🔥 {c['nao_lidas']}" if c['nao_lidas'] > 0 else "0"
                     self.tree_conversas.insert("", tk.END, values=(c['rm_aluno'], c['nome_aluno'], novas))
-        except Exception as e:
-            print("Erro ao carregar conversas:", e)
+        except Exception: pass
 
     def ao_selecionar_aluno_chat(self, event):
         sel = self.tree_conversas.selection()
-        if not sel:
-            return
+        if not sel: return
         vals = self.tree_conversas.item(sel[0], "values")
         self.rm_chat_ativo = str(vals[0])
-        nome_aluno = vals[1]
-        self.lbl_aluno_atual.config(text=f"Conversando com: {nome_aluno} (RM: {self.rm_chat_ativo})", fg="#38bdf8")
+        self.lbl_aluno_atual.config(text=f"Conversando com: {vals[1]} (RM: {self.rm_chat_ativo})", fg="#38bdf8")
         self.carregar_mensagens_aluno_ativo()
 
     def carregar_mensagens_aluno_ativo(self):
-        if not self.rm_chat_ativo:
-            return
-
+        if not self.rm_chat_ativo: return
         try:
             res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true&origem=SECRETARIA", timeout=6)
             if res.status_code == 200:
-                mensagens = res.json()
                 self.txt_chat_historico.config(state="normal")
                 self.txt_chat_historico.delete("1.0", tk.END)
-
-                for m in mensagens:
-                    autor = "VOCÊ (Secretaria)" if m['remetente'] == 'SECRETARIA' else f"{m['nome_aluno']} (Aluno)"
-                    horario = m['data_envio']
-                    self.txt_chat_historico.insert(tk.END, f"[{horario}] {autor}:\n", "header")
+                for m in res.json():
+                    autor = "VOCÊ" if m['remetente'] == 'SECRETARIA' else f"{m['nome_aluno']}"
+                    self.txt_chat_historico.insert(tk.END, f"[{m['data_envio']}] {autor}:\n", "header")
                     self.txt_chat_historico.insert(tk.END, f"{m['mensagem']}\n\n", "corpo")
-
                 self.txt_chat_historico.tag_config("header", foreground="#38bdf8", font=("Helvetica", 9, "bold"))
                 self.txt_chat_historico.tag_config("corpo", foreground="#f1f5f9", font=("Helvetica", 10))
                 self.txt_chat_historico.see(tk.END)
                 self.txt_chat_historico.config(state="disabled")
-        except Exception as e:
-            print("Erro ao carregar histórico do chat:", e)
+        except Exception: pass
 
     def enviar_resposta_secretaria(self):
-        if not self.rm_chat_ativo:
-            messagebox.showwarning("Aviso", "Selecione um aluno da lista para responder!", parent=self.top_chat)
-            return
-
+        if not self.rm_chat_ativo: return
         texto = self.txt_chat_resposta.get().strip()
-        if not texto:
-            return
-
+        if not texto: return
         self.txt_chat_resposta.delete(0, tk.END)
-
-        payload = {
-            "rm": self.rm_chat_ativo,
-            "nome": "Secretaria ETEC",
-            "remetente": "SECRETARIA",
-            "mensagem": texto
-        }
-
         try:
-            res = requests.post(f"{API_URL}/api/chat/enviar", json=payload, timeout=6)
-            if res.status_code == 200:
-                self.carregar_mensagens_aluno_ativo()
-        except Exception as e:
-            messagebox.showerror("Erro", f"Falha ao enviar mensagem: {e}", parent=self.top_chat)
+            res = requests.post(f"{API_URL}/api/chat/enviar", json={"rm": self.rm_chat_ativo, "nome": "Secretaria ETEC", "remetente": "SECRETARIA", "mensagem": texto}, timeout=6)
+            if res.status_code == 200: self.carregar_mensagens_aluno_ativo()
+        except Exception: pass
 
     def iniciar_loop_polling_chat(self):
         def loop():
             while self.chat_polling_ativo:
                 time.sleep(3)
                 if self.janela_chat_aberta and self.rm_chat_ativo:
-                    try:
-                        self.carregar_mensagens_aluno_ativo()
-                    except Exception:
-                        pass
+                    try: self.carregar_mensagens_aluno_ativo()
+                    except Exception: pass
         threading.Thread(target=loop, daemon=True).start()
 
     # ==============================================================
-    # DEMAIS FUNÇÕES DO SISTEMA (ESTOQUE, HISTÓRICO, LOCALIZAR)
+    # DEMAIS FUNÇÕES DO SISTEMA (ESTOQUE, HISTÓRICO)
     # ==============================================================
     def alternar_modo_tabela(self):
         if self.tabela_visualizada == "itens":
@@ -351,174 +359,130 @@ class AdminDesktopApp:
             self.btn_recusar.config(state="normal")
             self.btn_excluir.config(state="normal")
             self.btn_doacao.config(state="normal")
-            
         self.configurar_colunas()
         self.carregar_tabela()
 
     def configurar_colunas(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-            
+        for item in self.tree.get_children(): self.tree.delete(item)
         if self.tabela_visualizada == "itens":
-            self.tree["columns"] = ("id", "descricao", "categoria", "data", "local", "status", "solicitado_por", "rm_aluno")
+            self.tree["columns"] = ("id", "nome", "categoria", "data", "local", "status", "solicitado_por")
             self.tree.heading("id", text="ID")
-            self.tree.heading("descricao", text="Descrição")
+            self.tree.heading("nome", text="Nome do Item")
             self.tree.heading("categoria", text="Categoria")
             self.tree.heading("data", text="Data")
             self.tree.heading("local", text="Local")
             self.tree.heading("status", text="Status")
             self.tree.heading("solicitado_por", text="Solicitante")
-            self.tree.heading("rm_aluno", text="RM")
 
             self.tree.column("id", width=35, anchor="center")
-            self.tree.column("descricao", width=140)
+            self.tree.column("nome", width=160)
             self.tree.column("categoria", width=90)
             self.tree.column("data", width=80, anchor="center")
             self.tree.column("local", width=90)
-            self.tree.column("status", width=100, anchor="center")
-            self.tree.column("solicitado_por", width=110)
-            self.tree.column("rm_aluno", width=65, anchor="center")
+            self.tree.column("status", width=90, anchor="center")
+            self.tree.column("solicitado_por", width=100)
         else:
-            self.tree["columns"] = ("id", "item_id", "nome_item", "retirado_por", "rm_retirante", "turma_curso", "data_entrega", "funcionario_responsavel")
-            self.tree.heading("id", text="Registro")
+            self.tree["columns"] = ("id", "item_id", "nome_item", "retirado_por", "rm_retirante", "turma_curso", "data_entrega")
+            self.tree.heading("id", text="Recibo")
             self.tree.heading("item_id", text="ID Item")
-            self.tree.heading("nome_item", text="Descrição")
+            self.tree.heading("nome_item", text="Descrição/Nome")
             self.tree.heading("retirado_por", text="Retirado Por")
-            self.tree.heading("rm_retirante", text="RM Retirante")
+            self.tree.heading("rm_retirante", text="RM")
             self.tree.heading("turma_curso", text="Turma")
             self.tree.heading("data_entrega", text="Data Retirada")
-            self.tree.heading("funcionario_responsavel", text="Atendente")
 
             self.tree.column("id", width=50, anchor="center")
             self.tree.column("item_id", width=50, anchor="center")
-            self.tree.column("nome_item", width=130)
+            self.tree.column("nome_item", width=140)
             self.tree.column("retirado_por", width=120)
-            self.tree.column("rm_retirante", width=80, anchor="center")
+            self.tree.column("rm_retirante", width=70, anchor="center")
             self.tree.column("turma_curso", width=80, anchor="center")
             self.tree.column("data_entrega", width=95, anchor="center")
-            self.tree.column("funcionario_responsavel", width=100)
 
     def recusar_solicitacao(self):
         selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Atenção", "Selecione um item solicitado para recusar!")
-            return
-
-        valores = self.tree.item(selected[0], "values")
-        item_id = valores[0]
-        status = valores[5].upper()
-
-        if status != "SOLICITADO":
-            messagebox.showinfo("Aviso", "Apenas itens com status SOLICITADO podem ser recusados.")
-            return
-
-        if messagebox.askyesno("Confirmar", f"Recusar a solicitação do item #{item_id}?\nOs dados do solicitante serão limpos e o item voltará para DISPONÍVEL."):
+        if not selected: return messagebox.showwarning("Atenção", "Selecione um item!")
+        vals = self.tree.item(selected[0], "values")
+        if vals[5].upper() != "SOLICITADO": return messagebox.showinfo("Aviso", "Apenas itens SOLICITADO podem ser recusados.")
+        if messagebox.askyesno("Confirmar", f"Recusar solicitação do item #{vals[0]}?"):
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar", timeout=10)
-                if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Solicitação cancelada com sucesso!")
-                    self.carregar_tabela()
-                else:
-                    messagebox.showerror("Erro", f"Falha no servidor: {res.text}")
-            except Exception as e:
-                messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
+                res = requests.put(f"{API_URL}/api/itens/{vals[0]}/recusar", timeout=10)
+                if res.status_code == 200: self.carregar_tabela()
+            except Exception as e: messagebox.showerror("Erro", str(e))
 
     def carregar_fotos(self):
-        filenames = filedialog.askopenfilenames(
-            title="Selecione até 4 fotos",
-            filetypes=[("Imagens", "*.png;*.jpg;*.jpeg;*.webp")]
-        )
+        filenames = filedialog.askopenfilenames(title="Selecione até 4 fotos", filetypes=[("Imagens", "*.png;*.jpg;*.jpeg;*.webp")])
         if filenames:
-            novas_fotos = list(filenames)
-            disponiveis = 4 - len(self.fotos_base64)
-            
-            if disponiveis <= 0:
-                messagebox.showwarning("Limite Atingido", "Limite de 4 fotos já foi atingido!")
-                return
-
-            if len(novas_fotos) > disponiveis:
-                novas_fotos = novas_fotos[:disponiveis]
-
-            for file in novas_fotos:
+            novas = list(filenames)
+            disp = 4 - len(self.fotos_base64)
+            if disp <= 0: return messagebox.showwarning("Limite", "Limite atingido!")
+            if len(novas) > disp: novas = novas[:disp]
+            for f in novas:
                 try:
-                    with open(file, "rb") as image_file:
-                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                        self.fotos_base64.append(f"data:image/jpeg;base64,{encoded_string}")
-                except Exception as e:
-                    messagebox.showerror("Erro", f"Erro ao processar imagem {file}: {e}")
-
-            qtd = len(self.fotos_base64)
-            self.lbl_status_foto.config(text=f"✓ {qtd} / 4 fotos selecionadas", fg="#4ade80")
+                    with open(f, "rb") as image_file:
+                        enc = base64.b64encode(image_file.read()).decode('utf-8')
+                        self.fotos_base64.append(f"data:image/jpeg;base64,{enc}")
+                except Exception as e: messagebox.showerror("Erro", str(e))
+            self.lbl_status_foto.config(text=f"✓ {len(self.fotos_base64)} / 4 fotos", fg="#4ade80")
 
     def limpar_fotos_selecionadas(self):
         self.fotos_base64 = []
-        self.lbl_status_foto.config(text="0 / 4 fotos selecionadas", fg="#94a3b8")
+        self.lbl_status_foto.config(text="0 / 4 fotos", fg="#94a3b8")
 
     def salvar_item(self):
+        nome = self.txt_nome.get().strip()
         descricao = self.txt_descricao.get().strip()
         categoria = self.cb_categoria.get()
         data = self.txt_data.get().strip()
         local = self.txt_local.get().strip()
         status = self.cb_status.get()
 
-        if not descricao or not data or not local:
-            messagebox.showwarning("Atenção!", "Preencha todos os campos obrigatórios!")
-            return
+        if not nome or not descricao or not data or not local:
+            return messagebox.showwarning("Atenção", "Preencha Nome, Descrição, Data e Local!")
 
-        payload = {
-            "descricao": descricao,
-            "categoria": categoria,
-            "data": data,
-            "local": local,
-            "status": status,
-            "fotos": self.fotos_base64
-        }
-
+        payload = {"nome": nome, "descricao": descricao, "categoria": categoria, "data": data, "local": local, "status": status, "fotos": self.fotos_base64}
         try:
             if self.item_editando_id is None:
                 res = requests.post(f"{API_URL}/api/itens", json=payload, timeout=10)
-                if res.status_code == 200:
-                    novo_id = res.json().get("id")
-                    messagebox.showinfo("Sucesso!", f"Objeto cadastrado com Sucesso!\nID #{novo_id}")
+                if res.status_code == 200: messagebox.showinfo("Sucesso", f"Item #{res.json().get('id')} salvo!")
             else:
                 res = requests.put(f"{API_URL}/api/itens/{self.item_editando_id}", json=payload, timeout=10)
-                if res.status_code == 200:
-                    messagebox.showinfo("Sucesso!", f"Item #{self.item_editando_id} atualizado com sucesso!")
-
+                if res.status_code == 200: messagebox.showinfo("Sucesso", "Atualizado!")
             if res.status_code == 200:
                 self.limpar_formulario()
                 self.carregar_tabela()
-            else:
-                messagebox.showerror("Erro", f"Falha no servidor: {res.text}")
-        except Exception as e:
-            messagebox.showerror("Erro de Conexão", f"Não foi possível conectar à API: {e}")
+        except Exception as e: messagebox.showerror("Erro", str(e))
 
     def preparar_edicao_item(self, id_direto=None):
-        if self.tabela_visualizada != "itens":
-            return
-
+        if self.tabela_visualizada != "itens": return
         selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Atenção", "Selecione um item da tabela para editar!")
-            return
-
-        valores = self.tree.item(selected[0], "values")
-        self.item_editando_id = valores[0]
-        self.txt_descricao.delete(0, tk.END)
-        self.txt_descricao.insert(0, valores[1])
-        self.cb_categoria.set(valores[2])
-        self.txt_data.delete(0, tk.END)
-        self.txt_data.insert(0, valores[3])
-        self.txt_local.delete(0, tk.END)
-        self.txt_local.insert(0, valores[4])
-
-        status_norm = valores[5].upper()
-        if status_norm in self.cb_status["values"]:
-            self.cb_status.set(status_norm)
-
-        self.form_frame.config(text=f" Editando Item #{self.item_editando_id} ", fg="#eab308")
-        self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
-        self.btn_cancelar.grid()
+        if not selected: return messagebox.showwarning("Atenção", "Selecione um item!")
+        vals = self.tree.item(selected[0], "values")
+        
+        # Como precisamos da descrição completa e fotos, buscamos direto do banco pelo ID
+        item_id = vals[0]
+        try:
+            res = requests.get(f"{API_URL}/api/itens/localizar/{item_id}", timeout=10)
+            if res.status_code == 200:
+                i = res.json().get("item", {})
+                self.item_editando_id = i['id']
+                self.txt_nome.delete(0, tk.END)
+                self.txt_nome.insert(0, i.get('nome') or '')
+                self.txt_descricao.delete(0, tk.END)
+                self.txt_descricao.insert(0, i.get('txt_descricao') or '')
+                self.cb_categoria.set(i.get('categoria') or 'OUTROS')
+                self.txt_data.delete(0, tk.END)
+                self.txt_data.insert(0, i.get('txt_data') or '')
+                self.txt_local.delete(0, tk.END)
+                self.txt_local.insert(0, i.get('txt_local') or '')
+                self.cb_status.set(i.get('status') or 'DISPONÍVEL')
+                self.fotos_base64 = []
+                self.lbl_status_foto.config(text="Mantendo fotos originais...", fg="#94a3b8")
+                self.form_frame.config(text=f" Editando Item #{self.item_editando_id} ", fg="#eab308")
+                self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
+                self.btn_cancelar.grid()
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
 
     def abrir_janela_localizar(self):
         top = tk.Toplevel(self.root)
@@ -528,49 +492,39 @@ class AdminDesktopApp:
         top.transient(self.root)
         top.grab_set()
 
-        tk.Label(top, text="Digite o ID / Código do Item:", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(15, 5))
+        tk.Label(top, text="Digite o ID do Item:", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(15, 5))
         frame_busca = tk.Frame(top, bg="#1e1e2e")
         frame_busca.pack(pady=5)
-
         txt_busca_id = tk.Entry(frame_busca, font=("Helvetica", 12, "bold"), bg="#334155", fg="white", justify="center", width=12)
         txt_busca_id.pack(side="left", padx=5)
         txt_busca_id.focus()
-
-        lbl_resultado = tk.Label(top, text="Digite o ID e clique em Buscar.", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10), justify="left", wraplength=460)
+        lbl_resultado = tk.Label(top, text="Aguardando ID...", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10), justify="left", wraplength=460)
         lbl_resultado.pack(pady=10)
-
         options_frame = tk.Frame(top, bg="#1e1e2e")
 
         def buscar():
             item_id = txt_busca_id.get().strip()
-            if not item_id.isdigit():
-                messagebox.showwarning("Aviso", "Digite um ID válido!", parent=top)
-                return
-
+            if not item_id.isdigit(): return
             try:
                 res = requests.get(f"{API_URL}/api/itens/localizar/{item_id}", timeout=10)
                 if res.status_code == 200:
                     data = res.json().get("item", {})
                     st = data.get("status", "DISPONÍVEL")
-                    text = f"📦 ID #{data.get('id')} - {data.get('txt_descricao')}\nCategoria: {data.get('categoria')} | Data: {data.get('txt_data')}\nLocal: {data.get('txt_local')}\nStatus: {st}\n"
+                    text = f"📦 ID #{data.get('id')} - {data.get('nome')}\nDesc: {data.get('txt_descricao')}\nCat: {data.get('categoria')} | Local: {data.get('txt_local')}\nStatus: {st}\n"
                     lbl_resultado.config(text=text, fg="#ffffff")
-
-                    for child in options_frame.winfo_children():
-                        child.destroy()
+                    for child in options_frame.winfo_children(): child.destroy()
                     options_frame.pack(fill="x", padx=20, pady=10)
-
-                    tk.Button(options_frame, text="✅ Dar Baixa como 'Entregue ao Dono'", command=lambda: self.dar_baixa_entregue(data.get('id'), data.get('txt_descricao'), top), bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6).pack(fill="x", pady=3)
+                    tk.Button(options_frame, text="✅ Dar Baixa como 'Entregue ao Dono'", command=lambda: self.dar_baixa_entregue(data.get('id'), data.get('nome'), top), bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6).pack(fill="x", pady=3)
                 else:
                     lbl_resultado.config(text="❌ Item não encontrado!", fg="#f87171")
                     options_frame.pack_forget()
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro na requisição: {e}", parent=top)
+            except Exception as e: messagebox.showerror("Erro", str(e), parent=top)
 
         tk.Button(frame_busca, text="🔍 Buscar", command=buscar, bg="#0284c7", fg="white", font=("Helvetica", 10, "bold"), relief="flat").pack(side="left")
 
-    def dar_baixa_entregue(self, item_id, descricao, parent_top):
+    def dar_baixa_entregue(self, item_id, nome_desc, parent_top):
         top_baixa = tk.Toplevel(parent_top)
-        top_baixa.title(f"Baixa / Devolução #{item_id}")
+        top_baixa.title(f"Baixa #{item_id}")
         top_baixa.geometry("380x350")
         top_baixa.configure(bg="#1e1e2e")
         top_baixa.transient(parent_top)
@@ -584,44 +538,22 @@ class AdminDesktopApp:
         txt_rm = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white")
         txt_rm.pack(fill="x", padx=25)
 
-        tk.Label(top_baixa, text="Turma / Curso:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
-        txt_turma = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white")
-        txt_turma.pack(fill="x", padx=25)
-
         def salvar_baixa():
-            nome = txt_nome.get().strip()
-            rm = txt_rm.get().strip()
-            turma = txt_turma.get().strip()
-
-            if not nome or not rm:
-                messagebox.showwarning("Atenção", "Preencha Nome e RM!", parent=top_baixa)
-                return
-
-            payload = {
-                "status": "ENTREGUE",
-                "retirado_por": nome,
-                "rm_retirante": rm,
-                "turma_curso": turma,
-                "funcionario_responsavel": "Secretaria ETEC",
-                "data_entrega": datetime.now().strftime("%d/%m/%Y %H:%M")
-            }
-
+            n, r = txt_nome.get().strip(), txt_rm.get().strip()
+            if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=top_baixa)
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item_id}", json=payload, timeout=10)
+                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "funcionario_responsavel": "Secretaria ETEC"}, timeout=10)
                 if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item entregue com sucesso!", parent=top_baixa)
+                    messagebox.showinfo("Sucesso", "Baixa concluída!", parent=top_baixa)
                     top_baixa.destroy()
                     parent_top.destroy()
                     self.carregar_tabela()
-                else:
-                    messagebox.showerror("Erro", f"Erro no servidor: {res.text}", parent=top_baixa)
-            except Exception as e:
-                messagebox.showerror("Erro", f"Conexão falhou: {e}", parent=top_baixa)
-
+            except Exception as e: messagebox.showerror("Erro", str(e), parent=top_baixa)
         tk.Button(top_baixa, text="✔ Confirmar Baixa", command=salvar_baixa, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", pady=8).pack(fill="x", padx=25, pady=20)
 
     def limpar_formulario(self):
         self.item_editando_id = None
+        self.txt_nome.delete(0, tk.END)
         self.txt_descricao.delete(0, tk.END)
         self.cb_categoria.current(0)
         self.txt_data.delete(0, tk.END)
@@ -629,51 +561,41 @@ class AdminDesktopApp:
         self.txt_local.delete(0, tk.END)
         self.cb_status.current(0)
         self.fotos_base64 = []
-        self.lbl_status_foto.config(text="0 / 4 fotos selecionadas", fg="#94a3b8")
+        self.lbl_status_foto.config(text="0 / 4 fotos", fg="#94a3b8")
         self.form_frame.config(text=" Cadastro / Edição de Objeto ", fg="#38bdf8")
         self.btn_salvar.config(text="✔ Gravar no Banco Nuvem", bg="#16a34a", fg="white")
         self.btn_cancelar.grid_remove()
 
     def excluir_item(self):
         selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Atenção", "Selecione um item para excluir!")
-            return
-
+        if not selected: return
         item_id = self.tree.item(selected[0], "values")[0]
-        if messagebox.askyesno("Confirmar", f"Excluir definitivamente o item #{item_id}?"):
+        if messagebox.askyesno("Confirmar", f"Excluir item #{item_id}?"):
             try:
                 res = requests.delete(f"{API_URL}/api/itens/{item_id}", timeout=10)
                 if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item removido com sucesso!")
                     self.limpar_formulario()
                     self.carregar_tabela()
-            except Exception as e:
-                messagebox.showerror("Erro", f"Falha ao conectar: {e}")
+            except Exception: pass
 
     def concluir_doacoes(self):
-        if messagebox.askyesno("Confirmar", "Deseja remover todos os itens com status 'DOAÇÃO FEITA'?"):
+        if messagebox.askyesno("Confirmar", "Remover itens com status 'DOAÇÃO FEITA'?"):
             try:
                 res = requests.delete(f"{API_URL}/api/itens/doacoes/concluir", timeout=10)
-                if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Itens doados removidos do banco!")
-                    self.carregar_tabela()
-            except Exception as e:
-                messagebox.showerror("Erro", f"Falha na requisição: {e}")
+                if res.status_code == 200: self.carregar_tabela()
+            except Exception: pass
 
     def carregar_tabela(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
+        for item in self.tree.get_children(): self.tree.delete(item)
         try:
             if self.tabela_visualizada == "itens":
                 res = requests.get(f"{API_URL}/api/itens", timeout=10)
                 if res.status_code == 200:
                     for i in res.json():
                         self.tree.insert("", tk.END, values=(
-                            i["id"], i["txt_descricao"], i.get("categoria", "OUTROS"),
+                            i["id"], i.get("nome", "-"), i.get("categoria", "OUTROS"),
                             i["txt_data"], i["txt_local"], i.get("status", "DISPONÍVEL"),
-                            i.get("solicitado_por") or "-", i.get("rm_aluno") or "-"
+                            i.get("solicitado_por") or "-"
                         ))
             else:
                 res = requests.get(f"{API_URL}/api/entregues", timeout=10)
@@ -682,10 +604,9 @@ class AdminDesktopApp:
                         self.tree.insert("", tk.END, values=(
                             ent["id"], ent["item_id"], ent["nome_item"],
                             ent["retirado_por"], ent["rm_retirante"], ent.get("turma_curso") or "-",
-                            ent["data_entrega"], ent.get("funcionario_responsavel") or "Secretaria"
+                            ent["data_entrega"]
                         ))
-        except Exception as e:
-            print(f"Erro ao carregar dados: {e}")
+        except Exception as e: print("Erro ao carregar dados:", e)
 
 if __name__ == "__main__":
     root = tk.Tk()
