@@ -158,7 +158,6 @@
 
         <!-- SEÇÃO: MURAL "PERDI ALGO" -->
         <section id="muralScreen" class="hidden space-y-6">
-            <!-- Formulário de Cadastro do Aviso de Perda -->
             <div class="bg-card border border-color rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
                 <div>
                     <h2 class="text-xl font-black text-main flex items-center gap-2">
@@ -205,7 +204,6 @@
                 </form>
             </div>
 
-            <!-- Mural de Avisos Cadastrados -->
             <div class="space-y-3">
                 <h3 class="text-xs font-bold uppercase text-muted">Avisos Recentes de Objetos Procurados:</h3>
                 <div id="muralFeed" class="space-y-3"></div>
@@ -250,16 +248,64 @@
                     <span>Data: <strong id="detailDate" class="text-main"></strong></span>
                 </div>
 
-                <div class="pt-4">
-                    <button id="btnSolicitar" onclick="abrirModalSolicitacao()" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
+                <div class="pt-4 flex flex-col sm:flex-row gap-2">
+                    <button id="btnSolicitar" onclick="abrirModalSolicitacao()" class="flex-grow dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
                         ESTE É O MEU ITEM / SOLICITAR COLETA
+                    </button>
+                    <button onclick="abrirChatComItem()" class="sm:w-auto px-5 py-3.5 rounded-xl bg-header border border-color text-main hover:border-red-500 font-bold text-xs uppercase transition flex items-center justify-center gap-2">
+                        <i class="fas fa-comments text-red-500"></i>
+                        <span>Falar com a Secretaria</span>
                     </button>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- MODAL MATCH IMEDIATO (Quando o item procurado já existe no estoque) -->
+    <!-- WIDGET FLUTUANTE DE CHAT (DIRETO COM A SECRETARIA) -->
+    <div class="fixed bottom-5 right-5 z-50">
+        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-2xl transition transform hover:scale-105">
+            <i class="fas fa-comment-dots text-2xl"></i>
+            <span id="badgeChatWeb" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-black rounded-full flex items-center justify-center">0</span>
+        </button>
+
+        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 bg-card border border-color rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[480px]">
+            <div class="bg-header border-b border-color p-3.5 flex justify-between items-center">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <div>
+                        <h4 class="font-bold text-xs text-main">Secretaria ETEC (Chat Direto)</h4>
+                        <p id="chatSubtitulo" class="text-[10px] text-muted">Tire dúvidas sobre itens perdidos</p>
+                    </div>
+                </div>
+                <button onclick="alternarJanelaChat()" class="text-muted hover:text-main text-xs p-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Identificação rápida no chat (caso não informado ainda) -->
+            <div id="chatAuthBar" class="bg-card border-b border-color p-2.5 flex gap-2">
+                <input type="text" id="chatInputNome" placeholder="Seu Nome" class="w-1/2 bg-header border border-color text-xs rounded-lg px-2.5 py-1.5 text-main focus:outline-none focus:border-red-500">
+                <input type="number" id="chatInputRM" placeholder="Seu RM" class="w-1/2 bg-header border border-color text-xs rounded-lg px-2.5 py-1.5 text-main focus:outline-none focus:border-red-500">
+            </div>
+
+            <!-- Corpo com Mensagens -->
+            <div id="chatMensagens" class="flex-grow p-3 space-y-2 overflow-y-auto text-xs scrollbar-none bg-black/10">
+                <div class="text-center text-muted italic my-4 text-[11px]">
+                    Inicie a conversa com a secretaria informando seus dados e a dúvida sobre o item.
+                </div>
+            </div>
+
+            <!-- Input de Envio -->
+            <form id="formChat" onsubmit="enviarMensagemChat(event)" class="p-2.5 bg-header border-t border-color flex gap-2">
+                <input type="text" id="chatInputTexto" placeholder="Digite sua mensagem..." class="flex-grow bg-card border border-color rounded-xl px-3 py-2 text-xs text-main focus:outline-none focus:border-red-500">
+                <button type="submit" class="dynamic-btn w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
+                    <i class="fas fa-paper-plane text-xs"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL MATCH IMEDIATO -->
     <div id="modalMatchImediato" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-card border border-amber-500/50 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="text-center space-y-1">
@@ -267,9 +313,7 @@
                 <h3 class="font-black text-main text-xl">Encontramos algo parecido!</h3>
                 <p class="text-xs text-muted">A secretaria já possui item(ns) com características correspondentes ao seu pedido:</p>
             </div>
-
             <div id="matchItensLista" class="space-y-3"></div>
-
             <div class="pt-2">
                 <button onclick="fecharModalMatch()" class="w-full bg-header border border-color text-main font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-card transition">
                     Fechar / Meu item não é nenhum desses
