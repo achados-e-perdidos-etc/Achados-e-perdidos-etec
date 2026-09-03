@@ -13,8 +13,11 @@ let apresentacaoIndice = 0;
 let apresentacaoTimer = null;
 let modoApresentacaoAtivo = false;
 
-// Controle de Abas
+// Controle de Abas e Chat
 let abaAtiva = 'catalogo';
+let chatAberto = false;
+let chatTimerPolling = null;
+let ultimaQtdMensagens = 0;
 
 function mudarAba(aba) {
     abaAtiva = aba;
@@ -34,16 +37,13 @@ function mudarAba(aba) {
     if (aba === 'catalogo') {
         catScreen.classList.remove('hidden');
         muralScreen.classList.add('hidden');
-
         btnCat.className = "px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5";
         btnMural.className = "relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
     } else {
         catScreen.classList.add('hidden');
         muralScreen.classList.remove('hidden');
-
         btnMural.className = "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main transition flex items-center gap-1.5";
         btnCat.className = "px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
-
         carregarFeedMural();
     }
 }
@@ -347,7 +347,7 @@ function voltarParaCatalogo() {
 }
 
 // ==========================================
-// MODO APRESENTAÇÃO (CARROSSEL COM TRANSIÇÃO)
+// MODO APRESENTAÇÃO
 // ==========================================
 
 function atualizarItensApresentacao() {
@@ -516,7 +516,6 @@ async function enviarAvisoMural(e) {
         if (response.ok && res.success) {
             document.getElementById('muralDescricao').value = '';
 
-            // MATCH IMEDIATO: Exibe janela de itens similares
             if (res.matches_encontrados && res.matches_encontrados.length > 0) {
                 exibirMatchesImediatos(res.matches_encontrados);
             } else {
@@ -641,7 +640,136 @@ async function verificarNotificacoesAutomaticas() {
 }
 
 // ==========================================
-// MODAL DE SOLICITAÇÃO (SOMENTE TABELA ITENS)
+// CHAT DIRETO COM A SECRETARIA (POLLING)
+// ==========================================
+
+function alternarJanelaChat() {
+    chatAberto = !chatAberto;
+    const janela = document.getElementById('janelaChat');
+    const badge = document.getElementById('badgeChatWeb');
+
+    if (chatAberto) {
+        janela.classList.remove('hidden');
+        badge.classList.add('hidden');
+        badge.innerText = '0';
+
+        const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
+        if (salvo.nome) document.getElementById('chatInputNome').value = salvo.nome;
+        if (salvo.rm) document.getElementById('chatInputRM').value = salvo.rm;
+
+        atualizarMensagensChat();
+        iniciarPollingChat();
+    } else {
+        janela.classList.add('hidden');
+        pararPollingChat();
+    }
+}
+
+function abrirChatComItem() {
+    if (!chatAberto) alternarJanelaChat();
+    if (itemSelecionado) {
+        const inputMsg = document.getElementById('chatInputTexto');
+        inputMsg.value = `Olá! Gostaria de tirar uma dúvida sobre o item #${itemSelecionado.id} (${itemSelecionado.txt_descricao}): `;
+        inputMsg.focus();
+    }
+}
+
+function iniciarPollingChat() {
+    pararPollingChat();
+    chatTimerPolling = setInterval(atualizarMensagensChat, 3000);
+}
+
+function pararPollingChat() {
+    if (chatTimerPolling) {
+        clearInterval(chatTimerPolling);
+        chatTimerPolling = null;
+    }
+}
+
+async function atualizarMensagensChat() {
+    const rm = document.getElementById('chatInputRM').value.trim();
+    if (!rm) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/chat/mensagens/${rm}?marcar_lida=true&origem=ALUNO`);
+        if (!res.ok) return;
+        const mensagens = await res.json();
+
+        const container = document.getElementById('chatMensagens');
+        if (!mensagens || mensagens.length === 0) {
+            container.innerHTML = `<div class="text-center text-muted italic my-4 text-[11px]">Nenhuma mensagem ainda. Envie um "Olá" para a secretaria!</div>`;
+            return;
+        }
+
+        if (mensagens.length !== ultimaQtdMensagens) {
+            ultimaQtdMensagens = mensagens.length;
+            container.innerHTML = '';
+
+            mensagens.forEach(m => {
+                const souEu = m.remetente === 'ALUNO';
+                const div = document.createElement('div');
+                div.className = `flex flex-col ${souEu ? 'items-end' : 'items-start'}`;
+
+                const corBalão = souEu 
+                    ? 'bg-red-600 text-white rounded-tr-none' 
+                    : 'bg-header border border-color text-main rounded-tl-none';
+
+                div.innerHTML = `
+                    <span class="text-[9px] text-muted mb-0.5">${souEu ? 'Você' : 'Secretaria ETEC'} • ${m.data_envio.split(' ')[1] || ''}</span>
+                    <div class="max-w-[80%] px-3 py-2 rounded-2xl ${corBalão} shadow-sm break-words">
+                        ${m.mensagem}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+    } catch (e) {
+        console.error("Erro no polling do chat:", e);
+    }
+}
+
+async function enviarMensagemChat(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('chatInputNome').value.trim();
+    const rm = document.getElementById('chatInputRM').value.trim();
+    const inputTexto = document.getElementById('chatInputTexto');
+    const mensagem = inputTexto.value.trim();
+
+    if (!rm || !nome) {
+        alert("Preencha seu Nome e RM no topo do chat antes de enviar!");
+        return;
+    }
+
+    if (!mensagem) return;
+
+    localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
+    inputTexto.value = '';
+
+    try {
+        const res = await fetch(`${API_URL}/api/chat/enviar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rm,
+                nome,
+                remetente: 'ALUNO',
+                mensagem
+            })
+        });
+
+        if (res.ok) {
+            atualizarMensagensChat();
+        }
+    } catch (err) {
+        alert("Erro ao enviar mensagem para a secretaria.");
+    }
+}
+
+// ==========================================
+// MODAL DE SOLICITAÇÃO
 // ==========================================
 
 function abrirModalSolicitacao() {
@@ -650,10 +778,12 @@ function abrirModalSolicitacao() {
     if (salvo.nome) {
         document.getElementById('solicitaNome').value = salvo.nome;
         document.getElementById('muralNome').value = salvo.nome;
+        document.getElementById('chatInputNome').value = salvo.nome;
     }
     if (salvo.rm) {
         document.getElementById('solicitaRM').value = salvo.rm;
         document.getElementById('muralRM').value = salvo.rm;
+        document.getElementById('chatInputRM').value = salvo.rm;
     }
     
     document.getElementById('solicitaMsgErro').classList.add('hidden');
@@ -716,8 +846,14 @@ window.onload = () => {
     carregarItensDaAPI();
 
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome && document.getElementById('muralNome')) document.getElementById('muralNome').value = salvo.nome;
-    if (salvo.rm && document.getElementById('muralRM')) document.getElementById('muralRM').value = salvo.rm;
+    if (salvo.nome) {
+        if (document.getElementById('muralNome')) document.getElementById('muralNome').value = salvo.nome;
+        if (document.getElementById('chatInputNome')) document.getElementById('chatInputNome').value = salvo.nome;
+    }
+    if (salvo.rm) {
+        if (document.getElementById('muralRM')) document.getElementById('muralRM').value = salvo.rm;
+        if (document.getElementById('chatInputRM')) document.getElementById('chatInputRM').value = salvo.rm;
+    }
 
     setTimeout(() => {
         const defaultBtn = document.querySelector('.cat-btn');
