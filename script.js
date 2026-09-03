@@ -7,17 +7,50 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
-// Modo Apresentação
 let apresentacaoItens = [];
 let apresentacaoIndice = 0;
 let apresentacaoTimer = null;
 let modoApresentacaoAtivo = false;
 
-// Controle de Abas e Chat
 let abaAtiva = 'catalogo';
 let chatAberto = false;
 let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
+
+async function carregarCategoriasDinamicamente() {
+    try {
+        const res = await fetch(`${API_URL}/api/categorias`);
+        if (res.ok) {
+            const cats = await res.json();
+            
+            // Atualiza Filtros
+            const container = document.getElementById('categoryContainer');
+            container.innerHTML = `
+                <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
+                <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
+            `;
+            
+            // Atualiza Select do Mural
+            const selectMural = document.getElementById('muralCategoria');
+            if (selectMural) selectMural.innerHTML = '';
+
+            cats.forEach(c => {
+                const btn = document.createElement('button');
+                btn.onclick = function() { filtrarCategoria(c.nome, this) };
+                btn.className = "cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200";
+                btn.innerText = c.nome;
+                container.appendChild(btn);
+
+                if (selectMural) {
+                    const opt = document.createElement('option');
+                    opt.value = c.nome;
+                    opt.innerText = c.nome;
+                    selectMural.appendChild(opt);
+                }
+            });
+        }
+    } catch (e) { console.error("Erro ao buscar categorias", e); }
+}
 
 function mudarAba(aba) {
     abaAtiva = aba;
@@ -72,21 +105,14 @@ function aplicarTemaVermelho() {
 }
 
 function alternarModoEscuroClaro() {
-    const label = document.getElementById('themeLabel');
-    const icon = document.getElementById('themeIcon');
     const isLight = document.body.classList.contains('light-theme');
-
     if (isLight) {
         document.body.classList.remove('light-theme');
         document.body.classList.add('dark-theme');
-        if (label) label.innerText = "Modo Escuro";
-        if (icon) icon.className = "fas fa-moon text-yellow-400";
         localStorage.setItem('theme_mode', 'dark');
     } else {
         document.body.classList.remove('dark-theme');
         document.body.classList.add('light-theme');
-        if (label) label.innerText = "Modo Claro";
-        if (icon) icon.className = "fas fa-sun text-yellow-500";
         localStorage.setItem('theme_mode', 'light');
     }
 }
@@ -94,19 +120,9 @@ function alternarModoEscuroClaro() {
 function carregarPreferenciasAparencia() {
     aplicarTemaVermelho();
     const modoSalvo = localStorage.getItem('theme_mode') || 'dark';
-    const label = document.getElementById('themeLabel');
-    const icon = document.getElementById('themeIcon');
-
     if (modoSalvo === 'light') {
         document.body.classList.remove('dark-theme');
         document.body.classList.add('light-theme');
-        if (label) label.innerText = "Modo Claro";
-        if (icon) icon.className = "fas fa-sun text-yellow-500";
-    } else {
-        document.body.classList.remove('light-theme');
-        document.body.classList.add('dark-theme');
-        if (label) label.innerText = "Modo Escuro";
-        if (icon) icon.className = "fas fa-moon text-yellow-400";
     }
 }
 
@@ -119,9 +135,7 @@ async function carregarItensDaAPI() {
             atualizarItensApresentacao();
             verificarNotificacoesAutomaticas();
         }
-    } catch (error) {
-        console.error("Erro ao carregar itens da API:", error);
-    }
+    } catch (error) { console.error("Erro API:", error); }
 }
 
 function filtrarPorPalavraChave() {
@@ -185,47 +199,34 @@ function renderizarItens() {
         const stUpper = normalizarStatus(item.status);
         const stFiltro = normalizarStatus(statusAtual);
         const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
-        const desc = (item.txt_descricao || '').toLowerCase();
+        
+        const nomeStr = (item.nome || '').toLowerCase();
+        const descStr = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
-        const cat = (item.categoria || '').toLowerCase();
-        const atendeBusca = !termoBusca || desc.includes(termoBusca) || local.includes(termoBusca) || cat.includes(termoBusca);
+        
+        const atendeBusca = !termoBusca || nomeStr.includes(termoBusca) || descStr.includes(termoBusca) || local.includes(termoBusca);
         return atendeCategoria && atendeStatus && atendeBusca;
     });
 
     if (filtrados.length === 0) {
-        grid.innerHTML = `
-            <div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl">
-                <i class="fas fa-search text-3xl mb-2 text-muted"></i>
-                <p class="text-sm font-semibold">Nenhum objeto encontrado.</p>
-            </div>
-        `;
+        grid.innerHTML = `<div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl"><p class="text-sm font-semibold">Nenhum objeto encontrado.</p></div>`;
         return;
     }
 
     filtrados.forEach(item => {
         const card = document.createElement('div');
-        card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-gray-500 transition";
+        card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-gray-500 transition shadow-sm hover:shadow-md relative overflow-hidden";
         card.onclick = () => abrirDetalhes(item);
 
         const fotosArr = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
-        const primeiraFoto = fotosArr[0];
-
-        const imgHtml = primeiraFoto 
-            ? `<div class="relative"><img src="${primeiraFoto}" class="w-full h-32 object-cover rounded-lg mb-3">${fotosArr.length > 1 ? `<span class="absolute bottom-4 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full"><i class="fas fa-images"></i> 1/${fotosArr.length}</span>` : ''}</div>`
+        const imgHtml = fotosArr[0] 
+            ? `<div class="relative"><img src="${fotosArr[0]}" class="w-full h-32 object-cover rounded-lg mb-3"></div>`
             : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex items-center justify-center text-muted"><i class="fas fa-box text-3xl"></i></div>`;
 
         const stUpper = normalizarStatus(item.status);
         let statusBadgeClass = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
-        
-        if (stUpper === 'SOLICITADO') {
-            statusBadgeClass = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
-        } else if (stUpper === 'ENTREGUE') {
-            statusBadgeClass = 'bg-slate-800 text-slate-400 border-slate-700';
-        } else if (stUpper === 'PARA DOAÇÃO' || stUpper === 'PARA DOACAO') {
-            statusBadgeClass = 'bg-purple-900/40 text-purple-400 border-purple-700/50';
-        } else if (stUpper === 'DOAÇÃO FEITA' || stUpper === 'DOACAO FEITA') {
-            statusBadgeClass = 'bg-pink-900/40 text-pink-400 border-pink-700/50';
-        }
+        if (stUpper === 'SOLICITADO') statusBadgeClass = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
+        if (stUpper === 'ENTREGUE') statusBadgeClass = 'bg-slate-800 text-slate-400 border-slate-700';
 
         card.innerHTML = `
             <div>
@@ -234,8 +235,9 @@ function renderizarItens() {
                     <span class="text-[10px] font-bold dynamic-badge px-2 py-0.5 rounded uppercase">${item.categoria}</span>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${statusBadgeClass}">${stUpper}</span>
                 </div>
-                <h4 class="font-bold text-base mt-2 text-main">${item.txt_descricao}</h4>
-                <p class="text-xs text-muted mt-1"><i class="fas fa-map-marker-alt"></i> ${item.txt_local}</p>
+                <h4 class="font-bold text-base mt-2 text-main leading-tight truncate">${item.nome || item.txt_descricao}</h4>
+                <p class="text-xs text-muted mt-1 truncate">${item.nome ? item.txt_descricao : ''}</p>
+                <p class="text-[10px] text-muted mt-2"><i class="fas fa-map-marker-alt"></i> ${item.txt_local}</p>
             </div>
         `;
         grid.appendChild(card);
@@ -249,10 +251,17 @@ function abrirDetalhes(item) {
     document.getElementById('apresentacaoScreen')?.classList.add('hidden');
     document.getElementById('detailScreen')?.classList.remove('hidden');
 
-    document.getElementById('detailTitle').innerText = item.categoria;
-    document.getElementById('detailDescription').innerText = item.txt_descricao;
+    document.getElementById('detailTitle').innerText = item.nome || item.txt_descricao;
+    document.getElementById('detailDescription').innerText = item.nome ? item.txt_descricao : '';
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
+
+    // Regra Visual Eletrônicos
+    if (item.categoria.toUpperCase() === "ELETRÔNICOS") {
+        document.getElementById('detailRegraEletronico').classList.remove('hidden');
+    } else {
+        document.getElementById('detailRegraEletronico').classList.add('hidden');
+    }
 
     const container = document.getElementById('carouselContainer');
     const placeholder = document.getElementById('detailPlaceholder');
@@ -269,27 +278,21 @@ function abrirDetalhes(item) {
     if (fotosAtuais.length > 0) {
         placeholder.classList.add('hidden');
         container.classList.remove('hidden');
-
         fotosAtuais.forEach((f) => {
             const slide = document.createElement('div');
             slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
             slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
             container.appendChild(slide);
         });
-
         document.getElementById('photoCurrentIdx').innerText = 1;
         document.getElementById('photoTotalCount').innerText = fotosAtuais.length;
         counter.classList.remove('hidden');
-
         btnPrev.classList.toggle('hidden', fotosAtuais.length <= 1);
         btnNext.classList.toggle('hidden', fotosAtuais.length <= 1);
-
         container.onscroll = () => {
-            const width = container.clientWidth;
-            if (width > 0) {
-                const idx = Math.round(container.scrollLeft / width);
-                fotoIndiceAtual = idx;
-                document.getElementById('photoCurrentIdx').innerText = idx + 1;
+            if (container.clientWidth > 0) {
+                fotoIndiceAtual = Math.round(container.scrollLeft / container.clientWidth);
+                document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
             }
         };
     } else {
@@ -301,29 +304,18 @@ function abrirDetalhes(item) {
     }
 
     const stUpper = normalizarStatus(item.status);
-    
-    if (badgeStatus) {
-        badgeStatus.innerText = stUpper;
-        if (stUpper === 'SOLICITADO') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
-        } else if (stUpper === 'ENTREGUE') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-slate-800 text-slate-400 border-slate-700';
-        } else if (stUpper === 'PARA DOAÇÃO' || stUpper === 'PARA DOACAO') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-purple-900/40 text-purple-400 border-purple-700/50';
-        } else if (stUpper === 'DOAÇÃO FEITA' || stUpper === 'DOACAO FEITA') {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-pink-900/40 text-pink-400 border-pink-700/50';
-        } else {
-            badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
-        }
-    }
+    badgeStatus.innerText = stUpper;
+    if (stUpper === 'SOLICITADO') badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
+    else if (stUpper === 'ENTREGUE') badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-slate-800 text-slate-400 border-slate-700';
+    else badgeStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
 
     if (stUpper !== 'DISPONÍVEL') {
         btnSolicitar.disabled = true;
-        btnSolicitar.innerText = `ITEM EM STATUS: ${stUpper}`;
-        btnSolicitar.className = "w-full bg-gray-700 text-gray-400 cursor-not-allowed font-bold py-3.5 rounded-xl text-sm uppercase border border-gray-600";
+        btnSolicitar.innerText = `STATUS: ${stUpper}`;
+        btnSolicitar.className = "w-full bg-gray-700 text-gray-400 cursor-not-allowed font-bold py-3.5 rounded-xl text-sm uppercase";
     } else {
         btnSolicitar.disabled = false;
-        btnSolicitar.innerText = "ESTE É O MEU ITEM / SOLICITAR COLETA";
+        btnSolicitar.innerText = "ESTE É O MEU ITEM";
         btnSolicitar.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase";
     }
 }
@@ -339,17 +331,11 @@ function navegarFotos(direcao) {
 function voltarParaCatalogo() {
     document.getElementById('detailScreen')?.classList.add('hidden');
     document.getElementById('apresentacaoScreen')?.classList.add('hidden');
-    if (abaAtiva === 'mural') {
-        document.getElementById('muralScreen')?.classList.remove('hidden');
-    } else {
-        document.getElementById('catalogScreen')?.classList.remove('hidden');
-    }
+    if (abaAtiva === 'mural') document.getElementById('muralScreen')?.classList.remove('hidden');
+    else document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-// ==========================================
 // MODO APRESENTAÇÃO
-// ==========================================
-
 function atualizarItensApresentacao() {
     apresentacaoItens = todosItens.filter(i => {
         const st = normalizarStatus(i.status);
@@ -368,35 +354,22 @@ function alternarModoApresentacao() {
 
     if (modoApresentacaoAtivo) {
         atualizarItensApresentacao();
-        if (apresentacaoItens.length === 0) {
-            alert("Nenhum item cadastrado para apresentar no momento.");
-            modoApresentacaoAtivo = false;
-            return;
-        }
-
+        if (apresentacaoItens.length === 0) return alert("Nenhum item para apresentar.");
         catScreen.classList.add('hidden');
         muralScreen.classList.add('hidden');
         detScreen.classList.add('hidden');
         apScreen.classList.remove('hidden');
-
         btn.classList.add('border-red-500', 'text-red-500');
         btn.querySelector('span').innerText = "Parar";
         btn.querySelector('i').className = "fas fa-stop text-red-500";
-
         apresentacaoIndice = 0;
         exibirItemApresentacao(apresentacaoIndice);
         iniciarTemporizadorApresentacao();
     } else {
         pararTemporizadorApresentacao();
         apScreen.classList.add('hidden');
-        detScreen.classList.add('hidden');
-
-        if (abaAtiva === 'mural') {
-            muralScreen.classList.remove('hidden');
-        } else {
-            catScreen.classList.remove('hidden');
-        }
-
+        if (abaAtiva === 'mural') muralScreen.classList.remove('hidden');
+        else catScreen.classList.remove('hidden');
         btn.classList.remove('border-red-500', 'text-red-500');
         btn.querySelector('span').innerText = "Apresentação";
         btn.querySelector('i').className = "fas fa-play text-red-500";
@@ -410,28 +383,29 @@ function exibirItemApresentacao(idx) {
     const imgEl = document.getElementById('apresentacaoImg');
     const placeholderEl = document.getElementById('apresentacaoPlaceholder');
     const tituloEl = document.getElementById('apresentacaoTitulo');
+    const descEl = document.getElementById('apresentacaoDescricao');
     const catEl = document.getElementById('apresentacaoCategoria');
     const localEl = document.getElementById('apresentacaoLocal');
     const dataEl = document.getElementById('apresentacaoData');
-    const contadorEl = document.getElementById('apresentacaoContador');
     const statusEl = document.getElementById('apresentacaoStatus');
+    const regraEletronico = document.getElementById('apresentacaoRegraEletronico');
 
     imgEl.classList.add('opacity-0', 'scale-95');
 
     setTimeout(() => {
-        tituloEl.innerText = item.txt_descricao || "Item sem descrição";
+        tituloEl.innerText = item.nome || item.txt_descricao || "Sem título";
+        descEl.innerText = item.nome ? item.txt_descricao : '';
         catEl.innerText = item.categoria || "OUTROS";
-        localEl.innerText = item.txt_local || "Não informado";
-        dataEl.innerText = item.txt_data || "Data recente";
-        contadorEl.innerText = `${idx + 1} / ${apresentacaoItens.length}`;
+        localEl.innerText = item.txt_local || "-";
+        dataEl.innerText = item.txt_data || "-";
+
+        if (item.categoria.toUpperCase() === "ELETRÔNICOS") regraEletronico.classList.remove('hidden');
+        else regraEletronico.classList.add('hidden');
 
         const st = normalizarStatus(item.status);
         statusEl.innerText = st;
-        if (st === 'SOLICITADO') {
-            statusEl.className = 'text-xs font-bold px-3 py-1 rounded-full uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
-        } else {
-            statusEl.className = 'text-xs font-bold px-3 py-1 rounded-full uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
-        }
+        if (st === 'SOLICITADO') statusEl.className = 'text-xs font-bold px-3 py-1 rounded-full uppercase border bg-amber-900/40 text-amber-400 border-amber-700/50';
+        else statusEl.className = 'text-xs font-bold px-3 py-1 rounded-full uppercase border bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
 
         const fotosArr = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
         if (fotosArr.length > 0 && fotosArr[0]) {
@@ -458,16 +432,11 @@ function navegarApresentacao(direcao) {
 
 function iniciarTemporizadorApresentacao() {
     pararTemporizadorApresentacao();
-    apresentacaoTimer = setInterval(() => {
-        navegarApresentacao(1);
-    }, 5000);
+    apresentacaoTimer = setInterval(() => { navegarApresentacao(1); }, 5000);
 }
 
 function pararTemporizadorApresentacao() {
-    if (apresentacaoTimer) {
-        clearInterval(apresentacaoTimer);
-        apresentacaoTimer = null;
-    }
+    if (apresentacaoTimer) { clearInterval(apresentacaoTimer); apresentacaoTimer = null; }
 }
 
 function abrirDetalhesDoItemAtualApresentacao() {
@@ -482,66 +451,45 @@ document.getElementById('apresentacaoCard')?.addEventListener('mouseleave', () =
     if (modoApresentacaoAtivo) iniciarTemporizadorApresentacao();
 });
 
-// ==========================================
-// MURAL DE PERDIDOS & MATCH INTELIGENTE
-// ==========================================
-
+// MURAL E CHAT
 async function enviarAvisoMural(e) {
     e.preventDefault();
-
     const nome = document.getElementById('muralNome').value.trim();
     const rm = document.getElementById('muralRM').value.trim();
     const categoria = document.getElementById('muralCategoria').value;
     const descricao = document.getElementById('muralDescricao').value.trim();
     const btn = document.getElementById('btnPublicarMural');
 
-    if (!nome || !rm || !descricao) {
-        alert("Preencha todos os campos do formulário!");
-        return;
-    }
+    if (!nome || !rm || !descricao) return alert("Preencha todos os campos!");
 
     localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Analisando acervo...`;
+    btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`;
 
     try {
-        const response = await fetch(`${API_URL}/api/mural`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(`${API_URL}/api/mural`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nome, rm, categoria, descricao })
         });
-
-        const res = await response.json();
-
-        if (response.ok && res.success) {
+        const resp = await res.json();
+        if (res.ok && resp.success) {
             document.getElementById('muralDescricao').value = '';
-
-            if (res.matches_encontrados && res.matches_encontrados.length > 0) {
-                exibirMatchesImediatos(res.matches_encontrados);
+            if (resp.matches_encontrados && resp.matches_encontrados.length > 0) {
+                exibirMatchesImediatos(resp.matches_encontrados);
             } else {
-                alert("Aviso registrado no Mural! Se a secretaria cadastrar um item compatível com o seu relato, você será avisado.");
+                alert("Aviso registrado! Você será notificado se encontrarmos.");
             }
-
             carregarFeedMural();
-        } else {
-            alert(res.message || "Erro ao publicar no Mural.");
-        }
-    } catch (err) {
-        alert("Erro de comunicação ao publicar no mural.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fas fa-paper-plane"></i> <span>Publicar no Mural e Buscar no Sistema</span>`;
-    }
+        } else alert(resp.message || "Erro.");
+    } catch (err) { alert("Erro de comunicação."); } 
+    finally { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane"></i> Publicar`; }
 }
 
 function exibirMatchesImediatos(itens) {
     const lista = document.getElementById('matchItensLista');
     lista.innerHTML = '';
-
     itens.forEach(item => {
         const card = document.createElement('div');
         card.className = "bg-header border border-color rounded-xl p-3 flex items-center justify-between gap-3";
-
         const fotoUrl = item.fotos && item.fotos.length > 0 ? item.fotos[0] : item.foto;
         const imgTag = fotoUrl 
             ? `<img src="${fotoUrl}" class="w-16 h-16 object-cover rounded-lg shrink-0">`
@@ -552,111 +500,71 @@ function exibirMatchesImediatos(itens) {
                 ${imgTag}
                 <div class="min-w-0">
                     <span class="text-[10px] font-bold dynamic-badge px-2 py-0.5 rounded uppercase">${item.categoria}</span>
-                    <h4 class="font-bold text-sm text-main truncate mt-1">${item.txt_descricao}</h4>
-                    <p class="text-xs text-muted"><i class="fas fa-map-marker-alt"></i> Local: ${item.txt_local}</p>
+                    <h4 class="font-bold text-sm text-main truncate mt-1">${item.nome || item.txt_descricao}</h4>
                 </div>
             </div>
-            <button onclick="selecionarMatchDirect('${item.id}')" class="dynamic-btn text-xs font-bold px-3 py-2 rounded-lg shrink-0">
-                É MEU!
-            </button>
+            <button onclick="selecionarMatchDirect('${item.id}')" class="dynamic-btn text-xs font-bold px-3 py-2 rounded-lg shrink-0">É MEU!</button>
         `;
         lista.appendChild(card);
     });
-
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
-function fecharModalMatch() {
-    document.getElementById('modalMatchImediato').classList.add('hidden');
-}
-
+function fecharModalMatch() { document.getElementById('modalMatchImediato').classList.add('hidden'); }
 function selecionarMatchDirect(itemId) {
     const item = todosItens.find(i => String(i.id) === String(itemId));
     fecharModalMatch();
-    if (item) {
-        abrirDetalhes(item);
-    }
+    if (item) abrirDetalhes(item);
 }
 
 async function carregarFeedMural() {
     const feed = document.getElementById('muralFeed');
-    if (!feed) return;
-
     try {
         const res = await fetch(`${API_URL}/api/mural`);
         if (!res.ok) return;
         const avisos = await res.json();
-
-        if (!avisos || avisos.length === 0) {
-            feed.innerHTML = `<p class="text-xs text-muted italic bg-card p-4 rounded-xl border border-color">Nenhum aviso no mural até o momento.</p>`;
-            return;
-        }
-
         feed.innerHTML = '';
         avisos.forEach(a => {
             const el = document.createElement('div');
             el.className = "bg-card border border-color rounded-xl p-4 space-y-1.5";
-            const statusClass = a.status === 'LOCALIZADO' 
-                ? 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50' 
-                : 'bg-amber-900/40 text-amber-400 border-amber-700/50';
-
+            const st = a.status === 'LOCALIZADO' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-amber-900/40 text-amber-400';
             el.innerHTML = `
                 <div class="flex justify-between items-center text-xs">
-                    <span class="font-bold text-main">${a.nome_aluno} (RM: ${a.rm_aluno})</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${statusClass}">${a.status}</span>
+                    <span class="font-bold text-main">${a.nome_aluno}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border border-color ${st}">${a.status}</span>
                 </div>
                 <p class="text-xs text-muted italic">"${a.descricao}"</p>
-                <div class="flex justify-between items-center text-[10px] text-muted pt-1 border-t border-color/40">
-                    <span>Categoria: ${a.categoria}</span>
-                    <span>Registrado em: ${a.data_registro}</span>
-                </div>
             `;
             feed.appendChild(el);
         });
-    } catch (e) {
-        console.error("Erro ao carregar mural:", e);
-    }
+    } catch (e) {}
 }
 
 async function verificarNotificacoesAutomaticas() {
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
     if (!salvo.rm) return;
-
     try {
         const res = await fetch(`${API_URL}/api/mural/notificacoes/${salvo.rm}`);
         if (res.ok) {
             const notifs = await res.json();
             const badge = document.getElementById('badgeNotificacaoMural');
             if (notifs && notifs.length > 0) {
-                badge.classList.remove('hidden');
-                badge.innerText = notifs.length;
-            } else {
-                badge.classList.add('hidden');
-            }
+                badge.classList.remove('hidden'); badge.innerText = notifs.length;
+            } else badge.classList.add('hidden');
         }
-    } catch (e) {
-        console.error("Erro na verificação de notificações:", e);
-    }
+    } catch (e) {}
 }
-
-// ==========================================
-// CHAT DIRETO COM A SECRETARIA (POLLING)
-// ==========================================
 
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     const janela = document.getElementById('janelaChat');
     const badge = document.getElementById('badgeChatWeb');
-
     if (chatAberto) {
         janela.classList.remove('hidden');
         badge.classList.add('hidden');
-        badge.innerText = '0';
-
         const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
         if (salvo.nome) document.getElementById('chatInputNome').value = salvo.nome;
         if (salvo.rm) document.getElementById('chatInputRM').value = salvo.rm;
-
         atualizarMensagensChat();
         iniciarPollingChat();
     } else {
@@ -668,200 +576,109 @@ function alternarJanelaChat() {
 function abrirChatComItem() {
     if (!chatAberto) alternarJanelaChat();
     if (itemSelecionado) {
-        const inputMsg = document.getElementById('chatInputTexto');
-        inputMsg.value = `Olá! Gostaria de tirar uma dúvida sobre o item #${itemSelecionado.id} (${itemSelecionado.txt_descricao}): `;
-        inputMsg.focus();
+        const i = document.getElementById('chatInputTexto');
+        i.value = `Dúvida sobre o item #${itemSelecionado.id}: `;
+        i.focus();
     }
 }
 
-function iniciarPollingChat() {
-    pararPollingChat();
-    chatTimerPolling = setInterval(atualizarMensagensChat, 3000);
-}
-
-function pararPollingChat() {
-    if (chatTimerPolling) {
-        clearInterval(chatTimerPolling);
-        chatTimerPolling = null;
-    }
-}
+function iniciarPollingChat() { pararPollingChat(); chatTimerPolling = setInterval(atualizarMensagensChat, 3000); }
+function pararPollingChat() { if (chatTimerPolling) clearInterval(chatTimerPolling); chatTimerPolling = null; }
 
 async function atualizarMensagensChat() {
     const rm = document.getElementById('chatInputRM').value.trim();
     if (!rm) return;
-
     try {
         const res = await fetch(`${API_URL}/api/chat/mensagens/${rm}?marcar_lida=true&origem=ALUNO`);
         if (!res.ok) return;
         const mensagens = await res.json();
-
         const container = document.getElementById('chatMensagens');
-        if (!mensagens || mensagens.length === 0) {
-            container.innerHTML = `<div class="text-center text-muted italic my-4 text-[11px]">Nenhuma mensagem ainda. Envie um "Olá" para a secretaria!</div>`;
-            return;
-        }
-
         if (mensagens.length !== ultimaQtdMensagens) {
             ultimaQtdMensagens = mensagens.length;
             container.innerHTML = '';
-
             mensagens.forEach(m => {
-                const souEu = m.remetente === 'ALUNO';
+                const eu = m.remetente === 'ALUNO';
                 const div = document.createElement('div');
-                div.className = `flex flex-col ${souEu ? 'items-end' : 'items-start'}`;
-
-                const corBalão = souEu 
-                    ? 'bg-red-600 text-white rounded-tr-none' 
-                    : 'bg-header border border-color text-main rounded-tl-none';
-
+                div.className = `flex flex-col ${eu ? 'items-end' : 'items-start'}`;
+                const balao = eu ? 'bg-red-600 text-white rounded-tr-none' : 'bg-header border border-color text-main rounded-tl-none';
                 div.innerHTML = `
-                    <span class="text-[9px] text-muted mb-0.5">${souEu ? 'Você' : 'Secretaria ETEC'} • ${m.data_envio.split(' ')[1] || ''}</span>
-                    <div class="max-w-[80%] px-3 py-2 rounded-2xl ${corBalão} shadow-sm break-words">
-                        ${m.mensagem}
-                    </div>
+                    <span class="text-[9px] text-muted mb-0.5">${eu ? 'Você' : 'Secretaria'} • ${m.data_envio.split(' ')[1] || ''}</span>
+                    <div class="max-w-[80%] px-3 py-2 rounded-2xl ${balao} shadow-sm break-words">${m.mensagem}</div>
                 `;
                 container.appendChild(div);
             });
-
             container.scrollTop = container.scrollHeight;
         }
-    } catch (e) {
-        console.error("Erro no polling do chat:", e);
-    }
+    } catch (e) {}
 }
 
 async function enviarMensagemChat(e) {
     e.preventDefault();
-
     const nome = document.getElementById('chatInputNome').value.trim();
     const rm = document.getElementById('chatInputRM').value.trim();
     const inputTexto = document.getElementById('chatInputTexto');
-    const mensagem = inputTexto.value.trim();
-
-    if (!rm || !nome) {
-        alert("Preencha seu Nome e RM no topo do chat antes de enviar!");
-        return;
-    }
-
-    if (!mensagem) return;
-
+    if (!rm || !nome || !inputTexto.value.trim()) return;
     localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
-    inputTexto.value = '';
-
     try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                rm,
-                nome,
-                remetente: 'ALUNO',
-                mensagem
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rm, nome, remetente: 'ALUNO', mensagem: inputTexto.value.trim() })
         });
-
-        if (res.ok) {
-            atualizarMensagensChat();
-        }
-    } catch (err) {
-        alert("Erro ao enviar mensagem para a secretaria.");
-    }
+        if (res.ok) { inputTexto.value = ''; atualizarMensagensChat(); }
+    } catch (err) {}
 }
-
-// ==========================================
-// MODAL DE SOLICITAÇÃO
-// ==========================================
 
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome) {
-        document.getElementById('solicitaNome').value = salvo.nome;
-        document.getElementById('muralNome').value = salvo.nome;
-        document.getElementById('chatInputNome').value = salvo.nome;
-    }
-    if (salvo.rm) {
-        document.getElementById('solicitaRM').value = salvo.rm;
-        document.getElementById('muralRM').value = salvo.rm;
-        document.getElementById('chatInputRM').value = salvo.rm;
-    }
-    
+    if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
+    if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
     document.getElementById('solicitaMsgErro').classList.add('hidden');
     document.getElementById('modalSolicitacao').classList.remove('hidden');
 }
 
-function fecharModalSolicitacao() {
-    document.getElementById('modalSolicitacao').classList.add('hidden');
-}
+function fecharModalSolicitacao() { document.getElementById('modalSolicitacao').classList.add('hidden'); }
 
 async function enviarSolicitacao() {
     const nome = document.getElementById('solicitaNome').value.trim();
     const rm = document.getElementById('solicitaRM').value.trim();
     const erroEl = document.getElementById('solicitaMsgErro');
     const btn = document.getElementById('btnConfirmarSolicitacao');
-
-    if (!nome || !rm) {
-        erroEl.innerText = "Preencha o Nome e o RM!";
-        erroEl.classList.remove('hidden');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`;
-
+    if (!nome || !rm) { erroEl.innerText = "Preencha tudo!"; erroEl.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.innerHTML = `Enviando...`;
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: itemSelecionado.id,
-                nome,
-                rm
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemSelecionado.id, nome, rm })
         });
-
         const res = await response.json();
-
         if (response.ok && res.success) {
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
             fecharModalSolicitacao();
             voltarParaCatalogo();
             carregarItensDaAPI();
-        } else {
-            erroEl.innerText = res.message || "Erro na solicitação.";
-            erroEl.classList.remove('hidden');
-        }
-    } catch (err) {
-        erroEl.innerText = "Erro ao conectar com o servidor Render.";
-        erroEl.classList.remove('hidden');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `Confirmar`;
-    }
+        } else { erroEl.innerText = res.message; erroEl.classList.remove('hidden'); }
+    } catch (err) { erroEl.innerText = "Erro."; erroEl.classList.remove('hidden'); } 
+    finally { btn.disabled = false; btn.innerHTML = `Confirmar`; }
 }
 
 window.onload = () => {
     carregarPreferenciasAparencia();
+    carregarCategoriasDinamicamente();
     carregarItensDaAPI();
-
+    
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
     if (salvo.nome) {
-        if (document.getElementById('muralNome')) document.getElementById('muralNome').value = salvo.nome;
-        if (document.getElementById('chatInputNome')) document.getElementById('chatInputNome').value = salvo.nome;
+        if(document.getElementById('chatInputNome')) document.getElementById('chatInputNome').value = salvo.nome;
     }
     if (salvo.rm) {
-        if (document.getElementById('muralRM')) document.getElementById('muralRM').value = salvo.rm;
-        if (document.getElementById('chatInputRM')) document.getElementById('chatInputRM').value = salvo.rm;
+        if(document.getElementById('chatInputRM')) document.getElementById('chatInputRM').value = salvo.rm;
     }
-
-    setTimeout(() => {
-        const defaultBtn = document.querySelector('.cat-btn');
-        if (defaultBtn) moveIndicator(defaultBtn);
-    }, 100);
+    setTimeout(() => { const dBtn = document.querySelector('.cat-btn'); if (dBtn) moveIndicator(dBtn); }, 200);
 };
 
 window.addEventListener('resize', () => {
-    const activeBtn = document.querySelector('.cat-btn.text-white');
-    if (activeBtn) moveIndicator(activeBtn);
+    const actBtn = document.querySelector('.cat-btn.text-white');
+    if (actBtn) moveIndicator(actBtn);
 });
