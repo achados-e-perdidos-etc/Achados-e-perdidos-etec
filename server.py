@@ -49,9 +49,26 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Tabela Categorias
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS categorias (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(50) UNIQUE NOT NULL
+            );
+        ''')
+        
+        # Insere categorias padrão se a tabela estiver vazia
+        cursor.execute("SELECT COUNT(*) FROM categorias;")
+        if cursor.fetchone()[0] == 0:
+            default_cats = ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']
+            for c in default_cats:
+                cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
+
+        # Tabela Itens (Com nova coluna nome_item)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
+                nome_item VARCHAR(150),
                 descricao TEXT NOT NULL,
                 categoria VARCHAR(50) NOT NULL,
                 data_encontrado VARCHAR(20) NOT NULL,
@@ -63,9 +80,14 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
+        # Garante que as colunas existam (para atualização)
+        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS nome_item VARCHAR(150);')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS solicitado_por VARCHAR(100);')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS rm_aluno VARCHAR(20);')
+        
+        # Se itens antigos não tem nome, copia da descrição para não quebrar o layout
+        cursor.execute('UPDATE itens SET nome_item = descricao WHERE nome_item IS NULL OR nome_item = \'\';')
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
@@ -99,7 +121,7 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 rm_aluno VARCHAR(20) NOT NULL,
                 nome_aluno VARCHAR(100) NOT NULL,
-                remetente VARCHAR(20) NOT NULL, -- 'ALUNO' ou 'SECRETARIA'
+                remetente VARCHAR(20) NOT NULL, 
                 mensagem TEXT NOT NULL,
                 data_envio VARCHAR(30) NOT NULL,
                 lida BOOLEAN DEFAULT FALSE
@@ -122,7 +144,40 @@ def home():
     return send_from_directory('.', 'index.html')
 
 # ==========================================
-# ROTAS DO CHAT (WEB <-> SECRETARIA DESKTOP)
+# ROTAS DE CATEGORIAS
+# ==========================================
+@app.route('/api/categorias', methods=['GET'])
+def get_categorias():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM categorias ORDER BY id ASC;")
+        categorias = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(categorias)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/categorias', methods=['POST'])
+def add_categoria():
+    data = request.json or {}
+    nome = (data.get('nome') or '').strip().upper()
+    if not nome:
+        return jsonify({"success": False, "message": "Nome inválido"}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (nome,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==========================================
+# ROTAS DO CHAT
 # ==========================================
 
 @app.route('/api/chat/enviar', methods=['POST'])
@@ -164,7 +219,6 @@ def buscar_mensagens_aluno(rm):
         ''', (rm,))
         msgs = cursor.fetchall()
 
-        # Marca mensagens recebidas como lidas se solicitado
         marcar_lida = request.args.get('marcar_lida', 'false').lower() == 'true'
         origem = request.args.get('origem', 'ALUNO').upper()
         if marcar_lida and msgs:
@@ -213,7 +267,8 @@ def get_itens():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
+        # Traz nome_item como "nome" para facilitar no JS
+        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
         itens = cursor.fetchall()
         
         for item in itens:
@@ -236,6 +291,7 @@ def get_itens():
 @app.route('/api/itens', methods=['POST'])
 def cadastrar_item():
     data = request.json or {}
+    nome = data.get('nome')
     descricao = data.get('descricao')
     categoria = data.get('categoria')
     data_enc = data.get('data')
@@ -243,7 +299,7 @@ def cadastrar_item():
     fotos = data.get('fotos', [])
     status = data.get('status', 'DISPONÍVEL')
 
-    if not descricao or not data_enc or not local:
+    if not nome or not descricao or not data_enc or not local:
         return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
 
     foto_capa = fotos[0] if len(fotos) > 0 else ''
@@ -253,9 +309,9 @@ def cadastrar_item():
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute('''
-            INSERT INTO itens (descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
-        ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
+            INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
+        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
         novo_id = cursor.fetchone()['id']
 
         cursor.execute("SELECT id, descricao, categoria FROM mural_perdidos WHERE status = 'PROCURANDO';")
@@ -263,7 +319,7 @@ def cadastrar_item():
 
         for p in pedidos:
             mesma_cat = (categoria or '').upper() == (p.get('categoria') or '').upper()
-            sim = calcular_similaridade(descricao, p.get('descricao', ''))
+            sim = calcular_similaridade(nome + " " + descricao, p.get('descricao', ''))
             if mesma_cat or sim >= 2:
                 cursor.execute('''
                     UPDATE mural_perdidos 
@@ -307,7 +363,7 @@ def cadastrar_aviso_mural():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute('''
-            SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status 
+            SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status 
             FROM itens 
             WHERE status = 'DISPONÍVEL';
         ''')
@@ -315,7 +371,7 @@ def cadastrar_aviso_mural():
 
         matches = []
         for item in disponiveis:
-            sim = calcular_similaridade(descricao, item['txt_descricao'])
+            sim = calcular_similaridade(descricao, (item['nome'] or '') + " " + item['txt_descricao'])
             cat_match = categoria != 'OUTROS' and item['categoria'].upper() == categoria.upper()
             if sim >= 1 or cat_match:
                 fotos = []
@@ -357,7 +413,7 @@ def checar_notificacoes(rm):
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute('''
-            SELECT m.id as mural_id, m.descricao as pedido_aluno, i.id as item_id, i.descricao as item_nome, i.local_encontrado
+            SELECT m.id as mural_id, m.descricao as pedido_aluno, i.id as item_id, i.nome_item as item_nome, i.local_encontrado
             FROM mural_perdidos m
             JOIN itens i ON m.item_encontrado_id = i.id
             WHERE m.rm_aluno = %s AND m.status = 'LOCALIZADO' AND i.status = 'DISPONÍVEL';
@@ -432,7 +488,7 @@ def localizar_item(item_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, status, solicitado_por, rm_aluno FROM itens WHERE id = %s;", (item_id,))
+        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, status, solicitado_por, rm_aluno FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
 
         if not item:
@@ -455,6 +511,7 @@ def localizar_item(item_id):
 @app.route('/api/itens/<int:item_id>', methods=['PUT'])
 def atualizar_item(item_id):
     data = request.json
+    nome = data.get('nome')
     descricao = data.get('descricao')
     categoria = data.get('categoria')
     data_enc = data.get('data')
@@ -472,15 +529,15 @@ def atualizar_item(item_id):
                 fotos_json_str = json.dumps(fotos)
                 cursor.execute('''
                     UPDATE itens
-                    SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
+                    SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
                     WHERE id = %s;
-                ''', (descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
+                ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
             else:
                 cursor.execute('''
                     UPDATE itens
-                    SET descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
+                    SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
                     WHERE id = %s;
-                ''', (descricao, categoria, data_enc, local, status, item_id))
+                ''', (nome, descricao, categoria, data_enc, local, status, item_id))
         else:
             cursor.execute("UPDATE itens SET status = %s WHERE id = %s;", (status, item_id))
 
@@ -495,7 +552,7 @@ def atualizar_item(item_id):
             cursor.execute('''
                 INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel)
                 VALUES (%s, %s, %s, %s, %s, %s, %s);
-            ''', (item_id, descricao or "Item #" + str(item_id), retirado_por, rm_retirante, turma_curso, data_entrega, func_resp))
+            ''', (item_id, (nome or descricao or "Item #" + str(item_id)), retirado_por, rm_retirante, turma_curso, data_entrega, func_resp))
 
         conn.commit()
         cursor.close()
