@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 import requests
-import base64
+import hashlib
 from datetime import datetime
 import threading
 import time
@@ -10,8 +10,8 @@ import webbrowser
 
 API_URL = "https://achados-etec-api.onrender.com"
 
-_AUTH_EMAIL_HASH = "YWNoYWRvc2VwZXJkaWRvc2V0ZWNAZ21haWwuY29t"
-_AUTH_PASS_HASH = "ZXRlY2FjaGFkb3M=" 
+_AUTH_EMAIL_HASH = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
+_AUTH_PASS_HASH = "a115236c51dd5498e7683f79d9de387c842f70c258f69719855184ed54ecea56"
 
 class AdminDesktopApp:
     def __init__(self, root):
