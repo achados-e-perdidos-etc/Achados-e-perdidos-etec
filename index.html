@@ -157,9 +157,17 @@
                 </div>
             </div>
 
+           <!-- ... (resto do seu código HTML antes do itemsGrid) ... -->
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            
+            <!-- NOVO BOTÃO DE CARREGAR MAIS ITENS -->
+            <div class="mt-6 text-center">
+                <button id="btnCarregarMais" onclick="carregarMaisItens()" class="hidden dynamic-btn font-bold py-3 px-6 rounded-xl text-xs uppercase transition shadow-md">
+                    <i class="fas fa-plus mr-1"></i> Carregar Mais Itens
+                </button>
+            </div>
         </section>
-
+<!-- ... (resto do seu código HTML depois) ... -->
         <!-- SEÇÃO: MURAL "PERDI ALGO" -->
         <section id="muralScreen" class="hidden space-y-6">
             <div class="bg-card border border-color rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
