@@ -49,7 +49,6 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabela Categorias
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS categorias (
                 id SERIAL PRIMARY KEY,
@@ -57,14 +56,12 @@ def init_db():
             );
         ''')
         
-        # Insere categorias padrão se a tabela estiver vazia
         cursor.execute("SELECT COUNT(*) FROM categorias;")
         if cursor.fetchone()[0] == 0:
             default_cats = ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']
             for c in default_cats:
                 cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
 
-        # Tabela Itens (Com nova coluna nome_item)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens (
                 id SERIAL PRIMARY KEY,
@@ -80,13 +77,10 @@ def init_db():
                 rm_aluno VARCHAR(20)
             );
         ''')
-        # Garante que as colunas existam (para atualização)
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS nome_item VARCHAR(150);')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS solicitado_por VARCHAR(100);')
         cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS rm_aluno VARCHAR(20);')
-        
-        # Se itens antigos não tem nome, copia da descrição para não quebrar o layout
         cursor.execute('UPDATE itens SET nome_item = descricao WHERE nome_item IS NULL OR nome_item = \'\';')
 
         cursor.execute('''
@@ -115,7 +109,6 @@ def init_db():
             );
         ''')
 
-        # TABELA DE MENSAGENS DO CHAT
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS mensagens_chat (
                 id SERIAL PRIMARY KEY,
@@ -128,8 +121,6 @@ def init_db():
             );
         ''')
 
-        cursor.execute('DROP TABLE IF EXISTS usuarios CASCADE;')
-
         conn.commit()
         cursor.close()
         conn.close()
@@ -139,13 +130,35 @@ def init_db():
 if DATABASE_URL:
     init_db()
 
+# ROTINA DE LIMPEZA (CHAT E MURAL)
+def limpar_registros_antigos():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Apaga mensagens de chat com mais de 7 dias
+        cursor.execute('''
+            DELETE FROM mensagens_chat 
+            WHERE TO_TIMESTAMP(data_envio, 'DD/MM/YYYY HH24:MI:SS') < NOW() - INTERVAL '7 days';
+        ''')
+        
+        # Apaga avisos do mural que já foram "LOCALIZADOS" há mais de 15 dias
+        cursor.execute('''
+            DELETE FROM mural_perdidos 
+            WHERE status = 'LOCALIZADO' 
+            AND TO_TIMESTAMP(data_registro, 'DD/MM/YYYY HH24:MI') < NOW() - INTERVAL '15 days';
+        ''')
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Erro na limpeza automática: {e}")
+
 @app.route('/')
 def home():
     return send_from_directory('.', 'index.html')
 
-# ==========================================
-# ROTAS DE CATEGORIAS
-# ==========================================
 @app.route('/api/categorias', methods=['GET'])
 def get_categorias():
     try:
@@ -163,8 +176,7 @@ def get_categorias():
 def add_categoria():
     data = request.json or {}
     nome = (data.get('nome') or '').strip().upper()
-    if not nome:
-        return jsonify({"success": False, "message": "Nome inválido"}), 400
+    if not nome: return jsonify({"success": False, "message": "Nome inválido"}), 400
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -176,10 +188,6 @@ def add_categoria():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# ==========================================
-# ROTAS DO CHAT
-# ==========================================
-
 @app.route('/api/chat/enviar', methods=['POST'])
 def enviar_mensagem_chat():
     data = request.json or {}
@@ -188,8 +196,7 @@ def enviar_mensagem_chat():
     remetente = (data.get('remetente') or 'ALUNO').upper().strip()
     mensagem = (data.get('mensagem') or '').strip()
 
-    if not rm or not mensagem:
-        return jsonify({"success": False, "message": "RM e Mensagem são obrigatórios!"}), 400
+    if not rm or not mensagem: return jsonify({"success": False, "message": "RM e Mensagem são obrigatórios!"}), 400
 
     try:
         conn = get_db_connection()
@@ -214,8 +221,7 @@ def buscar_mensagens_aluno(rm):
         cursor.execute('''
             SELECT id, rm_aluno, nome_aluno, remetente, mensagem, data_envio, lida 
             FROM mensagens_chat 
-            WHERE rm_aluno = %s 
-            ORDER BY id ASC;
+            WHERE rm_aluno = %s ORDER BY id ASC;
         ''', (rm,))
         msgs = cursor.fetchall()
 
@@ -224,12 +230,10 @@ def buscar_mensagens_aluno(rm):
         if marcar_lida and msgs:
             outro_remetente = 'SECRETARIA' if origem == 'ALUNO' else 'ALUNO'
             cursor.execute('''
-                UPDATE mensagens_chat 
-                SET lida = TRUE 
+                UPDATE mensagens_chat SET lida = TRUE 
                 WHERE rm_aluno = %s AND remetente = %s AND lida = FALSE;
             ''', (rm, outro_remetente))
             conn.commit()
-
         cursor.close()
         conn.close()
         return jsonify(msgs)
@@ -242,14 +246,9 @@ def listar_conversas_secretaria():
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute('''
-            SELECT 
-                rm_aluno, 
-                MAX(nome_aluno) as nome_aluno, 
-                MAX(data_envio) as ultima_msg_data,
-                COUNT(CASE WHEN remetente = 'ALUNO' AND lida = FALSE THEN 1 END) as nao_lidas
-            FROM mensagens_chat
-            GROUP BY rm_aluno
-            ORDER BY MAX(id) DESC;
+            SELECT rm_aluno, MAX(nome_aluno) as nome_aluno, MAX(data_envio) as ultima_msg_data,
+                   COUNT(CASE WHEN remetente = 'ALUNO' AND lida = FALSE THEN 1 END) as nao_lidas
+            FROM mensagens_chat GROUP BY rm_aluno ORDER BY MAX(id) DESC;
         ''')
         conversas = cursor.fetchall()
         cursor.close()
@@ -258,30 +257,21 @@ def listar_conversas_secretaria():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# ==========================================
-# ROTAS DO SISTEMA PRINCIPAL
-# ==========================================
-
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
+    limpar_registros_antigos() # Roda a limpeza automática silenciosamente ao abrir a página
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        # Traz nome_item como "nome" para facilitar no JS
         cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
         itens = cursor.fetchall()
-        
         for item in itens:
             fotos = []
             if item.get('fotos_json'):
-                try:
-                    fotos = json.loads(item['fotos_json'])
-                except:
-                    fotos = []
-            if not fotos and item.get('foto'):
-                fotos = [item['foto']]
+                try: fotos = json.loads(item['fotos_json'])
+                except: fotos = []
+            if not fotos and item.get('foto'): fotos = [item['foto']]
             item['fotos'] = fotos
-            
         cursor.close()
         conn.close()
         return jsonify(itens)
@@ -300,7 +290,7 @@ def cadastrar_item():
     status = data.get('status', 'DISPONÍVEL')
 
     if not nome or not descricao or not data_enc or not local:
-        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+        return jsonify({"success": False, "message": "Preencha todos!"}), 400
 
     foto_capa = fotos[0] if len(fotos) > 0 else ''
     fotos_json_str = json.dumps(fotos)
@@ -322,9 +312,7 @@ def cadastrar_item():
             sim = calcular_similaridade(nome + " " + descricao, p.get('descricao', ''))
             if mesma_cat or sim >= 2:
                 cursor.execute('''
-                    UPDATE mural_perdidos 
-                    SET status = 'LOCALIZADO', item_encontrado_id = %s 
-                    WHERE id = %s;
+                    UPDATE mural_perdidos SET status = 'LOCALIZADO', item_encontrado_id = %s WHERE id = %s;
                 ''', (novo_id, p['id']))
 
         conn.commit()
@@ -355,8 +343,7 @@ def cadastrar_aviso_mural():
     categoria = (data.get('categoria') or 'OUTROS').strip()
     descricao = (data.get('descricao') or '').strip()
 
-    if not nome or not rm or not descricao:
-        return jsonify({"success": False, "message": "Preencha Nome, RM e Descrição do que perdeu!"}), 400
+    if not nome or not rm or not descricao: return jsonify({"success": False, "message": "Preencha Nome, RM e Descrição!"}), 400
 
     try:
         conn = get_db_connection()
@@ -364,8 +351,7 @@ def cadastrar_aviso_mural():
 
         cursor.execute('''
             SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status 
-            FROM itens 
-            WHERE status = 'DISPONÍVEL';
+            FROM itens WHERE status = 'DISPONÍVEL';
         ''')
         disponiveis = cursor.fetchall()
 
@@ -376,12 +362,9 @@ def cadastrar_aviso_mural():
             if sim >= 1 or cat_match:
                 fotos = []
                 if item.get('fotos_json'):
-                    try:
-                        fotos = json.loads(item['fotos_json'])
-                    except:
-                        fotos = []
-                if not fotos and item.get('foto'):
-                    fotos = [item['foto']]
+                    try: fotos = json.loads(item['fotos_json'])
+                    except: fotos = []
+                if not fotos and item.get('foto'): fotos = [item['foto']]
                 item['fotos'] = fotos
                 matches.append(item)
 
@@ -399,10 +382,7 @@ def cadastrar_aviso_mural():
         conn.close()
 
         return jsonify({
-            "success": True,
-            "aviso_id": aviso_id,
-            "matches_encontrados": matches,
-            "message": "Aviso registrado no Mural com sucesso!"
+            "success": True, "aviso_id": aviso_id, "matches_encontrados": matches, "message": "Aviso registrado no Mural!"
         })
     except Exception as e:
         return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
@@ -414,8 +394,7 @@ def checar_notificacoes(rm):
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute('''
             SELECT m.id as mural_id, m.descricao as pedido_aluno, i.id as item_id, i.nome_item as item_nome, i.local_encontrado
-            FROM mural_perdidos m
-            JOIN itens i ON m.item_encontrado_id = i.id
+            FROM mural_perdidos m JOIN itens i ON m.item_encontrado_id = i.id
             WHERE m.rm_aluno = %s AND m.status = 'LOCALIZADO' AND i.status = 'DISPONÍVEL';
         ''', (rm,))
         notificacoes = cursor.fetchall()
@@ -432,41 +411,24 @@ def solicitar_item():
     nome = (data.get('nome') or '').strip()
     rm = str(data.get('rm') or '').strip()
 
-    if not item_id or not nome or not rm:
-        return jsonify({"success": False, "message": "Nome e RM são obrigatórios!"}), 400
+    if not item_id or not nome or not rm: return jsonify({"success": False, "message": "Nome e RM obrigatórios!"}), 400
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
         cursor.execute("SELECT id, status FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
 
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado no banco de dados."}), 404
+        if not item: return jsonify({"success": False, "message": "Item não encontrado."}), 404
 
         status_atual = (item['status'] or 'DISPONÍVEL').upper()
-        if status_atual != 'DISPONÍVEL':
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
+        if status_atual != 'DISPONÍVEL': return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
 
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s
-            WHERE id = %s;
-        ''', (nome, rm, item_id))
-
+        cursor.execute('''UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s WHERE id = %s;''', (nome, rm, item_id))
         conn.commit()
         cursor.close()
         conn.close()
-
-        return jsonify({
-            "success": True, 
-            "message": "Solicitação realizada com sucesso! Compareça à secretaria da ETEC para retirar o item."
-        })
+        return jsonify({"success": True, "message": "Solicitação realizada com sucesso! Compareça à secretaria."})
     except Exception as e:
         return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
 
@@ -491,16 +453,12 @@ def localizar_item(item_id):
         cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, status, solicitado_por, rm_aluno FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
 
-        if not item:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Item não encontrado!"}), 404
+        if not item: return jsonify({"success": False, "message": "Item não encontrado!"}), 404
 
         if (item['status'] or '').upper() == 'ENTREGUE':
             cursor.execute("SELECT retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel FROM entregues WHERE item_id = %s ORDER BY id DESC LIMIT 1;", (item_id,))
             dados_entrega = cursor.fetchone()
-            if dados_entrega:
-                item['entrega'] = dados_entrega
+            if dados_entrega: item['entrega'] = dados_entrega
 
         cursor.close()
         conn.close()
@@ -525,29 +483,20 @@ def atualizar_item(item_id):
         
         if descricao and data_enc and local:
             if fotos is not None and len(fotos) > 0:
-                foto_capa = fotos[0]
-                fotos_json_str = json.dumps(fotos)
                 cursor.execute('''
-                    UPDATE itens
-                    SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s
-                    WHERE id = %s;
-                ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
+                    UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s WHERE id = %s;
+                ''', (nome, descricao, categoria, data_enc, local, fotos[0], json.dumps(fotos), status, item_id))
             else:
                 cursor.execute('''
-                    UPDATE itens
-                    SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s
-                    WHERE id = %s;
+                    UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s WHERE id = %s;
                 ''', (nome, descricao, categoria, data_enc, local, status, item_id))
         else:
             cursor.execute("UPDATE itens SET status = %s WHERE id = %s;", (status, item_id))
 
         if status.upper() == 'ENTREGUE':
-            retirado_por = data.get('retirado_por', 'Não informado')
-            rm_retirante = data.get('rm_retirante', 'Não informado')
-            turma_curso = data.get('turma_curso', '-')
-            data_entrega = data.get('data_entrega', data_enc or datetime.now().strftime("%d/%m/%Y %H:%M"))
+            retirado_por, rm_retirante = data.get('retirado_por', 'Não informado'), data.get('rm_retirante', 'Não informado')
+            turma_curso, data_entrega = data.get('turma_curso', '-'), data.get('data_entrega', data_enc or datetime.now().strftime("%d/%m/%Y %H:%M"))
             func_resp = data.get('funcionario_responsavel', 'Secretaria')
-            
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             cursor.execute('''
                 INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel)
@@ -557,7 +506,7 @@ def atualizar_item(item_id):
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} atualizado com sucesso!"})
+        return jsonify({"success": True, "message": f"Item #{item_id} atualizado!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -566,17 +515,12 @@ def recusar_solicitacao(item_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE itens 
-            SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL
-            WHERE id = %s;
-        ''', (item_id,))
+        cursor.execute('''UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL WHERE id = %s;''', (item_id,))
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Solicitação recusada com sucesso!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": True, "message": "Solicitação recusada."})
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['DELETE'])
 def excluir_item(item_id):
@@ -588,9 +532,8 @@ def excluir_item(item_id):
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} excluído com sucesso!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": True, "message": f"Item #{item_id} excluído!"})
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
 def concluir_doacoes():
@@ -602,9 +545,8 @@ def concluir_doacoes():
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": f"{removidos} item(ns) doado(s) removidos com sucesso!", "removidos": removidos})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": True, "message": f"{removidos} item(ns) removidos!"})
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
