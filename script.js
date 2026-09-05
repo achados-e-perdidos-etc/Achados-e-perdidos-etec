@@ -3,7 +3,6 @@ let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
 let statusAtual = 'TODOS';
-let tempoAtual = 'TODOS';
 let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
@@ -46,13 +45,25 @@ async function carregarCategoriasDinamicamente() {
     } catch (e) { console.error("Erro categorias", e); }
 }
 
+// LÓGICA DE ABAS CORRIGIDA
 function mudarAba(aba) {
     abaAtiva = aba;
-    pararTemporizadorApresentacao();
+    
+    // Se Anúncios estiver rodando, cancela forçadamente antes de trocar a aba
+    if (modoApresentacaoAtivo) {
+        modoApresentacaoAtivo = false;
+        pararTemporizadorApresentacao();
+        const btn = document.getElementById('btnModoApresentacao');
+        btn.classList.remove('border-red-500', 'text-red-500');
+        btn.querySelector('span').innerText = "Anúncios";
+        btn.querySelector('i').className = "fas fa-play text-red-500";
+    }
+
     const catScreen = document.getElementById('catalogScreen');
     const muralScreen = document.getElementById('muralScreen');
     const apScreen = document.getElementById('apresentacaoScreen');
     const detScreen = document.getElementById('detailScreen');
+
     const btnCat = document.getElementById('tabBtnCatalogo');
     const btnMural = document.getElementById('tabBtnMural');
 
@@ -136,7 +147,6 @@ function limparBusca() {
 }
 
 function filtrarStatus(status) { statusAtual = status; limiteItensExibidos = 12; renderizarItens(); }
-function filtrarTempo(tempo) { tempoAtual = tempo; limiteItensExibidos = 12; renderizarItens(); }
 
 function moveIndicator(element) {
     const indicator = document.getElementById('catIndicator');
@@ -162,37 +172,24 @@ function filtrarCategoria(cat, btnElement) {
 
 function normalizarStatus(st) { return (st || 'DISPONÍVEL').toUpperCase() === 'GUARDADO' ? 'DISPONÍVEL' : (st || 'DISPONÍVEL').toUpperCase(); }
 
-function parseDateBR(dateStr) {
-    if(!dateStr) return new Date();
-    const parts = dateStr.split(' ')[0].split('/'); 
-    if(parts.length >= 3) return new Date(parts[2], parts[1] - 1, parts[0]);
-    return new Date();
-}
-
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     const btnMais = document.getElementById('btnCarregarMais');
     if (!grid) return;
     grid.innerHTML = '';
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
     const filtrados = todosItens.filter(item => {
-        const cat = categoriaAtual === 'TODOS' || (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
-        const st = statusAtual === 'TODOS' || normalizarStatus(item.status) === normalizarStatus(statusAtual);
+        const atendeCategoria = categoriaAtual === 'TODOS' || (item.categoria && item.categoria.toUpperCase() === categoriaAtual);
+        const stUpper = normalizarStatus(item.status);
+        const stFiltro = normalizarStatus(statusAtual);
+        const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
         
-        let atendeTempo = true;
-        if(tempoAtual !== 'TODOS') {
-            const itemDate = parseDateBR(item.txt_data);
-            const diffDays = Math.ceil(Math.abs(today - itemDate) / (1000 * 60 * 60 * 24));
-            if (tempoAtual === 'HOJE') atendeTempo = diffDays <= 1;
-            else if (tempoAtual === '7DIAS') atendeTempo = diffDays <= 7;
-            else if (tempoAtual === '30DIAS') atendeTempo = diffDays <= 30;
-        }
-
-        const nb = !termoBusca || (item.nome || '').toLowerCase().includes(termoBusca) || (item.txt_descricao || '').toLowerCase().includes(termoBusca) || (item.txt_local || '').toLowerCase().includes(termoBusca);
-        return cat && st && atendeTempo && nb;
+        const nomeStr = (item.nome || '').toLowerCase();
+        const descStr = (item.txt_descricao || '').toLowerCase();
+        const local = (item.txt_local || '').toLowerCase();
+        
+        const atendeBusca = !termoBusca || nomeStr.includes(termoBusca) || descStr.includes(termoBusca) || local.includes(termoBusca);
+        return atendeCategoria && atendeStatus && atendeBusca;
     });
 
     if (filtrados.length === 0) {
@@ -298,7 +295,7 @@ function voltarParaCatalogo() {
     else document.getElementById('catalogScreen')?.classList.remove('hidden');
 }
 
-// MODO APRESENTAÇÃO
+// LÓGICA DE ANÚNCIOS CORRIGIDA
 function atualizarItensApresentacao() {
     apresentacaoItens = todosItens.filter(i => { const st = normalizarStatus(i.status); return st === 'DISPONÍVEL' || st === 'SOLICITADO' || st === 'PARA DOAÇÃO'; });
     if (apresentacaoItens.length === 0) apresentacaoItens = todosItens;
@@ -314,20 +311,48 @@ function alternarModoApresentacao() {
 
     if (modoApresentacaoAtivo) {
         atualizarItensApresentacao();
-        if (apresentacaoItens.length === 0) return alert("Nenhum item para apresentar.");
-        catScreen.classList.add('hidden'); muralScreen.classList.add('hidden'); detScreen.classList.add('hidden'); apScreen.classList.remove('hidden');
-        btn.classList.add('border-red-500', 'text-red-500'); btn.querySelector('span').innerText = "Parar"; btn.querySelector('i').className = "fas fa-stop text-red-500";
-        apresentacaoIndice = 0; exibirItemApresentacao(apresentacaoIndice); iniciarTemporizadorApresentacao();
+        if (apresentacaoItens.length === 0) {
+            modoApresentacaoAtivo = false;
+            return alert("Nenhum item para anunciar no momento.");
+        }
+        
+        // Esconde qualquer aba que estiver ativa
+        catScreen.classList.add('hidden'); 
+        muralScreen.classList.add('hidden'); 
+        detScreen.classList.add('hidden'); 
+        
+        // Mostra a tela de Anúncios
+        apScreen.classList.remove('hidden');
+        
+        btn.classList.add('border-red-500', 'text-red-500'); 
+        btn.querySelector('span').innerText = "Parar"; 
+        btn.querySelector('i').className = "fas fa-stop text-red-500";
+        
+        apresentacaoIndice = 0; 
+        exibirItemApresentacao(apresentacaoIndice); 
+        iniciarTemporizadorApresentacao();
     } else {
-        pararTemporizadorApresentacao(); apScreen.classList.add('hidden');
-        if (abaAtiva === 'mural') muralScreen.classList.remove('hidden'); else catScreen.classList.remove('hidden');
-        btn.classList.remove('border-red-500', 'text-red-500'); btn.querySelector('span').innerText = "Apresentação"; btn.querySelector('i').className = "fas fa-play text-red-500";
+        pararTemporizadorApresentacao(); 
+        apScreen.classList.add('hidden');
+        detScreen.classList.add('hidden');
+        
+        // Restaura a tela original que o usuário estava
+        if (abaAtiva === 'mural') {
+            muralScreen.classList.remove('hidden');
+        } else {
+            catScreen.classList.remove('hidden');
+        }
+        
+        btn.classList.remove('border-red-500', 'text-red-500'); 
+        btn.querySelector('span').innerText = "Anúncios"; 
+        btn.querySelector('i').className = "fas fa-play text-red-500";
     }
 }
 
 function exibirItemApresentacao(idx) {
     if (apresentacaoItens.length === 0) return;
     const item = apresentacaoItens[idx];
+
     const imgEl = document.getElementById('apresentacaoImg');
     const placeholderEl = document.getElementById('apresentacaoPlaceholder');
     const tituloEl = document.getElementById('apresentacaoTitulo');
@@ -530,13 +555,11 @@ async function enviarMensagemChat(e) {
     } catch (err) {}
 }
 
-// SOLICITAÇÃO COM PROVA DE PROPRIEDADE
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
     if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
     if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
-    document.getElementById('solicitaProva').value = '';
     document.getElementById('solicitaMsgErro').classList.add('hidden');
     document.getElementById('modalSolicitacao').classList.remove('hidden');
 }
@@ -546,17 +569,14 @@ function fecharModalSolicitacao() { document.getElementById('modalSolicitacao').
 async function enviarSolicitacao() {
     const nome = document.getElementById('solicitaNome').value.trim();
     const rm = document.getElementById('solicitaRM').value.trim();
-    const prova = document.getElementById('solicitaProva').value.trim();
     const erroEl = document.getElementById('solicitaMsgErro');
     const btn = document.getElementById('btnConfirmarSolicitacao');
-    
-    if (!nome || !rm || !prova) { erroEl.innerText = "Preencha o Nome, RM e a Prova de Propriedade!"; erroEl.classList.remove('hidden'); return; }
+    if (!nome || !rm) { erroEl.innerText = "Preencha tudo!"; erroEl.classList.remove('hidden'); return; }
     btn.disabled = true; btn.innerHTML = `Enviando...`;
-    
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: itemSelecionado.id, nome, rm, prova })
+            body: JSON.stringify({ id: itemSelecionado.id, nome, rm })
         });
         const res = await response.json();
         if (response.ok && res.success) {
@@ -567,7 +587,7 @@ async function enviarSolicitacao() {
             carregarItensDaAPI();
         } else { erroEl.innerText = res.message; erroEl.classList.remove('hidden'); }
     } catch (err) { erroEl.innerText = "Erro."; erroEl.classList.remove('hidden'); } 
-    finally { btn.disabled = false; btn.innerHTML = `Confirmar Pedido`; }
+    finally { btn.disabled = false; btn.innerHTML = `Confirmar`; }
 }
 
 window.onload = () => {
