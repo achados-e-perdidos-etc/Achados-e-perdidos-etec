@@ -21,19 +21,6 @@ Muitos alunos perdem pertences no ambiente escolar e têm dificuldade em encontr
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
-
-| Camada | Tecnologia |
-|---|---|
-| Front-end | HTML, CSS, JavaScript |
-| Back-end (API) | Python · Flask · Flask-CORS |
-| Banco de dados | PostgreSQL (Neon) |
-| App Desktop | Python · Tkinter |
-| Deploy API | Render |
-| Dependências | `psycopg2`, `gunicorn`, `requests` |
-
----
-
 ## 🗂️ Estrutura do Projeto
 
 ```
@@ -46,45 +33,6 @@ Muitos alunos perdem pertences no ambiente escolar e têm dificuldade em encontr
 ├── requirements.txt        # Dependências Python
 └── logo.png                # Logo da escola
 ```
-
----
-
-## 🚀 Como Executar Localmente
-
-### Pré-requisitos
-- Python 3.10+
-- PostgreSQL ou conta no [Neon](https://neon.tech)
-
-### 1. Clone o repositório
-```bash
-git clone https://github.com/seu-usuario/Achados-e-perdidos-etec.git
-cd Achados-e-perdidos-etec
-```
-
-### 2. Instale as dependências
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure a variável de ambiente
-```bash
-export DATABASE_URL="sua_url_de_conexao_neon"
-```
-
-### 4. Inicie o servidor
-```bash
-python server.py
-```
-
-### 5. Acesse no navegador
-```
-http://localhost:5000
-```
-
-> Para usar o app desktop da secretaria, execute:
-> ```bash
-> python desktop_secretaria.py
-> ```
 
 ---
 
@@ -107,11 +55,6 @@ http://localhost:5000
 2. Pesquise seu objeto pela descrição ou categoria
 3. Clique em **"Solicitar retirada"** e informe seu nome e RM
 4. Compareça à secretaria para retirar o item
-
-### Secretaria
-1. Abra o app desktop ou acesse o painel web com login
-2. Cadastre novos objetos encontrados com foto e descrição
-3. Gerencie os status dos itens conforme as retiradas ocorrem
 
 ---
 
