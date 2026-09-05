@@ -5,6 +5,8 @@ import base64
 from datetime import datetime
 import threading
 import time
+import os
+import webbrowser
 
 API_URL = "https://achados-etec-api.onrender.com"
 
@@ -63,10 +65,8 @@ class AdminDesktopApp:
     def validar_login(self):
         email_digitado = self.txt_login_email.get().strip()
         senha_digitada = self.txt_login_senha.get().strip()
-
         email_real = base64.b64decode(_AUTH_EMAIL_HASH).decode('utf-8')
         senha_real = base64.b64decode(_AUTH_PASS_HASH).decode('utf-8')
-
         if email_digitado == email_real and senha_digitada == senha_real:
             self.login_frame.destroy()
             self.iniciar_painel_principal()
@@ -82,11 +82,10 @@ class AdminDesktopApp:
                     self.cb_categoria["values"] = cats
                     if self.cb_categoria.get() not in cats:
                         self.cb_categoria.current(0)
-        except Exception as e:
-            print("Erro ao puxar categorias:", e)
+        except Exception as e: print("Erro ao puxar categorias:", e)
 
     def adicionar_nova_categoria(self):
-        nova_cat = simpledialog.askstring("Nova Categoria", "Digite o nome da nova categoria (Ex: FERRAMENTAS):", parent=self.root)
+        nova_cat = simpledialog.askstring("Nova Categoria", "Digite o nome da nova categoria:", parent=self.root)
         if nova_cat:
             nova_cat = nova_cat.strip().upper()
             try:
@@ -95,21 +94,15 @@ class AdminDesktopApp:
                     messagebox.showinfo("Sucesso", f"Categoria '{nova_cat}' adicionada!")
                     self.carregar_categorias_api()
                     self.cb_categoria.set(nova_cat)
-                else:
-                    messagebox.showerror("Erro", "Falha ao adicionar categoria.")
-            except Exception as e:
-                messagebox.showerror("Erro de Conexão", str(e))
+            except Exception as e: messagebox.showerror("Erro de Conexão", str(e))
 
     def verificar_regra_eletronicos(self, event):
-        cat = self.cb_categoria.get()
-        if cat == "ELETRÔNICOS":
-            desc = self.txt_descricao.get()
-            if "somente os pais" not in desc.lower():
-                self.txt_descricao.insert(tk.END, "\n(Atenção: Somente os pais ou responsáveis podem retirar na secretaria).")
+        if self.cb_categoria.get() == "ELETRÔNICOS" and "somente os pais" not in self.txt_descricao.get().lower():
+            self.txt_descricao.insert(tk.END, "\n(Atenção: Somente os pais ou responsáveis podem retirar na secretaria).")
 
     def iniciar_painel_principal(self):
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
-        self.root.geometry("1280x740")
+        self.root.geometry("1300x740")
         self.root.resizable(True, True)
 
         header = tk.Frame(self.root, bg="#0f172a", height=70)
@@ -143,8 +136,7 @@ class AdminDesktopApp:
         self.cb_categoria.pack(side="left")
         self.cb_categoria.bind("<<ComboboxSelected>>", self.verificar_regra_eletronicos)
         
-        btn_add_cat = tk.Button(frame_cat, text="+", command=self.adicionar_nova_categoria, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_add_cat.pack(side="left", padx=(5,0))
+        tk.Button(frame_cat, text="+", command=self.adicionar_nova_categoria, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2").pack(side="left", padx=(5,0))
 
         tk.Label(self.form_frame, text="Data Encontrado:", bg="#1e1e2e", fg="#e2e8f0").grid(row=6, column=0, sticky="w", pady=(5,2))
         self.txt_data = tk.Entry(self.form_frame, width=32, font=("Helvetica", 11), bg="#334155", fg="#ffffff", insertbackground="white")
@@ -164,12 +156,8 @@ class AdminDesktopApp:
         
         btn_foto_frame = tk.Frame(self.form_frame, bg="#1e1e2e")
         btn_foto_frame.grid(row=13, column=0, columnspan=2, sticky="w", pady=(0, 10))
-        
-        btn_foto = tk.Button(btn_foto_frame, text="📷 Selecionar...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        btn_foto.pack(side="left", padx=(0, 5))
-
-        btn_limpar_fotos = tk.Button(btn_foto_frame, text="🗑 Limpar", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2")
-        btn_limpar_fotos.pack(side="left")
+        tk.Button(btn_foto_frame, text="📷 Selecionar...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2").pack(side="left", padx=(0, 5))
+        tk.Button(btn_foto_frame, text="🗑 Limpar", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2").pack(side="left")
 
         self.lbl_status_foto = tk.Label(self.form_frame, text="0 / 4 fotos", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 9, "italic"))
         self.lbl_status_foto.grid(row=14, column=0, columnspan=2, sticky="w", pady=(0, 10))
@@ -191,41 +179,210 @@ class AdminDesktopApp:
         top_actions = tk.Frame(self.table_frame, bg="#1e1e2e")
         top_actions.pack(fill="x", pady=(0, 5))
 
-        self.btn_chat = tk.Button(top_actions, text="💬 Abrir Chat com Alunos", command=self.abrir_janela_chat, bg="#ec4899", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4)
-        self.btn_chat.pack(side="left", padx=(0, 5))
-
-        self.btn_alternar_tabela = tk.Button(top_actions, text="🔄 Ver Tabela: HISTÓRICO DE ENTREGAS", command=self.alternar_modo_tabela, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4)
+        tk.Button(top_actions, text="💬 Chat Alunos", command=self.abrir_janela_chat, bg="#ec4899", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4, padx=5).pack(side="left", padx=(0, 5))
+        
+        self.btn_alternar_tabela = tk.Button(top_actions, text="🔄 Ver Tabela: HISTÓRICO DE ENTREGAS", command=self.alternar_modo_tabela, bg="#3b82f6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2", pady=4, padx=5)
         self.btn_alternar_tabela.pack(side="right")
 
         self.tree = ttk.Treeview(self.table_frame, show="headings", height=15)
         self.tree.pack(fill="both", expand=True)
-
         self.tree.bind("<Double-1>", lambda event: self.preparar_edicao_item() if self.tabela_visualizada == "itens" else None)
 
         actions_frame = tk.Frame(self.table_frame, bg="#1e1e2e")
         actions_frame.pack(fill="x", pady=(10, 0))
 
+        # BOTÃO DASHBOARD (NOVO)
+        tk.Button(actions_frame, text="📊 Dashboard", command=self.abrir_dashboard, bg="#8b5cf6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2").pack(side="left", expand=True, fill="x", padx=(0, 2))
+
         self.btn_editar = tk.Button(actions_frame, text="✏ Editar", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        self.btn_editar.pack(side="left", expand=True, fill="x", padx=(0, 2))
+        self.btn_editar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
         self.btn_localizar = tk.Button(actions_frame, text="🔍 Localizar", command=self.abrir_janela_localizar, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         self.btn_localizar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
-        self.btn_recusar = tk.Button(actions_frame, text="❌ Recusar Pedido", command=self.recusar_solicitacao, bg="#f97316", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
+        self.btn_recusar = tk.Button(actions_frame, text="❌ Recusar", command=self.recusar_solicitacao, bg="#f97316", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         self.btn_recusar.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
         self.btn_excluir = tk.Button(actions_frame, text="🗑 Excluir", command=self.excluir_item, bg="#dc2626", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
         self.btn_excluir.pack(side="left", expand=True, fill="x", padx=(2, 2))
 
-        self.btn_doacao = tk.Button(actions_frame, text="🎁 Limpar Doações", command=self.concluir_doacoes, bg="#9333ea", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
-        self.btn_doacao.pack(side="left", expand=True, fill="x", padx=(2, 2))
-
-        btn_refresh = tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9), relief="flat", cursor="hand2")
-        btn_refresh.pack(side="left", expand=True, fill="x", padx=(2, 0))
+        tk.Button(actions_frame, text="🔄 Atualizar", command=self.carregar_tabela, bg="#334155", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2").pack(side="left", expand=True, fill="x", padx=(2, 0))
 
         self.carregar_categorias_api()
         self.configurar_colunas()
         self.carregar_tabela()
+
+    # ==============================================================
+    # JANELA DASHBOARD (ESTATÍSTICAS)
+    # ==============================================================
+    def abrir_dashboard(self):
+        dash = tk.Toplevel(self.root)
+        dash.title("Dashboard - Estatísticas Gerais")
+        dash.geometry("500x550")
+        dash.configure(bg="#1e1e2e")
+        dash.transient(self.root)
+
+        tk.Label(dash, text="📊 Resumo e Estatísticas", font=("Helvetica", 14, "bold"), bg="#1e1e2e", fg="#38bdf8").pack(pady=(20, 15))
+
+        frame_cards = tk.Frame(dash, bg="#1e1e2e")
+        frame_cards.pack(fill="x", padx=20)
+
+        try:
+            res = requests.get(f"{API_URL}/api/estatisticas", timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                t_itens = data.get("total_itens", 0)
+                t_entregues = data.get("total_entregues", 0)
+                t_doacoes = data.get("total_doacoes", 0)
+
+                # Cards Superiores
+                def criar_card(parent, titulo, valor, cor):
+                    f = tk.Frame(parent, bg="#334155", bd=1, relief="ridge", pady=10)
+                    f.pack(side="left", expand=True, fill="both", padx=5)
+                    tk.Label(f, text=titulo, font=("Helvetica", 9, "bold"), bg="#334155", fg="#cbd5e1").pack()
+                    tk.Label(f, text=str(valor), font=("Helvetica", 20, "bold"), bg="#334155", fg=cor).pack()
+
+                criar_card(frame_cards, "Total Acervo", t_itens, "#38bdf8")
+                criar_card(frame_cards, "Devolvidos", t_entregues, "#4ade80")
+                criar_card(frame_cards, "Doações", t_doacoes, "#c084fc")
+
+                tk.Label(dash, text="🏆 Top Categorias Encontradas:", font=("Helvetica", 11, "bold"), bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(25, 10))
+
+                # Barras Horizontais Simplificadas (Tkinter Native)
+                frame_barras = tk.Frame(dash, bg="#1e1e2e")
+                frame_barras.pack(fill="both", expand=True, padx=25)
+
+                categorias = data.get("categorias", [])
+                max_val = max([c['qtd'] for c in categorias]) if categorias else 1
+
+                for c in categorias:
+                    f_linha = tk.Frame(frame_barras, bg="#1e1e2e")
+                    f_linha.pack(fill="x", pady=4)
+                    
+                    lbl_cat = tk.Label(f_linha, text=c['categoria'], font=("Helvetica", 9), bg="#1e1e2e", fg="#94a3b8", width=15, anchor="e")
+                    lbl_cat.pack(side="left", padx=(0,10))
+                    
+                    # Calcula o tamanho da barra
+                    largura = int((c['qtd'] / max_val) * 250)
+                    barra = tk.Frame(f_linha, bg="#ef4444", width=largura, height=20)
+                    barra.pack(side="left")
+                    
+                    tk.Label(f_linha, text=str(c['qtd']), font=("Helvetica", 9, "bold"), bg="#1e1e2e", fg="#ffffff").pack(side="left", padx=5)
+
+            else:
+                tk.Label(dash, text="Erro ao carregar dados.", bg="#1e1e2e", fg="red").pack()
+        except Exception as e:
+            tk.Label(dash, text=f"Erro: {e}", bg="#1e1e2e", fg="red").pack()
+
+    # ==============================================================
+    # ETIQUETAS E LOCALIZAR
+    # ==============================================================
+    def gerar_etiqueta(self, item_id, nome, cat, data):
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; display: flex; justify-content: center; padding-top: 50px; background-color: #f1f1f1;">
+            <div style="width: 350px; background-color: #fff; border: 3px dashed #000; padding: 20px; text-align: center; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <h3 style="margin: 0; color: #333; text-transform: uppercase;">ETEC Profº José Ignácio</h3>
+                <p style="margin: 0; font-size: 10px; color: #666;">Setor de Achados & Perdidos</p>
+                <hr style="border: 1px solid #ccc; margin: 15px 0;">
+                <h1 style="font-size: 65px; margin: 5px 0; color: #dc2626;">#{item_id}</h1>
+                <h2 style="margin: 10px 0 5px 0; font-size: 22px;">{nome}</h2>
+                <p style="margin: 0; font-size: 16px; color: #555; font-weight: bold;">{cat}</p>
+                <p style="margin: 10px 0 0 0; font-size: 14px; color: #777;">Registrado em: {data}</p>
+            </div>
+            <script>
+                setTimeout(() => window.print(), 500);
+            </script>
+        </body>
+        </html>
+        """
+        filepath = os.path.abspath(f"etiqueta_{item_id}.html")
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(html)
+            webbrowser.open('file://' + filepath)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Não foi possível gerar a etiqueta: {e}")
+
+    def abrir_janela_localizar(self):
+        top = tk.Toplevel(self.root)
+        top.title("Localizar Item / Dar Baixa")
+        top.geometry("520x650")
+        top.configure(bg="#1e1e2e")
+        top.transient(self.root)
+        top.grab_set()
+
+        tk.Label(top, text="Digite o ID do Item:", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(15, 5))
+        frame_busca = tk.Frame(top, bg="#1e1e2e")
+        frame_busca.pack(pady=5)
+        txt_busca_id = tk.Entry(frame_busca, font=("Helvetica", 12, "bold"), bg="#334155", fg="white", justify="center", width=12)
+        txt_busca_id.pack(side="left", padx=5)
+        txt_busca_id.focus()
+        lbl_resultado = tk.Label(top, text="Aguardando ID...", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10), justify="left", wraplength=460)
+        lbl_resultado.pack(pady=10)
+        options_frame = tk.Frame(top, bg="#1e1e2e")
+
+        def buscar():
+            item_id = txt_busca_id.get().strip()
+            if not item_id.isdigit(): return
+            try:
+                res = requests.get(f"{API_URL}/api/itens/localizar/{item_id}", timeout=10)
+                if res.status_code == 200:
+                    data = res.json().get("item", {})
+                    st = data.get("status", "DISPONÍVEL")
+                    text = f"📦 ID #{data.get('id')} - {data.get('nome')}\nDesc: {data.get('txt_descricao')}\nCat: {data.get('categoria')} | Local: {data.get('txt_local')}\nStatus: {st}\n"
+                    
+                    if st.upper() == 'SOLICITADO':
+                        text += f"Solicitante: {data.get('solicitado_por')} (RM: {data.get('rm_aluno')})\n"
+                        prova = data.get('prova_propriedade')
+                        if prova:
+                            text += f"\n🔒 PROVA DE PROPRIEDADE INFORMADA:\n\"{prova}\"\n"
+
+                    lbl_resultado.config(text=text, fg="#ffffff")
+                    for child in options_frame.winfo_children(): child.destroy()
+                    options_frame.pack(fill="x", padx=20, pady=10)
+                    
+                    # NOVO BOTÃO DE ETIQUETA
+                    tk.Button(options_frame, text="🖨️ Imprimir Etiqueta de Identificação", command=lambda: self.gerar_etiqueta(data.get('id'), data.get('nome'), data.get('categoria'), data.get('txt_data')), bg="#475569", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6).pack(fill="x", pady=3)
+                    
+                    if st.upper() != 'ENTREGUE':
+                        tk.Button(options_frame, text="✅ Dar Baixa como 'Entregue ao Dono'", command=lambda: self.dar_baixa_entregue(data.get('id'), data.get('nome'), top), bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6).pack(fill="x", pady=3)
+                else:
+                    lbl_resultado.config(text="❌ Item não encontrado!", fg="#f87171")
+                    options_frame.pack_forget()
+            except Exception as e: messagebox.showerror("Erro", str(e), parent=top)
+
+        tk.Button(frame_busca, text="🔍 Buscar", command=buscar, bg="#0284c7", fg="white", font=("Helvetica", 10, "bold"), relief="flat").pack(side="left")
+
+    def dar_baixa_entregue(self, item_id, nome_desc, parent_top):
+        top_baixa = tk.Toplevel(parent_top)
+        top_baixa.title(f"Baixa #{item_id}")
+        top_baixa.geometry("380x350")
+        top_baixa.configure(bg="#1e1e2e")
+        top_baixa.transient(parent_top)
+        top_baixa.grab_set()
+
+        tk.Label(top_baixa, text="Nome Completo do Retirante:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(15, 2))
+        txt_nome = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white")
+        txt_nome.pack(fill="x", padx=25)
+
+        tk.Label(top_baixa, text="RM / Documento:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
+        txt_rm = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white")
+        txt_rm.pack(fill="x", padx=25)
+
+        def salvar_baixa():
+            n, r = txt_nome.get().strip(), txt_rm.get().strip()
+            if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=top_baixa)
+            try:
+                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "funcionario_responsavel": "Secretaria ETEC"}, timeout=10)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Baixa concluída!", parent=top_baixa)
+                    top_baixa.destroy()
+                    parent_top.destroy()
+                    self.carregar_tabela()
+            except Exception as e: messagebox.showerror("Erro", str(e), parent=top_baixa)
+        tk.Button(top_baixa, text="✔ Confirmar Baixa", command=salvar_baixa, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", pady=8).pack(fill="x", padx=25, pady=20)
 
     # ==============================================================
     # JANELA DE CHAT
@@ -247,7 +404,6 @@ class AdminDesktopApp:
 
         frame_conversas = tk.LabelFrame(self.top_chat, text=" Conversas ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"), width=280)
         frame_conversas.pack(side="left", fill="y", padx=10, pady=10)
-
         self.tree_conversas = ttk.Treeview(frame_conversas, columns=("rm", "nome", "novas"), show="headings", height=15)
         self.tree_conversas.heading("rm", text="RM")
         self.tree_conversas.heading("nome", text="Nome")
@@ -256,27 +412,20 @@ class AdminDesktopApp:
         self.tree_conversas.column("nome", width=120)
         self.tree_conversas.column("novas", width=50, anchor="center")
         self.tree_conversas.pack(fill="both", expand=True)
-
         self.tree_conversas.bind("<<TreeviewSelect>>", self.ao_selecionar_aluno_chat)
-
         tk.Button(frame_conversas, text="🔄 Recarregar Alunos", command=self.carregar_lista_conversas, bg="#334155", fg="white", font=("Helvetica", 8, "bold"), relief="flat").pack(fill="x", pady=5)
 
         frame_mensagens = tk.LabelFrame(self.top_chat, text=" Mensagens ", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 10, "bold"))
         frame_mensagens.pack(side="right", fill="both", expand=True, padx=(0, 10), pady=10)
-
-        self.lbl_aluno_atual = tk.Label(frame_mensagens, text="Selecione um aluno à esquerda para conversar", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10, "bold"))
+        self.lbl_aluno_atual = tk.Label(frame_mensagens, text="Selecione um aluno", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10, "bold"))
         self.lbl_aluno_atual.pack(anchor="w", padx=10, pady=(5, 5))
-
         self.txt_chat_historico = tk.Text(frame_mensagens, bg="#0f172a", fg="#ffffff", font=("Helvetica", 10), state="disabled", wrap="word", padx=10, pady=10)
         self.txt_chat_historico.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-
         frame_input = tk.Frame(frame_mensagens, bg="#1e1e2e")
         frame_input.pack(fill="x", padx=10, pady=(0, 10))
-
         self.txt_chat_resposta = tk.Entry(frame_input, font=("Helvetica", 11), bg="#334155", fg="white", insertbackground="white")
         self.txt_chat_resposta.pack(side="left", fill="x", expand=True, padx=(0, 5))
         self.txt_chat_resposta.bind("<Return>", lambda e: self.enviar_resposta_secretaria())
-
         tk.Button(frame_input, text="Enviar 💬", command=self.enviar_resposta_secretaria, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", cursor="hand2", padx=10).pack(side="right")
 
         self.carregar_lista_conversas()
@@ -338,7 +487,7 @@ class AdminDesktopApp:
         threading.Thread(target=loop, daemon=True).start()
 
     # ==============================================================
-    # DEMAIS FUNÇÕES DO SISTEMA (ESTOQUE, HISTÓRICO)
+    # DEMAIS FUNÇÕES DO SISTEMA
     # ==============================================================
     def alternar_modo_tabela(self):
         if self.tabela_visualizada == "itens":
@@ -349,7 +498,6 @@ class AdminDesktopApp:
             self.btn_localizar.config(state="disabled")
             self.btn_recusar.config(state="disabled")
             self.btn_excluir.config(state="disabled")
-            self.btn_doacao.config(state="disabled")
         else:
             self.tabela_visualizada = "itens"
             self.btn_alternar_tabela.config(text="🔄 Ver Tabela: HISTÓRICO DE ENTREGAS", bg="#3b82f6")
@@ -358,7 +506,6 @@ class AdminDesktopApp:
             self.btn_localizar.config(state="normal")
             self.btn_recusar.config(state="normal")
             self.btn_excluir.config(state="normal")
-            self.btn_doacao.config(state="normal")
         self.configurar_colunas()
         self.carregar_tabela()
 
@@ -373,7 +520,6 @@ class AdminDesktopApp:
             self.tree.heading("local", text="Local")
             self.tree.heading("status", text="Status")
             self.tree.heading("solicitado_por", text="Solicitante")
-
             self.tree.column("id", width=35, anchor="center")
             self.tree.column("nome", width=160)
             self.tree.column("categoria", width=90)
@@ -390,7 +536,6 @@ class AdminDesktopApp:
             self.tree.heading("rm_retirante", text="RM")
             self.tree.heading("turma_curso", text="Turma")
             self.tree.heading("data_entrega", text="Data Retirada")
-
             self.tree.column("id", width=50, anchor="center")
             self.tree.column("item_id", width=50, anchor="center")
             self.tree.column("nome_item", width=140)
@@ -430,16 +575,8 @@ class AdminDesktopApp:
         self.lbl_status_foto.config(text="0 / 4 fotos", fg="#94a3b8")
 
     def salvar_item(self):
-        nome = self.txt_nome.get().strip()
-        descricao = self.txt_descricao.get().strip()
-        categoria = self.cb_categoria.get()
-        data = self.txt_data.get().strip()
-        local = self.txt_local.get().strip()
-        status = self.cb_status.get()
-
-        if not nome or not descricao or not data or not local:
-            return messagebox.showwarning("Atenção", "Preencha Nome, Descrição, Data e Local!")
-
+        nome, descricao, categoria, data, local, status = self.txt_nome.get().strip(), self.txt_descricao.get().strip(), self.cb_categoria.get(), self.txt_data.get().strip(), self.txt_local.get().strip(), self.cb_status.get()
+        if not nome or not descricao or not data or not local: return messagebox.showwarning("Atenção", "Preencha Nome, Descrição, Data e Local!")
         payload = {"nome": nome, "descricao": descricao, "categoria": categoria, "data": data, "local": local, "status": status, "fotos": self.fotos_base64}
         try:
             if self.item_editando_id is None:
@@ -457,10 +594,7 @@ class AdminDesktopApp:
         if self.tabela_visualizada != "itens": return
         selected = self.tree.selection()
         if not selected: return messagebox.showwarning("Atenção", "Selecione um item!")
-        vals = self.tree.item(selected[0], "values")
-        
-        # Como precisamos da descrição completa e fotos, buscamos direto do banco pelo ID
-        item_id = vals[0]
+        item_id = self.tree.item(selected[0], "values")[0]
         try:
             res = requests.get(f"{API_URL}/api/itens/localizar/{item_id}", timeout=10)
             if res.status_code == 200:
@@ -481,75 +615,7 @@ class AdminDesktopApp:
                 self.form_frame.config(text=f" Editando Item #{self.item_editando_id} ", fg="#eab308")
                 self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
                 self.btn_cancelar.grid()
-        except Exception as e:
-            messagebox.showerror("Erro", str(e))
-
-    def abrir_janela_localizar(self):
-        top = tk.Toplevel(self.root)
-        top.title("Localizar Item / Dar Baixa")
-        top.geometry("520x560")
-        top.configure(bg="#1e1e2e")
-        top.transient(self.root)
-        top.grab_set()
-
-        tk.Label(top, text="Digite o ID do Item:", bg="#1e1e2e", fg="#38bdf8", font=("Helvetica", 11, "bold")).pack(pady=(15, 5))
-        frame_busca = tk.Frame(top, bg="#1e1e2e")
-        frame_busca.pack(pady=5)
-        txt_busca_id = tk.Entry(frame_busca, font=("Helvetica", 12, "bold"), bg="#334155", fg="white", justify="center", width=12)
-        txt_busca_id.pack(side="left", padx=5)
-        txt_busca_id.focus()
-        lbl_resultado = tk.Label(top, text="Aguardando ID...", bg="#1e1e2e", fg="#94a3b8", font=("Helvetica", 10), justify="left", wraplength=460)
-        lbl_resultado.pack(pady=10)
-        options_frame = tk.Frame(top, bg="#1e1e2e")
-
-        def buscar():
-            item_id = txt_busca_id.get().strip()
-            if not item_id.isdigit(): return
-            try:
-                res = requests.get(f"{API_URL}/api/itens/localizar/{item_id}", timeout=10)
-                if res.status_code == 200:
-                    data = res.json().get("item", {})
-                    st = data.get("status", "DISPONÍVEL")
-                    text = f"📦 ID #{data.get('id')} - {data.get('nome')}\nDesc: {data.get('txt_descricao')}\nCat: {data.get('categoria')} | Local: {data.get('txt_local')}\nStatus: {st}\n"
-                    lbl_resultado.config(text=text, fg="#ffffff")
-                    for child in options_frame.winfo_children(): child.destroy()
-                    options_frame.pack(fill="x", padx=20, pady=10)
-                    tk.Button(options_frame, text="✅ Dar Baixa como 'Entregue ao Dono'", command=lambda: self.dar_baixa_entregue(data.get('id'), data.get('nome'), top), bg="#16a34a", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6).pack(fill="x", pady=3)
-                else:
-                    lbl_resultado.config(text="❌ Item não encontrado!", fg="#f87171")
-                    options_frame.pack_forget()
-            except Exception as e: messagebox.showerror("Erro", str(e), parent=top)
-
-        tk.Button(frame_busca, text="🔍 Buscar", command=buscar, bg="#0284c7", fg="white", font=("Helvetica", 10, "bold"), relief="flat").pack(side="left")
-
-    def dar_baixa_entregue(self, item_id, nome_desc, parent_top):
-        top_baixa = tk.Toplevel(parent_top)
-        top_baixa.title(f"Baixa #{item_id}")
-        top_baixa.geometry("380x350")
-        top_baixa.configure(bg="#1e1e2e")
-        top_baixa.transient(parent_top)
-        top_baixa.grab_set()
-
-        tk.Label(top_baixa, text="Nome Completo do Retirante:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(15, 2))
-        txt_nome = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white")
-        txt_nome.pack(fill="x", padx=25)
-
-        tk.Label(top_baixa, text="RM / Documento:", bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(5, 2))
-        txt_rm = tk.Entry(top_baixa, font=("Helvetica", 10), bg="#334155", fg="white")
-        txt_rm.pack(fill="x", padx=25)
-
-        def salvar_baixa():
-            n, r = txt_nome.get().strip(), txt_rm.get().strip()
-            if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=top_baixa)
-            try:
-                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "funcionario_responsavel": "Secretaria ETEC"}, timeout=10)
-                if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Baixa concluída!", parent=top_baixa)
-                    top_baixa.destroy()
-                    parent_top.destroy()
-                    self.carregar_tabela()
-            except Exception as e: messagebox.showerror("Erro", str(e), parent=top_baixa)
-        tk.Button(top_baixa, text="✔ Confirmar Baixa", command=salvar_baixa, bg="#16a34a", fg="white", font=("Helvetica", 10, "bold"), relief="flat", pady=8).pack(fill="x", padx=25, pady=20)
+        except Exception as e: messagebox.showerror("Erro", str(e))
 
     def limpar_formulario(self):
         self.item_editando_id = None
