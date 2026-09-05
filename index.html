@@ -58,7 +58,7 @@
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-        <!-- SEÇÃO MODO APRESENTAÇÃO -->
+        <!-- MODO APRESENTAÇÃO -->
         <section id="apresentacaoScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center bg-card border border-color p-3 rounded-2xl">
                 <div class="flex items-center gap-2">
@@ -116,7 +116,7 @@
             </div>
         </section>
 
-        <!-- SEÇÃO: CATÁLOGO -->
+        <!-- CATÁLOGO -->
         <section id="catalogScreen" class="space-y-6">
             <div class="space-y-4">
                 <div class="relative w-full">
@@ -133,7 +133,6 @@
                     </button>
                 </div>
 
-                <!-- FILTRO CATEGORIAS DINÂMICO -->
                 <div>
                     <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
                     <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
@@ -143,32 +142,40 @@
                     </div>
                 </div>
 
-                <!-- FILTRO DE STATUS -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
-                    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
-                    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
-                        <option value="TODOS">TODOS OS STATUS</option>
-                        <option value="DISPONÍVEL">DISPONÍVEL</option>
-                        <option value="SOLICITADO">SOLICITADO</option>
-                        <option value="ENTREGUE">ENTREGUE</option>
-                        <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
-                        <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
-                    </select>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color mt-3">
+                    <div class="w-full sm:w-1/2">
+                        <h3 class="text-[10px] font-bold uppercase text-muted mb-1 ml-1">STATUS DO OBJETO:</h3>
+                        <select id="statusFilter" onchange="filtrarStatus(this.value)" class="w-full bg-card border border-color text-main text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500 transition cursor-pointer">
+                            <option value="TODOS">TODOS OS STATUS</option>
+                            <option value="DISPONÍVEL">DISPONÍVEL</option>
+                            <option value="SOLICITADO">SOLICITADO</option>
+                            <option value="ENTREGUE">ENTREGUE</option>
+                            <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
+                        </select>
+                    </div>
+
+                    <div class="w-full sm:w-1/2">
+                        <h3 class="text-[10px] font-bold uppercase text-muted mb-1 ml-1">ENCONTRADO EM:</h3>
+                        <select id="timeFilter" onchange="filtrarTempo(this.value)" class="w-full bg-card border border-color text-main text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500 transition cursor-pointer">
+                            <option value="TODOS">QUALQUER DATA</option>
+                            <option value="HOJE">SOMENTE HOJE</option>
+                            <option value="7DIAS">ÚLTIMOS 7 DIAS</option>
+                            <option value="30DIAS">ÚLTIMO MÊS</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-        <!-- ... (resto do seu código HTML antes do itemsGrid) ... -->
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             
-            <!-- NOVO BOTÃO DE CARREGAR MAIS ITENS -->
             <div class="mt-6 text-center">
                 <button id="btnCarregarMais" onclick="carregarMaisItens()" class="hidden dynamic-btn font-bold py-3 px-6 rounded-xl text-xs uppercase transition shadow-md">
                     <i class="fas fa-plus mr-1"></i> Carregar Mais Itens
                 </button>
             </div>
         </section>
-        
-        <!-- SEÇÃO: MURAL "PERDI ALGO" -->
+
+        <!-- MURAL "PERDI ALGO" -->
         <section id="muralScreen" class="hidden space-y-6">
             <div class="bg-card border border-color rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
                 <div>
@@ -185,29 +192,23 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-muted uppercase mb-1">Nome:</label>
-                            <input type="text" id="muralNome" required placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                            <input type="text" id="muralNome" required placeholder="digite seu nome" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-muted uppercase mb-1">RM:</label>
                             <input type="number" id="muralRM" required placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
                         </div>
                     </div>
-
                     <div>
                         <label class="block text-xs font-bold text-muted uppercase mb-1">Categoria:</label>
-                        <select id="muralCategoria" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                            <!-- Inseridas dinamicamente via JS -->
-                        </select>
+                        <select id="muralCategoria" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></select>
                     </div>
-
                     <div>
                         <label class="block text-xs font-bold text-muted uppercase mb-1">Descreva o que você perdeu:</label>
-                        <textarea id="muralDescricao" required rows="3" placeholder="Ex: perdi minha garrafinha termica azul no laboratorio..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
+                        <textarea id="muralDescricao" required rows="3" placeholder="Ex: perdi minha garrafa termica azul..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
                     </div>
-
                     <button type="submit" id="btnPublicarMural" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase flex items-center justify-center gap-2">
-                        <i class="fas fa-paper-plane"></i>
-                        <span>Publicar no Mural</span>
+                        <i class="fas fa-paper-plane"></i> <span>Publicar no Mural</span>
                     </button>
                 </form>
             </div>
@@ -282,8 +283,8 @@
                 <div class="flex items-center gap-2.5">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <div>
-                        <h4 class="font-bold text-xs text-main">Secretaria ETEC (Chat Direto)</h4>
-                        <p id="chatSubtitulo" class="text-[10px] text-muted">Tire dúvidas sobre itens perdidos</p>
+                        <h4 class="font-bold text-xs text-main">Secretaria ETEC</h4>
+                        <p id="chatSubtitulo" class="text-[10px] text-muted">Tire dúvidas sobre itens</p>
                     </div>
                 </div>
                 <button onclick="alternarJanelaChat()" class="text-muted hover:text-main text-xs p-1"><i class="fas fa-times"></i></button>
@@ -319,21 +320,37 @@
         </div>
     </div>
 
-    <!-- MODAL DE SOLICITAÇÃO -->
+    <!-- MODAL DE SOLICITAÇÃO (Com Prova de Propriedade) -->
     <div id="modalSolicitacao" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
-                <h3 class="font-bold text-main text-lg"><i class="fas fa-id-card text-red-500 mr-2"></i>Identificação do Aluno</h3>
+                <h3 class="font-bold text-main text-lg"><i class="fas fa-id-card text-red-500 mr-2"></i>Identificação de Propriedade</h3>
                 <button onclick="fecharModalSolicitacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
             </div>
+            
+            <p class="text-[11px] text-muted">Por segurança, precisamos confirmar que o item é seu. Preencha os dados e informe um detalhe que só o dono saberia.</p>
+            
             <div class="space-y-3">
-                <input type="text" id="solicitaNome" placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
-                <input type="number" id="solicitaRM" placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
+                <div class="flex gap-2">
+                    <div class="w-1/2">
+                        <label class="block text-[10px] font-bold text-muted uppercase mb-1">Nome:</label>
+                        <input type="text" id="solicitaNome" placeholder="Seu nome" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-[10px] font-bold text-muted uppercase mb-1">RM:</label>
+                        <input type="number" id="solicitaRM" placeholder="Seu RM" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-muted uppercase mb-1 text-amber-500"><i class="fas fa-lock mr-1"></i> Prova de Propriedade:</label>
+                    <textarea id="solicitaProva" rows="2" placeholder="O que tem no bolso da mochila? Qual a foto de fundo do celular? Qual marca?" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:border-amber-500 outline-none transition"></textarea>
+                </div>
             </div>
-            <div id="solicitaMsgErro" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
+            <div id="solicitaMsgErro" class="hidden text-[11px] text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg text-center font-bold"></div>
+            
             <div class="flex gap-2 pt-2">
-                <button onclick="fecharModalSolicitacao()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button>
-                <button id="btnConfirmarSolicitacao" onclick="enviarSolicitacao()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Confirmar</button>
+                <button onclick="fecharModalSolicitacao()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase hover:text-main">Cancelar</button>
+                <button id="btnConfirmarSolicitacao" onclick="enviarSolicitacao()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Confirmar Pedido</button>
             </div>
         </div>
     </div>
