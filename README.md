@@ -1,67 +1,51 @@
-# 🔍 Achados e Perdidos — ETEC Profº José Ignácio
+# 🔍 Sistema de Achados e Perdidos — ETEC Profº José Ignácio
 
-Sistema web para registro e busca de objetos perdidos na escola, com painel exclusivo para a secretaria e interface de consulta para os alunos.
+Plataforma integrada (Web + Desktop) desenvolvida para modernizar, automatizar e organizar a gestão de objetos perdidos e encontrados no ambiente escolar.
 
 ---
 
 ## 📋 Sobre o Projeto
 
-Muitos alunos perdem pertences no ambiente escolar e têm dificuldade em encontrá-los. Este sistema centraliza o cadastro de objetos encontrados, permitindo que a secretaria registre os itens e que os alunos busquem e solicitem a retirada diretamente pelo site — de forma rápida e organizada.
+Com o alto fluxo de alunos, a perda de pertences é comum e o gerenciamento manual desses itens pode ser ineficiente. Este sistema centraliza todo o fluxo de achados e perdidos: a secretaria cadastra e etiqueta os itens através de um aplicativo Desktop dedicado, enquanto os alunos consultam o catálogo, recebem notificações inteligentes e solicitam retiradas através de um portal Web responsivo.
 
 ---
 
-## ✨ Funcionalidades
+## ✨ Principais Funcionalidades
 
-- 📦 **Cadastro de itens** pela secretaria (descrição, categoria, local, data e foto)
-- 🔎 **Consulta pública** para alunos buscarem objetos perdidos
-- 📩 **Solicitação de retirada** com nome e RM do aluno
-- ✏️ **Edição e exclusão** de itens pelo painel da secretaria
-- 🔒 **Login restrito** para acesso ao painel administrativo
-- 📊 Status dos itens: `Disponível`, `Solicitado` e `Entregue`
+### 💻 Portal do Aluno (Web)
+- **Catálogo Digital:** Visualização limpa e paginada de todos os itens disponíveis, com filtros avançados por categoria, status e período (ex: Últimos 7 dias).
+- **Mural Inteligente ("Perdi Algo"):** Alunos cadastram o que perderam e o algoritmo de *Matching* avisa instantaneamente se há um item correspondente no acervo. Caso o item seja encontrado posteriormente, o aluno recebe uma notificação na plataforma.
+- **Solicitação Segura:** Para reivindicar um item, o sistema exige uma "Prova de Propriedade" (um detalhe que apenas o dono saberia), garantindo segurança na devolução.
+- **Chat em Tempo Real:** Comunicação direta com a secretaria para tirar dúvidas sobre objetos sem precisar se deslocar.
+- **Modo Anúncios:** Interface de carrossel em tela cheia com transições suaves, ideal para exibição automática em painéis ou totens na escola.
 
----
-
-## 🗂️ Estrutura do Projeto
-
-```
-📁 Achados-e-perdidos-etec/
-├── index.html              # Interface web para os alunos
-├── script.js               # Lógica do front-end
-├── style.css               # Estilização da página
-├── server.py               # API REST com Flask
-├── desktop_secretaria.py   # App desktop da secretaria (Tkinter)
-├── requirements.txt        # Dependências Python
-└── logo.png                # Logo da escola
-```
+### 🏢 Painel da Secretaria (App Desktop)
+- **Gestão de Estoque:** Cadastro, edição e exclusão de itens e categorias dinâmicas de forma rápida.
+- **Gerador de Etiquetas:** Criação automática de etiquetas de identificação com ID e informações do item prontas para impressão térmica ou convencional.
+- **Dashboard Gerencial:** Painel analítico com gráficos e estatísticas gerais (taxa de devolução, volume de doações e categorias com maior índice de perdas).
+- **Central de Atendimento:** Painel multi-conversas para responder às dúvidas dos alunos enviadas pelo chat da Web.
+- **Controle de Status e Doações:** Fluxo completo para dar baixa em itens entregues aos donos e limpeza automática de itens encaminhados para doação.
 
 ---
 
-## 🔌 Endpoints da API
+## 🛠️ Tecnologias Utilizadas
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/itens` | Lista todos os itens cadastrados |
-| `POST` | `/api/itens` | Cadastra um novo item |
-| `PUT` | `/api/itens/<id>` | Atualiza dados de um item |
-| `DELETE` | `/api/itens/<id>` | Remove um item |
-| `POST` | `/api/solicitar` | Aluno solicita retirada de um item |
+O ecossistema do projeto foi construído utilizando uma arquitetura distribuída via API RESTful:
 
----
-
-## 👥 Como Usar
-
-### Alunos
-1. Acesse o site
-2. Pesquise seu objeto pela descrição ou categoria
-3. Clique em **"Solicitar retirada"** e informe seu nome e RM
-4. Compareça à secretaria para retirar o item
+- **Front-end Web:** HTML5, CSS3, Vanilla JavaScript e Tailwind CSS (para estilização ágil e responsiva).
+- **Back-end / API:** Python modularizado utilizando o microframework Flask.
+- **App Desktop:** Desenvolvido nativamente em Python utilizando a biblioteca Tkinter.
+- **Banco de Dados:** Banco de dados relacional em nuvem com rotinas de higienização automática (arquitetura restrita e proprietária).
 
 ---
 
-## 📄 Licença
+## 🔒 Segurança e Arquitetura
 
-Este projeto foi desenvolvido para fins educacionais na ETEC Profº José Ignácio.
+Este projeto foi projetado com foco em usabilidade e segurança da informação:
+- A interface administrativa é isolada em um aplicativo Desktop compilado, evitando exposição de rotas administrativas na Web.
+- Os dados sensíveis dos alunos (RM e Nome) trafegam de forma encapsulada no momento da solicitação de devolução.
+- O código-fonte de conexão estrutural, provisionamento de banco de dados e implantação são confidenciais para proteger a integridade do sistema da escola.
 
 ---
 
-> Desenvolvido com 💙 por alunos da ETEC Profº José Ignácio
+> Desenvolvido com 💙 para a comunidade da ETEC Profº José Ignácio Azevedo Filho.
