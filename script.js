@@ -7,6 +7,9 @@ let termoBusca = '';
 let fotosAtuais = [];
 let fotoIndiceAtual = 0;
 
+// Variável que controla a paginação (Limpa o DOM para não pesar)
+let limiteItensExibidos = 12;
+
 let apresentacaoItens = [];
 let apresentacaoIndice = 0;
 let apresentacaoTimer = null;
@@ -22,29 +25,22 @@ async function carregarCategoriasDinamicamente() {
         const res = await fetch(`${API_URL}/api/categorias`);
         if (res.ok) {
             const cats = await res.json();
-            
-            // Atualiza Filtros
             const container = document.getElementById('categoryContainer');
             container.innerHTML = `
                 <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                 <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
             `;
-            
-            // Atualiza Select do Mural
             const selectMural = document.getElementById('muralCategoria');
             if (selectMural) selectMural.innerHTML = '';
-
             cats.forEach(c => {
                 const btn = document.createElement('button');
                 btn.onclick = function() { filtrarCategoria(c.nome, this) };
                 btn.className = "cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200";
                 btn.innerText = c.nome;
                 container.appendChild(btn);
-
                 if (selectMural) {
                     const opt = document.createElement('option');
-                    opt.value = c.nome;
-                    opt.innerText = c.nome;
+                    opt.value = c.nome; opt.innerText = c.nome;
                     selectMural.appendChild(opt);
                 }
             });
@@ -55,12 +51,10 @@ async function carregarCategoriasDinamicamente() {
 function mudarAba(aba) {
     abaAtiva = aba;
     pararTemporizadorApresentacao();
-
     const catScreen = document.getElementById('catalogScreen');
     const muralScreen = document.getElementById('muralScreen');
     const apScreen = document.getElementById('apresentacaoScreen');
     const detScreen = document.getElementById('detailScreen');
-
     const btnCat = document.getElementById('tabBtnCatalogo');
     const btnMural = document.getElementById('tabBtnMural');
 
@@ -143,6 +137,7 @@ function filtrarPorPalavraChave() {
     const btnClear = document.getElementById('btnClearSearch');
     termoBusca = input.value.trim().toLowerCase();
     if (btnClear) btnClear.classList.toggle('hidden', termoBusca.length === 0);
+    limiteItensExibidos = 12; // Reseta a paginação ao buscar
     renderizarItens();
 }
 
@@ -151,11 +146,13 @@ function limparBusca() {
     if (input) input.value = '';
     termoBusca = '';
     document.getElementById('btnClearSearch')?.classList.add('hidden');
+    limiteItensExibidos = 12; // Reseta a paginação
     renderizarItens();
 }
 
 function filtrarStatus(status) {
     statusAtual = status;
+    limiteItensExibidos = 12; // Reseta a paginação
     renderizarItens();
 }
 
@@ -180,6 +177,7 @@ function filtrarCategoria(cat, btnElement) {
         btnElement.classList.add('text-white', 'border-transparent');
         moveIndicator(btnElement);
     }
+    limiteItensExibidos = 12; // Reseta a paginação ao mudar categoria
     renderizarItens();
 }
 
@@ -191,6 +189,7 @@ function normalizarStatus(status) {
 
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
+    const btnMais = document.getElementById('btnCarregarMais');
     if (!grid) return;
     grid.innerHTML = '';
 
@@ -210,10 +209,14 @@ function renderizarItens() {
 
     if (filtrados.length === 0) {
         grid.innerHTML = `<div class="col-span-2 text-center text-muted py-12 bg-card border border-color rounded-xl"><p class="text-sm font-semibold">Nenhum objeto encontrado.</p></div>`;
+        if (btnMais) btnMais.classList.add('hidden');
         return;
     }
 
-    filtrados.forEach(item => {
+    // Pega apenas a quantidade baseada no limite atual
+    const itensPagina = filtrados.slice(0, limiteItensExibidos);
+
+    itensPagina.forEach(item => {
         const card = document.createElement('div');
         card.className = "bg-card border border-color rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:border-gray-500 transition shadow-sm hover:shadow-md relative overflow-hidden";
         card.onclick = () => abrirDetalhes(item);
@@ -242,6 +245,21 @@ function renderizarItens() {
         `;
         grid.appendChild(card);
     });
+
+    // Mostra ou Esconde o botão Carregar Mais
+    if (btnMais) {
+        if (limiteItensExibidos < filtrados.length) {
+            btnMais.classList.remove('hidden');
+        } else {
+            btnMais.classList.add('hidden');
+        }
+    }
+}
+
+// Botão Carregar Mais chama esta função
+function carregarMaisItens() {
+    limiteItensExibidos += 12; // Adiciona +12 itens a cada clique
+    renderizarItens();
 }
 
 function abrirDetalhes(item) {
@@ -256,7 +274,6 @@ function abrirDetalhes(item) {
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
 
-    // Regra Visual Eletrônicos
     if (item.categoria.toUpperCase() === "ELETRÔNICOS") {
         document.getElementById('detailRegraEletronico').classList.remove('hidden');
     } else {
