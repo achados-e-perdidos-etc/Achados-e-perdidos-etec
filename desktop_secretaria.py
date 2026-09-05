@@ -13,7 +13,7 @@ API_URL = "https://achados-etec-api.onrender.com"
 
 # Hashes SHA-256 gerados para maior segurança
 _AUTH_EMAIL_HASH = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
-_AUTH_PASS_HASH = "a115236c51dd5498e7683f79d9de387c842f70c258f69719855184ed54ecea56"
+_AUTH_PASS_HASH = "4a20e32e157a100f269d27cb68696b5b8fe17829c0305283de04fdb0894cec5c"
 
 class AdminDesktopApp:
     def __init__(self, root):
