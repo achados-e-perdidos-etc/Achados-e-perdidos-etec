@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 import requests
+import base64
 import hashlib
 from datetime import datetime
 import threading
@@ -10,6 +11,7 @@ import webbrowser
 
 API_URL = "https://achados-etec-api.onrender.com"
 
+# Hashes SHA-256 gerados para maior segurança
 _AUTH_EMAIL_HASH = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
 _AUTH_PASS_HASH = "a115236c51dd5498e7683f79d9de387c842f70c258f69719855184ed54ecea56"
 
@@ -65,9 +67,13 @@ class AdminDesktopApp:
     def validar_login(self):
         email_digitado = self.txt_login_email.get().strip()
         senha_digitada = self.txt_login_senha.get().strip()
-        email_real = base64.b64decode(_AUTH_EMAIL_HASH).decode('utf-8')
-        senha_real = base64.b64decode(_AUTH_PASS_HASH).decode('utf-8')
-        if email_digitado == email_real and senha_digitada == senha_real:
+
+        # Transforma o que a pessoa digitou em Hash SHA-256
+        hash_email_digitado = hashlib.sha256(email_digitado.encode()).hexdigest()
+        hash_senha_digitada = hashlib.sha256(senha_digitada.encode()).hexdigest()
+
+        # Compara os Hashes gerados com os Hashes salvos no código
+        if hash_email_digitado == _AUTH_EMAIL_HASH and hash_senha_digitada == _AUTH_PASS_HASH:
             self.login_frame.destroy()
             self.iniciar_painel_principal()
         else:
@@ -82,10 +88,11 @@ class AdminDesktopApp:
                     self.cb_categoria["values"] = cats
                     if self.cb_categoria.get() not in cats:
                         self.cb_categoria.current(0)
-        except Exception as e: print("Erro ao puxar categorias:", e)
+        except Exception as e:
+            print("Erro ao puxar categorias:", e)
 
     def adicionar_nova_categoria(self):
-        nova_cat = simpledialog.askstring("Nova Categoria", "Digite o nome da nova categoria:", parent=self.root)
+        nova_cat = simpledialog.askstring("Nova Categoria", "Digite o nome da nova categoria (Ex: FERRAMENTAS):", parent=self.root)
         if nova_cat:
             nova_cat = nova_cat.strip().upper()
             try:
@@ -94,11 +101,17 @@ class AdminDesktopApp:
                     messagebox.showinfo("Sucesso", f"Categoria '{nova_cat}' adicionada!")
                     self.carregar_categorias_api()
                     self.cb_categoria.set(nova_cat)
-            except Exception as e: messagebox.showerror("Erro de Conexão", str(e))
+                else:
+                    messagebox.showerror("Erro", "Falha ao adicionar categoria.")
+            except Exception as e:
+                messagebox.showerror("Erro de Conexão", str(e))
 
     def verificar_regra_eletronicos(self, event):
-        if self.cb_categoria.get() == "ELETRÔNICOS" and "somente os pais" not in self.txt_descricao.get().lower():
-            self.txt_descricao.insert(tk.END, "\n(Atenção: Somente os pais ou responsáveis podem retirar na secretaria).")
+        cat = self.cb_categoria.get()
+        if cat == "ELETRÔNICOS":
+            desc = self.txt_descricao.get()
+            if "somente os pais" not in desc.lower():
+                self.txt_descricao.insert(tk.END, "\n(Atenção: Somente os pais ou responsáveis podem retirar na secretaria).")
 
     def iniciar_painel_principal(self):
         self.root.title("ETEC - Achados e Perdidos | Administração / Secretaria")
@@ -156,6 +169,7 @@ class AdminDesktopApp:
         
         btn_foto_frame = tk.Frame(self.form_frame, bg="#1e1e2e")
         btn_foto_frame.grid(row=13, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        
         tk.Button(btn_foto_frame, text="📷 Selecionar...", command=self.carregar_fotos, bg="#0284c7", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2").pack(side="left", padx=(0, 5))
         tk.Button(btn_foto_frame, text="🗑 Limpar", command=self.limpar_fotos_selecionadas, bg="#475569", fg="white", font=("Helvetica", 8), relief="flat", cursor="hand2").pack(side="left")
 
@@ -191,7 +205,7 @@ class AdminDesktopApp:
         actions_frame = tk.Frame(self.table_frame, bg="#1e1e2e")
         actions_frame.pack(fill="x", pady=(10, 0))
 
-        # BOTÃO DASHBOARD (NOVO)
+        # BOTÃO DASHBOARD
         tk.Button(actions_frame, text="📊 Dashboard", command=self.abrir_dashboard, bg="#8b5cf6", fg="white", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2").pack(side="left", expand=True, fill="x", padx=(0, 2))
 
         self.btn_editar = tk.Button(actions_frame, text="✏ Editar", command=self.preparar_edicao_item, bg="#eab308", fg="#0f172a", font=("Helvetica", 9, "bold"), relief="flat", cursor="hand2")
@@ -235,7 +249,6 @@ class AdminDesktopApp:
                 t_entregues = data.get("total_entregues", 0)
                 t_doacoes = data.get("total_doacoes", 0)
 
-                # Cards Superiores
                 def criar_card(parent, titulo, valor, cor):
                     f = tk.Frame(parent, bg="#334155", bd=1, relief="ridge", pady=10)
                     f.pack(side="left", expand=True, fill="both", padx=5)
@@ -248,7 +261,6 @@ class AdminDesktopApp:
 
                 tk.Label(dash, text="🏆 Top Categorias Encontradas:", font=("Helvetica", 11, "bold"), bg="#1e1e2e", fg="#e2e8f0").pack(anchor="w", padx=25, pady=(25, 10))
 
-                # Barras Horizontais Simplificadas (Tkinter Native)
                 frame_barras = tk.Frame(dash, bg="#1e1e2e")
                 frame_barras.pack(fill="both", expand=True, padx=25)
 
@@ -262,7 +274,6 @@ class AdminDesktopApp:
                     lbl_cat = tk.Label(f_linha, text=c['categoria'], font=("Helvetica", 9), bg="#1e1e2e", fg="#94a3b8", width=15, anchor="e")
                     lbl_cat.pack(side="left", padx=(0,10))
                     
-                    # Calcula o tamanho da barra
                     largura = int((c['qtd'] / max_val) * 250)
                     barra = tk.Frame(f_linha, bg="#ef4444", width=largura, height=20)
                     barra.pack(side="left")
@@ -343,7 +354,6 @@ class AdminDesktopApp:
                     for child in options_frame.winfo_children(): child.destroy()
                     options_frame.pack(fill="x", padx=20, pady=10)
                     
-                    # NOVO BOTÃO DE ETIQUETA
                     tk.Button(options_frame, text="🖨️ Imprimir Etiqueta de Identificação", command=lambda: self.gerar_etiqueta(data.get('id'), data.get('nome'), data.get('categoria'), data.get('txt_data')), bg="#475569", fg="white", font=("Helvetica", 9, "bold"), relief="flat", pady=6).pack(fill="x", pady=3)
                     
                     if st.upper() != 'ENTREGUE':
@@ -487,7 +497,7 @@ class AdminDesktopApp:
         threading.Thread(target=loop, daemon=True).start()
 
     # ==============================================================
-    # DEMAIS FUNÇÕES DO SISTEMA
+    # DEMAIS FUNÇÕES DO SISTEMA (ESTOQUE, HISTÓRICO)
     # ==============================================================
     def alternar_modo_tabela(self):
         if self.tabela_visualizada == "itens":
@@ -575,8 +585,16 @@ class AdminDesktopApp:
         self.lbl_status_foto.config(text="0 / 4 fotos", fg="#94a3b8")
 
     def salvar_item(self):
-        nome, descricao, categoria, data, local, status = self.txt_nome.get().strip(), self.txt_descricao.get().strip(), self.cb_categoria.get(), self.txt_data.get().strip(), self.txt_local.get().strip(), self.cb_status.get()
-        if not nome or not descricao or not data or not local: return messagebox.showwarning("Atenção", "Preencha Nome, Descrição, Data e Local!")
+        nome = self.txt_nome.get().strip()
+        descricao = self.txt_descricao.get().strip()
+        categoria = self.cb_categoria.get()
+        data = self.txt_data.get().strip()
+        local = self.txt_local.get().strip()
+        status = self.cb_status.get()
+
+        if not nome or not descricao or not data or not local:
+            return messagebox.showwarning("Atenção", "Preencha Nome, Descrição, Data e Local!")
+
         payload = {"nome": nome, "descricao": descricao, "categoria": categoria, "data": data, "local": local, "status": status, "fotos": self.fotos_base64}
         try:
             if self.item_editando_id is None:
@@ -594,7 +612,9 @@ class AdminDesktopApp:
         if self.tabela_visualizada != "itens": return
         selected = self.tree.selection()
         if not selected: return messagebox.showwarning("Atenção", "Selecione um item!")
-        item_id = self.tree.item(selected[0], "values")[0]
+        vals = self.tree.item(selected[0], "values")
+        
+        item_id = vals[0]
         try:
             res = requests.get(f"{API_URL}/api/itens/localizar/{item_id}", timeout=10)
             if res.status_code == 200:
@@ -615,7 +635,8 @@ class AdminDesktopApp:
                 self.form_frame.config(text=f" Editando Item #{self.item_editando_id} ", fg="#eab308")
                 self.btn_salvar.config(text="💾 Salvar Alterações", bg="#eab308", fg="#0f172a")
                 self.btn_cancelar.grid()
-        except Exception as e: messagebox.showerror("Erro", str(e))
+        except Exception as e:
+            messagebox.showerror("Erro", str(e))
 
     def limpar_formulario(self):
         self.item_editando_id = None
@@ -642,13 +663,6 @@ class AdminDesktopApp:
                 if res.status_code == 200:
                     self.limpar_formulario()
                     self.carregar_tabela()
-            except Exception: pass
-
-    def concluir_doacoes(self):
-        if messagebox.askyesno("Confirmar", "Remover itens com status 'DOAÇÃO FEITA'?"):
-            try:
-                res = requests.delete(f"{API_URL}/api/itens/doacoes/concluir", timeout=10)
-                if res.status_code == 200: self.carregar_tabela()
             except Exception: pass
 
     def carregar_tabela(self):
