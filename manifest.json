@@ -1,23 +1,16 @@
 {
   "name": "Achados e Perdidos ETEC",
-  "short_name": "Achados ETEC",
-  "description": "Sistema Inteligente de Achados e Perdidos",
-  "start_url": "/",
+  "short_name": "Achados",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0d1117",
   "theme_color": "#dc2626",
   "icons": [
     {
-      "src": "/logo.png",
-      "sizes": "192x192",
+      "src": "logo.png",
+      "sizes": "192x192 512x512 any",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }
