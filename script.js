@@ -23,14 +23,12 @@ async function carregarCategoriasDinamicamente() {
         if (res.ok) {
             const cats = await res.json();
             
-            // Atualiza Filtros
             const container = document.getElementById('categoryContainer');
             container.innerHTML = `
                 <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                 <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
             `;
             
-            // Atualiza Select do Mural
             const selectMural = document.getElementById('muralCategoria');
             if (selectMural) selectMural.innerHTML = '';
 
@@ -127,6 +125,9 @@ function carregarPreferenciasAparencia() {
 }
 
 async function carregarItensDaAPI() {
+    const loading = document.getElementById('loadingOverlay');
+    if (loading) loading.classList.remove('hidden', 'opacity-0'); // Mostra a tela de loading
+
     try {
         const response = await fetch(`${API_URL}/api/itens`);
         if (response.ok) {
@@ -135,7 +136,14 @@ async function carregarItensDaAPI() {
             atualizarItensApresentacao();
             verificarNotificacoesAutomaticas();
         }
-    } catch (error) { console.error("Erro API:", error); }
+    } catch (error) { 
+        console.error("Erro API:", error); 
+    } finally {
+        if (loading) {
+            loading.classList.add('opacity-0'); // Inicia a transição de fade out
+            setTimeout(() => loading.classList.add('hidden'), 500); // Remove o elemento da tela
+        }
+    }
 }
 
 function filtrarPorPalavraChave() {
@@ -627,37 +635,35 @@ async function enviarMensagemChat(e) {
     } catch (err) {}
 }
 
-function abrirModalSolicitacao() {
+function abrirNovoModal() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    const nomeEl = document.getElementById('solicitaNome');
-    const rmEl = document.getElementById('solicitaRM');
-    
-    if (salvo.nome && nomeEl) nomeEl.value = salvo.nome;
-    if (salvo.rm && rmEl) rmEl.value = salvo.rm;
-    
-    document.getElementById('solicitaMsgErro').classList.add('hidden');
-    document.getElementById('modalSolicitacao').classList.remove('hidden');
+    const campoNome = document.getElementById('campoNomeNovo');
+    const campoRm = document.getElementById('campoRmNovo');
+    if (campoNome && salvo.nome) campoNome.value = salvo.nome;
+    if (campoRm && salvo.rm) campoRm.value = salvo.rm;
+    document.getElementById('erroNovo').classList.add('hidden');
+    document.getElementById('modalNovo').classList.remove('hidden');
 }
 
-function fecharModalSolicitacao() { 
-    document.getElementById('modalSolicitacao').classList.add('hidden'); 
+function fecharNovoModal() {
+    document.getElementById('modalNovo').classList.add('hidden');
 }
 
-async function enviarSolicitacao() {
-    const nome = document.getElementById('solicitaNome').value.trim();
-    const rm = document.getElementById('solicitaRM').value.trim();
-    const erroEl = document.getElementById('solicitaMsgErro');
-    const btn = document.getElementById('btnConfirmarSolicitacao');
-
-    if (!nome || !rm) { 
-        erroEl.innerText = "Preencha todos os campos obrigatórios no formulário!";
+async function enviarNovo() {
+    const nome = document.getElementById('campoNomeNovo').value.trim();
+    const rm = document.getElementById('campoRmNovo').value.trim();
+    const erroEl = document.getElementById('erroNovo');
+    const btn = document.getElementById('btnNovo');
+    
+    if (!nome || !rm) {
+        erroEl.innerText = "Preencha o Nome e o RM obrigatoriamente!";
         erroEl.classList.remove('hidden');
-        return; 
+        return;
     }
     
     erroEl.classList.add('hidden');
-    btn.disabled = true; 
+    btn.disabled = true;
     btn.innerHTML = `Enviando...`;
 
     try {
@@ -671,7 +677,7 @@ async function enviarSolicitacao() {
         if (response.ok && res.success) {
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
-            fecharModalSolicitacao();
+            fecharNovoModal();
             voltarParaCatalogo();
             carregarItensDaAPI();
         } else { 
