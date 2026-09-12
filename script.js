@@ -256,7 +256,6 @@ function abrirDetalhes(item) {
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
 
-    // Regra Visual Eletrônicos
     if (item.categoria.toUpperCase() === "ELETRÔNICOS") {
         document.getElementById('detailRegraEletronico').classList.remove('hidden');
     } else {
@@ -631,36 +630,61 @@ async function enviarMensagemChat(e) {
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
-    if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
+    const nomeEl = document.getElementById('solicitaNome');
+    const rmEl = document.getElementById('solicitaRM');
+    
+    if (salvo.nome && nomeEl) nomeEl.value = salvo.nome;
+    if (salvo.rm && rmEl) rmEl.value = salvo.rm;
+    
     document.getElementById('solicitaMsgErro').classList.add('hidden');
     document.getElementById('modalSolicitacao').classList.remove('hidden');
 }
 
-function fecharModalSolicitacao() { document.getElementById('modalSolicitacao').classList.add('hidden'); }
+function fecharModalSolicitacao() { 
+    document.getElementById('modalSolicitacao').classList.add('hidden'); 
+}
 
 async function enviarSolicitacao() {
     const nome = document.getElementById('solicitaNome').value.trim();
     const rm = document.getElementById('solicitaRM').value.trim();
     const erroEl = document.getElementById('solicitaMsgErro');
     const btn = document.getElementById('btnConfirmarSolicitacao');
-    if (!nome || !rm) { erroEl.innerText = "Preencha tudo!"; erroEl.classList.remove('hidden'); return; }
-    btn.disabled = true; btn.innerHTML = `Enviando...`;
+
+    if (!nome || !rm) { 
+        erroEl.innerText = "Preencha todos os campos obrigatórios no formulário!";
+        erroEl.classList.remove('hidden');
+        return; 
+    }
+    
+    erroEl.classList.add('hidden');
+    btn.disabled = true; 
+    btn.innerHTML = `Enviando...`;
+
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: itemSelecionado.id, nome, rm })
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemSelecionado.id, nome: nome, rm: rm })
         });
         const res = await response.json();
+        
         if (response.ok && res.success) {
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
             fecharModalSolicitacao();
             voltarParaCatalogo();
             carregarItensDaAPI();
-        } else { erroEl.innerText = res.message; erroEl.classList.remove('hidden'); }
-    } catch (err) { erroEl.innerText = "Erro."; erroEl.classList.remove('hidden'); } 
-    finally { btn.disabled = false; btn.innerHTML = `Confirmar`; }
+        } else { 
+            erroEl.innerText = res.message || "Erro ao solicitar."; 
+            erroEl.classList.remove('hidden'); 
+        }
+    } catch (err) { 
+        erroEl.innerText = "Erro de conexão com o servidor."; 
+        erroEl.classList.remove('hidden'); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerHTML = `Confirmar`;
+    }
 }
 
 window.onload = () => {
