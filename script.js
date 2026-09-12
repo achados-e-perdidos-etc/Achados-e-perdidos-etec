@@ -256,7 +256,6 @@ function abrirDetalhes(item) {
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
 
-    // Regra Visual Eletrônicos
     if (item.categoria.toUpperCase() === "ELETRÔNICOS") {
         document.getElementById('detailRegraEletronico').classList.remove('hidden');
     } else {
@@ -631,44 +630,57 @@ async function enviarMensagemChat(e) {
 function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
-    if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
-    document.getElementById('solicitaMsgErro').classList.add('hidden');
+    if (salvo.nome) {
+        document.querySelectorAll('#solicitaNome').forEach(el => el.value = salvo.nome);
+    }
+    if (salvo.rm) {
+        document.querySelectorAll('#solicitaRM').forEach(el => el.value = salvo.rm);
+    }
+    document.querySelectorAll('#solicitaMsgErro').forEach(el => el.classList.add('hidden'));
     document.getElementById('modalSolicitacao').classList.remove('hidden');
 }
 
-function fecharModalSolicitacao() { document.getElementById('modalSolicitacao').classList.add('hidden'); }
+function fecharModalSolicitacao() { 
+    document.getElementById('modalSolicitacao').classList.add('hidden'); 
+}
 
 async function enviarSolicitacao() {
-    const nomeEl = document.getElementById('solicitaNome') || document.getElementById('nome');
-    const rmEl = document.getElementById('solicitaRM') || document.getElementById('rm');
+    // BLINDAGEM: Lê todos os campos com esse ID no HTML e pega o que tem texto escrito!
+    let nome = '';
+    let rm = '';
     
-    const nome = nomeEl ? nomeEl.value.trim() : '';
-    const rm = rmEl ? rmEl.value.trim() : '';
+    document.querySelectorAll('#solicitaNome').forEach(el => {
+        if (el.value.trim() !== '') nome = el.value.trim();
+    });
     
-    const erroEl = document.getElementById('solicitaMsgErro');
-    const btn = document.getElementById('btnConfirmarSolicitacao');
-    
+    document.querySelectorAll('#solicitaRM').forEach(el => {
+        if (el.value.trim() !== '') rm = el.value.trim();
+    });
+
+    // Pega as divs de erro em todos os modais caso haja HTML duplicado
+    const erros = document.querySelectorAll('#solicitaMsgErro');
+    const btns = document.querySelectorAll('#btnConfirmarSolicitacao');
+
+    // Validação
     if (!nome || !rm) { 
-        if (erroEl) {
-            erroEl.innerText = "Preencha todos os campos obrigatórios no formulário!"; 
-            erroEl.classList.remove('hidden'); 
-        }
+        erros.forEach(e => {
+            e.innerText = "Preencha todos os campos obrigatórios no formulário!";
+            e.classList.remove('hidden');
+        });
         return; 
     }
     
-    if (erroEl) erroEl.classList.add('hidden');
-    if (btn) {
-        btn.disabled = true; 
-        btn.innerHTML = `Enviando...`;
-    }
+    erros.forEach(e => e.classList.add('hidden'));
+    btns.forEach(b => { b.disabled = true; b.innerHTML = `Enviando...`; });
 
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: itemSelecionado.id, nome, rm })
         });
         const res = await response.json();
+        
         if (response.ok && res.success) {
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
@@ -676,21 +688,18 @@ async function enviarSolicitacao() {
             voltarParaCatalogo();
             carregarItensDaAPI();
         } else { 
-            if (erroEl) {
-                erroEl.innerText = res.message || "Erro ao solicitar."; 
-                erroEl.classList.remove('hidden'); 
-            }
+            erros.forEach(e => { 
+                e.innerText = res.message || "Erro ao solicitar."; 
+                e.classList.remove('hidden'); 
+            });
         }
     } catch (err) { 
-        if (erroEl) {
-            erroEl.innerText = "Erro de conexão com o servidor."; 
-            erroEl.classList.remove('hidden'); 
-        }
+        erros.forEach(e => { 
+            e.innerText = "Erro de conexão com o servidor."; 
+            e.classList.remove('hidden'); 
+        });
     } finally { 
-        if (btn) {
-            btn.disabled = false; 
-            btn.innerHTML = `Confirmar`;
-        }
+        btns.forEach(b => { b.disabled = false; b.innerHTML = `Confirmar`; });
     }
 }
 
