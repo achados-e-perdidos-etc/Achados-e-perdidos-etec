@@ -23,12 +23,14 @@ async function carregarCategoriasDinamicamente() {
         if (res.ok) {
             const cats = await res.json();
             
+            // Atualiza Filtros
             const container = document.getElementById('categoryContainer');
             container.innerHTML = `
                 <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                 <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
             `;
             
+            // Atualiza Select do Mural
             const selectMural = document.getElementById('muralCategoria');
             if (selectMural) selectMural.innerHTML = '';
 
@@ -254,6 +256,7 @@ function abrirDetalhes(item) {
     document.getElementById('detailLocal').innerText = item.txt_local;
     document.getElementById('detailDate').innerText = item.txt_data;
 
+    // Regra Visual Eletrônicos
     if (item.categoria.toUpperCase() === "ELETRÔNICOS") {
         document.getElementById('detailRegraEletronico').classList.remove('hidden');
     } else {
@@ -625,73 +628,39 @@ async function enviarMensagemChat(e) {
     } catch (err) {}
 }
 
-// =========================================================================
-// FUNÇÕES DO NOVO MODAL DE SOLICITAÇÃO (LIVRES DE CONFLITOS DE IDS ANTIGOS)
-// =========================================================================
-
-function abrirNovoModal() {
+function abrirModalSolicitacao() {
     if (!itemSelecionado) return;
-    
-    // Puxa o nome e RM se já tiver salvo no navegador
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    
-    const campoNome = document.getElementById('campoNomeNovo');
-    const campoRm = document.getElementById('campoRmNovo');
-    
-    if (campoNome && salvo.nome) campoNome.value = salvo.nome;
-    if (campoRm && salvo.rm) campoRm.value = salvo.rm;
-    
-    // Esconde o erro e mostra a caixinha
-    document.getElementById('erroNovo').classList.add('hidden');
-    document.getElementById('modalNovo').classList.remove('hidden');
+    if (salvo.nome) document.getElementById('solicitaNome').value = salvo.nome;
+    if (salvo.rm) document.getElementById('solicitaRM').value = salvo.rm;
+    document.getElementById('solicitaMsgErro').classList.add('hidden');
+    document.getElementById('modalSolicitacao').classList.remove('hidden');
 }
 
-function fecharNovoModal() {
-    document.getElementById('modalNovo').classList.add('hidden');
-}
+function fecharModalSolicitacao() { document.getElementById('modalSolicitacao').classList.add('hidden'); }
 
-async function enviarNovo() {
-    const nome = document.getElementById('campoNomeNovo').value.trim();
-    const rm = document.getElementById('campoRmNovo').value.trim();
-    const erroEl = document.getElementById('erroNovo');
-    const btn = document.getElementById('btnNovo');
-    
-    if (!nome || !rm) {
-        erroEl.innerText = "Preencha o Nome e o RM obrigatoriamente!";
-        erroEl.classList.remove('hidden');
-        return;
-    }
-    
-    erroEl.classList.add('hidden');
-    btn.disabled = true;
-    btn.innerHTML = `Enviando...`;
-
+async function enviarSolicitacao() {
+    const nome = document.getElementById('solicitaNome').value.trim();
+    const rm = document.getElementById('solicitaRM').value.trim();
+    const erroEl = document.getElementById('solicitaMsgErro');
+    const btn = document.getElementById('btnConfirmarSolicitacao');
+    if (!nome || !rm) { erroEl.innerText = "Preencha tudo!"; erroEl.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.innerHTML = `Enviando...`;
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: itemSelecionado.id, nome: nome, rm: rm })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemSelecionado.id, nome, rm })
         });
         const res = await response.json();
-        
         if (response.ok && res.success) {
-            // Salva pra não precisar digitar de novo depois
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
-            fecharNovoModal();
+            fecharModalSolicitacao();
             voltarParaCatalogo();
             carregarItensDaAPI();
-        } else { 
-            erroEl.innerText = res.message || "Erro ao solicitar."; 
-            erroEl.classList.remove('hidden'); 
-        }
-    } catch (err) { 
-        erroEl.innerText = "Erro de conexão com o servidor."; 
-        erroEl.classList.remove('hidden'); 
-    } finally { 
-        btn.disabled = false; 
-        btn.innerHTML = `Confirmar`;
-    }
+        } else { erroEl.innerText = res.message; erroEl.classList.remove('hidden'); }
+    } catch (err) { erroEl.innerText = "Erro."; erroEl.classList.remove('hidden'); } 
+    finally { btn.disabled = false; btn.innerHTML = `Confirmar`; }
 }
 
 window.onload = () => {
