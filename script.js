@@ -18,15 +18,49 @@ let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 
 // ==========================================
-// NOVO SISTEMA DE NOTIFICAÇÕES (TOAST)
+// FUNÇÕES DE ZOOM DE IMAGEM (LIGHTBOX)
+// ==========================================
+function abrirZoomImagem(src) {
+    const modal = document.getElementById('modalZoomImagem');
+    const img = document.getElementById('imgZoomConteudo');
+    if (!modal || !img || !src) return;
+
+    img.src = src;
+    modal.classList.add('ativo');
+    document.body.style.overflow = 'hidden'; // Impede rolagem de fundo
+}
+
+function fecharZoomImagemDirect() {
+    const modal = document.getElementById('modalZoomImagem');
+    const img = document.getElementById('imgZoomConteudo');
+    if (!modal) return;
+
+    modal.classList.remove('ativo');
+    document.body.style.overflow = '';
+    setTimeout(() => { if (img) img.src = ''; }, 300);
+}
+
+function fecharZoomImagem(event) {
+    if (event.target.id === 'modalZoomImagem') {
+        fecharZoomImagemDirect();
+    }
+}
+
+// Fecha com a tecla ESC
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        fecharZoomImagemDirect();
+    }
+});
+
+// ==========================================
+// SISTEMA DE NOTIFICAÇÕES (TOAST)
 // ==========================================
 function mostrarToast(mensagem, tipo = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
     const toast = document.createElement('div');
-    
-    // Configura ícone e estilo baseado no tipo (success, error, info)
     let icone = 'fa-info-circle text-blue-400';
     let classeTipo = 'toast-info';
     
@@ -50,17 +84,12 @@ function mostrarToast(mensagem, tipo = 'info') {
 
     container.appendChild(toast);
 
-    // Remove automaticamente após 4 segundos com animação
     setTimeout(() => {
         toast.classList.remove('toast-enter');
         toast.classList.add('toast-exit');
-        setTimeout(() => toast.remove(), 400); // Tempo da animação de saída
+        setTimeout(() => toast.remove(), 400);
     }, 4000);
 }
-
-// ==========================================
-// RESTANTE DO CÓDIGO
-// ==========================================
 
 async function carregarCategoriasDinamicamente() {
     try {
@@ -334,7 +363,8 @@ function abrirDetalhes(item) {
         fotosAtuais.forEach((f) => {
             const slide = document.createElement('div');
             slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
-            slide.innerHTML = `<img src="${f}" class="max-h-full max-w-full object-contain rounded-lg">`;
+            // Adicionado cursor de zoom e evento de clique para abrir o zoom suave
+            slide.innerHTML = `<img src="${f}" onclick="abrirZoomImagem('${f}')" title="Clique para ampliar" class="max-h-full max-w-full object-contain rounded-lg cursor-zoom-in hover:opacity-95 transition-opacity">`;
             container.appendChild(slide);
         });
         document.getElementById('photoCurrentIdx').innerText = 1;
@@ -382,6 +412,7 @@ function navegarFotos(direcao) {
 }
 
 function voltarParaCatalogo() {
+    fecharZoomImagemDirect();
     document.getElementById('detailScreen')?.classList.add('hidden');
     document.getElementById('apresentacaoScreen')?.classList.add('hidden');
     if (abaAtiva === 'mural') document.getElementById('muralScreen')?.classList.remove('hidden');
@@ -398,6 +429,7 @@ function atualizarItensApresentacao() {
 }
 
 function alternarModoApresentacao() {
+    fecharZoomImagemDirect();
     modoApresentacaoAtivo = !modoApresentacaoAtivo;
     const catScreen = document.getElementById('catalogScreen');
     const muralScreen = document.getElementById('muralScreen');
@@ -733,7 +765,7 @@ async function enviarNovo() {
         
         if (response.ok && res.success) {
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
-            mostrarToast(res.message, "success"); // TOAST DE SUCESSO AQUI
+            mostrarToast(res.message, "success");
             fecharNovoModal();
             voltarParaCatalogo();
             carregarItensDaAPI();
