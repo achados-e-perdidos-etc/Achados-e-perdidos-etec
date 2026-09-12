@@ -515,6 +515,14 @@ def concluir_doacoes():
         return jsonify({"success": True, "message": f"{removidos} item(ns) removidos!"})
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('.', 'manifest.json', mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('.', 'sw.js', mimetype='application/javascript')
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
