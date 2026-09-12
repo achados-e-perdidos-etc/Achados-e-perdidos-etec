@@ -1,22 +1,17 @@
-const CACHE_NAME = 'etec-achados-v2';
-const ASSETS = [
-    '/',
-    '/style.css',
-    '/script.js',
-    '/logo.png'
-];
-
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-        .then((cache) => cache.addAll(ASSETS))
-        .catch((err) => console.log('Erro ao fazer cache PWA:', err))
-    );
+    // Pula a espera e ativa o app imediatamente
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
+    // Interceptador simples para passar na validação rigorosa do Chrome
     event.respondWith(
-        caches.match(event.request)
-        .then((response) => response || fetch(event.request))
+        fetch(event.request).catch(() => {
+            return new Response("Você está offline.");
+        })
     );
 });
