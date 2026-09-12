@@ -1,7 +1,6 @@
-const CACHE_NAME = 'etec-achados-v1';
+const CACHE_NAME = 'etec-achados-v2';
 const ASSETS = [
     '/',
-    '/index.html',
     '/style.css',
     '/script.js',
     '/logo.png'
@@ -11,6 +10,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
         .then((cache) => cache.addAll(ASSETS))
+        .catch((err) => console.log('Erro ao fazer cache PWA:', err))
     );
 });
 
