@@ -799,10 +799,3 @@ window.addEventListener('resize', () => {
     const actBtn = document.querySelector('.cat-btn.text-white');
     if (actBtn) moveIndicator(actBtn);
 });
-
-// REGISTRO DO SERVICE WORKER (PWA)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => console.log('Erro SW:', err));
-    });
-}
