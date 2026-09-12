@@ -126,7 +126,7 @@ function carregarPreferenciasAparencia() {
 
 async function carregarItensDaAPI() {
     const loading = document.getElementById('loadingOverlay');
-    if (loading) loading.classList.remove('hidden', 'opacity-0'); // Mostra a tela de loading
+    if (loading) loading.classList.remove('fade-out', 'hidden');
 
     try {
         const response = await fetch(`${API_URL}/api/itens`);
@@ -140,8 +140,10 @@ async function carregarItensDaAPI() {
         console.error("Erro API:", error); 
     } finally {
         if (loading) {
-            loading.classList.add('opacity-0'); // Inicia a transição de fade out
-            setTimeout(() => loading.classList.add('hidden'), 500); // Remove o elemento da tela
+            // Adiciona a classe que inicia o CSS fade-out suave de 0.8s
+            loading.classList.add('fade-out'); 
+            // Espera a animação acabar para esconder do HTML (0.8s = 800ms)
+            setTimeout(() => loading.classList.add('hidden'), 800); 
         }
     }
 }
