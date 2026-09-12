@@ -23,14 +23,12 @@ async function carregarCategoriasDinamicamente() {
         if (res.ok) {
             const cats = await res.json();
             
-            // Atualiza Filtros
             const container = document.getElementById('categoryContainer');
             container.innerHTML = `
                 <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                 <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
             `;
             
-            // Atualiza Select do Mural
             const selectMural = document.getElementById('muralCategoria');
             if (selectMural) selectMural.innerHTML = '';
 
@@ -627,79 +625,72 @@ async function enviarMensagemChat(e) {
     } catch (err) {}
 }
 
-function abrirModalSolicitacao() {
+// =========================================================================
+// FUNÇÕES DO NOVO MODAL DE SOLICITAÇÃO (LIVRES DE CONFLITOS DE IDS ANTIGOS)
+// =========================================================================
+
+function abrirNovoModal() {
     if (!itemSelecionado) return;
+    
+    // Puxa o nome e RM se já tiver salvo no navegador
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome) {
-        document.querySelectorAll('#solicitaNome').forEach(el => el.value = salvo.nome);
-    }
-    if (salvo.rm) {
-        document.querySelectorAll('#solicitaRM').forEach(el => el.value = salvo.rm);
-    }
-    document.querySelectorAll('#solicitaMsgErro').forEach(el => el.classList.add('hidden'));
-    document.getElementById('modalSolicitacao').classList.remove('hidden');
+    
+    const campoNome = document.getElementById('campoNomeNovo');
+    const campoRm = document.getElementById('campoRmNovo');
+    
+    if (campoNome && salvo.nome) campoNome.value = salvo.nome;
+    if (campoRm && salvo.rm) campoRm.value = salvo.rm;
+    
+    // Esconde o erro e mostra a caixinha
+    document.getElementById('erroNovo').classList.add('hidden');
+    document.getElementById('modalNovo').classList.remove('hidden');
 }
 
-function fecharModalSolicitacao() { 
-    document.getElementById('modalSolicitacao').classList.add('hidden'); 
+function fecharNovoModal() {
+    document.getElementById('modalNovo').classList.add('hidden');
 }
 
-async function enviarSolicitacao() {
-    // BLINDAGEM: Lê todos os campos com esse ID no HTML e pega o que tem texto escrito!
-    let nome = '';
-    let rm = '';
+async function enviarNovo() {
+    const nome = document.getElementById('campoNomeNovo').value.trim();
+    const rm = document.getElementById('campoRmNovo').value.trim();
+    const erroEl = document.getElementById('erroNovo');
+    const btn = document.getElementById('btnNovo');
     
-    document.querySelectorAll('#solicitaNome').forEach(el => {
-        if (el.value.trim() !== '') nome = el.value.trim();
-    });
-    
-    document.querySelectorAll('#solicitaRM').forEach(el => {
-        if (el.value.trim() !== '') rm = el.value.trim();
-    });
-
-    // Pega as divs de erro em todos os modais caso haja HTML duplicado
-    const erros = document.querySelectorAll('#solicitaMsgErro');
-    const btns = document.querySelectorAll('#btnConfirmarSolicitacao');
-
-    // Validação
-    if (!nome || !rm) { 
-        erros.forEach(e => {
-            e.innerText = "Preencha todos os campos obrigatórios no formulário!";
-            e.classList.remove('hidden');
-        });
-        return; 
+    if (!nome || !rm) {
+        erroEl.innerText = "Preencha o Nome e o RM obrigatoriamente!";
+        erroEl.classList.remove('hidden');
+        return;
     }
     
-    erros.forEach(e => e.classList.add('hidden'));
-    btns.forEach(b => { b.disabled = true; b.innerHTML = `Enviando...`; });
+    erroEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = `Enviando...`;
 
     try {
         const response = await fetch(`${API_URL}/api/solicitar`, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: itemSelecionado.id, nome, rm })
+            body: JSON.stringify({ id: itemSelecionado.id, nome: nome, rm: rm })
         });
         const res = await response.json();
         
         if (response.ok && res.success) {
+            // Salva pra não precisar digitar de novo depois
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
             alert(res.message);
-            fecharModalSolicitacao();
+            fecharNovoModal();
             voltarParaCatalogo();
             carregarItensDaAPI();
         } else { 
-            erros.forEach(e => { 
-                e.innerText = res.message || "Erro ao solicitar."; 
-                e.classList.remove('hidden'); 
-            });
+            erroEl.innerText = res.message || "Erro ao solicitar."; 
+            erroEl.classList.remove('hidden'); 
         }
     } catch (err) { 
-        erros.forEach(e => { 
-            e.innerText = "Erro de conexão com o servidor."; 
-            e.classList.remove('hidden'); 
-        });
+        erroEl.innerText = "Erro de conexão com o servidor."; 
+        erroEl.classList.remove('hidden'); 
     } finally { 
-        btns.forEach(b => { b.disabled = false; b.innerHTML = `Confirmar`; });
+        btn.disabled = false; 
+        btn.innerHTML = `Confirmar`;
     }
 }
 
