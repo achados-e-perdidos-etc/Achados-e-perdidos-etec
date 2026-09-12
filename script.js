@@ -17,6 +17,51 @@ let chatAberto = false;
 let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 
+// ==========================================
+// NOVO SISTEMA DE NOTIFICAÇÕES (TOAST)
+// ==========================================
+function mostrarToast(mensagem, tipo = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    
+    // Configura ícone e estilo baseado no tipo (success, error, info)
+    let icone = 'fa-info-circle text-blue-400';
+    let classeTipo = 'toast-info';
+    
+    if (tipo === 'success') {
+        icone = 'fa-check-circle text-emerald-400';
+        classeTipo = 'toast-success';
+    } else if (tipo === 'error') {
+        icone = 'fa-exclamation-circle text-red-400';
+        classeTipo = 'toast-error';
+    }
+
+    toast.className = `bg-card border border-color text-main px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 toast-enter ${classeTipo} pointer-events-auto min-w-[280px] max-w-sm`;
+    
+    toast.innerHTML = `
+        <i class="fas ${icone} text-lg"></i>
+        <p class="text-sm font-semibold flex-grow">${mensagem}</p>
+        <button onclick="this.parentElement.remove()" class="text-muted hover:text-main transition">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    container.appendChild(toast);
+
+    // Remove automaticamente após 4 segundos com animação
+    setTimeout(() => {
+        toast.classList.remove('toast-enter');
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 400); // Tempo da animação de saída
+    }, 4000);
+}
+
+// ==========================================
+// RESTANTE DO CÓDIGO
+// ==========================================
+
 async function carregarCategoriasDinamicamente() {
     try {
         const res = await fetch(`${API_URL}/api/categorias`);
@@ -138,11 +183,10 @@ async function carregarItensDaAPI() {
         }
     } catch (error) { 
         console.error("Erro API:", error); 
+        mostrarToast("Erro ao conectar com o servidor.", "error");
     } finally {
         if (loading) {
-            // Adiciona a classe que inicia o CSS fade-out suave de 0.8s
             loading.classList.add('fade-out'); 
-            // Espera a animação acabar para esconder do HTML (0.8s = 800ms)
             setTimeout(() => loading.classList.add('hidden'), 800); 
         }
     }
@@ -363,7 +407,10 @@ function alternarModoApresentacao() {
 
     if (modoApresentacaoAtivo) {
         atualizarItensApresentacao();
-        if (apresentacaoItens.length === 0) return alert("Nenhum item para apresentar.");
+        if (apresentacaoItens.length === 0) {
+            mostrarToast("Nenhum item disponível para apresentar.", "info");
+            return;
+        }
         catScreen.classList.add('hidden');
         muralScreen.classList.add('hidden');
         detScreen.classList.add('hidden');
@@ -469,7 +516,10 @@ async function enviarAvisoMural(e) {
     const descricao = document.getElementById('muralDescricao').value.trim();
     const btn = document.getElementById('btnPublicarMural');
 
-    if (!nome || !rm || !descricao) return alert("Preencha todos os campos!");
+    if (!nome || !rm || !descricao) {
+        mostrarToast("Preencha todos os campos do formulário!", "error");
+        return;
+    }
 
     localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
     btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`;
@@ -485,12 +535,17 @@ async function enviarAvisoMural(e) {
             if (resp.matches_encontrados && resp.matches_encontrados.length > 0) {
                 exibirMatchesImediatos(resp.matches_encontrados);
             } else {
-                alert("Aviso registrado! Você será notificado se encontrarmos.");
+                mostrarToast("Aviso registrado! Você será notificado se encontrarmos.", "success");
             }
             carregarFeedMural();
-        } else alert(resp.message || "Erro.");
-    } catch (err) { alert("Erro de comunicação."); } 
-    finally { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane"></i> Publicar`; }
+        } else {
+            mostrarToast(resp.message || "Erro ao publicar no mural.", "error");
+        }
+    } catch (err) { 
+        mostrarToast("Erro de comunicação com o servidor.", "error");
+    } finally { 
+        btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane"></i> Publicar`; 
+    }
 }
 
 function exibirMatchesImediatos(itens) {
@@ -678,7 +733,7 @@ async function enviarNovo() {
         
         if (response.ok && res.success) {
             localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
-            alert(res.message);
+            mostrarToast(res.message, "success"); // TOAST DE SUCESSO AQUI
             fecharNovoModal();
             voltarParaCatalogo();
             carregarItensDaAPI();
