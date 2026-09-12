@@ -24,6 +24,19 @@ body {
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* --- TELA DE CARREGAMENTO (TRANSIÇÃO SUAVE) --- */
+#loadingOverlay {
+    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out !important;
+    opacity: 1;
+    visibility: visible;
+}
+
+.fade-out {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 /* --- APLICAÇÃO DAS VARIÁVEIS --- */
 .bg-header {
     background-color: var(--bg-header) !important;
