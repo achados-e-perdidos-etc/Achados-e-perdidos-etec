@@ -139,7 +139,6 @@
                     <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
                         <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                         <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
-                        <!-- Inseridas dinamicamente via JS -->
                     </div>
                 </div>
 
@@ -311,7 +310,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE SOLICITAÇÃO -->
+    <!-- MODAL DE SOLICITAÇÃO LIMPO E ÚNICO -->
     <div id="modalSolicitacao" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
@@ -319,8 +318,8 @@
                 <button onclick="fecharModalSolicitacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
             </div>
             <div class="space-y-3">
-                <input type="text" id="solicitaNome" placeholder="digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
-                <input type="number" id="solicitaRM" placeholder="digite seu rm" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm">
+                <input type="text" id="solicitaNome" placeholder="Digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                <input type="number" id="solicitaRM" placeholder="Digite seu RM" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
             </div>
             <div id="solicitaMsgErro" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
             <div class="flex gap-2 pt-2">
