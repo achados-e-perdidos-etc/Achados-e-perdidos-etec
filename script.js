@@ -27,7 +27,7 @@ function abrirZoomImagem(src) {
 
     img.src = src;
     modal.classList.add('ativo');
-    document.body.style.overflow = 'hidden'; // Impede rolagem de fundo
+    document.body.style.overflow = 'hidden'; 
 }
 
 function fecharZoomImagemDirect() {
@@ -46,7 +46,6 @@ function fecharZoomImagem(event) {
     }
 }
 
-// Fecha com a tecla ESC
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         fecharZoomImagemDirect();
@@ -363,7 +362,6 @@ function abrirDetalhes(item) {
         fotosAtuais.forEach((f) => {
             const slide = document.createElement('div');
             slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
-            // Adicionado cursor de zoom e evento de clique para abrir o zoom suave
             slide.innerHTML = `<img src="${f}" onclick="abrirZoomImagem('${f}')" title="Clique para ampliar" class="max-h-full max-w-full object-contain rounded-lg cursor-zoom-in hover:opacity-95 transition-opacity">`;
             container.appendChild(slide);
         });
@@ -801,3 +799,10 @@ window.addEventListener('resize', () => {
     const actBtn = document.querySelector('.cat-btn.text-white');
     if (actBtn) moveIndicator(actBtn);
 });
+
+// REGISTRO DO SERVICE WORKER (PWA)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('Erro SW:', err));
+    });
+}
