@@ -10,6 +10,13 @@
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between">
 
+    <!-- TELA DE CARREGAMENTO (LOADING) -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-card flex flex-col items-center justify-center transition-opacity duration-500">
+        <i class="fas fa-circle-notch fa-spin text-red-500 text-6xl mb-4"></i>
+        <h2 class="text-xl font-black text-main animate-pulse">Carregando Sistema...</h2>
+        <p class="text-sm text-muted mt-2">Buscando objetos na secretaria</p>
+    </div>
+
     <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
@@ -249,7 +256,7 @@
                 </div>
 
                 <div class="pt-4 flex flex-col sm:flex-row gap-2">
-                    <button id="btnSolicitar" onclick="abrirModalSolicitacao()" class="flex-grow dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
+                    <button id="btnSolicitar" onclick="abrirNovoModal()" class="flex-grow dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
                         ESTE É O MEU ITEM / SOLICITAR COLETA
                     </button>
                     <button onclick="abrirChatComItem()" class="sm:w-auto px-5 py-3.5 rounded-xl bg-header border border-color text-main hover:border-red-500 font-bold text-xs uppercase transition flex items-center justify-center gap-2">
@@ -310,21 +317,21 @@
         </div>
     </div>
 
-    <!-- MODAL DE SOLICITAÇÃO LIMPO E ÚNICO -->
-    <div id="modalSolicitacao" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <!-- NOVO MODAL DE SOLICITAÇÃO -->
+    <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-main text-lg"><i class="fas fa-id-card text-red-500 mr-2"></i>Identificação do Aluno</h3>
-                <button onclick="fecharModalSolicitacao()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
+                <button onclick="fecharNovoModal()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
             </div>
             <div class="space-y-3">
-                <input type="text" id="solicitaNome" placeholder="Digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                <input type="number" id="solicitaRM" placeholder="Digite seu RM" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                <input type="text" id="campoNomeNovo" placeholder="Digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
+                <input type="number" id="campoRmNovo" placeholder="Digite seu RM" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
             </div>
-            <div id="solicitaMsgErro" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
+            <div id="erroNovo" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
             <div class="flex gap-2 pt-2">
-                <button onclick="fecharModalSolicitacao()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button>
-                <button id="btnConfirmarSolicitacao" onclick="enviarSolicitacao()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Confirmar</button>
+                <button onclick="fecharNovoModal()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button>
+                <button id="btnNovo" onclick="enviarNovo()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Confirmar</button>
             </div>
         </div>
     </div>
