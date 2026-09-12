@@ -356,9 +356,12 @@ def checar_notificacoes(rm):
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json or {}
-    item_id, nome, rm, prova = data.get('id'), str(data.get('nome', '')).strip(), str(data.get('rm', '')).strip(), str(data.get('prova', '')).strip()
+    item_id = data.get('id')
+    nome = str(data.get('nome', '')).strip()
+    rm = str(data.get('rm', '')).strip()
 
-    if not item_id or not nome or not rm or not prova: return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios no formulário!"}), 400
+    if not item_id or not nome or not rm: 
+        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios no formulário!"}), 400
 
     try:
         conn = get_db_connection()
@@ -371,7 +374,7 @@ def solicitar_item():
         status_atual = (item['status'] or 'DISPONÍVEL').upper()
         if status_atual != 'DISPONÍVEL': return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
 
-        cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, prova_propriedade = %s WHERE id = %s;", (nome, rm, prova, item_id))
+        cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s WHERE id = %s;", (nome, rm, item_id))
         conn.commit()
         cursor.close()
         conn.close()
