@@ -4,6 +4,7 @@ import requests
 import json
 import base64
 import io
+import os
 from PIL import Image, ImageTk
 import hashlib
 from datetime import datetime
@@ -60,8 +61,14 @@ class SecretariaApp:
         self.entry_senha = ttk.Entry(self.frame_login, show="*", width=30)
         self.entry_senha.pack(pady=5)
 
+        # Eventos para o botão ENTER
+        self.entry_email.bind("<Return>", lambda e: self.entry_senha.focus())
+        self.entry_senha.bind("<Return>", lambda e: self.verificar_login())
+
         btn_entrar = tk.Button(self.frame_login, text="ENTRAR", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.verificar_login)
         btn_entrar.pack(pady=20, fill="x", padx=50)
+        
+        self.entry_email.focus()
 
     def verificar_login(self):
         email = self.entry_email.get().strip().lower()
@@ -145,10 +152,8 @@ class SecretariaApp:
         frame_top = tk.Frame(self.tab_itens, bg="#0d1117")
         frame_top.pack(fill="x", pady=10, padx=10)
 
-        # Botão Cadastrar Novo Item
         tk.Button(frame_top, text="➕ CADASTRAR NOVO ITEM", bg="#059669", fg="white", font=("Arial", 10, "bold"), command=lambda: self.abrir_modal_form()).pack(side="left", padx=10)
 
-        # Filtros de Busca
         frame_busca = tk.Frame(frame_top, bg="#0d1117")
         frame_busca.pack(side="right", padx=10)
 
@@ -163,7 +168,6 @@ class SecretariaApp:
 
         tk.Button(frame_busca, text="🔍 Filtrar", bg="#1f6feb", fg="white", command=self.aplicar_filtros_tabela).pack(side="left")
         
-        # Tabela (Treeview)
         colunas = ("ID", "Nome / Descrição", "Categoria", "Status", "Local", "Solicitante")
         self.tree_itens = ttk.Treeview(self.tab_itens, columns=colunas, show="headings", height=15)
         for col in colunas:
@@ -192,26 +196,19 @@ class SecretariaApp:
         status_filtro = self.combo_filtro_status.get().upper()
 
         self.tree_itens.delete(*self.tree_itens.get_children())
-
-        # Atualiza tab de doações
         self.tree_doacoes.delete(*self.tree_doacoes.get_children())
 
         for i in self.itens_atuais:
             st = i.get('status', 'DISPONÍVEL').upper()
             
-            # Preenche Aba de Doações
             if st in ['PARA DOAÇÃO', 'DOAÇÃO FEITA']:
                 self.tree_doacoes.insert("", "end", values=(i['id'], i.get('nome') or i.get('txt_descricao'), i['categoria'], st, i.get('txt_data')))
 
-            # Filtros Aba Estoque (ignora entregues/doação feita por padrão, a não ser que filtrado)
-            if status_filtro != "TODOS" and st != status_filtro:
-                continue
-            if status_filtro == "TODOS" and st in ['ENTREGUE', 'DOAÇÃO FEITA']:
-                continue # Oculta entregues da visão geral
+            if status_filtro != "TODOS" and st != status_filtro: continue
+            if status_filtro == "TODOS" and st in ['ENTREGUE', 'DOAÇÃO FEITA']: continue 
 
             nome_desc = str(i.get('nome', '') + " " + i.get('txt_descricao', '')).lower()
-            if termo and termo not in nome_desc and termo not in str(i.get('txt_local', '')).lower():
-                continue
+            if termo and termo not in nome_desc and termo not in str(i.get('txt_local', '')).lower(): continue
 
             solicitante = i.get('solicitado_por', '-')
             if solicitante != '-': solicitante += f" (RM: {i.get('rm_aluno', '')})"
@@ -232,19 +229,17 @@ class SecretariaApp:
         titulo = "CADASTRAR NOVO OBJETO" if not item_edit else "EDITAR OBJETO"
         tk.Label(modal, text=titulo, font=("Arial", 14, "bold"), bg="#161b22", fg="#38bdf8").pack(pady=15)
 
-        # Variáveis do Form
         var_nome = tk.StringVar(value=item_edit.get('nome', '') if item_edit else "")
         var_desc = tk.StringVar(value=item_edit.get('txt_descricao', '') if item_edit else "")
         var_data = tk.StringVar(value=item_edit.get('txt_data', datetime.now().strftime("%d/%m/%Y")) if item_edit else datetime.now().strftime("%d/%m/%Y"))
         var_local = tk.StringVar(value=item_edit.get('txt_local', '') if item_edit else "")
         
-        # Recupera as fotos (se editando) para manter caso o usuário não altere
         fotos_atuais = []
         if item_edit:
             if item_edit.get('fotos'): fotos_atuais = item_edit['fotos']
             elif item_edit.get('foto'): fotos_atuais = [item_edit['foto']]
         
-        fotos_upload_base64 = fotos_atuais.copy() # Lista mutável para o botão de upload
+        fotos_upload_base64 = fotos_atuais.copy()
 
         def criar_campo(label, var, widget_type="entry", values=None):
             frame = tk.Frame(modal, bg="#161b22")
@@ -262,13 +257,11 @@ class SecretariaApp:
 
         criar_campo("Nome / Título Curto:", var_nome)
         criar_campo("Descrição Detalhada:", var_desc)
-        
         cb_cat = criar_campo("Categoria:", item_edit.get('categoria', 'OUTROS') if item_edit else "OUTROS", "combo", self.categorias_atuais)
         criar_campo("Data Encontrado:", var_data)
         criar_campo("Local Encontrado:", var_local)
         cb_status = criar_campo("Status:", item_edit.get('status', 'DISPONÍVEL') if item_edit else "DISPONÍVEL", "combo", ["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO"])
 
-        # UPLOAD DE FOTOS
         frame_fotos = tk.Frame(modal, bg="#161b22")
         frame_fotos.pack(fill="x", padx=40, pady=10)
         lbl_foto_status = tk.Label(frame_fotos, text=f"Fotos carregadas: {len(fotos_upload_base64)} (Máx 4)", bg="#161b22", fg="#94a3b8")
@@ -319,7 +312,7 @@ class SecretariaApp:
         tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg="#16a34a", fg="white", font=("Arial", 11, "bold"), pady=10, relief="flat", command=salvar).pack(fill="x", padx=40, pady=20)
 
     # ==========================================
-    # MODAL DE DETALHES E MULTI-FOTOS (DOUBLE CLICK)
+    # MODAL DE DETALHES NO DUPLO CLIQUE
     # ==========================================
     def abrir_modal_detalhes_item(self, event):
         selecionado = self.tree_itens.selection()
@@ -338,7 +331,6 @@ class SecretariaApp:
         nome_titulo = item.get('nome') or item.get('txt_descricao')
         tk.Label(modal, text=nome_titulo, font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=10)
 
-        # Informações
         frame_info = tk.Frame(modal, bg="#161b22", bd=1, relief="solid")
         frame_info.pack(fill="x", padx=20, pady=5)
 
@@ -351,7 +343,6 @@ class SecretariaApp:
 
         tk.Label(frame_info, text=info_texto, justify="left", bg="#161b22", fg="#c9d1d9", font=("Arial", 11)).pack(padx=15, pady=10, anchor="w")
 
-        # Galeria de Fotos
         tk.Label(modal, text="Galeria de Fotos:", font=("Arial", 12, "bold"), bg="#0d1117", fg="#c9d1d9").pack(pady=5, anchor="w", padx=20)
         frame_fotos = tk.Frame(modal, bg="#0d1117")
         frame_fotos.pack(fill="both", expand=True, padx=20)
@@ -376,9 +367,8 @@ class SecretariaApp:
                     lbl_img = tk.Label(frame_fotos, image=img_tk, bg="#161b22", bd=2, relief="solid")
                     lbl_img.image = img_tk
                     lbl_img.grid(row=0, column=col, padx=10, pady=5)
-                except Exception as e: print(e)
+                except: pass
 
-        # Botões de Ação
         frame_acoes = tk.Frame(modal, bg="#0d1117")
         frame_acoes.pack(fill="x", pady=15, padx=20)
 
@@ -398,7 +388,7 @@ class SecretariaApp:
 
         btn("🗑️ Excluir", "#991b1b", lambda: self.acao_rapida(item['id'], 'excluir', modal))
 
-    # --- AÇÕES RÁPIDAS (EXCLUIR, RECUSAR, DOAÇÃO) ---
+    # --- AÇÕES RÁPIDAS ---
     def acao_rapida(self, item_id, acao, modal=None):
         try:
             if acao == 'excluir' and messagebox.askyesno("Excluir", "Deseja excluir este item permanentemente?"):
@@ -407,8 +397,7 @@ class SecretariaApp:
                 res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar")
             elif acao == 'doacao':
                 res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"})
-            else:
-                return
+            else: return
 
             if res.status_code == 200:
                 messagebox.showinfo("Sucesso", "Operação realizada!")
@@ -417,46 +406,140 @@ class SecretariaApp:
                 self.carregar_dashboard()
         except Exception as e: messagebox.showerror("Erro", str(e))
 
-    # --- DAR BAIXA (MODAL ESPECÍFICO) ---
+    # --- DAR BAIXA (ENTREGA) ---
     def abrir_dar_baixa(self, item):
         modal_baixa = tk.Toplevel(self.root)
         modal_baixa.title(f"Dar Baixa - Item #{item['id']}")
-        modal_baixa.geometry("400x350")
+        modal_baixa.geometry("450x400")
         modal_baixa.configure(bg="#0d1117")
+        modal_baixa.transient(self.root)
+        modal_baixa.grab_set()
 
         tk.Label(modal_baixa, text="Registrar Entrega ao Dono", font=("Arial", 14, "bold"), bg="#0d1117", fg="#10b981").pack(pady=15)
 
-        tk.Label(modal_baixa, text="Nome do Aluno:", bg="#0d1117", fg="white").pack()
-        entry_nome = ttk.Entry(modal_baixa, width=40)
+        tk.Label(modal_baixa, text="Nome Completo do Aluno:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
+        entry_nome = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
         entry_nome.insert(0, item.get('solicitado_por', ''))
-        entry_nome.pack(pady=5)
+        entry_nome.pack(padx=30, pady=(0, 10))
 
-        tk.Label(modal_baixa, text="RM:", bg="#0d1117", fg="white").pack()
-        entry_rm = ttk.Entry(modal_baixa, width=40)
+        tk.Label(modal_baixa, text="RM:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
+        entry_rm = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
         entry_rm.insert(0, item.get('rm_aluno', ''))
-        entry_rm.pack(pady=5)
+        entry_rm.pack(padx=30, pady=(0, 10))
 
-        tk.Label(modal_baixa, text="Turma / Curso:", bg="#0d1117", fg="white").pack()
-        entry_turma = ttk.Entry(modal_baixa, width=40)
-        entry_turma.pack(pady=5)
+        tk.Label(modal_baixa, text="Turma / Curso:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
+        entry_turma = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
+        entry_turma.pack(padx=30, pady=(0, 20))
 
         def confirmar():
-            payload = {
-                "status": "ENTREGUE",
-                "retirado_por": entry_nome.get().strip(),
-                "rm_retirante": entry_rm.get().strip(),
-                "turma_curso": entry_turma.get().strip(),
-                "funcionario_responsavel": "Secretaria"
-            }
+            n, r, t = entry_nome.get().strip(), entry_rm.get().strip(), entry_turma.get().strip() or "-"
+            if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=modal_baixa)
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json=payload)
+                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json={
+                    "status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria"
+                })
                 if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item baixado com sucesso!")
+                    messagebox.showinfo("Sucesso", "Item baixado com sucesso!", parent=modal_baixa)
                     modal_baixa.destroy()
-                    self.carregar_dados() # Recarrega itens e historico
-            except Exception as e: messagebox.showerror("Erro", str(e))
+                    self.carregar_dados()
+                    nome_obj = item.get('nome') or item.get('txt_descricao')
+                    self.abrir_tela_comprovante(item['id'], nome_obj, n, r, t)
+            except Exception as e: messagebox.showerror("Erro", str(e), parent=modal_baixa)
 
-        tk.Button(modal_baixa, text="Confirmar Entrega", bg="#059669", fg="white", font=("Arial", 10, "bold"), command=confirmar).pack(pady=20)
+        tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg="#059669", fg="white", font=("Arial", 10, "bold"), pady=8, command=confirmar).pack(fill="x", padx=30)
+
+    # --- TELA DO COMPROVANTE (SALVAMENTO DIRETO) ---
+    def abrir_tela_comprovante(self, item_id, nome_item, retirado_por, rm, turma):
+        top_comp = tk.Toplevel(self.root)
+        top_comp.title(f"Comprovante de Retirada - #{item_id}")
+        top_comp.geometry("520x640")
+        top_comp.configure(bg="#161b22")
+        top_comp.transient(self.root)
+        top_comp.grab_set()
+
+        tk.Label(top_comp, text="📄 Comprovante de Retirada", font=("Arial", 14, "bold"), bg="#161b22", fg="#38bdf8").pack(pady=(15, 10))
+
+        form_comp = tk.Frame(top_comp, bg="#161b22", padx=20)
+        form_comp.pack(fill="both", expand=True)
+
+        def campo_comp(label_txt, valor):
+            tk.Label(form_comp, text=label_txt, bg="#161b22", fg="#c9d1d9", font=("Arial", 9, "bold")).pack(anchor="w", pady=(5, 0))
+            e = ttk.Entry(form_comp, font=("Arial", 11))
+            e.insert(0, valor)
+            e.pack(fill="x", pady=(0, 5))
+            return e
+
+        tk.Label(form_comp, text=f"Código do Item: #{item_id}", bg="#161b22", fg="#f87171", font=("Arial", 11, "bold")).pack(anchor="w", pady=(0, 10))
+        ent_nome = campo_comp("Descrição do Objeto:", nome_item)
+        ent_retirado = campo_comp("Retirado Por:", retirado_por)
+        ent_rm = campo_comp("RM / Documento:", rm)
+        ent_turma = campo_comp("Turma / Curso:", turma)
+
+        data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
+        tk.Label(form_comp, text=f"Data da Operação: {data_atual}", bg="#161b22", fg="#8b949e", font=("Arial", 9)).pack(anchor="w", pady=(10, 15))
+
+        def baixar_comprovante():
+            # Abre janela para escolher ONDE salvar o arquivo
+            file_path = filedialog.asksaveasfilename(
+                parent=top_comp,
+                defaultextension=".html",
+                initialfile=f"comprovante_baixa_{item_id}_{ent_rm.get()}.html",
+                title="Salvar Comprovante",
+                filetypes=[("Página Web HTML", "*.html")]
+            )
+            if file_path:
+                html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Comprovante de Retirada - ETEC</title>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; margin: 40px; color: #111; }}
+                        .container {{ max-width: 700px; margin: 0 auto; border: 2px solid #333; padding: 30px; border-radius: 8px; }}
+                        .header {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }}
+                        .header h2 {{ margin: 0; color: #b91c1c; }}
+                        .header p {{ margin: 5px 0 0; font-size: 13px; color: #555; }}
+                        .info-group {{ margin-bottom: 15px; font-size: 14px; }}
+                        .info-group strong {{ display: inline-block; width: 160px; }}
+                        .signatures {{ margin-top: 50px; display: flex; justify-content: space-between; }}
+                        .sig-box {{ width: 45%; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 13px; }}
+                        .print-btn {{ text-align: center; margin-top: 30px; }}
+                        .print-btn button {{ background: #2563eb; color: #fff; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; }}
+                        @media print {{ .print-btn {{ display: none; }} }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h2>ETEC Profº José Ignácio Azevedo Filho</h2>
+                            <p>Setor de Achados e Perdidos — Comprovante de Entrega de Objeto</p>
+                        </div>
+                        <div class="info-group"><strong>Data da Retirada:</strong> {data_atual}</div>
+                        <div class="info-group"><strong>Código do Item:</strong> #{item_id}</div>
+                        <div class="info-group"><strong>Descrição do Objeto:</strong> {ent_nome.get().strip()}</div>
+                        <div class="info-group"><strong>Retirado Por (Nome):</strong> {ent_retirado.get().strip()}</div>
+                        <div class="info-group"><strong>RM / Documento:</strong> {ent_rm.get().strip()}</div>
+                        <div class="info-group"><strong>Turma / Curso:</strong> {ent_turma.get().strip()}</div>
+                        <div class="info-group"><strong>Funcionário Resp.:</strong> Secretaria ETEC</div>
+                        <div class="signatures">
+                            <div class="sig-box">Assinatura do Aluno / Retirante</div>
+                            <div class="sig-box">Assinatura do Funcionário (Secretaria)</div>
+                        </div>
+                        <div class="print-btn"><button onclick="window.print()">🖨️ Imprimir Página</button></div>
+                    </div>
+                </body>
+                </html>
+                """
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        f.write(html)
+                    messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso em:\n{file_path}", parent=top_comp)
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Não foi possível salvar o arquivo:\n{e}", parent=top_comp)
+
+        tk.Button(top_comp, text="📥 ESCOLHER PASTA E SALVAR", command=baixar_comprovante, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(fill="x", padx=20, pady=(5, 10))
+        tk.Button(top_comp, text="Fechar Janela", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 9, "bold"), relief="flat", pady=6).pack(fill="x", padx=20, pady=(0, 15))
 
 
     # --- TAB: DOAÇÕES ---
@@ -466,24 +549,19 @@ class SecretariaApp:
 
         tk.Label(frame_top, text="Gerenciamento de Doações", font=("Arial", 14, "bold"), bg="#0d1117", fg="#f59e0b").pack(side="left")
         
-        def concluir_todas_doacoes():
+        def concluir_doacoes():
             if messagebox.askyesno("Confirmar Doação", "Deseja remover todos os itens 'PARA DOAÇÃO' e 'DOAÇÃO FEITA' do sistema definitivamente?"):
                 try:
-                    # Como a API remove 'DOAÇÃO FEITA', primeiro marcamos todos que estao na tela como doacao feita, ou apenas chamamos a rota se a API tratar.
-                    # Rota atual da api exclui UPPER(status) = 'DOAÇÃO FEITA'. 
-                    # Precisaríamos mudar tudo na tabela para DOAÇÃO FEITA primeiro.
                     for child in self.tree_doacoes.get_children():
                         item_id = self.tree_doacoes.item(child)["values"][0]
                         requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "DOAÇÃO FEITA"})
-                    
-                    # Agora chama a rota de limpar doacoes
                     res = requests.delete(f"{API_URL}/api/itens/doacoes/concluir")
                     if res.status_code == 200:
                         messagebox.showinfo("Sucesso", "Itens doados e removidos do sistema!")
                         self.carregar_dados()
                 except Exception as e: messagebox.showerror("Erro", str(e))
 
-        tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES EM LOTE", bg="#f59e0b", fg="#0d1117", font=("Arial", 10, "bold"), command=concluir_todas_doacoes).pack(side="right")
+        tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES EM LOTE", bg="#f59e0b", fg="#0d1117", font=("Arial", 10, "bold"), command=concluir_doacoes).pack(side="right")
 
         colunas = ("ID", "Nome / Descrição", "Categoria", "Status", "Data Encontrado")
         self.tree_doacoes = ttk.Treeview(self.tab_doacoes, columns=colunas, show="headings", height=15)
