@@ -199,21 +199,36 @@ class SecretariaApp:
         self.tree_doacoes.delete(*self.tree_doacoes.get_children())
 
         for i in self.itens_atuais:
-            st = i.get('status', 'DISPONÍVEL').upper()
+            # Proteção contra valores nulos da API
+            st = (i.get('status') or 'DISPONÍVEL').upper()
+            nome_val = i.get('nome') or ''
+            desc_val = i.get('txt_descricao') or ''
+            local_val = i.get('txt_local') or ''
             
+            nome_exibicao = nome_val if nome_val else desc_val
+            if not nome_exibicao: nome_exibicao = "Sem Título"
+            
+            # Preenchimento da Tabela de Doações
             if st in ['PARA DOAÇÃO', 'DOAÇÃO FEITA']:
-                self.tree_doacoes.insert("", "end", values=(i['id'], i.get('nome') or i.get('txt_descricao'), i['categoria'], st, i.get('txt_data')))
+                self.tree_doacoes.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, i.get('txt_data', '')))
 
+            # Filtros Estoque Principal
             if status_filtro != "TODOS" and st != status_filtro: continue
             if status_filtro == "TODOS" and st in ['ENTREGUE', 'DOAÇÃO FEITA']: continue 
 
-            nome_desc = str(i.get('nome', '') + " " + i.get('txt_descricao', '')).lower()
-            if termo and termo not in nome_desc and termo not in str(i.get('txt_local', '')).lower(): continue
+            nome_desc_busca = f"{nome_val} {desc_val}".lower()
+            if termo and termo not in nome_desc_busca and termo not in local_val.lower(): 
+                continue
 
-            solicitante = i.get('solicitado_por', '-')
-            if solicitante != '-': solicitante += f" (RM: {i.get('rm_aluno', '')})"
+            # Tratamento do Solicitante para evitar concatenação de NoneType com String
+            solicitante = i.get('solicitado_por')
+            if solicitante:
+                rm_val = i.get('rm_aluno') or '-'
+                solicitante_str = f"{solicitante} (RM: {rm_val})"
+            else:
+                solicitante_str = "-"
 
-            self.tree_itens.insert("", "end", values=(i['id'], i.get('nome') or i.get('txt_descricao'), i['categoria'], st, i.get('txt_local', ''), solicitante))
+            self.tree_itens.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, local_val, solicitante_str))
 
     # ==========================================
     # MODAL DE FORMULÁRIO (CADASTRAR / EDITAR)
@@ -328,7 +343,7 @@ class SecretariaApp:
         modal.configure(bg="#0d1117")
         modal.transient(self.root)
 
-        nome_titulo = item.get('nome') or item.get('txt_descricao')
+        nome_titulo = item.get('nome') or item.get('txt_descricao') or 'Sem Título'
         tk.Label(modal, text=nome_titulo, font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=10)
 
         frame_info = tk.Frame(modal, bg="#161b22", bd=1, relief="solid")
@@ -419,12 +434,12 @@ class SecretariaApp:
 
         tk.Label(modal_baixa, text="Nome Completo do Aluno:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
         entry_nome = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
-        entry_nome.insert(0, item.get('solicitado_por', ''))
+        entry_nome.insert(0, item.get('solicitado_por') or '')
         entry_nome.pack(padx=30, pady=(0, 10))
 
         tk.Label(modal_baixa, text="RM:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
         entry_rm = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
-        entry_rm.insert(0, item.get('rm_aluno', ''))
+        entry_rm.insert(0, item.get('rm_aluno') or '')
         entry_rm.pack(padx=30, pady=(0, 10))
 
         tk.Label(modal_baixa, text="Turma / Curso:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
@@ -479,7 +494,6 @@ class SecretariaApp:
         tk.Label(form_comp, text=f"Data da Operação: {data_atual}", bg="#161b22", fg="#8b949e", font=("Arial", 9)).pack(anchor="w", pady=(10, 15))
 
         def baixar_comprovante():
-            # Abre janela para escolher ONDE salvar o arquivo
             file_path = filedialog.asksaveasfilename(
                 parent=top_comp,
                 defaultextension=".html",
