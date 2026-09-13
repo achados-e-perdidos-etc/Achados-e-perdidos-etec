@@ -7,10 +7,22 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
 
+# Importação do Cloudinary
+import cloudinary
+import cloudinary.uploader
+
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
+# Configuração do Cloudinary usando Variáveis de Ambiente
+cloudinary.config( 
+  cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+  api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+  api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+  secure = True
+)
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -44,6 +56,31 @@ def calcular_similaridade(texto1, texto2):
         return 0
     return len(t1.intersection(t2))
 
+# ==========================================
+# MOTOR DE UPLOAD (CLOUDINARY)
+# ==========================================
+def processar_fotos(fotos_array):
+    """
+    Recebe um array com Base64 ou URLs.
+    Envia o que for Base64 para o Cloudinary e retorna uma lista limpa só com URLs.
+    """
+    urls_finais = []
+    if not fotos_array:
+        return urls_finais
+
+    for foto in fotos_array:
+        if foto.startswith('http'):
+            # Já é uma URL hospedada, mantém intacta
+            urls_finais.append(foto)
+        else:
+            try:
+                # É um Base64 novo, faz o upload para a nuvem
+                resposta = cloudinary.uploader.upload(foto, folder="etec_achados")
+                urls_finais.append(resposta["secure_url"])
+            except Exception as e:
+                print(f"Erro no upload do Cloudinary: {e}")
+    return urls_finais
+
 def init_db():
     try:
         conn = get_db_connection()
@@ -74,15 +111,10 @@ def init_db():
                 fotos_json TEXT,
                 status VARCHAR(30) DEFAULT 'DISPONÍVEL',
                 solicitado_por VARCHAR(100),
-                rm_aluno VARCHAR(20)
+                rm_aluno VARCHAR(20),
+                prova_propriedade TEXT
             );
         ''')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS nome_item VARCHAR(150);')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS solicitado_por VARCHAR(100);')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS rm_aluno VARCHAR(20);')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS prova_propriedade TEXT;')
-        cursor.execute('UPDATE itens SET nome_item = descricao WHERE nome_item IS NULL OR nome_item = \'\';')
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entregues (
@@ -240,11 +272,18 @@ def get_itens():
 @app.route('/api/itens', methods=['POST'])
 def cadastrar_item():
     data = request.json or {}
-    nome, descricao, categoria, data_enc, local, fotos, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('fotos', []), data.get('status', 'DISPONÍVEL')
-    if not nome or not descricao or not data_enc or not local: return jsonify({"success": False, "message": "Preencha todos!"}), 400
+    nome, descricao, categoria = data.get('nome'), data.get('descricao'), data.get('categoria')
+    data_enc, local, status = data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
+    fotos_base64_brutas = data.get('fotos', [])
 
-    foto_capa = fotos[0] if len(fotos) > 0 else ''
-    fotos_json_str = json.dumps(fotos)
+    if not nome or not descricao or not data_enc or not local: 
+        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios!"}), 400
+
+    # Processa as imagens mandando para a nuvem
+    urls_nuvem = processar_fotos(fotos_base64_brutas)
+    
+    foto_capa = urls_nuvem[0] if len(urls_nuvem) > 0 else ''
+    fotos_json_str = json.dumps(urls_nuvem)
 
     try:
         conn = get_db_connection()
@@ -257,7 +296,7 @@ def cadastrar_item():
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
+        return jsonify({"success": True, "message": "Objeto salvo com sucesso na nuvem!", "id": novo_id})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -304,18 +343,29 @@ def obter_estatisticas():
 @app.route('/api/itens/<int:item_id>', methods=['PUT'])
 def atualizar_item(item_id):
     data = request.json or {}
-    nome, descricao, categoria, data_enc, local, fotos, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('fotos'), data.get('status', 'DISPONÍVEL')
+    nome, descricao, categoria = data.get('nome'), data.get('descricao'), data.get('categoria')
+    data_enc, local, status = data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
+    fotos_recebidas = data.get('fotos')
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         if descricao and data_enc and local:
-            if fotos is not None and len(fotos) > 0:
-                cursor.execute("UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s WHERE id = %s;", (nome, descricao, categoria, data_enc, local, fotos[0], json.dumps(fotos), status, item_id))
+            if fotos_recebidas is not None and len(fotos_recebidas) > 0:
+                # Se houver fotos no payload, processa para garantir que tudo seja URL
+                urls_nuvem = processar_fotos(fotos_recebidas)
+                cursor.execute(
+                    "UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s WHERE id = %s;", 
+                    (nome, descricao, categoria, data_enc, local, urls_nuvem[0], json.dumps(urls_nuvem), status, item_id)
+                )
             else:
-                cursor.execute("UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s WHERE id = %s;", (nome, descricao, categoria, data_enc, local, status, item_id))
+                cursor.execute(
+                    "UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s WHERE id = %s;", 
+                    (nome, descricao, categoria, data_enc, local, status, item_id)
+                )
         else:
+            # Caso seja apenas uma atualização rápida de status (recusar, aprovar)
             cursor.execute("UPDATE itens SET status = %s WHERE id = %s;", (status, item_id))
 
         if status.upper() == 'ENTREGUE':
