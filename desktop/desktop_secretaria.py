@@ -18,7 +18,7 @@ TOKEN_SECRETARIA = None
 class SecretariaApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("ETEC - Painel Desktop da Secretaria (Seguro JWT)")
+        self.root.title("ETEC - Painel da Secretaria")
         self.root.geometry("1100x750")
         self.root.configure(bg="#0d1117")
         
@@ -54,7 +54,7 @@ class SecretariaApp:
         self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=420, height=320)
 
         tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=15)
-        tk.Label(self.frame_login, text="Autenticação Segura via API (JWT)", font=("Arial", 8, "italic"), bg="#0d1117", fg="#10b981").pack(pady=(0, 10))
+        tk.Label(self.frame_login, text="Área Administrativa", font=("Arial", 8, "italic"), bg="#0d1117", fg="#10b981").pack(pady=(0, 10))
 
         tk.Label(self.frame_login, text="E-mail:", bg="#0d1117", fg="#c9d1d9").pack(anchor="w", padx=40)
         self.entry_email = ttk.Entry(self.frame_login, width=35)
