@@ -157,14 +157,16 @@ class SecretariaApp:
         frame_busca = tk.Frame(frame_top, bg="#0d1117")
         frame_busca.pack(side="right", padx=10)
 
-        tk.Label(frame_busca, text="Buscar:", bg="#0d1117", fg="white").pack(side="left")
-        self.entry_busca = ttk.Entry(frame_busca, width=25)
+        tk.Label(frame_busca, text="Buscar ID:", bg="#0d1117", fg="white").pack(side="left")
+        self.entry_busca = ttk.Entry(frame_busca, width=15)
         self.entry_busca.pack(side="left", padx=5)
+        self.entry_busca.bind("<Return>", lambda e: self.aplicar_filtros_tabela())
 
         tk.Label(frame_busca, text="Status:", bg="#0d1117", fg="white").pack(side="left", padx=(10,0))
         self.combo_filtro_status = ttk.Combobox(frame_busca, values=["TODOS", "DISPONÍVEL", "SOLICITADO", "PARA DOAÇÃO"], state="readonly", width=15)
         self.combo_filtro_status.current(0)
         self.combo_filtro_status.pack(side="left", padx=5)
+        self.combo_filtro_status.bind("<<ComboboxSelected>>", lambda e: self.aplicar_filtros_tabela())
 
         tk.Button(frame_busca, text="🔍 Filtrar", bg="#1f6feb", fg="white", command=self.aplicar_filtros_tabela).pack(side="left")
         
@@ -192,14 +194,13 @@ class SecretariaApp:
             messagebox.showerror("Erro de Conexão", f"Não foi possível carregar os itens: {e}")
 
     def aplicar_filtros_tabela(self):
-        termo = self.entry_busca.get().strip().lower()
+        termo_id = self.entry_busca.get().strip()
         status_filtro = self.combo_filtro_status.get().upper()
 
         self.tree_itens.delete(*self.tree_itens.get_children())
         self.tree_doacoes.delete(*self.tree_doacoes.get_children())
 
         for i in self.itens_atuais:
-            # Proteção contra valores nulos da API
             st = (i.get('status') or 'DISPONÍVEL').upper()
             nome_val = i.get('nome') or ''
             desc_val = i.get('txt_descricao') or ''
@@ -208,19 +209,16 @@ class SecretariaApp:
             nome_exibicao = nome_val if nome_val else desc_val
             if not nome_exibicao: nome_exibicao = "Sem Título"
             
-            # Preenchimento da Tabela de Doações
             if st in ['PARA DOAÇÃO', 'DOAÇÃO FEITA']:
                 self.tree_doacoes.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, i.get('txt_data', '')))
 
-            # Filtros Estoque Principal
             if status_filtro != "TODOS" and st != status_filtro: continue
             if status_filtro == "TODOS" and st in ['ENTREGUE', 'DOAÇÃO FEITA']: continue 
 
-            nome_desc_busca = f"{nome_val} {desc_val}".lower()
-            if termo and termo not in nome_desc_busca and termo not in local_val.lower(): 
+            # Busca exata por ID
+            if termo_id and str(i['id']) != termo_id: 
                 continue
 
-            # Tratamento do Solicitante para evitar concatenação de NoneType com String
             solicitante = i.get('solicitado_por')
             if solicitante:
                 rm_val = i.get('rm_aluno') or '-'
@@ -393,13 +391,13 @@ class SecretariaApp:
         btn("✏️ Editar", "#eab308", lambda: [modal.destroy(), self.abrir_modal_form(item)])
         
         if item.get('status') == 'SOLICITADO':
-            btn("🚫 Recusar Solicitação", "#d97706", lambda: self.acao_rapida(item['id'], 'recusar', modal))
+            btn("🚫 Recusar", "#d97706", lambda: self.acao_rapida(item['id'], 'recusar', modal))
         
         if item.get('status') != 'ENTREGUE':
             btn("✅ Dar Baixa", "#059669", lambda: [modal.destroy(), self.abrir_dar_baixa(item)])
             
         if item.get('status') != 'PARA DOAÇÃO':
-            btn("🎁 Marcar P/ Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
+            btn("🎁 Marcar Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
 
         btn("🗑️ Excluir", "#991b1b", lambda: self.acao_rapida(item['id'], 'excluir', modal))
 
@@ -446,6 +444,11 @@ class SecretariaApp:
         entry_turma = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
         entry_turma.pack(padx=30, pady=(0, 20))
 
+        # Eventos do Enter
+        entry_nome.bind("<Return>", lambda e: entry_rm.focus())
+        entry_rm.bind("<Return>", lambda e: entry_turma.focus())
+        entry_turma.bind("<Return>", lambda e: confirmar())
+
         def confirmar():
             n, r, t = entry_nome.get().strip(), entry_rm.get().strip(), entry_turma.get().strip() or "-"
             if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=modal_baixa)
@@ -457,103 +460,133 @@ class SecretariaApp:
                     messagebox.showinfo("Sucesso", "Item baixado com sucesso!", parent=modal_baixa)
                     modal_baixa.destroy()
                     self.carregar_dados()
-                    nome_obj = item.get('nome') or item.get('txt_descricao')
-                    self.abrir_tela_comprovante(item['id'], nome_obj, n, r, t)
+                    nome_obj = item.get('nome') or item.get('txt_descricao') or 'Sem Título'
+                    desc_obj = item.get('txt_descricao') or ''
+                    local_obj = item.get('txt_local') or ''
+                    self.abrir_tela_comprovante(item['id'], nome_obj, desc_obj, local_obj, n, r, t)
             except Exception as e: messagebox.showerror("Erro", str(e), parent=modal_baixa)
 
         tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg="#059669", fg="white", font=("Arial", 10, "bold"), pady=8, command=confirmar).pack(fill="x", padx=30)
 
-    # --- TELA DO COMPROVANTE (SALVAMENTO DIRETO) ---
-    def abrir_tela_comprovante(self, item_id, nome_item, retirado_por, rm, turma):
+    # --- TELA DO COMPROVANTE (IDÊNTICO AO MOBILE) ---
+    def abrir_tela_comprovante(self, item_id, nome_item, desc_item, local_item, retirado_por, rm, turma):
         top_comp = tk.Toplevel(self.root)
-        top_comp.title(f"Comprovante de Retirada - #{item_id}")
-        top_comp.geometry("520x640")
-        top_comp.configure(bg="#161b22")
+        top_comp.title("Comprovante de Retirada")
+        top_comp.geometry("600x650")
+        top_comp.configure(bg="#e5e7eb") # Fundo cinza para destacar a "folha" branca
         top_comp.transient(self.root)
         top_comp.grab_set()
 
-        tk.Label(top_comp, text="📄 Comprovante de Retirada", font=("Arial", 14, "bold"), bg="#161b22", fg="#38bdf8").pack(pady=(15, 10))
-
-        form_comp = tk.Frame(top_comp, bg="#161b22", padx=20)
-        form_comp.pack(fill="both", expand=True)
-
-        def campo_comp(label_txt, valor):
-            tk.Label(form_comp, text=label_txt, bg="#161b22", fg="#c9d1d9", font=("Arial", 9, "bold")).pack(anchor="w", pady=(5, 0))
-            e = ttk.Entry(form_comp, font=("Arial", 11))
-            e.insert(0, valor)
-            e.pack(fill="x", pady=(0, 5))
-            return e
-
-        tk.Label(form_comp, text=f"Código do Item: #{item_id}", bg="#161b22", fg="#f87171", font=("Arial", 11, "bold")).pack(anchor="w", pady=(0, 10))
-        ent_nome = campo_comp("Descrição do Objeto:", nome_item)
-        ent_retirado = campo_comp("Retirado Por:", retirado_por)
-        ent_rm = campo_comp("RM / Documento:", rm)
-        ent_turma = campo_comp("Turma / Curso:", turma)
-
         data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
-        tk.Label(form_comp, text=f"Data da Operação: {data_atual}", bg="#161b22", fg="#8b949e", font=("Arial", 9)).pack(anchor="w", pady=(10, 15))
 
+        # Container branco imitando o papel (como no Mobile)
+        folha = tk.Frame(top_comp, bg="white", padx=30, pady=30, relief="flat")
+        folha.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Cabeçalho do Comprovante
+        tk.Label(folha, text="ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO", font=("Arial", 14, "bold"), bg="white", fg="black").pack()
+        tk.Label(folha, text="Sistema de Achados e Perdidos - Termo de Retirada de Objeto", font=("Arial", 10, "bold"), bg="white", fg="#4b5563").pack(pady=(0, 20))
+
+        # Seção 1: Dados do Aluno
+        f_aluno = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
+        f_aluno.pack(fill="x", pady=5)
+        tk.Label(f_aluno, text="DADOS DO ALUNO BENEFICIÁRIO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
+        tk.Label(f_aluno, text=f"Nome: {retirado_por}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_aluno, text=f"RM: {rm}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_aluno, text=f"Turma/Curso: {turma}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+
+        # Seção 2: Informações do Item
+        f_item = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
+        f_item.pack(fill="x", pady=5)
+        tk.Label(f_item, text="INFORMAÇÕES DO ITEM DEVOLVIDO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
+        tk.Label(f_item, text=f"Item: {nome_item}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_item, text=f"Descrição: {desc_item}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_item, text=f"Local Encontrado: {local_item}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_item, text=f"Data da Entrega: {data_atual}", font=("Arial", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+
+        tk.Label(folha, text="Declaro para os devidos fins que recebi o item acima descrito, conferindo suas\ncaracterísticas e estado atual de conservação nas dependências da secretaria da ETEC.", font=("Arial", 9, "italic"), bg="white", fg="#374151", justify="left").pack(anchor="w", pady=15)
+
+        # Seção 3: Assinaturas
+        f_ass = tk.Frame(folha, bg="white")
+        f_ass.pack(fill="x", pady=(30, 0))
+        
+        box1 = tk.Frame(f_ass, bg="white")
+        box1.pack(side="left", expand=True, fill="x", padx=10)
+        tk.Frame(box1, bg="black", height=1).pack(fill="x", pady=(0, 5))
+        tk.Label(box1, text="Assinatura do Aluno", font=("Arial", 9, "bold"), bg="white", fg="black").pack()
+
+        box2 = tk.Frame(f_ass, bg="white")
+        box2.pack(side="right", expand=True, fill="x", padx=10)
+        tk.Frame(box2, bg="black", height=1).pack(fill="x", pady=(0, 5))
+        tk.Label(box2, text="Funcionário Responsável (Secretaria)", font=("Arial", 9, "bold"), bg="white", fg="black").pack()
+
+        # Botão Download HTML
         def baixar_comprovante():
-            file_path = filedialog.asksaveasfilename(
-                parent=top_comp,
-                defaultextension=".html",
-                initialfile=f"comprovante_baixa_{item_id}_{ent_rm.get()}.html",
-                title="Salvar Comprovante",
-                filetypes=[("Página Web HTML", "*.html")]
-            )
+            file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".html", initialfile=f"comprovante_{rm}.html", title="Salvar Comprovante", filetypes=[("Página Web HTML", "*.html")])
             if file_path:
-                html = f"""
+                html_content = f"""
                 <!DOCTYPE html>
-                <html>
+                <html lang="pt-BR">
                 <head>
                     <meta charset="UTF-8">
-                    <title>Comprovante de Retirada - ETEC</title>
                     <style>
-                        body {{ font-family: Arial, sans-serif; margin: 40px; color: #111; }}
-                        .container {{ max-width: 700px; margin: 0 auto; border: 2px solid #333; padding: 30px; border-radius: 8px; }}
-                        .header {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }}
-                        .header h2 {{ margin: 0; color: #b91c1c; }}
-                        .header p {{ margin: 5px 0 0; font-size: 13px; color: #555; }}
-                        .info-group {{ margin-bottom: 15px; font-size: 14px; }}
-                        .info-group strong {{ display: inline-block; width: 160px; }}
-                        .signatures {{ margin-top: 50px; display: flex; justify-content: space-between; }}
-                        .sig-box {{ width: 45%; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 13px; }}
-                        .print-btn {{ text-align: center; margin-top: 30px; }}
-                        .print-btn button {{ background: #2563eb; color: #fff; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; }}
-                        @media print {{ .print-btn {{ display: none; }} }}
+                        body {{ font-family: sans-serif; color: black; margin: 0; padding: 20px; }}
+                        .print-area {{ max-width: 800px; margin: auto; padding: 30px; border: 1px solid #ccc; border-radius: 15px; }}
+                        .text-center {{ text-align: center; }}
+                        .border-b {{ border-bottom: 1px solid #ccc; padding-bottom: 15px; margin-bottom: 15px; }}
+                        .font-black {{ font-weight: 900; font-size: 20px; text-transform: uppercase; }}
+                        .text-xs {{ font-size: 12px; }}
+                        .text-gray-600 {{ color: #4b5563; }}
+                        .bg-gray-100 {{ background-color: #f3f4f6; padding: 15px; border-radius: 10px; margin-bottom: 15px; }}
+                        .font-bold {{ font-weight: bold; }}
+                        .uppercase {{ text-transform: uppercase; }}
+                        .text-gray-700 {{ color: #374151; }}
+                        .italic {{ font-style: italic; }}
+                        .grid {{ display: flex; justify-content: space-between; margin-top: 50px; text-align: center; font-size: 12px; }}
+                        .sig-box {{ width: 45%; }}
+                        .border-black {{ border-bottom: 1px solid black; margin-bottom: 5px; }}
+                        @media print {{ body {{ padding: 0; }} .print-area {{ border: none; padding: 0; }} .no-print {{ display: none; }} }}
                     </style>
                 </head>
                 <body>
-                    <div class="container">
-                        <div class="header">
-                            <h2>ETEC Profº José Ignácio Azevedo Filho</h2>
-                            <p>Setor de Achados e Perdidos — Comprovante de Entrega de Objeto</p>
+                    <div class="print-area">
+                        <div class="text-center border-b">
+                            <div class="font-black">ETEC Profº José Ignácio Azevedo Filho</div>
+                            <div class="text-xs font-bold text-gray-600">Sistema de Achados e Perdidos - Termo de Retirada de Objeto</div>
                         </div>
-                        <div class="info-group"><strong>Data da Retirada:</strong> {data_atual}</div>
-                        <div class="info-group"><strong>Código do Item:</strong> #{item_id}</div>
-                        <div class="info-group"><strong>Descrição do Objeto:</strong> {ent_nome.get().strip()}</div>
-                        <div class="info-group"><strong>Retirado Por (Nome):</strong> {ent_retirado.get().strip()}</div>
-                        <div class="info-group"><strong>RM / Documento:</strong> {ent_rm.get().strip()}</div>
-                        <div class="info-group"><strong>Turma / Curso:</strong> {ent_turma.get().strip()}</div>
-                        <div class="info-group"><strong>Funcionário Resp.:</strong> Secretaria ETEC</div>
-                        <div class="signatures">
-                            <div class="sig-box">Assinatura do Aluno / Retirante</div>
-                            <div class="sig-box">Assinatura do Funcionário (Secretaria)</div>
+                        <div class="bg-gray-100">
+                            <div class="font-bold uppercase text-gray-700" style="margin-bottom: 8px;">Dados do Aluno Beneficiário:</div>
+                            <div><strong>Nome:</strong> {retirado_por}</div>
+                            <div><strong>RM:</strong> {rm}</div>
+                            <div><strong>Turma/Curso:</strong> {turma}</div>
                         </div>
-                        <div class="print-btn"><button onclick="window.print()">🖨️ Imprimir Página</button></div>
+                        <div class="bg-gray-100">
+                            <div class="font-bold uppercase text-gray-700" style="margin-bottom: 8px;">Informações do Item Devolvido:</div>
+                            <div><strong>Item:</strong> {nome_item}</div>
+                            <div><strong>Descrição:</strong> {desc_item}</div>
+                            <div><strong>Local Encontrado:</strong> {local_item}</div>
+                            <div><strong>Data da Entrega:</strong> {data_atual}</div>
+                        </div>
+                        <div class="text-xs text-gray-700 italic" style="margin-top: 15px;">
+                            Declaro para os devidos fins que recebi o item acima descrito, conferindo suas características e estado atual de conservação nas dependências da secretaria da ETEC.
+                        </div>
+                        <div class="grid">
+                            <div class="sig-box"><div class="border-black"></div><div class="font-bold">Assinatura do Aluno</div></div>
+                            <div class="sig-box"><div class="border-black"></div><div class="font-bold">Funcionário Responsável (Secretaria)</div></div>
+                        </div>
+                        <div class="text-center no-print" style="margin-top: 40px;">
+                            <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; background-color: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer;">🖨️ Imprimir / Salvar PDF</button>
+                        </div>
                     </div>
                 </body>
                 </html>
                 """
                 try:
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        f.write(html)
+                    with open(file_path, "w", encoding="utf-8") as f: f.write(html_content)
                     messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso em:\n{file_path}", parent=top_comp)
-                except Exception as e:
-                    messagebox.showerror("Erro", f"Não foi possível salvar o arquivo:\n{e}", parent=top_comp)
+                except Exception as e: messagebox.showerror("Erro", str(e), parent=top_comp)
 
-        tk.Button(top_comp, text="📥 ESCOLHER PASTA E SALVAR", command=baixar_comprovante, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(fill="x", padx=20, pady=(5, 10))
-        tk.Button(top_comp, text="Fechar Janela", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 9, "bold"), relief="flat", pady=6).pack(fill="x", padx=20, pady=(0, 15))
+        tk.Button(top_comp, text="📥 BAIXAR COMPROVANTE", command=baixar_comprovante, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(fill="x", padx=20, pady=(0, 15))
 
 
     # --- TAB: DOAÇÕES ---
@@ -592,6 +625,7 @@ class SecretariaApp:
         tk.Label(frame_add, text="Nova Categoria:", bg="#0d1117", fg="white").pack(side="left", padx=5)
         self.entry_cat = ttk.Entry(frame_add, width=30)
         self.entry_cat.pack(side="left", padx=5)
+        self.entry_cat.bind("<Return>", lambda e: self.adicionar_categoria())
         tk.Button(frame_add, text="Adicionar", bg="#dc2626", fg="white", command=self.adicionar_categoria).pack(side="left", padx=5)
 
         self.listbox_cats = tk.Listbox(self.tab_categorias, bg="#161b22", fg="white", font=("Arial", 12), height=15)
