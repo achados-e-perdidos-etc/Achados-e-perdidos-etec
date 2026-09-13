@@ -6,21 +6,19 @@ import base64
 import io
 import os
 from PIL import Image, ImageTk, ImageDraw, ImageFont
-import hashlib
 from datetime import datetime
 import qrcode
 
 # ==========================================
-# CONFIGURAÇÕES DA API E HASHES
+# CONFIGURAÇÕES DA API E JWT
 # ==========================================
 API_URL = "https://achados-etec-api.onrender.com"
-HASH_EMAIL = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
-HASH_SENHA = "4a20e32e157a100f269d27cb60696b5b8fe17829c0305283de04fdb0094cec5c"
+TOKEN_SECRETARIA = None
 
 class SecretariaApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("ETEC - Painel Desktop da Secretaria")
+        self.root.title("ETEC - Painel Desktop da Secretaria (Seguro JWT)")
         self.root.geometry("1100x750")
         self.root.configure(bg="#0d1117")
         
@@ -40,39 +38,65 @@ class SecretariaApp:
 
         self.tela_login()
 
-    def sha256_hash(self, texto):
-        return hashlib.sha256(texto.encode('utf-8')).hexdigest()
+    def get_auth_headers(self):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {TOKEN_SECRETARIA}"
+        }
+
+    def get_auth_headers_get(self):
+        return {
+            "Authorization": f"Bearer {TOKEN_SECRETARIA}"
+        }
 
     def tela_login(self):
         self.frame_login = tk.Frame(self.root, bg="#0d1117")
-        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=400, height=300)
+        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=420, height=320)
 
-        tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=20)
+        tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=15)
+        tk.Label(self.frame_login, text="Autenticação Segura via API (JWT)", font=("Arial", 8, "italic"), bg="#0d1117", fg="#10b981").pack(pady=(0, 10))
 
-        tk.Label(self.frame_login, text="E-mail:", bg="#0d1117", fg="#c9d1d9").pack()
-        self.entry_email = ttk.Entry(self.frame_login, width=30)
-        self.entry_email.pack(pady=5)
+        tk.Label(self.frame_login, text="E-mail:", bg="#0d1117", fg="#c9d1d9").pack(anchor="w", padx=40)
+        self.entry_email = ttk.Entry(self.frame_login, width=35)
+        self.entry_email.pack(pady=2, padx=40, fill="x")
 
-        tk.Label(self.frame_login, text="Senha:", bg="#0d1117", fg="#c9d1d9").pack()
-        self.entry_senha = ttk.Entry(self.frame_login, show="*", width=30)
-        self.entry_senha.pack(pady=5)
+        tk.Label(self.frame_login, text="Senha:", bg="#0d1117", fg="#c9d1d9").pack(anchor="w", padx=40, pady=(5,0))
+        self.entry_senha = ttk.Entry(self.frame_login, show="*", width=35)
+        self.entry_senha.pack(pady=2, padx=40, fill="x")
 
         self.entry_email.bind("<Return>", lambda e: self.entry_senha.focus())
         self.entry_senha.bind("<Return>", lambda e: self.verificar_login())
 
-        btn_entrar = tk.Button(self.frame_login, text="ENTRAR", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.verificar_login)
-        btn_entrar.pack(pady=20, fill="x", padx=50)
+        self.btn_entrar = tk.Button(self.frame_login, text="ENTRAR NO SISTEMA", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.verificar_login)
+        self.btn_entrar.pack(pady=20, fill="x", padx=40)
         
         self.entry_email.focus()
 
     def verificar_login(self):
+        global TOKEN_SECRETARIA
         email = self.entry_email.get().strip().lower()
         senha = self.entry_senha.get().strip()
-        if self.sha256_hash(email) == HASH_EMAIL and self.sha256_hash(senha) == HASH_SENHA:
-            self.frame_login.destroy()
-            self.construir_interface_principal()
-        else:
-            messagebox.showerror("Erro", "E-mail ou senha incorretos!")
+
+        if not email or not senha:
+            return messagebox.showerror("Erro", "Preencha o e-mail e a senha!")
+
+        self.btn_entrar.config(text="CONECTANDO...", state="disabled")
+        self.root.update()
+
+        try:
+            res = requests.post(f"{API_URL}/api/login", json={"email": email, "senha": senha})
+            data = res.json()
+
+            if res.status_code == 200 and data.get("success"):
+                TOKEN_SECRETARIA = data.get("token")
+                self.frame_login.destroy()
+                self.construir_interface_principal()
+            else:
+                messagebox.showerror("Acesso Negado", data.get("message", "E-mail ou senha incorretos!"))
+                self.btn_entrar.config(text="ENTRAR NO SISTEMA", state="normal")
+        except Exception as e:
+            messagebox.showerror("Erro de Conexão", f"Não foi possível falar com o servidor:\n{e}")
+            self.btn_entrar.config(text="ENTRAR NO SISTEMA", state="normal")
 
     def construir_interface_principal(self):
         self.notebook = ttk.Notebook(self.root)
@@ -107,8 +131,7 @@ class SecretariaApp:
         self.carregar_entregues()
         self.carregar_dashboard()
         self.carregar_conversas()
-
-    # --- DASHBOARD ---
+        # --- DASHBOARD ---
     def construir_tab_dash(self):
         tk.Label(self.tab_dash, text="Visão Geral do Sistema", font=("Arial", 18, "bold"), bg="#0d1117", fg="#f87171").pack(pady=20)
         frame_cards = tk.Frame(self.tab_dash, bg="#0d1117")
@@ -130,7 +153,7 @@ class SecretariaApp:
 
     def carregar_dashboard(self):
         try:
-            res = requests.get(f"{API_URL}/api/estatisticas")
+            res = requests.get(f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 data = res.json()
                 self.lbl_stat_itens.config(text=str(data.get('total_itens', 0)))
@@ -177,7 +200,7 @@ class SecretariaApp:
 
     def carregar_itens(self):
         try:
-            res = requests.get(f"{API_URL}/api/itens")
+            res = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.itens_atuais = res.json()
                 self.aplicar_filtros_tabela()
@@ -286,13 +309,17 @@ class SecretariaApp:
             }
             if not payload['nome'] or not payload['descricao']: return messagebox.showwarning("Aviso", "Preencha título e descrição!")
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item_edit['id']}", json=payload) if item_edit else requests.post(f"{API_URL}/api/itens", json=payload)
+                if item_edit:
+                    res = requests.put(f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers())
+                else:
+                    res = requests.post(f"{API_URL}/api/itens", json=payload, headers=self.get_auth_headers())
+
                 if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item salvo com sucesso!")
+                    messagebox.showinfo("Sucesso", "Item salvo na nuvem com segurança!")
                     modal.destroy()
                     self.carregar_itens()
                     self.carregar_dashboard()
-                else: messagebox.showerror("Erro", "Erro ao salvar na nuvem.")
+                else: messagebox.showerror("Erro", "Acesso Negado ou erro no servidor.")
             except Exception as e: messagebox.showerror("Erro", str(e))
 
         tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg="#16a34a", fg="white", font=("Arial", 11, "bold"), pady=10, relief="flat", command=salvar).pack(fill="x", padx=40, pady=20)
@@ -330,25 +357,23 @@ class SecretariaApp:
         frame_fotos = tk.Frame(modal, bg="#0d1117")
         frame_fotos.pack(fill="both", expand=True, padx=20)
 
-        fotos_array = []
-        if item.get('fotos'): fotos_array = item['fotos']
-        elif item.get('fotos_json'):
-            try: fotos_array = json.loads(item['fotos_json'])
-            except: pass
+        fotos_array = item.get('fotos', [])
         if not fotos_array and item.get('foto'): fotos_array = [item['foto']]
 
         if not fotos_array: tk.Label(frame_fotos, text="Nenhuma foto registrada.", bg="#0d1117", fg="#8b949e").pack(pady=10)
         else:
-            for col, foto_b64 in enumerate(fotos_array):
+            for col, foto_url in enumerate(fotos_array):
                 try:
-                    if foto_b64.startswith("data:image"): foto_b64 = foto_b64.split(",")[1]
-                    img_data = base64.b64decode(foto_b64)
-                    img = Image.open(io.BytesIO(img_data))
-                    img.thumbnail((180, 180), Image.Resampling.LANCZOS)
-                    img_tk = ImageTk.PhotoImage(img)
-                    lbl_img = tk.Label(frame_fotos, image=img_tk, bg="#161b22", bd=2, relief="solid")
-                    lbl_img.image = img_tk
-                    lbl_img.grid(row=0, column=col, padx=10, pady=5)
+                    if foto_url.startswith('http'):
+                        import urllib.request
+                        with urllib.request.urlopen(foto_url) as u:
+                            raw_data = u.read()
+                        img = Image.open(io.BytesIO(raw_data))
+                        img.thumbnail((180, 180), Image.Resampling.LANCZOS)
+                        img_tk = ImageTk.PhotoImage(img)
+                        lbl_img = tk.Label(frame_fotos, image=img_tk, bg="#161b22", bd=2, relief="solid")
+                        lbl_img.image = img_tk
+                        lbl_img.grid(row=0, column=col, padx=10, pady=5)
                 except: pass
 
         frame_acoes = tk.Frame(modal, bg="#0d1117")
@@ -357,7 +382,6 @@ class SecretariaApp:
         def btn(txt, cor, cmd):
             tk.Button(frame_acoes, text=txt, bg=cor, fg="white", font=("Arial", 9, "bold"), command=cmd).pack(side="left", padx=5, fill="x", expand=True)
 
-        # Botão Central do QR CODE
         btn("🖨️ Etiqueta QR", "#2563eb", lambda: self.abrir_modal_etiqueta_qr(item))
         btn("✏️ Editar", "#eab308", lambda: [modal.destroy(), self.abrir_modal_form(item)])
         
@@ -377,7 +401,6 @@ class SecretariaApp:
 
         tk.Label(modal, text=f"Etiqueta do Item #{item['id']}", font=("Arial", 14, "bold"), bg="#161b22", fg="#f87171").pack(pady=15)
         
-        # Criação da Imagem da Etiqueta em Memória (Pillow)
         payload = f"ETEC-ITEM-{item['id']}"
         qr = qrcode.QRCode(version=1, box_size=8, border=1)
         qr.add_data(payload)
@@ -385,14 +408,11 @@ class SecretariaApp:
         img_qr = qr.make_image(fill_color="black", back_color="white").convert('RGB')
         
         largura, altura = img_qr.size
-        # Folha em branco com espaço para o texto do ID embaixo
         etiqueta_img = Image.new('RGB', (largura, altura + 30), color='white')
         etiqueta_img.paste(img_qr, (0, 0))
         
         draw = ImageDraw.Draw(etiqueta_img)
         texto = f"ID: {item['id']}"
-        
-        # Tenta carregar fonte padrão grande, senão usa a básica
         try: fonte = ImageFont.truetype("arial.ttf", 20)
         except: fonte = ImageFont.load_default()
             
@@ -401,7 +421,6 @@ class SecretariaApp:
         x_texto = (largura - w_texto) / 2
         draw.text((x_texto, altura), texto, fill="black", font=fonte)
 
-        # Preview na Tela
         preview = etiqueta_img.copy()
         preview.thumbnail((200, 200), Image.Resampling.LANCZOS)
         preview_tk = ImageTk.PhotoImage(preview)
@@ -410,7 +429,7 @@ class SecretariaApp:
         lbl_preview.pack(pady=10)
 
         def salvar_png():
-            path = filedialog.asksaveasfilename(defaultextension=".png", initialfile=f"qr_etec_{item['id']}.png", title="Salvar Imagem da Etiqueta", filetypes=[("Imagem PNG", "*.png"), ("Imagem JPG", "*.jpg")])
+            path = filedialog.asksaveasfilename(defaultextension=".png", initialfile=f"qr_etec_{item['id']}.png", title="Salvar Imagem da Etiqueta", filetypes=[("Imagem PNG", "*.png")])
             if path:
                 etiqueta_img.save(path)
                 messagebox.showinfo("Sucesso", f"Etiqueta salva em: {path}", parent=modal)
@@ -418,32 +437,32 @@ class SecretariaApp:
         def imprimir_direto():
             temp_path = os.path.abspath(f"temp_etiqueta_qr_{item['id']}.png")
             etiqueta_img.save(temp_path)
-            try:
-                os.startfile(temp_path, "print") # Abre o diálogo nativo do Windows de Impressão (funciona para A4 ou Térmica conectada)
-            except Exception as e:
-                messagebox.showerror("Erro", f"Seu sistema não suporta impressão direta via Python.\nPor favor, utilize o botão 'Salvar como Imagem'.\nErro: {e}", parent=modal)
+            try: os.startfile(temp_path, "print")
+            except Exception as e: messagebox.showerror("Erro", f"Erro na impressão direta: {e}", parent=modal)
 
         tk.Button(modal, text="💾 SALVAR COMO IMAGEM (.PNG)", bg="#16a34a", fg="white", font=("Arial", 10, "bold"), pady=8, command=salvar_png).pack(fill="x", padx=30, pady=5)
-        tk.Button(modal, text="🖨️ IMPRIMIR DIRETO (A4 / TÉRMICA)", bg="#2563eb", fg="white", font=("Arial", 10, "bold"), pady=8, command=imprimir_direto).pack(fill="x", padx=30, pady=5)
+        tk.Button(modal, text="🖨️ IMPRIMIR DIRETO", bg="#2563eb", fg="white", font=("Arial", 10, "bold"), pady=8, command=imprimir_direto).pack(fill="x", padx=30, pady=5)
 
-    # --- AÇÕES RÁPIDAS ---
+    # --- AÇÕES RÁPIDAS COM JWT ---
     def acao_rapida(self, item_id, acao, modal=None):
         try:
             if acao == 'excluir' and messagebox.askyesno("Excluir", "Deseja excluir este item permanentemente?"):
-                res = requests.delete(f"{API_URL}/api/itens/{item_id}")
+                res = requests.delete(f"{API_URL}/api/itens/{item_id}", headers=self.get_auth_headers())
             elif acao == 'recusar' and messagebox.askyesno("Recusar", "Deseja recusar a solicitação?"):
-                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar")
+                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar", headers=self.get_auth_headers())
             elif acao == 'doacao':
-                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"})
+                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"}, headers=self.get_auth_headers())
             else: return
+
             if res.status_code == 200:
                 messagebox.showinfo("Sucesso", "Operação realizada!")
                 if modal: modal.destroy()
-                self.carregar_itens()
-                self.carregar_dashboard()
+                self.carregar_dados()
+            else:
+                messagebox.showerror("Erro", "Acesso Negado.")
         except Exception as e: messagebox.showerror("Erro", str(e))
 
-    # --- DAR BAIXA ---
+    # --- DAR BAIXA COM JWT ---
     def abrir_dar_baixa(self, item):
         modal_baixa = tk.Toplevel(self.root)
         modal_baixa.title(f"Dar Baixa - Item #{item['id']}")
@@ -468,21 +487,18 @@ class SecretariaApp:
         entry_turma = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
         entry_turma.pack(padx=30, pady=(0, 20))
 
-        entry_nome.bind("<Return>", lambda e: entry_rm.focus())
-        entry_rm.bind("<Return>", lambda e: entry_turma.focus())
-        entry_turma.bind("<Return>", lambda e: confirmar())
-
         def confirmar():
             n, r, t = entry_nome.get().strip(), entry_rm.get().strip(), entry_turma.get().strip() or "-"
             if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=modal_baixa)
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria"})
+                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria Desktop"}, headers=self.get_auth_headers())
                 if res.status_code == 200:
                     messagebox.showinfo("Sucesso", "Item baixado com sucesso!", parent=modal_baixa)
                     modal_baixa.destroy()
                     self.carregar_dados()
                     nome_obj = item.get('nome') or item.get('txt_descricao') or 'Sem Título'
                     self.abrir_tela_comprovante(item['id'], nome_obj, item.get('txt_descricao') or '', item.get('txt_local') or '', n, r, t)
+                else: messagebox.showerror("Erro", "Acesso Negado.", parent=modal_baixa)
             except Exception as e: messagebox.showerror("Erro", str(e), parent=modal_baixa)
 
         tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg="#059669", fg="white", font=("Arial", 10, "bold"), pady=8, command=confirmar).pack(fill="x", padx=30)
@@ -497,7 +513,7 @@ class SecretariaApp:
         top_comp.grab_set()
 
         data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
-        folha = tk.Frame(top_comp, bg="white", padx=40, pady=30, relief="flat")
+        folha = tk.Frame(top_comp, bg="white", padx=40, pady=30)
         folha.pack(fill="both", expand=True, padx=30, pady=20)
 
         tk.Label(folha, text="ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO", font=("Arial", 14, "bold"), bg="white", fg="black").pack()
@@ -505,50 +521,42 @@ class SecretariaApp:
 
         f_aluno = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_aluno.pack(fill="x", pady=5)
-        tk.Label(f_aluno, text="DADOS DO ALUNO BENEFICIÁRIO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
-        tk.Label(f_aluno, text=f"Nome: {retirado_por}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
-        tk.Label(f_aluno, text=f"RM: {rm}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_aluno, text=f"Nome: {retirado_por}\nRM: {rm}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
 
         f_item = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_item.pack(fill="x", pady=5)
-        tk.Label(f_item, text="INFORMAÇÕES DO ITEM:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
-        tk.Label(f_item, text=f"Item #{item_id}: {nome_item}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
-        tk.Label(f_item, text=f"Data da Entrega: {data_atual}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_item, text=f"Item #{item_id}: {nome_item}\nData da Entrega: {data_atual}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
 
         def baixar_comprovante_txt():
-            file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".txt", initialfile=f"comprovante_{rm}.txt", title="Salvar Comprovante", filetypes=[("Arquivo de Texto", "*.txt")])
+            file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".txt", initialfile=f"comprovante_{rm}.txt", title="Salvar Comprovante")
             if file_path:
-                txt_content = f"====================================================\n       ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO\n Sistema de Achados e Perdidos - Termo de Retirada\n====================================================\n\nDADOS DO ALUNO BENEFICIÁRIO:\nNome: {retirado_por}\nRM: {rm}\nTurma/Curso: {turma}\n\nINFORMAÇÕES DO ITEM DEVOLVIDO:\nCódigo do Item: #{item_id}\nItem: {nome_item}\nDescrição: {desc_item}\nLocal Encontrado: {local_item}\nData da Entrega: {data_atual}\n\nDeclaro para os devidos fins que recebi o item acima \ndescrito, conferindo suas características e estado \natual de conservação nas dependências da secretaria.\n\n____________________________________________________\nAssinatura do Aluno / Retirante\n\n\n____________________________________________________\nFuncionário Responsável (Secretaria)\n"
-                try:
-                    with open(file_path, "w", encoding="utf-8") as f: f.write(txt_content)
-                    messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso em:\n{file_path}", parent=top_comp)
-                except Exception as e: messagebox.showerror("Erro", str(e), parent=top_comp)
+                txt_content = f"ETEC - TERMO DE RETIRADA\nAluno: {retirado_por} (RM: {rm})\nItem #{item_id}: {nome_item}\nData: {data_atual}"
+                with open(file_path, "w", encoding="utf-8") as f: f.write(txt_content)
+                messagebox.showinfo("Sucesso", "Comprovante salvo!", parent=top_comp)
 
         b_frame = tk.Frame(top_comp, bg="#e5e7eb")
         b_frame.pack(fill="x", padx=30, pady=(0, 20))
-        tk.Button(b_frame, text="📥 BAIXAR COMPROVANTE (TXT)", command=baixar_comprovante_txt, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(side="left", fill="x", expand=True, padx=(0, 5))
-        tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(side="left", fill="x", expand=True, padx=(5, 0))
+        tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), pady=10).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 10, "bold"), pady=10).pack(side="left", fill="x", expand=True, padx=(5, 0))
 
-    # --- TAB: DOAÇÕES, CATEGORIAS E ENTREGUES ---
+    # --- DOAÇÕES, CATEGORIAS E ENTREGUES ---
     def construir_tab_doacoes(self):
         frame_top = tk.Frame(self.tab_doacoes, bg="#0d1117")
         frame_top.pack(fill="x", pady=10, padx=10)
         tk.Label(frame_top, text="Gerenciamento de Doações", font=("Arial", 14, "bold"), bg="#0d1117", fg="#f59e0b").pack(side="left")
         def concluir_doacoes():
-            if messagebox.askyesno("Confirmar Doação", "Deseja remover todos os itens 'PARA DOAÇÃO' e 'DOAÇÃO FEITA' do sistema?"):
+            if messagebox.askyesno("Confirmar Doação", "Deseja remover todos os itens doados do sistema?"):
                 try:
                     for child in self.tree_doacoes.get_children():
-                        requests.put(f"{API_URL}/api/itens/{self.tree_doacoes.item(child)['values'][0]}", json={"status": "DOAÇÃO FEITA"})
-                    if requests.delete(f"{API_URL}/api/itens/doacoes/concluir").status_code == 200:
-                        messagebox.showinfo("Sucesso", "Itens doados e removidos do sistema!")
-                        self.carregar_dados()
+                        requests.put(f"{API_URL}/api/itens/{self.tree_doacoes.item(child)['values'][0]}", json={"status": "DOAÇÃO FEITA"}, headers=self.get_auth_headers())
+                    requests.delete(f"{API_URL}/api/itens/doacoes/concluir", headers=self.get_auth_headers())
+                    messagebox.showinfo("Sucesso", "Doações concluídas!")
+                    self.carregar_dados()
                 except: pass
         tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES", bg="#f59e0b", fg="#0d1117", font=("Arial", 10, "bold"), command=concluir_doacoes).pack(side="right")
         colunas = ("ID", "Nome / Descrição", "Categoria", "Status", "Data Encontrado")
         self.tree_doacoes = ttk.Treeview(self.tab_doacoes, columns=colunas, show="headings", height=15)
-        for col in colunas:
-            self.tree_doacoes.heading(col, text=col)
-            self.tree_doacoes.column(col, anchor="center")
+        for col in colunas: self.tree_doacoes.heading(col, text=col); self.tree_doacoes.column(col, anchor="center")
         self.tree_doacoes.pack(fill="both", expand=True, pady=5, padx=10)
 
     def construir_tab_categorias(self):
@@ -577,7 +585,8 @@ class SecretariaApp:
         nome = self.entry_cat.get().strip().upper()
         if nome:
             try:
-                if requests.post(f"{API_URL}/api/categorias", json={"nome": nome}).status_code == 200:
+                res = requests.post(f"{API_URL}/api/categorias", json={"nome": nome}, headers=self.get_auth_headers())
+                if res.status_code == 200:
                     self.entry_cat.delete(0, tk.END)
                     self.carregar_categorias()
             except: pass
@@ -591,17 +600,14 @@ class SecretariaApp:
 
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")
         self.tree_entregues = ttk.Treeview(self.tab_entregues, columns=colunas, show="headings", height=20)
-        for col in colunas:
-            self.tree_entregues.heading(col, text=col)
-            self.tree_entregues.column(col, anchor="center")
-        self.tree_entregues.column("Recibo", width=50); self.tree_entregues.column("ID Item", width=50)
-        self.tree_entregues.column("Item", width=200, anchor="w"); self.tree_entregues.column("Retirado Por", width=150, anchor="w")
+        for col in colunas: self.tree_entregues.heading(col, text=col); self.tree_entregues.column(col, anchor="center")
         self.tree_entregues.pack(fill="both", expand=True, pady=5, padx=10)
         self.tree_entregues.bind("<Double-1>", self.abrir_detalhes_do_historico)
 
     def carregar_entregues(self):
+        if not TOKEN_SECRETARIA: return
         try:
-            res = requests.get(f"{API_URL}/api/entregues")
+            res = requests.get(f"{API_URL}/api/entregues", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.tree_entregues.delete(*self.tree_entregues.get_children())
                 for e in res.json():
@@ -617,24 +623,22 @@ class SecretariaApp:
 
     def desfazer_entrega(self):
         selecionado = self.tree_entregues.selection()
-        if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item para desfazer a entrega.")
+        if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
         vals = self.tree_entregues.item(selecionado[0], "values")
-        if messagebox.askyesno("Desfazer Entrega", f"Tem certeza que deseja desfazer a entrega do item '{vals[2]}' (ID: #{vals[1]})?"):
+        if messagebox.askyesno("Desfazer", f"Reverter entrega do item #{vals[1]}?"):
             try:
-                if requests.put(f"{API_URL}/api/itens/{vals[1]}/recusar").status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item revertido para DISPONÍVEL no estoque!")
-                    self.carregar_dados()
+                res = requests.put(f"{API_URL}/api/itens/{vals[1]}/recusar", headers=self.get_auth_headers())
+                if res.status_code == 200: self.carregar_dados()
             except: pass
 
     def excluir_entregue(self):
         selecionado = self.tree_entregues.selection()
-        if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item no histórico para excluir.")
+        if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
         vals = self.tree_entregues.item(selecionado[0], "values")
-        if messagebox.askyesno("Excluir Histórico", f"Deseja excluir permanentemente o registro de entrega do item '{vals[2]}'?"):
+        if messagebox.askyesno("Excluir", f"Excluir histórico do item #{vals[1]}?"):
             try:
-                if requests.delete(f"{API_URL}/api/itens/{vals[1]}").status_code == 200:
-                    messagebox.showinfo("Sucesso", "Registro e item excluídos permanentemente!")
-                    self.carregar_dados()
+                res = requests.delete(f"{API_URL}/api/itens/{vals[1]}", headers=self.get_auth_headers())
+                if res.status_code == 200: self.carregar_dados()
             except: pass
 
     # --- TAB: CHAT ---
@@ -645,12 +649,14 @@ class SecretariaApp:
         self.listbox_chat = tk.Listbox(frame_esq, bg="#161b22", fg="white", font=("Arial", 10))
         self.listbox_chat.pack(fill="both", expand=True)
         self.listbox_chat.bind("<<ListboxSelect>>", self.selecionar_conversa)
+        
         frame_dir = tk.Frame(self.tab_chat, bg="#161b22", bd=1, relief="solid")
         frame_dir.pack(side="right", fill="both", expand=True, padx=10, pady=10)
         self.lbl_chat_titulo = tk.Label(frame_dir, text="Selecione um aluno", bg="#161b22", fg="#f87171", font=("Arial", 14, "bold"))
         self.lbl_chat_titulo.pack(pady=10)
         self.txt_mensagens = tk.Text(frame_dir, bg="#0d1117", fg="white", state="disabled", wrap="word", font=("Arial", 11))
         self.txt_mensagens.pack(fill="both", expand=True, padx=10, pady=5)
+        
         frame_input = tk.Frame(frame_dir, bg="#161b22")
         frame_input.pack(fill="x", padx=10, pady=10)
         self.entry_chat = ttk.Entry(frame_input, font=("Arial", 12))
@@ -660,8 +666,9 @@ class SecretariaApp:
         self.atualizar_chat_continuo()
 
     def carregar_conversas(self):
+        if not TOKEN_SECRETARIA: return
         try:
-            res = requests.get(f"{API_URL}/api/chat/conversas")
+            res = requests.get(f"{API_URL}/api/chat/conversas", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.listbox_chat.delete(0, tk.END)
                 self.mapa_conversas = []
@@ -676,7 +683,7 @@ class SecretariaApp:
         if selecao:
             idx = selecao[0]
             self.rm_chat_ativo = self.mapa_conversas[idx]
-            self.lbl_chat_titulo.config(text=f"Chat: {self.listbox_chat.get(idx).split(' - RM:')[0].replace('( novas) ', '')}")
+            self.lbl_chat_titulo.config(text=f"Chat: {self.listbox_chat.get(idx)}")
             self.carregar_mensagens_aluno()
 
     def carregar_mensagens_aluno(self):
@@ -696,14 +703,16 @@ class SecretariaApp:
     def enviar_mensagem(self):
         if not self.rm_chat_ativo or not self.entry_chat.get().strip(): return
         try:
-            if requests.post(f"{API_URL}/api/chat/enviar", json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()}).status_code == 200:
+            res = requests.post(f"{API_URL}/api/chat/enviar", json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()})
+            if res.status_code == 200:
                 self.entry_chat.delete(0, tk.END)
                 self.carregar_mensagens_aluno()
         except: pass
 
     def atualizar_chat_continuo(self):
-        self.carregar_conversas()
-        if self.rm_chat_ativo: self.carregar_mensagens_aluno()
+        if TOKEN_SECRETARIA:
+            self.carregar_conversas()
+            if self.rm_chat_ativo: self.carregar_mensagens_aluno()
         self.chat_timer = self.root.after(3000, self.atualizar_chat_continuo)
 
 if __name__ == "__main__":
