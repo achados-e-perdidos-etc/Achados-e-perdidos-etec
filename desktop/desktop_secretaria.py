@@ -1,524 +1,429 @@
-import os
+import tkinter as tk
+from tkinter import ttk, messagebox, simpledialog, filedialog
+import requests
 import json
-import re
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
+import base64
+import io
+from PIL import Image, ImageTk
+import hashlib
 from datetime import datetime
 
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
+# ==========================================
+# CONFIGURAÇÕES DA API
+# ==========================================
+API_URL = "https://achados-etec-api.onrender.com"
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Hashes de Segurança
+HASH_EMAIL = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
+HASH_SENHA = "4a20e32e157a100f269d27cb60696b5b8fe17829c0305283de04fdb0094cec5c"
 
-def get_db_connection():
-    if not DATABASE_URL:
-        raise ValueError("A variável de ambiente DATABASE_URL não foi configurada!")
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
-
-STOPWORDS = {
-    'perdi', 'minha', 'meu', 'meus', 'minhas', 'uma', 'um', 'uns', 'umas',
-    'no', 'na', 'nos', 'nas', 'em', 'de', 'da', 'do', 'das', 'dos', 'por',
-    'para', 'com', 'sem', 'ontem', 'hoje', 'favor', 'ajuda', 'acho', 'que'
-}
-
-def extrair_termos(texto):
-    if not texto:
-        return set()
-    palavras = re.findall(r'[a-zA-Z0-9áéíóúãõâêîôûç]+', texto.lower())
-    termos = set()
-    for p in palavras:
-        if len(p) >= 3 and p not in STOPWORDS:
-            if p.endswith('zinha') or p.endswith('zinho'):
-                p = p[:-5]
-            elif p.endswith('inha') or p.endswith('inho'):
-                p = p[:-4]
-            termos.add(p)
-    return termos
-
-def calcular_similaridade(texto1, texto2):
-    t1 = extrair_termos(texto1)
-    t2 = extrair_termos(texto2)
-    if not t1 or not t2:
-        return 0
-    return len(t1.intersection(t2))
-
-def init_db():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+# ==========================================
+# CLASSE PRINCIPAL DO APLICATIVO
+# ==========================================
+class SecretariaApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ETEC - Painel Desktop da Secretaria")
+        self.root.geometry("1000x700")
+        self.root.configure(bg="#0d1117")
         
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS categorias (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(50) UNIQUE NOT NULL
-            );
-        ''')
-        
-        cursor.execute("SELECT COUNT(*) FROM categorias;")
-        if cursor.fetchone()[0] == 0:
-            default_cats = ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']
-            for c in default_cats:
-                cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
+        self.itens_atuais = []
+        self.categorias_atuais = []
+        self.chat_timer = None
+        self.rm_chat_ativo = None
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS itens (
-                id SERIAL PRIMARY KEY,
-                nome_item VARCHAR(150),
-                descricao TEXT NOT NULL,
-                categoria VARCHAR(50) NOT NULL,
-                data_encontrado VARCHAR(20) NOT NULL,
-                local_encontrado VARCHAR(100) NOT NULL,
-                foto_base64 TEXT,
-                fotos_json TEXT,
-                status VARCHAR(30) DEFAULT 'DISPONÍVEL',
-                solicitado_por VARCHAR(100),
-                rm_aluno VARCHAR(20)
-            );
-        ''')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS nome_item VARCHAR(150);')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS solicitado_por VARCHAR(100);')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS rm_aluno VARCHAR(20);')
-        cursor.execute('ALTER TABLE itens ADD COLUMN IF NOT EXISTS prova_propriedade TEXT;')
-        cursor.execute('UPDATE itens SET nome_item = descricao WHERE nome_item IS NULL OR nome_item = \'\';')
+        self.estilo = ttk.Style()
+        self.estilo.theme_use("clam")
+        self.estilo.configure("TNotebook", background="#0d1117", borderwidth=0)
+        self.estilo.configure("TNotebook.Tab", background="#161b22", foreground="#c9d1d9", padding=[15, 5], font=("Arial", 10, "bold"))
+        self.estilo.map("TNotebook.Tab", background=[("selected", "#dc2626")], foreground=[("selected", "white")])
+        self.estilo.configure("Treeview", background="#161b22", foreground="#c9d1d9", fieldbackground="#161b22", rowheight=30)
+        self.estilo.map("Treeview", background=[("selected", "#dc2626")])
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS entregues (
-                id SERIAL PRIMARY KEY,
-                item_id INT NOT NULL,
-                nome_item TEXT NOT NULL,
-                retirado_por VARCHAR(100) NOT NULL,
-                rm_retirante VARCHAR(30) NOT NULL,
-                turma_curso VARCHAR(50),
-                data_entrega VARCHAR(30) NOT NULL,
-                funcionario_responsavel VARCHAR(100)
-            );
-        ''')
+        self.tela_login()
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS mural_perdidos (
-                id SERIAL PRIMARY KEY,
-                nome_aluno VARCHAR(100) NOT NULL,
-                rm_aluno VARCHAR(20) NOT NULL,
-                categoria VARCHAR(50) NOT NULL,
-                descricao TEXT NOT NULL,
-                data_registro VARCHAR(30) NOT NULL,
-                status VARCHAR(30) DEFAULT 'PROCURANDO',
-                item_encontrado_id INT
-            );
-        ''')
+    def sha256_hash(self, texto):
+        return hashlib.sha256(texto.encode('utf-8')).hexdigest()
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS mensagens_chat (
-                id SERIAL PRIMARY KEY,
-                rm_aluno VARCHAR(20) NOT NULL,
-                nome_aluno VARCHAR(100) NOT NULL,
-                remetente VARCHAR(20) NOT NULL, 
-                mensagem TEXT NOT NULL,
-                data_envio VARCHAR(30) NOT NULL,
-                lida BOOLEAN DEFAULT FALSE
-            );
-        ''')
+    # --- TELA DE LOGIN ---
+    def tela_login(self):
+        self.frame_login = tk.Frame(self.root, bg="#0d1117")
+        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=400, height=300)
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Erro ao inicializar o banco de dados: {e}")
+        tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=20)
 
-if DATABASE_URL:
-    init_db()
+        tk.Label(self.frame_login, text="E-mail:", bg="#0d1117", fg="#c9d1d9").pack()
+        self.entry_email = ttk.Entry(self.frame_login, width=30)
+        self.entry_email.pack(pady=5)
 
-def limpar_registros_antigos():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM mensagens_chat WHERE TO_TIMESTAMP(data_envio, 'DD/MM/YYYY HH24:MI:SS') < NOW() - INTERVAL '7 days';")
-        cursor.execute("DELETE FROM mural_perdidos WHERE status = 'LOCALIZADO' AND TO_TIMESTAMP(data_registro, 'DD/MM/YYYY HH24:MI') < NOW() - INTERVAL '15 days';")
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        pass
+        tk.Label(self.frame_login, text="Senha:", bg="#0d1117", fg="#c9d1d9").pack()
+        self.entry_senha = ttk.Entry(self.frame_login, show="*", width=30)
+        self.entry_senha.pack(pady=5)
 
-@app.route('/')
-def home():
-    return send_from_directory('.', 'index.html')
+        btn_entrar = tk.Button(self.frame_login, text="ENTRAR", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.verificar_login)
+        btn_entrar.pack(pady=20, fill="x", padx=50)
 
-@app.route('/api/categorias', methods=['GET'])
-def get_categorias():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM categorias ORDER BY id ASC;")
-        categorias = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(categorias)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    def verificar_login(self):
+        email = self.entry_email.get().strip().lower()
+        senha = self.entry_senha.get().strip()
 
-@app.route('/api/categorias', methods=['POST'])
-def add_categoria():
-    data = request.json or {}
-    nome = (data.get('nome') or '').strip().upper()
-    if not nome: return jsonify({"success": False, "message": "Nome inválido"}), 400
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (nome,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/chat/enviar', methods=['POST'])
-def enviar_mensagem_chat():
-    data = request.json or {}
-    rm, nome, remetente, mensagem = str(data.get('rm', '')).strip(), data.get('nome', 'Anônimo').strip(), data.get('remetente', 'ALUNO').upper().strip(), data.get('mensagem', '').strip()
-    if not rm or not mensagem: return jsonify({"success": False, "message": "Obrigatório"}), 400
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        cursor.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", (rm, nome, remetente, mensagem, agora))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/api/chat/mensagens/<string:rm>', methods=['GET'])
-def buscar_mensagens_aluno(rm):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, rm_aluno, nome_aluno, remetente, mensagem, data_envio, lida FROM mensagens_chat WHERE rm_aluno = %s ORDER BY id ASC;", (rm,))
-        msgs = cursor.fetchall()
-
-        marcar_lida, origem = request.args.get('marcar_lida', 'false').lower() == 'true', request.args.get('origem', 'ALUNO').upper()
-        if marcar_lida and msgs:
-            outro = 'SECRETARIA' if origem == 'ALUNO' else 'ALUNO'
-            cursor.execute("UPDATE mensagens_chat SET lida = TRUE WHERE rm_aluno = %s AND remetente = %s AND lida = FALSE;", (rm, outro))
-            conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify(msgs)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/chat/conversas', methods=['GET'])
-def listar_conversas_secretaria():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''
-            SELECT rm_aluno, MAX(nome_aluno) as nome_aluno, MAX(data_envio) as ultima_msg_data,
-                   COUNT(CASE WHEN remetente = 'ALUNO' AND lida = FALSE THEN 1 END) as nao_lidas
-            FROM mensagens_chat GROUP BY rm_aluno ORDER BY MAX(id) DESC;
-        ''')
-        conversas = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(conversas)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens', methods=['GET'])
-def get_itens():
-    limpar_registros_antigos() 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno, prova_propriedade FROM itens ORDER BY id DESC;")
-        itens = cursor.fetchall()
-        for item in itens:
-            fotos = []
-            if item.get('fotos_json'):
-                try: fotos = json.loads(item['fotos_json'])
-                except: fotos = []
-            if not fotos and item.get('foto'): fotos = [item['foto']]
-            item['fotos'] = fotos
-        cursor.close()
-        conn.close()
-        return jsonify(itens)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens', methods=['POST'])
-def cadastrar_item():
-    data = request.json or {}
-    nome, descricao, categoria, data_enc, local, fotos, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('fotos', []), data.get('status', 'DISPONÍVEL')
-    if not nome or not descricao or not data_enc or not local: return jsonify({"success": False, "message": "Preencha todos!"}), 400
-
-    foto_capa = fotos[0] if len(fotos) > 0 else ''
-    fotos_json_str = json.dumps(fotos)
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''
-            INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
-        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
-        novo_id = cursor.fetchone()['id']
-
-        cursor.execute("SELECT id, descricao, categoria FROM mural_perdidos WHERE status = 'PROCURANDO';")
-        pedidos = cursor.fetchall()
-
-        for p in pedidos:
-            mesma_cat = (categoria or '').upper() == (p.get('categoria') or '').upper()
-            sim = calcular_similaridade(nome + " " + descricao, p.get('descricao', ''))
-            if mesma_cat or sim >= 2:
-                cursor.execute("UPDATE mural_perdidos SET status = 'LOCALIZADO', item_encontrado_id = %s WHERE id = %s;", (novo_id, p['id']))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/mural', methods=['GET'])
-def listar_mural():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM mural_perdidos ORDER BY id DESC;")
-        avisos = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(avisos)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/mural', methods=['POST'])
-def cadastrar_aviso_mural():
-    data = request.json or {}
-    nome, rm, categoria, descricao = str(data.get('nome', '')).strip(), str(data.get('rm', '')).strip(), str(data.get('categoria', 'OUTROS')).strip(), str(data.get('descricao', '')).strip()
-
-    if not nome or not rm or not descricao: return jsonify({"success": False, "message": "Preencha tudo!"}), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status FROM itens WHERE status = 'DISPONÍVEL';")
-        disponiveis = cursor.fetchall()
-
-        matches = []
-        for item in disponiveis:
-            sim = calcular_similaridade(descricao, (item['nome'] or '') + " " + item['txt_descricao'])
-            cat_match = categoria != 'OUTROS' and item['categoria'].upper() == categoria.upper()
-            if sim >= 1 or cat_match:
-                fotos = []
-                if item.get('fotos_json'):
-                    try: fotos = json.loads(item['fotos_json'])
-                    except: fotos = []
-                if not fotos and item.get('foto'): fotos = [item['foto']]
-                item['fotos'] = fotos
-                matches.append(item)
-
-        status_inicial = 'LOCALIZADO' if matches else 'PROCURANDO'
-        item_vinculado = matches[0]['id'] if matches else None
-
-        cursor.execute("INSERT INTO mural_perdidos (nome_aluno, rm_aluno, categoria, descricao, data_registro, status, item_encontrado_id) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;", 
-                       (nome, rm, categoria, descricao, datetime.now().strftime("%d/%m/%Y %H:%M"), status_inicial, item_vinculado))
-        aviso_id = cursor.fetchone()['id']
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "aviso_id": aviso_id, "matches_encontrados": matches, "message": "Aviso registrado no Mural!"})
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
-
-@app.route('/api/mural/notificacoes/<string:rm>', methods=['GET'])
-def checar_notificacoes(rm):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''
-            SELECT m.id as mural_id, m.descricao as pedido_aluno, i.id as item_id, i.nome_item as item_nome, i.local_encontrado
-            FROM mural_perdidos m JOIN itens i ON m.item_encontrado_id = i.id
-            WHERE m.rm_aluno = %s AND m.status = 'LOCALIZADO' AND i.status = 'DISPONÍVEL';
-        ''', (rm,))
-        notificacoes = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(notificacoes)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/solicitar', methods=['POST'])
-def solicitar_item():
-    data = request.json or {}
-    
-    # AGORA O BACKEND PEDE APENAS ID, NOME E RM (SEM A PROVA DE PROPRIEDADE)
-    item_id = data.get('id')
-    nome = str(data.get('nome', '')).strip()
-    rm = str(data.get('rm', '')).strip()
-
-    if not item_id or not nome or not rm: 
-        return jsonify({"success": False, "message": "Preencha todos os campos obrigatórios no formulário!"}), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, status FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-
-        if not item: return jsonify({"success": False, "message": "Item não encontrado."}), 404
-
-        status_atual = (item['status'] or 'DISPONÍVEL').upper()
-        if status_atual != 'DISPONÍVEL': return jsonify({"success": False, "message": f"Este item não está disponível (Status: {status_atual})."}), 400
-
-        # ATUALIZA O BANCO APENAS COM NOME E RM
-        cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s WHERE id = %s;", (nome, rm, item_id))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação realizada com sucesso! Compareça à secretaria."})
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
-
-@app.route('/api/entregues', methods=['GET'])
-def get_entregues():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
-        entregues = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(entregues)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/estatisticas', methods=['GET'])
-def obter_estatisticas():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cursor.execute("SELECT COUNT(*) as total FROM itens;")
-        total_itens = cursor.fetchone()['total']
-
-        cursor.execute("SELECT COUNT(*) as total FROM entregues;")
-        total_entregues = cursor.fetchone()['total']
-
-        cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status LIKE 'DOAÇÃO%';")
-        total_doacoes = cursor.fetchone()['total']
-
-        cursor.execute("SELECT categoria, COUNT(*) as qtd FROM itens GROUP BY categoria ORDER BY qtd DESC;")
-        categorias = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            "success": True,
-            "total_itens": total_itens,
-            "total_entregues": total_entregues,
-            "total_doacoes": total_doacoes,
-            "categorias": categorias
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/localizar/<int:item_id>', methods=['GET'])
-def localizar_item(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, status, solicitado_por, rm_aluno, prova_propriedade FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-        if not item: return jsonify({"success": False, "message": "Item não encontrado!"}), 404
-
-        if (item['status'] or '').upper() == 'ENTREGUE':
-            cursor.execute("SELECT retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel FROM entregues WHERE item_id = %s ORDER BY id DESC LIMIT 1;", (item_id,))
-            dados_entrega = cursor.fetchone()
-            if dados_entrega: item['entrega'] = dados_entrega
-
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "item": item})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/itens/<int:item_id>', methods=['PUT'])
-def atualizar_item(item_id):
-    data = request.json
-    nome, descricao, categoria, data_enc, local, fotos, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('fotos'), data.get('status', 'DISPONÍVEL')
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        if descricao and data_enc and local:
-            if fotos is not None and len(fotos) > 0:
-                cursor.execute("UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, foto_base64 = %s, fotos_json = %s, status = %s WHERE id = %s;", (nome, descricao, categoria, data_enc, local, fotos[0], json.dumps(fotos), status, item_id))
-            else:
-                cursor.execute("UPDATE itens SET nome_item = %s, descricao = %s, categoria = %s, data_encontrado = %s, local_encontrado = %s, status = %s WHERE id = %s;", (nome, descricao, categoria, data_enc, local, status, item_id))
+        if self.sha256_hash(email) == HASH_EMAIL and self.sha256_hash(senha) == HASH_SENHA:
+            self.frame_login.destroy()
+            self.construir_interface_principal()
         else:
-            cursor.execute("UPDATE itens SET status = %s WHERE id = %s;", (status, item_id))
+            messagebox.showerror("Erro", "E-mail ou senha incorretos!")
 
-        if status.upper() == 'ENTREGUE':
-            retirado_por, rm_retirante = data.get('retirado_por', 'Não informado'), data.get('rm_retirante', 'Não informado')
-            turma_curso, data_entrega = data.get('turma_curso', '-'), data.get('data_entrega', data_enc or datetime.now().strftime("%d/%m/%Y %H:%M"))
-            func_resp = data.get('funcionario_responsavel', 'Secretaria')
-            cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-            cursor.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, (nome or descricao or "Item #" + str(item_id)), retirado_por, rm_retirante, turma_curso, data_entrega, func_resp))
+    # --- INTERFACE PRINCIPAL ---
+    def construir_interface_principal(self):
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} atualizado!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        self.tab_itens = tk.Frame(self.notebook, bg="#0d1117")
+        self.tab_categorias = tk.Frame(self.notebook, bg="#0d1117")
+        self.tab_entregues = tk.Frame(self.notebook, bg="#0d1117")
+        self.tab_chat = tk.Frame(self.notebook, bg="#0d1117")
 
-@app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
-def recusar_solicitacao(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, prova_propriedade = NULL WHERE id = %s;", (item_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Solicitação recusada."})
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+        self.notebook.add(self.tab_itens, text="Gerenciar Itens")
+        self.notebook.add(self.tab_categorias, text="Categorias")
+        self.notebook.add(self.tab_entregues, text="Histórico de Entregas")
+        self.notebook.add(self.tab_chat, text="Chat c/ Alunos")
 
-@app.route('/api/itens/<int:item_id>', methods=['DELETE'])
-def excluir_item(item_id):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-        cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"Item #{item_id} excluído!"})
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+        self.construir_tab_itens()
+        self.construir_tab_categorias()
+        self.construir_tab_entregues()
+        self.construir_tab_chat()
 
-@app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
-def concluir_doacoes():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
-        removidos = cursor.rowcount
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"{removidos} item(ns) removidos!"})
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+        self.carregar_dados()
+
+    def carregar_dados(self):
+        self.carregar_categorias()
+        self.carregar_itens()
+        self.carregar_entregues()
+        self.carregar_conversas()
+
+    # --- TAB: ITENS ---
+    def construir_tab_itens(self):
+        frame_top = tk.Frame(self.tab_itens, bg="#0d1117")
+        frame_top.pack(fill="x", pady=10)
+
+        tk.Button(frame_top, text="🔄 Atualizar Lista", bg="#1f6feb", fg="white", command=self.carregar_itens).pack(side="left", padx=5)
+        
+        # Tabela (Treeview)
+        colunas = ("ID", "Nome / Descrição", "Categoria", "Status", "Local")
+        self.tree_itens = ttk.Treeview(self.tab_itens, columns=colunas, show="headings", height=15)
+        for col in colunas:
+            self.tree_itens.heading(col, text=col)
+            self.tree_itens.column(col, anchor="center")
+        
+        self.tree_itens.column("ID", width=50)
+        self.tree_itens.column("Nome / Descrição", width=300)
+        self.tree_itens.pack(fill="both", expand=True, pady=5)
+
+        # EVENTO DE DUPLO CLIQUE PARA ABRIR O MODAL DE FOTOS
+        self.tree_itens.bind("<Double-1>", self.abrir_modal_detalhes_item)
+
+        tk.Label(self.tab_itens, text="Dê um duplo-clique em um item da lista para visualizar as fotos e detalhes.", bg="#0d1117", fg="#8b949e", font=("Arial", 9, "italic")).pack(pady=5)
+
+    def carregar_itens(self):
+        try:
+            res = requests.get(f"{API_URL}/api/itens")
+            if res.status_code == 200:
+                self.itens_atuais = res.json()
+                self.tree_itens.delete(*self.tree_itens.get_children())
+                for i in self.itens_atuais:
+                    nome_desc = i.get('nome') or i.get('txt_descricao')
+                    self.tree_itens.insert("", "end", values=(i['id'], nome_desc, i['categoria'], i['status'], i.get('txt_local', '')))
+        except Exception as e:
+            messagebox.showerror("Erro de Conexão", f"Não foi possível carregar os itens: {e}")
+
+    # ==========================================
+    # MODAL DE DETALHES E MULTI-FOTOS (DOUBLE CLICK)
+    # ==========================================
+    def abrir_modal_detalhes_item(self, event):
+        selecionado = self.tree_itens.selection()
+        if not selecionado: return
+        item_id = self.tree_itens.item(selecionado[0])['values'][0]
+
+        item = next((i for i in self.itens_atuais if str(i['id']) == str(item_id)), None)
+        if not item: return
+
+        # Janela Toplevel
+        modal = tk.Toplevel(self.root)
+        modal.title(f"Detalhes do Item #{item['id']}")
+        modal.geometry("750x600")
+        modal.configure(bg="#0d1117")
+        modal.transient(self.root) # Mantém sobre a janela principal
+
+        nome_titulo = item.get('nome') or item.get('txt_descricao')
+        tk.Label(modal, text=nome_titulo, font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=10)
+
+        # Frame de Informações
+        frame_info = tk.Frame(modal, bg="#161b22", bd=1, relief="solid")
+        frame_info.pack(fill="x", padx=20, pady=5)
+
+        info_texto = f"CATEGORIA: {item.get('categoria', '')}   |   STATUS: {item.get('status', '')}\n\n"
+        info_texto += f"LOCAL ENCONTRADO: {item.get('txt_local', '')}\n"
+        info_texto += f"DATA: {item.get('txt_data', '')}\n"
+        info_texto += f"DESCRIÇÃO: {item.get('txt_descricao', '')}\n"
+
+        if item.get('solicitado_por'):
+            info_texto += f"\n🚨 SOLICITADO POR: {item.get('solicitado_por')} (RM: {item.get('rm_aluno', '')})"
+
+        tk.Label(frame_info, text=info_texto, justify="left", bg="#161b22", fg="#c9d1d9", font=("Arial", 11)).pack(padx=15, pady=10, anchor="w")
+
+        # Frame da Galeria de Fotos
+        tk.Label(modal, text="Fotos do Item:", font=("Arial", 12, "bold"), bg="#0d1117", fg="#c9d1d9").pack(pady=10, anchor="w", padx=20)
+        
+        frame_fotos = tk.Frame(modal, bg="#0d1117")
+        frame_fotos.pack(fill="both", expand=True, padx=20)
+
+        # Carregamento e renderização das fotos Base64
+        fotos_array = []
+        if item.get('fotos'):
+            fotos_array = item['fotos']
+        elif item.get('fotos_json'):
+            try: fotos_array = json.loads(item['fotos_json'])
+            except: pass
+        if not fotos_array and item.get('foto'):
+            fotos_array = [item['foto']]
+
+        if not fotos_array:
+            tk.Label(frame_fotos, text="Nenhuma foto registrada para este item.", bg="#0d1117", fg="#8b949e").pack(pady=20)
+        else:
+            for col, foto_b64 in enumerate(fotos_array):
+                try:
+                    if foto_b64.startswith("data:image"):
+                        foto_b64 = foto_b64.split(",")[1]
+                    
+                    img_data = base64.b64decode(foto_b64)
+                    img = Image.open(io.BytesIO(img_data))
+                    img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                    img_tk = ImageTk.PhotoImage(img)
+
+                    lbl_img = tk.Label(frame_fotos, image=img_tk, bg="#161b22", bd=2, relief="solid")
+                    lbl_img.image = img_tk # Previne Garbage Collection
+                    lbl_img.grid(row=0, column=col, padx=10, pady=5)
+                except Exception as e:
+                    print(f"Erro ao exibir foto: {e}")
+
+        # Frame de Botões de Ação no Modal
+        frame_acoes = tk.Frame(modal, bg="#0d1117")
+        frame_acoes.pack(fill="x", pady=20, padx=20)
+
+        if item.get('status') == 'SOLICITADO':
+            tk.Button(frame_acoes, text="🚫 Recusar Solicitação", bg="#d97706", fg="white", font=("Arial", 10, "bold"), command=lambda: self.recusar_solicitacao(item['id'], modal)).pack(side="left", padx=5, fill="x", expand=True)
+
+        if item.get('status') != 'ENTREGUE':
+            tk.Button(frame_acoes, text="✅ Dar Baixa (Entrega)", bg="#059669", fg="white", font=("Arial", 10, "bold"), command=lambda: self.abrir_dar_baixa(item, modal)).pack(side="left", padx=5, fill="x", expand=True)
+
+        tk.Button(frame_acoes, text="🗑️ Excluir Item", bg="#991b1b", fg="white", font=("Arial", 10, "bold"), command=lambda: self.excluir_item(item['id'], modal)).pack(side="left", padx=5, fill="x", expand=True)
+
+    # --- AÇÕES DO ITEM ---
+    def recusar_solicitacao(self, item_id, modal):
+        if messagebox.askyesno("Recusar", "Deseja recusar a solicitação e voltar o item para DISPONÍVEL?"):
+            try:
+                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar")
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Solicitação recusada!")
+                    modal.destroy()
+                    self.carregar_itens()
+            except Exception as e: messagebox.showerror("Erro", str(e))
+
+    def abrir_dar_baixa(self, item, modal_detalhes):
+        modal_baixa = tk.Toplevel(self.root)
+        modal_baixa.title(f"Dar Baixa - Item #{item['id']}")
+        modal_baixa.geometry("400x350")
+        modal_baixa.configure(bg="#0d1117")
+
+        tk.Label(modal_baixa, text="Registrar Entrega", font=("Arial", 14, "bold"), bg="#0d1117", fg="#10b981").pack(pady=15)
+
+        tk.Label(modal_baixa, text="Nome do Aluno:", bg="#0d1117", fg="white").pack()
+        entry_nome = ttk.Entry(modal_baixa, width=40)
+        entry_nome.insert(0, item.get('solicitado_por', ''))
+        entry_nome.pack(pady=5)
+
+        tk.Label(modal_baixa, text="RM:", bg="#0d1117", fg="white").pack()
+        entry_rm = ttk.Entry(modal_baixa, width=40)
+        entry_rm.insert(0, item.get('rm_aluno', ''))
+        entry_rm.pack(pady=5)
+
+        tk.Label(modal_baixa, text="Turma / Curso:", bg="#0d1117", fg="white").pack()
+        entry_turma = ttk.Entry(modal_baixa, width=40)
+        entry_turma.pack(pady=5)
+
+        def confirmar():
+            payload = {
+                "status": "ENTREGUE",
+                "retirado_por": entry_nome.get().strip(),
+                "rm_retirante": entry_rm.get().strip(),
+                "turma_curso": entry_turma.get().strip()
+            }
+            try:
+                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json=payload)
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Item baixado com sucesso!")
+                    modal_baixa.destroy()
+                    modal_detalhes.destroy()
+                    self.carregar_dados()
+            except Exception as e: messagebox.showerror("Erro", str(e))
+
+        tk.Button(modal_baixa, text="Confirmar Entrega", bg="#059669", fg="white", font=("Arial", 10, "bold"), command=confirmar).pack(pady=20)
+
+    def excluir_item(self, item_id, modal):
+        if messagebox.askyesno("Excluir", "Deseja excluir este item permanentemente?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/{item_id}")
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Item excluído!")
+                    modal.destroy()
+                    self.carregar_itens()
+            except Exception as e: messagebox.showerror("Erro", str(e))
+
+    # --- TAB: CATEGORIAS ---
+    def construir_tab_categorias(self):
+        frame_add = tk.Frame(self.tab_categorias, bg="#0d1117")
+        frame_add.pack(pady=20)
+
+        tk.Label(frame_add, text="Nova Categoria:", bg="#0d1117", fg="white").pack(side="left", padx=5)
+        self.entry_cat = ttk.Entry(frame_add, width=30)
+        self.entry_cat.pack(side="left", padx=5)
+        tk.Button(frame_add, text="Adicionar", bg="#dc2626", fg="white", command=self.adicionar_categoria).pack(side="left", padx=5)
+
+        self.listbox_cats = tk.Listbox(self.tab_categorias, bg="#161b22", fg="white", font=("Arial", 12), height=15)
+        self.listbox_cats.pack(fill="x", padx=50, pady=10)
+
+    def carregar_categorias(self):
+        try:
+            res = requests.get(f"{API_URL}/api/categorias")
+            if res.status_code == 200:
+                self.listbox_cats.delete(0, tk.END)
+                for c in res.json():
+                    self.listbox_cats.insert(tk.END, c['nome'])
+        except Exception as e: pass
+
+    def adicionar_categoria(self):
+        nome = self.entry_cat.get().strip().upper()
+        if nome:
+            try:
+                res = requests.post(f"{API_URL}/api/categorias", json={"nome": nome})
+                if res.status_code == 200:
+                    self.entry_cat.delete(0, tk.END)
+                    self.carregar_categorias()
+            except: messagebox.showerror("Erro", "Erro ao adicionar categoria")
+
+    # --- TAB: HISTÓRICO DE ENTREGUES ---
+    def construir_tab_entregues(self):
+        colunas = ("Item", "Retirado Por", "RM", "Turma", "Data")
+        self.tree_entregues = ttk.Treeview(self.tab_entregues, columns=colunas, show="headings", height=20)
+        for col in colunas:
+            self.tree_entregues.heading(col, text=col)
+            self.tree_entregues.column(col, anchor="center")
+        self.tree_entregues.pack(fill="both", expand=True, pady=10, padx=10)
+
+    def carregar_entregues(self):
+        try:
+            res = requests.get(f"{API_URL}/api/entregues")
+            if res.status_code == 200:
+                self.tree_entregues.delete(*self.tree_entregues.get_children())
+                for e in res.json():
+                    self.tree_entregues.insert("", "end", values=(e['nome_item'], e['retirado_por'], e['rm_retirante'], e['turma_curso'], e['data_entrega']))
+        except Exception: pass
+
+    # --- TAB: CHAT ---
+    def construir_tab_chat(self):
+        # Painel Esquerdo (Lista de alunos)
+        frame_esq = tk.Frame(self.tab_chat, bg="#0d1117", width=250)
+        frame_esq.pack(side="left", fill="y", padx=5, pady=5)
+        
+        tk.Label(frame_esq, text="Conversas Ativas", bg="#0d1117", fg="white", font=("Arial", 12, "bold")).pack(pady=5)
+        self.listbox_chat = tk.Listbox(frame_esq, bg="#161b22", fg="white")
+        self.listbox_chat.pack(fill="both", expand=True)
+        self.listbox_chat.bind("<<ListboxSelect>>", self.selecionar_conversa)
+
+        # Painel Direito (Mensagens)
+        frame_dir = tk.Frame(self.tab_chat, bg="#161b22", bd=1, relief="solid")
+        frame_dir.pack(side="right", fill="both", expand=True, padx=5, pady=5)
+
+        self.lbl_chat_titulo = tk.Label(frame_dir, text="Selecione um aluno para conversar", bg="#161b22", fg="#f87171", font=("Arial", 14, "bold"))
+        self.lbl_chat_titulo.pack(pady=10)
+
+        self.txt_mensagens = tk.Text(frame_dir, bg="#0d1117", fg="white", state="disabled", wrap="word")
+        self.txt_mensagens.pack(fill="both", expand=True, padx=10, pady=5)
+
+        frame_input = tk.Frame(frame_dir, bg="#161b22")
+        frame_input.pack(fill="x", padx=10, pady=10)
+
+        self.entry_chat = ttk.Entry(frame_input, font=("Arial", 12))
+        self.entry_chat.pack(side="left", fill="x", expand=True, padx=5)
+        self.entry_chat.bind("<Return>", lambda e: self.enviar_mensagem())
+
+        tk.Button(frame_input, text="Enviar", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), command=self.enviar_mensagem).pack(side="right")
+
+        # Inicia Polling
+        self.atualizar_chat_continuo()
+
+    def carregar_conversas(self):
+        try:
+            res = requests.get(f"{API_URL}/api/chat/conversas")
+            if res.status_code == 200:
+                conversas = res.json()
+                self.listbox_chat.delete(0, tk.END)
+                self.mapa_conversas = []
+                for c in conversas:
+                    notif = f"({c['nao_lidas']} novas) " if c['nao_lidas'] > 0 else ""
+                    texto = f"{notif}{c['nome_aluno']} - RM: {c['rm_aluno']}"
+                    self.listbox_chat.insert(tk.END, texto)
+                    self.mapa_conversas.append(c['rm_aluno'])
+        except: pass
+
+    def selecionar_conversa(self, event):
+        selecao = self.listbox_chat.curselection()
+        if selecao:
+            idx = selecao[0]
+            self.rm_chat_ativo = self.mapa_conversas[idx]
+            nome = self.listbox_chat.get(idx).split(" - RM:")[0].replace("( novas) ", "")
+            self.lbl_chat_titulo.config(text=f"Chat com: {nome}")
+            self.carregar_mensagens_aluno()
+
+    def carregar_mensagens_aluno(self):
+        if not self.rm_chat_ativo: return
+        try:
+            res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true&origem=SECRETARIA")
+            if res.status_code == 200:
+                self.txt_mensagens.config(state="normal")
+                self.txt_mensagens.delete("1.0", tk.END)
+                for m in res.json():
+                    remetente = "Secretaria" if m['remetente'] == "SECRETARIA" else m['nome_aluno']
+                    self.txt_mensagens.insert(tk.END, f"[{m['data_envio']}] {remetente}:\n{m['mensagem']}\n\n")
+                self.txt_mensagens.see(tk.END)
+                self.txt_mensagens.config(state="disabled")
+        except: pass
+
+    def enviar_mensagem(self):
+        if not self.rm_chat_ativo: return
+        texto = self.entry_chat.get().strip()
+        if not texto: return
+
+        payload = {
+            "rm": self.rm_chat_ativo,
+            "nome": "Secretaria ETEC",
+            "remetente": "SECRETARIA",
+            "mensagem": texto
+        }
+        try:
+            res = requests.post(f"{API_URL}/api/chat/enviar", json=payload)
+            if res.status_code == 200:
+                self.entry_chat.delete(0, tk.END)
+                self.carregar_mensagens_aluno()
+        except Exception as e: messagebox.showerror("Erro", str(e))
+
+    def atualizar_chat_continuo(self):
+        self.carregar_conversas()
+        if self.rm_chat_ativo:
+            self.carregar_mensagens_aluno()
+        self.chat_timer = self.root.after(3000, self.atualizar_chat_continuo)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    root = tk.Tk()
+    app = SecretariaApp(root)
+    root.mainloop()
