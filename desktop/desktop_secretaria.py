@@ -199,18 +199,17 @@ class SecretariaApp:
         id_buscado = self.entry_busca.get().strip()
         
         if not id_buscado:
-            self.aplicar_filtros_tabela() # Restaura a tabela se a busca estiver vazia
+            self.aplicar_filtros_tabela()
             return
             
         if not id_buscado.isdigit():
             messagebox.showwarning("Aviso", "Por favor, digite apenas números no campo de ID.")
             return
 
-        # Busca o item na memória e já abre a janela dele na cara do usuário
         item = next((i for i in self.itens_atuais if str(i['id']) == id_buscado), None)
         if item:
-            self.entry_busca.delete(0, tk.END) # Limpa o campo
-            self.aplicar_filtros_tabela() # Reseta a tabela no fundo
+            self.entry_busca.delete(0, tk.END)
+            self.aplicar_filtros_tabela()
             self.abrir_modal_detalhes_item(item_direto=item)
         else:
             messagebox.showinfo("Não encontrado", f"Nenhum objeto encontrado no sistema com o ID #{id_buscado}.")
@@ -489,26 +488,26 @@ class SecretariaApp:
         tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg="#059669", fg="white", font=("Arial", 10, "bold"), pady=8, command=confirmar).pack(fill="x", padx=30)
         entry_nome.focus()
 
-    # --- TELA DO COMPROVANTE (VISUALIZAÇÃO IMITANDO PAPEL IGUAL AO MOBILE) ---
+    # --- TELA DO COMPROVANTE (SALVAMENTO COMO ARQUIVO .TXT) ---
     def abrir_tela_comprovante(self, item_id, nome_item, desc_item, local_item, retirado_por, rm, turma):
         top_comp = tk.Toplevel(self.root)
         top_comp.title("Comprovante de Retirada")
         top_comp.geometry("650x700")
-        top_comp.configure(bg="#e5e7eb") # Fundo cinza para destacar a "folha" branca
+        top_comp.configure(bg="#e5e7eb") # Fundo cinza
         top_comp.transient(self.root)
         top_comp.grab_set()
 
         data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-        # Container branco imitando o papel (Idêntico ao Mobile)
+        # Container imitando papel
         folha = tk.Frame(top_comp, bg="white", padx=40, pady=30, relief="flat")
         folha.pack(fill="both", expand=True, padx=30, pady=20)
 
-        # Cabeçalho do Comprovante
+        # Cabeçalho
         tk.Label(folha, text="ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO", font=("Arial", 14, "bold"), bg="white", fg="black").pack()
         tk.Label(folha, text="Sistema de Achados e Perdidos - Termo de Retirada de Objeto", font=("Arial", 10, "bold"), bg="white", fg="#4b5563").pack(pady=(0, 20))
 
-        # Seção 1: Dados do Aluno
+        # Seção 1
         f_aluno = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_aluno.pack(fill="x", pady=5)
         tk.Label(f_aluno, text="DADOS DO ALUNO BENEFICIÁRIO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
@@ -516,7 +515,7 @@ class SecretariaApp:
         tk.Label(f_aluno, text=f"RM: {rm}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
         tk.Label(f_aluno, text=f"Turma/Curso: {turma}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
 
-        # Seção 2: Informações do Item
+        # Seção 2
         f_item = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_item.pack(fill="x", pady=5)
         tk.Label(f_item, text="INFORMAÇÕES DO ITEM DEVOLVIDO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
@@ -527,7 +526,7 @@ class SecretariaApp:
 
         tk.Label(folha, text="Declaro para os devidos fins que recebi o item acima descrito, conferindo suas\ncaracterísticas e estado atual de conservação nas dependências da secretaria da ETEC.", font=("Arial", 9, "italic"), bg="white", fg="#374151", justify="left").pack(anchor="w", pady=20)
 
-        # Seção 3: Assinaturas
+        # Seção 3
         f_ass = tk.Frame(folha, bg="white")
         f_ass.pack(fill="x", pady=(40, 0))
         
@@ -541,76 +540,46 @@ class SecretariaApp:
         tk.Frame(box2, bg="black", height=1).pack(fill="x", pady=(0, 5))
         tk.Label(box2, text="Funcionário Responsável (Secretaria)", font=("Arial", 9, "bold"), bg="white", fg="black").pack()
 
-        # Botão Download HTML
-        def baixar_comprovante_html():
-            file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".html", initialfile=f"comprovante_{rm}.html", title="Onde deseja salvar o comprovante?", filetypes=[("Página Web HTML", "*.html")])
+        # Botão Download TXT
+        def baixar_comprovante_txt():
+            file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".txt", initialfile=f"comprovante_{rm}.txt", title="Onde deseja salvar o comprovante?", filetypes=[("Arquivo de Texto", "*.txt")])
             if file_path:
-                html_content = f"""
-                <!DOCTYPE html>
-                <html lang="pt-BR">
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body {{ font-family: sans-serif; color: black; margin: 0; padding: 20px; }}
-                        .print-area {{ max-width: 800px; margin: auto; padding: 30px; border: 1px solid #ccc; border-radius: 15px; }}
-                        .text-center {{ text-align: center; }}
-                        .border-b {{ border-bottom: 1px solid #ccc; padding-bottom: 15px; margin-bottom: 15px; }}
-                        .font-black {{ font-weight: 900; font-size: 20px; text-transform: uppercase; }}
-                        .text-xs {{ font-size: 12px; }}
-                        .text-gray-600 {{ color: #4b5563; }}
-                        .bg-gray-100 {{ background-color: #f3f4f6; padding: 15px; border-radius: 10px; margin-bottom: 15px; }}
-                        .font-bold {{ font-weight: bold; }}
-                        .uppercase {{ text-transform: uppercase; }}
-                        .text-gray-700 {{ color: #374151; }}
-                        .italic {{ font-style: italic; }}
-                        .grid {{ display: flex; justify-content: space-between; margin-top: 50px; text-align: center; font-size: 12px; }}
-                        .sig-box {{ width: 45%; }}
-                        .border-black {{ border-bottom: 1px solid black; margin-bottom: 5px; }}
-                        @media print {{ body {{ padding: 0; }} .print-area {{ border: none; padding: 0; }} .no-print {{ display: none; }} }}
-                    </style>
-                </head>
-                <body>
-                    <div class="print-area">
-                        <div class="text-center border-b">
-                            <div class="font-black">ETEC Profº José Ignácio Azevedo Filho</div>
-                            <div class="text-xs font-bold text-gray-600">Sistema de Achados e Perdidos - Termo de Retirada de Objeto</div>
-                        </div>
-                        <div class="bg-gray-100">
-                            <div class="font-bold uppercase text-gray-700" style="margin-bottom: 8px;">Dados do Aluno Beneficiário:</div>
-                            <div><strong>Nome:</strong> {retirado_por}</div>
-                            <div><strong>RM:</strong> {rm}</div>
-                            <div><strong>Turma/Curso:</strong> {turma}</div>
-                        </div>
-                        <div class="bg-gray-100">
-                            <div class="font-bold uppercase text-gray-700" style="margin-bottom: 8px;">Informações do Item Devolvido:</div>
-                            <div><strong>Item:</strong> {nome_item}</div>
-                            <div><strong>Descrição:</strong> {desc_item}</div>
-                            <div><strong>Local Encontrado:</strong> {local_item}</div>
-                            <div><strong>Data da Entrega:</strong> {data_atual}</div>
-                        </div>
-                        <div class="text-xs text-gray-700 italic" style="margin-top: 15px;">
-                            Declaro para os devidos fins que recebi o item acima descrito, conferindo suas características e estado atual de conservação nas dependências da secretaria da ETEC.
-                        </div>
-                        <div class="grid">
-                            <div class="sig-box"><div class="border-black"></div><div class="font-bold">Assinatura do Aluno</div></div>
-                            <div class="sig-box"><div class="border-black"></div><div class="font-bold">Funcionário Responsável (Secretaria)</div></div>
-                        </div>
-                        <div class="text-center no-print" style="margin-top: 40px;">
-                            <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; background-color: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer;">🖨️ Imprimir / Salvar PDF</button>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                """
+                txt_content = f"""====================================================
+       ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO
+ Sistema de Achados e Perdidos - Termo de Retirada
+====================================================
+
+DADOS DO ALUNO BENEFICIÁRIO:
+Nome: {retirado_por}
+RM: {rm}
+Turma/Curso: {turma}
+
+INFORMAÇÕES DO ITEM DEVOLVIDO:
+Código do Item: #{item_id}
+Item: {nome_item}
+Descrição: {desc_item}
+Local Encontrado: {local_item}
+Data da Entrega: {data_atual}
+
+Declaro para os devidos fins que recebi o item acima 
+descrito, conferindo suas características e estado 
+atual de conservação nas dependências da secretaria.
+
+____________________________________________________
+Assinatura do Aluno / Retirante
+
+
+____________________________________________________
+Funcionário Responsável (Secretaria)
+"""
                 try:
-                    with open(file_path, "w", encoding="utf-8") as f: f.write(html_content)
-                    messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso na pasta:\n{file_path}", parent=top_comp)
+                    with open(file_path, "w", encoding="utf-8") as f: f.write(txt_content)
+                    messagebox.showinfo("Sucesso", f"Comprovante salvo com sucesso em:\n{file_path}", parent=top_comp)
                 except Exception as e: messagebox.showerror("Erro", str(e), parent=top_comp)
 
-        # Container dos botões de ação do comprovante
         b_frame = tk.Frame(top_comp, bg="#e5e7eb")
         b_frame.pack(fill="x", padx=30, pady=(0, 20))
-        tk.Button(b_frame, text="📥 BAIXAR COMPROVANTE", command=baixar_comprovante_html, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        tk.Button(b_frame, text="📥 BAIXAR COMPROVANTE (TXT)", command=baixar_comprovante_txt, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(side="left", fill="x", expand=True, padx=(0, 5))
         tk.Button(b_frame, text="Fechar Janela", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 10, "bold"), relief="flat", pady=10).pack(side="left", fill="x", expand=True, padx=(5, 0))
 
 
@@ -687,10 +656,11 @@ class SecretariaApp:
         
         tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg="#1f6feb", fg="white", font=("Arial", 9, "bold")).pack(side="left")
         
-        # Novo botão Desfazer Entrega
+        # Novo Botão Excluir Registro
+        tk.Button(frame_top, text="🗑️ Excluir Registro", command=self.excluir_entregue, bg="#dc2626", fg="white", font=("Arial", 9, "bold")).pack(side="right", padx=(10, 0))
+        
         tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Arial", 9, "bold")).pack(side="right")
 
-        # Modificado para incluir o ID do Item escondido
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")
         self.tree_entregues = ttk.Treeview(self.tab_entregues, columns=colunas, show="headings", height=20)
         for col in colunas:
@@ -713,7 +683,6 @@ class SecretariaApp:
                     self.tree_entregues.insert("", "end", values=(e['id'], e['item_id'], e['nome_item'], e['retirado_por'], e['rm_retirante'], e['turma_curso'], e['data_entrega']))
         except: pass
 
-    # Ação de Desfazer a Entrega
     def desfazer_entrega(self):
         selecionado = self.tree_entregues.selection()
         if not selecionado:
@@ -725,10 +694,29 @@ class SecretariaApp:
 
         if messagebox.askyesno("Desfazer Entrega", f"Tem certeza que deseja desfazer a entrega do item '{nome_item}' (ID: #{item_id})?\nEle voltará para o estoque como DISPONÍVEL."):
             try:
-                # O endpoint "recusar" reverte perfeitamente o status do item para "DISPONÍVEL" e limpa as infos do aluno no banco de dados.
                 res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar")
                 if res.status_code == 200:
                     messagebox.showinfo("Sucesso", "Item revertido para DISPONÍVEL no estoque!\n\nNota: O recibo da operação continuará visível no histórico de entregas para fins de auditoria, mas o objeto já está de volta ao painel principal.")
+                    self.carregar_dados()
+                else:
+                    messagebox.showerror("Erro", "Falha ao comunicar com o servidor.")
+            except Exception as e:
+                messagebox.showerror("Erro", str(e))
+
+    def excluir_entregue(self):
+        selecionado = self.tree_entregues.selection()
+        if not selecionado:
+            return messagebox.showwarning("Aviso", "Selecione um item no histórico para excluir.")
+        
+        vals = self.tree_entregues.item(selecionado[0], "values")
+        item_id = vals[1]
+        nome_item = vals[2]
+
+        if messagebox.askyesno("Excluir Histórico", f"Deseja excluir permanentemente o registro de entrega do item '{nome_item}'?\nIsso apagará o item do sistema de forma irreversível."):
+            try:
+                res = requests.delete(f"{API_URL}/api/itens/{item_id}")
+                if res.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Registro e item excluídos permanentemente do sistema!")
                     self.carregar_dados()
                 else:
                     messagebox.showerror("Erro", "Falha ao comunicar com o servidor.")
