@@ -61,7 +61,6 @@ class SecretariaApp:
         self.entry_senha = ttk.Entry(self.frame_login, show="*", width=30)
         self.entry_senha.pack(pady=5)
 
-        # Automação da Tecla ENTER no Login
         self.entry_email.bind("<Return>", lambda e: self.entry_senha.focus())
         self.entry_senha.bind("<Return>", lambda e: self.verificar_login())
 
@@ -160,8 +159,6 @@ class SecretariaApp:
         tk.Label(frame_busca, text="Buscar ID:", bg="#0d1117", fg="white").pack(side="left")
         self.entry_busca = ttk.Entry(frame_busca, width=15)
         self.entry_busca.pack(side="left", padx=5)
-        
-        # ENTER na Busca de ID aciona a Busca Direta
         self.entry_busca.bind("<Return>", lambda e: self.buscar_por_id_direto())
 
         tk.Label(frame_busca, text="Status:", bg="#0d1117", fg="white").pack(side="left", padx=(10,0))
@@ -366,7 +363,9 @@ class SecretariaApp:
         frame_info = tk.Frame(modal, bg="#161b22", bd=1, relief="solid")
         frame_info.pack(fill="x", padx=20, pady=5)
 
-        info_texto = f"CATEGORIA: {item.get('categoria', '')}   |   STATUS: {item.get('status', '')}\n\n"
+        st = item.get('status', 'DISPONÍVEL').upper()
+
+        info_texto = f"CATEGORIA: {item.get('categoria', '')}   |   STATUS: {st}\n\n"
         info_texto += f"LOCAL: {item.get('txt_local', '')}\n"
         info_texto += f"DATA: {item.get('txt_data', '')}\n"
         info_texto += f"DESCRIÇÃO: {item.get('txt_descricao', '')}\n"
@@ -409,13 +408,13 @@ class SecretariaApp:
 
         btn("✏️ Editar", "#eab308", lambda: [modal.destroy(), self.abrir_modal_form(item)])
         
-        if item.get('status') == 'SOLICITADO':
+        if st == 'SOLICITADO':
             btn("🚫 Recusar", "#d97706", lambda: self.acao_rapida(item['id'], 'recusar', modal))
         
-        if item.get('status') != 'ENTREGUE':
+        if st not in ['ENTREGUE', 'DOAÇÃO FEITA']:
             btn("✅ Dar Baixa", "#059669", lambda: [modal.destroy(), self.abrir_dar_baixa(item)])
             
-        if item.get('status') != 'PARA DOAÇÃO':
+        if st not in ['PARA DOAÇÃO', 'DOAÇÃO FEITA', 'ENTREGUE']:
             btn("🎁 Marcar Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
 
         btn("🗑️ Excluir", "#991b1b", lambda: self.acao_rapida(item['id'], 'excluir', modal))
@@ -463,7 +462,6 @@ class SecretariaApp:
         entry_turma = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
         entry_turma.pack(padx=30, pady=(0, 20))
 
-        # Eventos do Enter (pula de campo em campo até confirmar)
         entry_nome.bind("<Return>", lambda e: entry_rm.focus())
         entry_rm.bind("<Return>", lambda e: entry_turma.focus())
         entry_turma.bind("<Return>", lambda e: confirmar())
@@ -493,21 +491,18 @@ class SecretariaApp:
         top_comp = tk.Toplevel(self.root)
         top_comp.title("Comprovante de Retirada")
         top_comp.geometry("650x700")
-        top_comp.configure(bg="#e5e7eb") # Fundo cinza
+        top_comp.configure(bg="#e5e7eb") 
         top_comp.transient(self.root)
         top_comp.grab_set()
 
         data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-        # Container imitando papel
         folha = tk.Frame(top_comp, bg="white", padx=40, pady=30, relief="flat")
         folha.pack(fill="both", expand=True, padx=30, pady=20)
 
-        # Cabeçalho
         tk.Label(folha, text="ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO", font=("Arial", 14, "bold"), bg="white", fg="black").pack()
         tk.Label(folha, text="Sistema de Achados e Perdidos - Termo de Retirada de Objeto", font=("Arial", 10, "bold"), bg="white", fg="#4b5563").pack(pady=(0, 20))
 
-        # Seção 1
         f_aluno = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_aluno.pack(fill="x", pady=5)
         tk.Label(f_aluno, text="DADOS DO ALUNO BENEFICIÁRIO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
@@ -515,7 +510,6 @@ class SecretariaApp:
         tk.Label(f_aluno, text=f"RM: {rm}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
         tk.Label(f_aluno, text=f"Turma/Curso: {turma}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
 
-        # Seção 2
         f_item = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_item.pack(fill="x", pady=5)
         tk.Label(f_item, text="INFORMAÇÕES DO ITEM DEVOLVIDO:", font=("Arial", 9, "bold"), bg="#f3f4f6", fg="#374151", anchor="w").pack(fill="x", pady=(0, 5))
@@ -526,7 +520,6 @@ class SecretariaApp:
 
         tk.Label(folha, text="Declaro para os devidos fins que recebi o item acima descrito, conferindo suas\ncaracterísticas e estado atual de conservação nas dependências da secretaria da ETEC.", font=("Arial", 9, "italic"), bg="white", fg="#374151", justify="left").pack(anchor="w", pady=20)
 
-        # Seção 3
         f_ass = tk.Frame(folha, bg="white")
         f_ass.pack(fill="x", pady=(40, 0))
         
@@ -540,7 +533,6 @@ class SecretariaApp:
         tk.Frame(box2, bg="black", height=1).pack(fill="x", pady=(0, 5))
         tk.Label(box2, text="Funcionário Responsável (Secretaria)", font=("Arial", 9, "bold"), bg="white", fg="black").pack()
 
-        # Botão Download TXT
         def baixar_comprovante_txt():
             file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".txt", initialfile=f"comprovante_{rm}.txt", title="Onde deseja salvar o comprovante?", filetypes=[("Arquivo de Texto", "*.txt")])
             if file_path:
@@ -620,7 +612,6 @@ Funcionário Responsável (Secretaria)
         self.entry_cat = ttk.Entry(frame_add, width=30)
         self.entry_cat.pack(side="left", padx=5)
         
-        # O Enter cadastra a nova categoria automaticamente
         self.entry_cat.bind("<Return>", lambda e: self.adicionar_categoria())
         
         tk.Button(frame_add, text="Adicionar", bg="#dc2626", fg="white", command=self.adicionar_categoria).pack(side="left", padx=5)
@@ -656,9 +647,7 @@ Funcionário Responsável (Secretaria)
         
         tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg="#1f6feb", fg="white", font=("Arial", 9, "bold")).pack(side="left")
         
-        # Novo Botão Excluir Registro
         tk.Button(frame_top, text="🗑️ Excluir Registro", command=self.excluir_entregue, bg="#dc2626", fg="white", font=("Arial", 9, "bold")).pack(side="right", padx=(10, 0))
-        
         tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Arial", 9, "bold")).pack(side="right")
 
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")
@@ -673,6 +662,10 @@ Funcionário Responsável (Secretaria)
         self.tree_entregues.column("Retirado Por", width=150, anchor="w")
 
         self.tree_entregues.pack(fill="both", expand=True, pady=5, padx=10)
+        
+        # Duplo-clique no Histórico também abre os detalhes completos do item
+        self.tree_entregues.bind("<Double-1>", self.abrir_detalhes_do_historico)
+        tk.Label(self.tab_entregues, text="Dê um duplo-clique em um registro para visualizar as fotos e detalhes originais do item.", bg="#0d1117", fg="#8b949e", font=("Arial", 9, "italic")).pack(pady=5)
 
     def carregar_entregues(self):
         try:
@@ -682,6 +675,18 @@ Funcionário Responsável (Secretaria)
                 for e in res.json():
                     self.tree_entregues.insert("", "end", values=(e['id'], e['item_id'], e['nome_item'], e['retirado_por'], e['rm_retirante'], e['turma_curso'], e['data_entrega']))
         except: pass
+
+    def abrir_detalhes_do_historico(self, event):
+        selecionado = self.tree_entregues.selection()
+        if not selecionado: return
+        
+        item_id = self.tree_entregues.item(selecionado[0])['values'][1]
+        
+        item = next((i for i in self.itens_atuais if str(i['id']) == str(item_id)), None)
+        if item:
+            self.abrir_modal_detalhes_item(item_direto=item)
+        else:
+            messagebox.showwarning("Aviso", f"Os detalhes completos do item #{item_id} não estão mais disponíveis no banco de dados principal.")
 
     def desfazer_entrega(self):
         selecionado = self.tree_entregues.selection()
@@ -748,7 +753,6 @@ Funcionário Responsável (Secretaria)
         self.entry_chat = ttk.Entry(frame_input, font=("Arial", 12))
         self.entry_chat.pack(side="left", fill="x", expand=True, padx=5)
         
-        # O Enter envia a mensagem automaticamente
         self.entry_chat.bind("<Return>", lambda e: self.enviar_mensagem())
 
         tk.Button(frame_input, text="Enviar", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), command=self.enviar_mensagem).pack(side="right")
