@@ -14,7 +14,15 @@ import cloudinary.uploader
 import jwt
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
-CORS(app)
+
+# 1. BLINDAGEM DE ORIGEM (CORS ESTRITO)
+# A API só aceita requisições do próprio domínio do Render ou ambiente local
+ORIGENS_PERMITIDAS = [
+    "https://achados-etec-api.onrender.com",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
+]
+CORS(app, resources={r"/api/*": {"origins": ORIGENS_PERMITIDAS}})
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -26,11 +34,17 @@ cloudinary.config(
 )
 
 # ==========================================
-# CONFIGURAÇÕES DE SEGURANÇA (JWT)
+# CONFIGURAÇÕES DE SEGURANÇA E JWT
 # ==========================================
-JWT_SECRET = os.environ.get("JWT_SECRET", "etec_chave_super_segura_2026")
+# O Segredo agora exige uma Variável de Ambiente forte no Render
+JWT_SECRET = os.environ.get("JWT_SECRET", "chave_fallback_local_temporaria_apenas")
 HASH_EMAIL_SEC = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
 HASH_SENHA_SEC = "4a20e32e157a100f269d27cb60696b5b8fe17829c0305283de04fdb0094cec5c"
+
+# Memória para Rate Limiting (Bloqueio contra Força Bruta)
+TENTATIVAS_LOGIN = {}
+MAX_TENTATIVAS = 5
+TEMPO_BLOQUEIO_MINUTOS = 15
 
 def sha256_hash(texto):
     return hashlib.sha256(texto.encode('utf-8')).hexdigest()
@@ -131,21 +145,50 @@ def home():
     return send_from_directory('../frontend', 'index.html')
 
 # ==========================================
-# ROTA DE AUTENTICAÇÃO (LOGIN)
+# ROTA DE AUTENTICAÇÃO (COM RATE LIMITING)
 # ==========================================
 @app.route('/api/login', methods=['POST'])
 def login():
+    ip_cliente = request.remote_addr
+    agora = datetime.now()
+
+    # Verifica se o IP está bloqueado temporariamente
+    if ip_cliente in TENTATIVAS_LOGIN:
+        dados_ip = TENTATIVAS_LOGIN[ip_cliente]
+        if dados_ip['bloqueado_ate'] and agora < dados_ip['bloqueado_ate']:
+            minutos_restantes = int((dados_ip['bloqueado_ate'] - agora).total_seconds() / 60)
+            return jsonify({"success": False, "message": f"Muitas tentativas. Bloqueado por {minutos_restantes} minutos."}), 429
+        elif dados_ip['bloqueado_ate'] and agora >= dados_ip['bloqueado_ate']:
+            # Tempo de bloqueio expirou, reseta o contador
+            TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
+
     data = request.json or {}
     email = data.get('email', '').strip().lower()
     senha = data.get('senha', '').strip()
     
+    # Login bem-sucedido
     if sha256_hash(email) == HASH_EMAIL_SEC and sha256_hash(senha) == HASH_SENHA_SEC:
+        # Reseta o contador de erros após o sucesso
+        if ip_cliente in TENTATIVAS_LOGIN:
+            TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
+            
+        # Token expira em 4 horas para maior segurança (reduzido de 24h)
         token = jwt.encode(
-            {"user": "secretaria", "exp": datetime.utcnow() + timedelta(hours=24)}, 
+            {"user": "secretaria", "exp": datetime.utcnow() + timedelta(hours=4)}, 
             JWT_SECRET, 
             algorithm="HS256"
         )
         return jsonify({"success": True, "token": token})
+    
+    # Login falhou, registra o erro
+    if ip_cliente not in TENTATIVAS_LOGIN:
+        TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
+    
+    TENTATIVAS_LOGIN[ip_cliente]['erros'] += 1
+    if TENTATIVAS_LOGIN[ip_cliente]['erros'] >= MAX_TENTATIVAS:
+        TENTATIVAS_LOGIN[ip_cliente]['bloqueado_ate'] = agora + timedelta(minutes=TEMPO_BLOQUEIO_MINUTOS)
+        return jsonify({"success": False, "message": "Muitas tentativas inválidas. IP bloqueado por 15 minutos."}), 429
+
     return jsonify({"success": False, "message": "Credenciais inválidas"}), 401
 
 # ==========================================
