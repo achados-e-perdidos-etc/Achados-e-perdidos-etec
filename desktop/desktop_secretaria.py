@@ -5,6 +5,7 @@ import json
 import base64
 import io
 import os
+import csv
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from datetime import datetime
 import qrcode
@@ -131,11 +132,13 @@ class SecretariaApp:
         self.carregar_entregues()
         self.carregar_dashboard()
         self.carregar_conversas()
-        # --- DASHBOARD ---
+        
+    # --- DASHBOARD E RELATÓRIOS ---
     def construir_tab_dash(self):
         tk.Label(self.tab_dash, text="Visão Geral do Sistema", font=("Arial", 18, "bold"), bg="#0d1117", fg="#f87171").pack(pady=20)
         frame_cards = tk.Frame(self.tab_dash, bg="#0d1117")
         frame_cards.pack(pady=20)
+        
         def criar_card(parent, titulo, cor):
             f = tk.Frame(parent, bg="#161b22", bd=1, relief="solid", width=200, height=120)
             f.pack_propagate(False)
@@ -149,7 +152,12 @@ class SecretariaApp:
         self.lbl_stat_entregues = criar_card(frame_cards, "ITENS ENTREGUES", "#10b981")
         self.lbl_stat_doacoes = criar_card(frame_cards, "DOAÇÕES", "#f59e0b")
 
-        tk.Button(self.tab_dash, text="Atualizar Dados", bg="#21262d", fg="white", font=("Arial", 10), relief="solid", command=self.carregar_dashboard).pack(pady=30)
+        # Container para os botões do Dashboard
+        frame_botoes = tk.Frame(self.tab_dash, bg="#0d1117")
+        frame_botoes.pack(pady=30)
+        
+        tk.Button(frame_botoes, text="Atualizar Dados", bg="#21262d", fg="white", font=("Arial", 10), relief="solid", command=self.carregar_dashboard).pack(side="left", padx=10)
+        tk.Button(frame_botoes, text="📊 Exportar Relatório (Excel/CSV)", bg="#10b981", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.exportar_relatorio).pack(side="left", padx=10)
 
     def carregar_dashboard(self):
         try:
@@ -160,6 +168,55 @@ class SecretariaApp:
                 self.lbl_stat_entregues.config(text=str(data.get('total_entregues', 0)))
                 self.lbl_stat_doacoes.config(text=str(data.get('total_doacoes', 0)))
         except: pass
+
+    def exportar_relatorio(self):
+        if not TOKEN_SECRETARIA: return
+        
+        # Pede para o usuário escolher onde salvar o arquivo
+        nome_sugerido = f"relatorio_achados_etec_{datetime.now().strftime('%Y%m')}.csv"
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            initialfile=nome_sugerido,
+            title="Salvar Relatório",
+            filetypes=[("Arquivo CSV (Abre no Excel)", "*.csv")]
+        )
+        
+        if not file_path:
+            return # Usuário cancelou a janela de salvar
+            
+        try:
+            # Baixar os dados atualizados para gerar o relatório
+            res_itens = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
+            if res_itens.status_code != 200:
+                messagebox.showerror("Erro", "Não foi possível conectar ao servidor para gerar o relatório.")
+                return
+                
+            itens = res_itens.json()
+            
+            # Escrever o CSV com formato brasileiro (ponto e vírgula) e suporte a acentos (utf-8-sig)
+            with open(file_path, mode='w', newline='', encoding='utf-8-sig') as arquivo_csv:
+                escritor = csv.writer(arquivo_csv, delimiter=';')
+                
+                # Criar o cabeçalho das colunas
+                escritor.writerow(['ID do Sistema', 'Nome do Item', 'Descrição', 'Categoria', 'Data Encontrado', 'Local', 'Status', 'Solicitante / Retirado Por', 'RM Aluno'])
+                
+                # Preencher as linhas com os dados
+                for i in itens:
+                    id_item = i.get('id', '')
+                    nome = i.get('nome') or i.get('txt_descricao') or ''
+                    desc = i.get('txt_descricao', '')
+                    cat = i.get('categoria', '')
+                    data = i.get('txt_data', '')
+                    local = i.get('txt_local', '')
+                    status = i.get('status', 'DISPONÍVEL').upper()
+                    solicitante = i.get('solicitado_por') or ''
+                    rm = i.get('rm_aluno') or ''
+                    
+                    escritor.writerow([id_item, nome, desc, cat, data, local, status, solicitante, rm])
+                    
+            messagebox.showinfo("Relatório Concluído", f"A planilha foi salva com sucesso em:\n\n{file_path}\n\nVocê já pode abri-la no Excel.")
+        except Exception as e:
+            messagebox.showerror("Erro na Exportação", f"Ocorreu um erro ao gerar o arquivo:\n{str(e)}")
 
     # --- ESTOQUE ---
     def construir_tab_itens(self):
