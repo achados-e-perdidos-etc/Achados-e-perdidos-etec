@@ -70,7 +70,6 @@ class SecretariaApp:
 
         self.btn_entrar = tk.Button(self.frame_login, text="ENTRAR NO SISTEMA", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.verificar_login)
         self.btn_entrar.pack(pady=20, fill="x", padx=40)
-        
         self.entry_email.focus()
 
     def verificar_login(self):
@@ -109,6 +108,7 @@ class SecretariaApp:
         self.tab_entregues = tk.Frame(self.notebook, bg="#0d1117")
         self.tab_doacoes = tk.Frame(self.notebook, bg="#0d1117")
         self.tab_chat = tk.Frame(self.notebook, bg="#0d1117")
+        self.tab_mural = tk.Frame(self.notebook, bg="#0d1117") # NOVA ABA MURAL
 
         self.notebook.add(self.tab_dash, text="Dashboard")
         self.notebook.add(self.tab_itens, text="Estoque / Gerenciar")
@@ -116,6 +116,7 @@ class SecretariaApp:
         self.notebook.add(self.tab_entregues, text="Histórico Entregues")
         self.notebook.add(self.tab_doacoes, text="Doações")
         self.notebook.add(self.tab_chat, text="Chat Alunos")
+        self.notebook.add(self.tab_mural, text="Mural de Relatos")
 
         self.construir_tab_dash()
         self.construir_tab_itens()
@@ -123,6 +124,7 @@ class SecretariaApp:
         self.construir_tab_entregues()
         self.construir_tab_doacoes()
         self.construir_tab_chat()
+        self.construir_tab_mural()
 
         self.carregar_dados()
 
@@ -132,6 +134,7 @@ class SecretariaApp:
         self.carregar_entregues()
         self.carregar_dashboard()
         self.carregar_conversas()
+        self.carregar_mural()
         
     # --- DASHBOARD E RELATÓRIOS ---
     def construir_tab_dash(self):
@@ -152,7 +155,6 @@ class SecretariaApp:
         self.lbl_stat_entregues = criar_card(frame_cards, "ITENS ENTREGUES", "#10b981")
         self.lbl_stat_doacoes = criar_card(frame_cards, "DOAÇÕES", "#f59e0b")
 
-        # Container para os botões do Dashboard
         frame_botoes = tk.Frame(self.tab_dash, bg="#0d1117")
         frame_botoes.pack(pady=30)
         
@@ -171,52 +173,58 @@ class SecretariaApp:
 
     def exportar_relatorio(self):
         if not TOKEN_SECRETARIA: return
-        
-        # Pede para o usuário escolher onde salvar o arquivo
         nome_sugerido = f"relatorio_achados_etec_{datetime.now().strftime('%Y%m')}.csv"
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            initialfile=nome_sugerido,
-            title="Salvar Relatório",
-            filetypes=[("Arquivo CSV (Abre no Excel)", "*.csv")]
+            defaultextension=".csv", initialfile=nome_sugerido, title="Salvar Relatório", filetypes=[("Arquivo CSV", "*.csv")]
         )
-        
-        if not file_path:
-            return # Usuário cancelou a janela de salvar
-            
+        if not file_path: return
         try:
-            # Baixar os dados atualizados para gerar o relatório
             res_itens = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
-            if res_itens.status_code != 200:
-                messagebox.showerror("Erro", "Não foi possível conectar ao servidor para gerar o relatório.")
-                return
-                
+            if res_itens.status_code != 200: return messagebox.showerror("Erro", "Erro ao conectar ao servidor.")
             itens = res_itens.json()
-            
-            # Escrever o CSV com formato brasileiro (ponto e vírgula) e suporte a acentos (utf-8-sig)
             with open(file_path, mode='w', newline='', encoding='utf-8-sig') as arquivo_csv:
                 escritor = csv.writer(arquivo_csv, delimiter=';')
-                
-                # Criar o cabeçalho das colunas
-                escritor.writerow(['ID do Sistema', 'Nome do Item', 'Descrição', 'Categoria', 'Data Encontrado', 'Local', 'Status', 'Solicitante / Retirado Por', 'RM Aluno'])
-                
-                # Preencher as linhas com os dados
+                escritor.writerow(['ID', 'Nome do Item', 'Descrição', 'Categoria', 'Data Encontrado', 'Local', 'Status', 'Solicitante / Retirado Por', 'RM Aluno'])
                 for i in itens:
-                    id_item = i.get('id', '')
-                    nome = i.get('nome') or i.get('txt_descricao') or ''
-                    desc = i.get('txt_descricao', '')
-                    cat = i.get('categoria', '')
-                    data = i.get('txt_data', '')
-                    local = i.get('txt_local', '')
-                    status = i.get('status', 'DISPONÍVEL').upper()
-                    solicitante = i.get('solicitado_por') or ''
-                    rm = i.get('rm_aluno') or ''
-                    
-                    escritor.writerow([id_item, nome, desc, cat, data, local, status, solicitante, rm])
-                    
-            messagebox.showinfo("Relatório Concluído", f"A planilha foi salva com sucesso em:\n\n{file_path}\n\nVocê já pode abri-la no Excel.")
-        except Exception as e:
-            messagebox.showerror("Erro na Exportação", f"Ocorreu um erro ao gerar o arquivo:\n{str(e)}")
+                    escritor.writerow([
+                        i.get('id', ''), i.get('nome') or i.get('txt_descricao') or '', i.get('txt_descricao', ''),
+                        i.get('categoria', ''), i.get('txt_data', ''), i.get('txt_local', ''),
+                        i.get('status', 'DISPONÍVEL').upper(), i.get('solicitado_por') or '', i.get('rm_aluno') or ''
+                    ])
+            messagebox.showinfo("Sucesso", f"Planilha salva em:\n{file_path}")
+        except Exception as e: messagebox.showerror("Erro", str(e))
+
+    # --- ABA: MURAL DE RELATOS ---
+    def construir_tab_mural(self):
+        frame_top = tk.Frame(self.tab_mural, bg="#0d1117")
+        frame_top.pack(fill="x", pady=10, padx=10)
+        tk.Button(frame_top, text="🔄 Atualizar Mural", command=self.carregar_mural, bg="#1f6feb", fg="white", font=("Arial", 9, "bold")).pack(side="left")
+        tk.Button(frame_top, text="🗑️ Excluir Relato", command=self.excluir_mural, bg="#dc2626", fg="white", font=("Arial", 9, "bold")).pack(side="right")
+        
+        colunas = ("ID", "Aluno", "RM", "Categoria", "Descrição", "Data")
+        self.tree_mural = ttk.Treeview(self.tab_mural, columns=colunas, show="headings", height=20)
+        for col in colunas: self.tree_mural.heading(col, text=col); self.tree_mural.column(col, anchor="center")
+        self.tree_mural.column("Descrição", width=400, anchor="w")
+        self.tree_mural.pack(fill="both", expand=True, pady=5, padx=10)
+        
+    def carregar_mural(self):
+        try:
+            res = requests.get(f"{API_URL}/api/mural", headers=self.get_auth_headers_get())
+            if res.status_code == 200:
+                self.tree_mural.delete(*self.tree_mural.get_children())
+                for m in res.json():
+                    self.tree_mural.insert("", "end", values=(m['id'], m['nome_aluno'], m['rm_aluno'], m['categoria'], m['descricao'], m['data_registro']))
+        except: pass
+        
+    def excluir_mural(self):
+        selecionado = self.tree_mural.selection()
+        if not selecionado: return messagebox.showwarning("Aviso", "Selecione um relato para excluir.")
+        item_id = self.tree_mural.item(selecionado[0], "values")[0]
+        if messagebox.askyesno("Confirmar", f"Deseja apagar definitivamente o relato #{item_id}?"):
+            try:
+                res = requests.delete(f"{API_URL}/api/mural/{item_id}", headers=self.get_auth_headers())
+                if res.status_code == 200: self.carregar_mural()
+            except: pass
 
     # --- ESTOQUE ---
     def construir_tab_itens(self):
@@ -265,19 +273,14 @@ class SecretariaApp:
 
     def buscar_por_id_direto(self):
         id_buscado = self.entry_busca.get().strip()
-        if not id_buscado:
-            self.aplicar_filtros_tabela()
-            return
-        if not id_buscado.isdigit():
-            messagebox.showwarning("Aviso", "Por favor, digite apenas números no campo de ID.")
-            return
+        if not id_buscado: return self.aplicar_filtros_tabela()
+        if not id_buscado.isdigit(): return messagebox.showwarning("Aviso", "Apenas números no campo de ID.")
         item = next((i for i in self.itens_atuais if str(i['id']) == id_buscado), None)
         if item:
             self.entry_busca.delete(0, tk.END)
             self.aplicar_filtros_tabela()
             self.abrir_modal_detalhes_item(item_direto=item)
-        else:
-            messagebox.showinfo("Não encontrado", f"Nenhum objeto encontrado no sistema com o ID #{id_buscado}.")
+        else: messagebox.showinfo("Não encontrado", f"ID #{id_buscado} não localizado.")
 
     def aplicar_filtros_tabela(self):
         status_filtro = self.combo_filtro_status.get().upper()
@@ -293,10 +296,8 @@ class SecretariaApp:
 
             if status_filtro != "TODOS" and st != status_filtro: continue
             if status_filtro == "TODOS" and st in ['ENTREGUE', 'DOAÇÃO FEITA']: continue 
-
             solicitante = i.get('solicitado_por')
             solicitante_str = f"{solicitante} (RM: {i.get('rm_aluno', '-')})" if solicitante else "-"
-
             self.tree_itens.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, i.get('txt_local', ''), solicitante_str))
 
     # --- MODAL CADASTRO / EDIÇÃO ---
@@ -423,8 +424,7 @@ class SecretariaApp:
                 try:
                     if foto_url.startswith('http'):
                         import urllib.request
-                        with urllib.request.urlopen(foto_url) as u:
-                            raw_data = u.read()
+                        with urllib.request.urlopen(foto_url) as u: raw_data = u.read()
                         img = Image.open(io.BytesIO(raw_data))
                         img.thumbnail((180, 180), Image.Resampling.LANCZOS)
                         img_tk = ImageTk.PhotoImage(img)
@@ -529,7 +529,6 @@ class SecretariaApp:
         modal_baixa.grab_set()
 
         tk.Label(modal_baixa, text="Registrar Entrega ao Dono", font=("Arial", 14, "bold"), bg="#0d1117", fg="#10b981").pack(pady=15)
-
         tk.Label(modal_baixa, text="Nome Completo do Aluno:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
         entry_nome = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
         entry_nome.insert(0, item.get('solicitado_por') or '')
@@ -596,7 +595,7 @@ class SecretariaApp:
         tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), pady=10).pack(side="left", fill="x", expand=True, padx=(0, 5))
         tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 10, "bold"), pady=10).pack(side="left", fill="x", expand=True, padx=(5, 0))
 
-    # --- DOAÇÕES, CATEGORIAS E ENTREGUES ---
+    # --- DOAÇÕES E CATEGORIAS ---
     def construir_tab_doacoes(self):
         frame_top = tk.Frame(self.tab_doacoes, bg="#0d1117")
         frame_top.pack(fill="x", pady=10, padx=10)
@@ -698,7 +697,7 @@ class SecretariaApp:
                 if res.status_code == 200: self.carregar_dados()
             except: pass
 
-    # --- TAB: CHAT ---
+    # --- CHAT ---
     def construir_tab_chat(self):
         frame_esq = tk.Frame(self.tab_chat, bg="#0d1117", width=250)
         frame_esq.pack(side="left", fill="y", padx=10, pady=10)
