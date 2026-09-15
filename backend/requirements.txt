@@ -5,3 +5,4 @@ gunicorn==21.2.0
 requests==2.31.0
 cloudinary
 PyJWT==2.8.0
+
