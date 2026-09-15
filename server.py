@@ -92,12 +92,19 @@ def processar_fotos(fotos_array):
     urls_finais = []
     if not fotos_array: return urls_finais
     for foto in fotos_array:
-        if foto.startswith('http'): urls_finais.append(foto)
+        if foto.startswith('http'): 
+            urls_finais.append(foto)
         else:
             try:
-                resposta = cloudinary.uploader.upload(foto, folder="etec_achados")
-                urls_finais.append(resposta["secure_url"])
-            except Exception as e: print(f"Erro Cloudinary: {e}")
+                # Sistema de Fallback: Se o Cloudinary falhar, salva direto no banco em Base64
+                if os.environ.get("CLOUDINARY_CLOUD_NAME"):
+                    resposta = cloudinary.uploader.upload(foto, folder="etec_achados")
+                    urls_finais.append(resposta["secure_url"])
+                else:
+                    urls_finais.append(foto)
+            except Exception as e: 
+                print(f"Erro Cloudinary: {e}")
+                urls_finais.append(foto)
     return urls_finais
 
 def init_db():
@@ -224,7 +231,7 @@ def criar_mural():
                        (nome, rm, categoria, descricao, data_reg))
         mural_id = cursor.fetchone()['id']
         
-        # Sugere Matches imediatos
+        # Sugere Matches imediatos no momento do cadastro
         termos_mural = extrair_termos(descricao)
         cursor.execute("SELECT * FROM itens WHERE status = 'DISPONÍVEL' AND categoria = %s;", (categoria,))
         itens_disp = cursor.fetchall()
@@ -252,7 +259,7 @@ def deletar_mural(id):
 
 @app.route('/api/mural/notificacoes/<string:rm>', methods=['GET'])
 def mural_notificacoes(rm):
-    return jsonify([]) # Desativado, agora usamos o chat para notificar!
+    return jsonify([]) # Desativado no front, usamos o chat!
 
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
@@ -332,7 +339,7 @@ def cadastrar_item():
         novo_id = cursor.fetchone()['id']
         
         # ==============================================================
-        # TRIGGER INTELIGENTE: AVISA O ALUNO SE BATER COM O MURAL
+        # TRIGGER INTELIGENTE: AVISA O ALUNO NO CHAT SE BATER COM O MURAL
         # ==============================================================
         try:
             termos_novo_item = extrair_termos((nome or "") + " " + (descricao or ""))
@@ -343,14 +350,14 @@ def cadastrar_item():
             for mural in murais_ativos:
                 termos_mural = extrair_termos(mural['descricao'])
                 if len(termos_novo_item.intersection(termos_mural)) >= 1:
-                    msg = f"Olá {mural['nome_aluno']}! A secretaria acabou de registrar algo parecido com o seu relato: '{nome}'. Dê uma olhada no catálogo do site para confirmar se é seu!"
+                    msg = f"Olá {mural['nome_aluno']}! A secretaria acabou de registrar algo parecido com o que você perdeu: '{nome}'. Dê uma olhada no catálogo do site para confirmar se é o seu!"
                     cursor.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
                                    (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg, agora))
         except Exception as msg_err:
             print("Erro ao notificar aluno:", msg_err)
             
         conn.commit(); cursor.close(); conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo com sucesso na nuvem!", "id": novo_id})
+        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['PUT'])
