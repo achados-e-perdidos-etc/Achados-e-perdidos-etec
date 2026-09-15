@@ -16,12 +16,12 @@ import cloudinary.uploader
 import jwt
 
 # ==========================================
-# CONFIGURAÇÃO DE CAMINHO ABSOLUTO (CORREÇÃO DO 404)
+# CONFIGURAÇÃO DE ESTRUTURA RAIZ (TUDO NA MESMA PASTA)
 # ==========================================
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '../frontend'))
 
-app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
+# O Flask agora usa a própria pasta onde o server.py está como pasta estática
+app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
 # 1. BLINDAGEM DE ORIGEM (CORS ESTRITO)
 ORIGENS_PERMITIDAS = [
@@ -147,6 +147,7 @@ if DATABASE_URL: init_db()
 
 @app.route('/')
 def home():
+    # Agora procura o index.html direto na raiz
     return send_from_directory(app.static_folder, 'index.html')
 
 # ==========================================
