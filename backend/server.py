@@ -25,7 +25,7 @@ app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 
 # 1. BLINDAGEM DE ORIGEM (CORS ESTRITO)
 ORIGENS_PERMITIDAS = [
-    "https://achados-etec-api.onrender.com",
+    "https://etec-achados.up.railway.app",
     "http://localhost:5000",
     "http://127.0.0.1:5000"
 ]
