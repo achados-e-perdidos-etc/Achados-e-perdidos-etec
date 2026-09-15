@@ -1,13 +1,15 @@
 import os
 import json
 import re
-import hashlib
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, timedelta
 from functools import wraps
+
+# Biblioteca de segurança de nível bancário nativa do Flask
+from werkzeug.security import check_password_hash
 
 import cloudinary
 import cloudinary.uploader
@@ -16,7 +18,6 @@ import jwt
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 
 # 1. BLINDAGEM DE ORIGEM (CORS ESTRITO)
-# A API só aceita requisições do próprio domínio do Render ou ambiente local
 ORIGENS_PERMITIDAS = [
     "https://achados-etec-api.onrender.com",
     "http://localhost:5000",
@@ -36,18 +37,18 @@ cloudinary.config(
 # ==========================================
 # CONFIGURAÇÕES DE SEGURANÇA E JWT
 # ==========================================
-# O Segredo agora exige uma Variável de Ambiente forte no Render
 JWT_SECRET = os.environ.get("JWT_SECRET", "chave_fallback_local_temporaria_apenas")
-HASH_EMAIL_SEC = "7547c4fd75b0c4cf47ee844f1c6c00f1e77b95b261edb083dfc9a08cd7cf22cd"
-HASH_SENHA_SEC = "4a20e32e157a100f269d27cb60696b5b8fe17829c0305283de04fdb0094cec5c"
+
+# Credenciais agora buscam das variáveis do Render.
+# Se não encontrar, usa um padrão (Substitua no Render!)
+EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br")
+# Coloque o hash pbkdf2 gerado lá no painel do Render
+SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000$dummy$hash")
 
 # Memória para Rate Limiting (Bloqueio contra Força Bruta)
 TENTATIVAS_LOGIN = {}
 MAX_TENTATIVAS = 5
 TEMPO_BLOQUEIO_MINUTOS = 15
-
-def sha256_hash(texto):
-    return hashlib.sha256(texto.encode('utf-8')).hexdigest()
 
 def token_required(f):
     @wraps(f)
@@ -145,34 +146,31 @@ def home():
     return send_from_directory('../frontend', 'index.html')
 
 # ==========================================
-# ROTA DE AUTENTICAÇÃO (COM RATE LIMITING)
+# ROTA DE AUTENTICAÇÃO (Rate Limiting + PBKDF2)
 # ==========================================
 @app.route('/api/login', methods=['POST'])
 def login():
     ip_cliente = request.remote_addr
     agora = datetime.now()
 
-    # Verifica se o IP está bloqueado temporariamente
+    # Verifica bloqueio de Força Bruta
     if ip_cliente in TENTATIVAS_LOGIN:
         dados_ip = TENTATIVAS_LOGIN[ip_cliente]
         if dados_ip['bloqueado_ate'] and agora < dados_ip['bloqueado_ate']:
             minutos_restantes = int((dados_ip['bloqueado_ate'] - agora).total_seconds() / 60)
             return jsonify({"success": False, "message": f"Muitas tentativas. Bloqueado por {minutos_restantes} minutos."}), 429
         elif dados_ip['bloqueado_ate'] and agora >= dados_ip['bloqueado_ate']:
-            # Tempo de bloqueio expirou, reseta o contador
             TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
 
     data = request.json or {}
     email = data.get('email', '').strip().lower()
     senha = data.get('senha', '').strip()
     
-    # Login bem-sucedido
-    if sha256_hash(email) == HASH_EMAIL_SEC and sha256_hash(senha) == HASH_SENHA_SEC:
-        # Reseta o contador de erros após o sucesso
+    # Login com Hash Forte (PBKDF2)
+    if email == EMAIL_SECRETARIA and check_password_hash(SENHA_SECRETARIA_HASH, senha):
         if ip_cliente in TENTATIVAS_LOGIN:
             TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
             
-        # Token expira em 4 horas para maior segurança (reduzido de 24h)
         token = jwt.encode(
             {"user": "secretaria", "exp": datetime.utcnow() + timedelta(hours=4)}, 
             JWT_SECRET, 
@@ -180,7 +178,7 @@ def login():
         )
         return jsonify({"success": True, "token": token})
     
-    # Login falhou, registra o erro
+    # Falha no Login: Registra o erro
     if ip_cliente not in TENTATIVAS_LOGIN:
         TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
     
