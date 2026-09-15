@@ -13,7 +13,7 @@ import qrcode
 # ==========================================
 # CONFIGURAÇÕES DA API E JWT
 # ==========================================
-API_URL = "https://achados-etec-api.onrender.com"
+API_URL = "https://etec-achados.up.railway.app"
 TOKEN_SECRETARIA = None
 
 class SecretariaApp:
