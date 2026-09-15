@@ -15,7 +15,13 @@ import cloudinary
 import cloudinary.uploader
 import jwt
 
-app = Flask(__name__, static_folder='../frontend', static_url_path='')
+# ==========================================
+# CONFIGURAÇÃO DE CAMINHO ABSOLUTO (CORREÇÃO DO 404)
+# ==========================================
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '../frontend'))
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 
 # 1. BLINDAGEM DE ORIGEM (CORS ESTRITO)
 ORIGENS_PERMITIDAS = [
@@ -39,10 +45,8 @@ cloudinary.config(
 # ==========================================
 JWT_SECRET = os.environ.get("JWT_SECRET", "chave_fallback_local_temporaria_apenas")
 
-# Credenciais agora buscam das variáveis do Render.
-# Se não encontrar, usa um padrão (Substitua no Render!)
+# Credenciais buscam das variáveis de ambiente
 EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br")
-# Coloque o hash pbkdf2 gerado lá no painel do Render
 SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000$dummy$hash")
 
 # Memória para Rate Limiting (Bloqueio contra Força Bruta)
@@ -143,7 +147,7 @@ if DATABASE_URL: init_db()
 
 @app.route('/')
 def home():
-    return send_from_directory('../frontend', 'index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 # ==========================================
 # ROTA DE AUTENTICAÇÃO (Rate Limiting + PBKDF2)
@@ -153,7 +157,6 @@ def login():
     ip_cliente = request.remote_addr
     agora = datetime.now()
 
-    # Verifica bloqueio de Força Bruta
     if ip_cliente in TENTATIVAS_LOGIN:
         dados_ip = TENTATIVAS_LOGIN[ip_cliente]
         if dados_ip['bloqueado_ate'] and agora < dados_ip['bloqueado_ate']:
@@ -166,7 +169,6 @@ def login():
     email = data.get('email', '').strip().lower()
     senha = data.get('senha', '').strip()
     
-    # Login com Hash Forte (PBKDF2)
     if email == EMAIL_SECRETARIA and check_password_hash(SENHA_SECRETARIA_HASH, senha):
         if ip_cliente in TENTATIVAS_LOGIN:
             TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
@@ -178,7 +180,6 @@ def login():
         )
         return jsonify({"success": True, "token": token})
     
-    # Falha no Login: Registra o erro
     if ip_cliente not in TENTATIVAS_LOGIN:
         TENTATIVAS_LOGIN[ip_cliente] = {'erros': 0, 'bloqueado_ate': None}
     
