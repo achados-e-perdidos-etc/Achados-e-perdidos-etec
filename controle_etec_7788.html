@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <!-- CABEÇALHO -->
+    <!-- CABEÇALHO COM A NOVA ABA DO MURAL -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -60,8 +60,9 @@
                 <button onclick="mudarAbaSec('stats')" id="btnTabStats" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition"><i class="fas fa-chart-bar"></i></button>
                 <button onclick="mudarAbaSec('cats')" id="btnTabCats" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition"><i class="fas fa-tags"></i></button>
                 <button onclick="mudarAbaSec('entregues')" id="btnTabEntregues" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition"><i class="fas fa-history"></i></button>
+                <button onclick="mudarAbaSec('mural')" id="btnTabMural" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition" title="Mural de Relatos"><i class="fas fa-bullhorn text-amber-500"></i></button>
                 <button onclick="mudarAbaSec('chat')" id="btnTabChat" class="relative px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition">
-                    <i class="fas fa-comments text-amber-500"></i>
+                    <i class="fas fa-comments text-blue-400"></i>
                     <span id="badgeChatSec" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
                 </button>
             </div>
@@ -70,6 +71,15 @@
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow space-y-4">
         
+        <!-- ABA: MURAL DE RELATOS -->
+        <section id="secMuralScreen" class="hidden space-y-4">
+            <div class="flex justify-between items-center bg-card border border-color p-3 rounded-xl">
+                <h3 class="text-xs font-bold uppercase text-amber-500"><i class="fas fa-bullhorn mr-1"></i> Mural de Relatos</h3>
+                <button onclick="carregarMuralSec()" class="text-xs text-main font-bold hover:text-red-400"><i class="fas fa-sync-alt"></i> Atualizar</button>
+            </div>
+            <div id="listaMuralSec" class="space-y-3"></div>
+        </section>
+
         <!-- ABA: ITENS E GESTÃO -->
         <section id="secItensScreen" class="space-y-4">
             <div class="flex gap-2">
@@ -192,7 +202,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO -->
+    <!-- MODAL DE CONFIRMAÇÃO (Adaptado para Callbacks) -->
     <div id="modalConfirmacao" class="hidden fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-2xl text-center">
             <div id="modalConfirmIconBg" class="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-2">
@@ -361,11 +371,9 @@
         let html5QrcodeScanner = null;
         let fotosEdicaoAtuais = [];
 
-        // Helpers de Segurança (Headers JWT)
         const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
         const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
 
-        // --- SISTEMA DE LOGIN JWT ---
         async function fazerLoginSec() {
             const erroEl = document.getElementById('loginErroMsg');
             const emailInput = document.getElementById('loginEmailInput').value.trim();
@@ -452,7 +460,7 @@
 
         // --- NAVEGAÇÃO E LISTAGEM ---
         function mudarAbaSec(aba) {
-            ['itens', 'stats', 'cats', 'entregues', 'chat'].forEach(a => {
+            ['itens', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
                 document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`).classList.add('hidden');
                 document.getElementById(`btnTab${a.charAt(0).toUpperCase() + a.slice(1)}`).className = "px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition";
             });
@@ -462,7 +470,39 @@
             if (aba === 'stats') carregarEstatisticas();
             if (aba === 'cats') carregarCategorias();
             if (aba === 'entregues') carregarEntregues();
+            if (aba === 'mural') carregarMuralSec();
             if (aba === 'chat') { carregarConversasChat(); iniciarPollingChatSec(); } else pararPollingChatSec();
+        }
+
+        // ==========================================
+        // MURAL DE PERDIDOS (NOVO)
+        // ==========================================
+        async function carregarMuralSec() {
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/mural`, {headers: getAuthHeadersGet()}); 
+                if(res.ok){ 
+                    const mural = await res.json(); 
+                    document.getElementById('listaMuralSec').innerHTML = mural.length === 0 ? `<div class="text-center py-8 text-muted text-xs">Nenhum relato no mural.</div>` : mural.map(m => `
+                        <div class="bg-card border border-color rounded-2xl p-4 space-y-2 text-xs">
+                            <div class="flex justify-between items-start">
+                                <div class="font-bold text-main">
+                                    <span>${m.nome_aluno}</span>
+                                    <span class="text-[10px] text-muted block mt-0.5"><i class="fas fa-id-badge"></i> RM: ${m.rm_aluno} | <i class="fas fa-clock"></i> ${m.data_registro}</span>
+                                </div>
+                                <button onclick="excluirMuralSec(${m.id})" class="text-red-500 hover:text-red-400 font-bold p-2 bg-red-950/30 rounded-lg"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="bg-header p-3 rounded-lg border border-color">
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border border-color bg-card mb-2 inline-block">${m.categoria}</span>
+                                <p class="text-muted italic">"${m.descricao}"</p>
+                            </div>
+                        </div>`).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        function excluirMuralSec(id) {
+            confirmarAcaoJWT("Excluir Relato", `Deseja apagar definitivamente o relato #${id} do mural?`, `${API_URL}/api/mural/${id}`, 'DELETE', null, carregarMuralSec);
         }
 
         async function carregarItensSecretaria() {
@@ -526,7 +566,7 @@
         function fecharModalAcoesItem() { document.getElementById('modalAcoesItem').classList.add('hidden'); }
 
         // --- EXECUTOR UNIVERSAL DE AÇÕES COM JWT ---
-        function confirmarAcaoJWT(titulo, mensagem, url, metodo, bodyData = null) {
+        function confirmarAcaoJWT(titulo, mensagem, url, metodo, bodyData = null, callback = null) {
             fecharModalAcoesItem();
             document.getElementById('modalConfirmTitulo').innerText = titulo;
             document.getElementById('modalConfirmMsg').innerText = mensagem;
@@ -536,7 +576,10 @@
                     const options = { method: metodo, headers: getAuthHeaders() };
                     if (bodyData) options.body = JSON.stringify(bodyData);
                     const res = await fetch(url, options);
-                    if (res.ok) { mostrarToast("Operação concluída!", "success"); carregarItensSecretaria(); carregarEstatisticas(); }
+                    if (res.ok) { 
+                        mostrarToast("Operação concluída!", "success"); 
+                        if (callback) { callback(); } else { carregarItensSecretaria(); carregarEstatisticas(); }
+                    }
                     else mostrarToast("Acesso Negado (Token Inválido)", "error");
                 } catch(e) { mostrarToast("Erro de rede", "error"); }
             };
