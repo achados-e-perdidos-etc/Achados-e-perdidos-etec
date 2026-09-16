@@ -1,168 +1,51 @@
-/* --- TEMAS (MODO ESCURO E MODO CLARO) --- */
-body.dark-theme {
-    --bg-main: #0d1117 !important;
-    --bg-header: #161b22 !important;
-    --bg-card: #21262d !important;
-    --text-main: #c9d1d9 !important;
-    --text-muted: #8b949e !important;
-    --border-color: #30363d !important;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+:root {
+    --primary-color: #dc2626;
+    --bg-body: #0d1117;
+    --bg-card: #161b22;
+    --bg-header: #21262d;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --border-color: #30363d;
 }
 
-body.light-theme {
-    --bg-main: #f6f8fa !important;
-    --bg-header: #ffffff !important;
-    --bg-card: #ffffff !important;
-    --text-main: #1f2328 !important;
-    --text-muted: #656d76 !important;
-    --border-color: #d0d7de !important;
+.light-theme {
+    --bg-body: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-header: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
 }
 
 body {
-    background-color: var(--bg-main) !important;
-    color: var(--text-main) !important;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* --- TELA DE CARREGAMENTO (TRANSIÇÃO SUAVE) --- */
-#loadingOverlay {
-    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out !important;
-    opacity: 1;
-    visibility: visible;
-}
+.bg-card { background-color: var(--bg-card); }
+.bg-header { background-color: var(--bg-header); }
+.text-main { color: var(--text-main); }
+.text-muted { color: var(--text-muted); }
+.border-color { border-color: var(--border-color); }
 
-.fade-out {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* --- ZOOM DE IMAGEM PROFISSIONAL (LIGHTBOX) --- */
-#modalZoomImagem {
-    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
+.toast-enter { animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+.toast-exit { animation: toastOut 0.4s ease-in forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
 
-#modalZoomImagem.ativo {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
+.sliding-pill { background-color: var(--primary-color); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.dynamic-badge { background-color: var(--bg-header); border: 1px solid var(--border-color); }
 
-#imgZoomConteudo {
-    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-    transform: scale(0.85);
-    opacity: 0;
-}
+#modalZoomImagem { transition: opacity 0.3s ease, visibility 0.3s ease; opacity: 0; visibility: hidden; }
+#modalZoomImagem.ativo { opacity: 1; visibility: visible; }
 
-#modalZoomImagem.ativo #imgZoomConteudo {
-    transform: scale(1);
-    opacity: 1;
-}
-
-/* --- NOTIFICAÇÕES TOAST --- */
-.toast-enter {
-    animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-.toast-exit {
-    animation: fadeOutUp 0.4s ease-in forwards;
-}
-
-@keyframes slideInRight {
-    from { transform: translateX(120%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes fadeOutUp {
-    from { transform: translateY(0); opacity: 1; }
-    to { transform: translateY(-20px); opacity: 0; }
-}
-
-.toast-success {
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
-    border-left: 4px solid #10b981;
-}
-
-.toast-error {
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
-    border-left: 4px solid #ef4444;
-}
-
-.toast-info {
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
-    border-left: 4px solid #38bdf8;
-}
-
-/* --- APLICAÇÃO DAS VARIÁVEIS --- */
-.bg-header {
-    background-color: var(--bg-header) !important;
-}
-
-.bg-card {
-    background-color: var(--bg-card) !important;
-}
-
-.border-color {
-    border-color: var(--border-color) !important;
-}
-
-.text-main {
-    color: var(--text-main) !important;
-}
-
-.text-muted {
-    color: var(--text-muted) !important;
-}
-
-.dynamic-text {
-    color: var(--primary-text) !important;
-}
-
-.dynamic-badge {
-    background-color: var(--primary-bg-subtle) !important;
-    color: var(--primary-text) !important;
-    border: 1px solid var(--primary-border) !important;
-}
-
-.dynamic-btn {
-    background-color: var(--primary-color) !important;
-    color: #ffffff !important;
-    transition: background-color 0.2s ease;
-}
-
-.dynamic-btn:hover {
-    background-color: var(--primary-hover) !important;
-}
-
-/* --- REGRAS DA LOGO --- */
-#siteLogo {
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
-    min-height: 40px !important;
-    max-width: 40px !important;
-    max-height: 40px !important;
-    object-fit: cover !important;
-    border-radius: 9999px !important;
-    display: block !important;
-    flex-shrink: 0 !important;
-}
-
-.sliding-pill {
-    background-color: var(--primary-color) !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Esconde barra de rolagem do carrossel no Chrome/Safari/Firefox */
-.scrollbar-none::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
 /* =========================================
    UI PROFISSIONAL (EFEITOS 21st.dev)
    ========================================= */
@@ -177,8 +60,17 @@ body {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(220, 38, 38, 0.15) !important;
 }
 
+.light-theme #modalNovo > div, .light-theme #modalMatchImediato > div, .light-theme #loginAlunoScreen > div, .light-theme #janelaChat, .light-theme #detailScreen {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(243, 244, 246, 0.95) 100%) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(220, 38, 38, 0.1) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
 /* 2. Efeito Neon Glow Magnético nos Botões Principais */
 .dynamic-btn {
+    background-color: var(--primary-color);
+    color: white;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
 }
 .dynamic-btn:hover {
