@@ -8,67 +8,98 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#dc2626">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between">
 
+    <!-- TELA DE LOGIN INSTITUCIONAL OBRIGATÓRIO -->
+    <div id="loginAlunoScreen" class="fixed inset-0 z-[200] bg-card flex flex-col items-center justify-center p-4">
+        <div class="bg-header border border-color w-full max-w-sm rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center text-white text-3xl mx-auto shadow-lg mb-3">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <h2 class="text-xl font-black text-main">Acesso do Aluno</h2>
+                <p class="text-xs text-muted mt-1">Utilize seu e-mail @aluno.cps.sp.gov.br</p>
+            </div>
+
+            <!-- FORM DE LOGIN -->
+            <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="space-y-4">
+                <input type="email" id="loginEmailAluno" required placeholder="E-mail Institucional" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                <input type="password" id="loginSenhaAluno" required placeholder="Sua Senha" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                <button type="submit" id="btnAcessoLogin" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase shadow-lg transition">Entrar</button>
+                <div class="flex justify-between text-xs font-bold pt-2">
+                    <button type="button" onclick="alternarTelaAuth('cadastro')" class="text-red-500 hover:text-red-400">Criar Conta</button>
+                    <button type="button" onclick="alternarTelaAuth('recuperar')" class="text-muted hover:text-main">Esqueceu a senha?</button>
+                </div>
+            </form>
+
+            <!-- FORM DE CADASTRO -->
+            <form id="formCadastroAluno" onsubmit="confirmarCadastro(event)" class="hidden space-y-3">
+                <div id="passo1Cadastro" class="space-y-3">
+                    <input type="email" id="cadEmailAluno" required placeholder="E-mail @aluno.cps.sp.gov.br" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                    <button type="button" id="btnEnviarCodigoCad" onclick="enviarCodigoAuth('cadEmailAluno', 'btnEnviarCodigoCad', 'passo2Cadastro', 'passo1Cadastro')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-sm uppercase shadow-lg transition">Enviar Código para o E-mail</button>
+                </div>
+                <div id="passo2Cadastro" class="hidden space-y-3">
+                    <p class="text-[10px] text-amber-500 font-bold text-center">Código enviado! Verifique seu e-mail.</p>
+                    <input type="text" id="cadCodigo" required placeholder="Código de 6 dígitos" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 text-center tracking-widest font-black">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="cadNome" required placeholder="Nome Completo" class="col-span-2 w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                        <input type="number" id="cadRM" required placeholder="Seu RM" class="col-span-1 w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                    </div>
+                    <input type="password" id="cadSenha" required placeholder="Crie uma Senha Forte" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                    <button type="submit" id="btnConfirmarCad" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase shadow-lg transition">Finalizar Cadastro</button>
+                </div>
+                <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-bold text-muted hover:text-main mt-2">Voltar para Login</button>
+            </form>
+
+            <!-- FORM ESQUECI A SENHA -->
+            <form id="formRecuperarAluno" onsubmit="confirmarRedefinicao(event)" class="hidden space-y-3">
+                <div id="passo1Recuperar" class="space-y-3">
+                    <input type="email" id="recEmailAluno" required placeholder="E-mail Institucional" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                    <button type="button" id="btnEnviarCodigoRec" onclick="enviarCodigoAuth('recEmailAluno', 'btnEnviarCodigoRec', 'passo2Recuperar', 'passo1Recuperar')" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 rounded-xl text-sm uppercase shadow-lg transition">Solicitar Redefinição</button>
+                </div>
+                <div id="passo2Recuperar" class="hidden space-y-3">
+                    <input type="text" id="recCodigo" required placeholder="Código recebido no e-mail" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 text-center tracking-widest font-black">
+                    <input type="password" id="recSenha" required placeholder="Digite a Nova Senha" class="w-full bg-card border border-color text-main text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                    <button type="submit" id="btnConfirmarRec" class="w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase shadow-lg transition">Salvar Nova Senha</button>
+                </div>
+                <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-bold text-muted hover:text-main mt-2">Voltar para Login</button>
+            </form>
+        </div>
+    </div>
+
     <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-card flex flex-col items-center justify-center">
         <i class="fas fa-circle-notch fa-spin text-red-500 text-6xl mb-4"></i>
         <h2 class="text-xl font-black text-main animate-pulse">Carregando Sistema...</h2>
-        <p class="text-sm text-muted mt-2">Buscando objetos na secretaria</p>
     </div>
 
     <div id="modalZoomImagem" onclick="fecharZoomImagem(event)" class="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out">
-        <button onclick="fecharZoomImagemDirect()" class="absolute top-5 right-5 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 w-11 h-11 rounded-full flex items-center justify-center transition text-lg z-10">
-            <i class="fas fa-times"></i>
-        </button>
-        <img id="imgZoomConteudo" src="" alt="Imagem Ampliada" class="max-h-[90vh] max-w-[95vw] object-contain rounded-2xl shadow-2xl cursor-default" onclick="event.stopPropagation()">
+        <button onclick="fecharZoomImagemDirect()" class="absolute top-5 right-5 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 w-11 h-11 rounded-full flex items-center justify-center transition text-lg z-10"><i class="fas fa-times"></i></button>
+        <img id="imgZoomConteudo" src="" class="max-h-[90vh] max-w-[95vw] object-contain rounded-2xl shadow-2xl cursor-default" onclick="event.stopPropagation()">
     </div>
 
-    <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+    <div id="toastContainer" class="fixed top-5 right-5 z-[250] flex flex-col gap-3 pointer-events-none"></div>
 
-    <header class="bg-header border-b border-color p-4 sticky top-0 z-50 transition-colors">
+    <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
-                <img id="siteLogo" src="logo.png" alt="Logo Achados e Perdidos" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full">
+                <img id="siteLogo" src="logo.png" alt="Logo" class="w-10 h-10 shrink-0 object-cover rounded-full">
                 <div class="min-w-0">
                     <h1 class="font-bold text-lg dynamic-text leading-tight truncate">ACHADOS E PERDIDOS</h1>
-                    <p class="text-xs text-muted truncate">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</p>
+                    <p id="lblBemVindo" class="text-xs text-muted truncate">Olá, Aluno!</p>
                 </div>
             </div>
-
             <div class="flex items-center space-x-2 shrink-0">
-                <button onclick="mudarAba('catalogo')" id="tabBtnCatalogo" class="px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5">
-                    <i class="fas fa-boxes"></i>
-                    <span class="hidden sm:inline">Catálogo</span>
-                </button>
-
-                <button onclick="mudarAba('mural')" id="tabBtnMural" class="relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5">
-                    <i class="fas fa-bullhorn text-amber-500"></i>
-                    <span class="hidden sm:inline">Perdi Algo</span>
-                    <span id="badgeNotificacaoMural" class="hidden absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span>
-                </button>
-
-                <button onclick="alternarModoApresentacao()" id="btnModoApresentacao" class="px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5">
-                    <i class="fas fa-play text-red-500"></i>
-                    <span class="hidden sm:inline">Apresentação</span>
-                </button>
-
+                <button onclick="mudarAba('catalogo')" id="tabBtnCatalogo" class="px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5"><i class="fas fa-boxes"></i><span class="hidden sm:inline">Catálogo</span></button>
+                <button onclick="mudarAba('mural')" id="tabBtnMural" class="relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5"><i class="fas fa-bullhorn text-amber-500"></i><span class="hidden sm:inline">Perdi Algo</span><span id="badgeNotificacaoMural" class="hidden absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span></button>
                 <div class="relative">
-                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition" title="Configurações">
-                        <i class="fas fa-cog text-base"></i>
-                    </button>
+                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition"><i class="fas fa-cog"></i></button>
                     <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
-                        <div>
-                            <span class="text-[11px] font-bold uppercase text-muted block mb-1">Modo de Exibição</span>
-                            <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main hover:opacity-80 transition">
-                                <span id="themeLabel">Modo Escuro</span>
-                                <i id="themeIcon" class="fas fa-moon text-yellow-400"></i>
-                            </button>
-                        </div>
+                        <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main mb-2"><span id="themeLabel">Modo Escuro</span><i id="themeIcon" class="fas fa-moon text-yellow-400"></i></button>
+                        <button onclick="fazerLogoff()" class="w-full text-center px-3 py-2 rounded-lg bg-red-950/40 text-red-500 border border-red-900 font-bold text-xs">Sair da Conta</button>
                     </div>
                 </div>
             </div>
@@ -76,289 +107,84 @@
     </header>
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow">
-        <!-- SEÇÃO MODO APRESENTAÇÃO -->
-        <section id="apresentacaoScreen" class="hidden space-y-4">
-            <div class="flex justify-between items-center bg-card border border-color p-3 rounded-2xl">
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-                    <span class="text-xs font-bold uppercase text-main">Exibição de Itens Cadastrados</span>
-                </div>
-                <button onclick="alternarModoApresentacao()" class="text-xs font-bold text-muted hover:text-main px-3 py-1.5 rounded-lg bg-header border border-color transition">
-                    <i class="fas fa-arrow-left mr-1"></i> Voltar
-                </button>
-            </div>
-
-            <div id="apresentacaoCard" class="relative bg-card border border-color rounded-3xl overflow-hidden p-4 sm:p-6 shadow-2xl">
-                <div class="relative w-full h-80 sm:h-96 rounded-2xl overflow-hidden bg-header border border-color flex items-center justify-center">
-                    <img id="apresentacaoImg" src="" alt="Foto do Item" class="w-full h-full object-contain transition-all duration-700 ease-in-out opacity-100 scale-100">
-                    <div id="apresentacaoPlaceholder" class="hidden text-center text-muted p-4">
-                        <i class="fas fa-box-open text-6xl mb-3 text-muted"></i>
-                        <p class="text-sm">Item sem registro de imagem</p>
-                    </div>
-                    <span id="apresentacaoContador" class="absolute top-3 right-3 bg-black/70 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-3 py-1 rounded-full">
-                        1 / 1
-                    </span>
-                </div>
-
-                <div class="pt-5 space-y-2">
-                    <div class="flex flex-wrap justify-between items-center gap-2">
-                        <span id="apresentacaoCategoria" class="text-xs font-bold dynamic-badge px-3 py-1 rounded-full uppercase"></span>
-                        <span id="apresentacaoStatus" class="text-xs font-bold px-3 py-1 rounded-full uppercase border"></span>
-                    </div>
-
-                    <h2 id="apresentacaoTitulo" class="text-2xl sm:text-3xl font-black text-main leading-snug"></h2>
-                    <p id="apresentacaoDescricao" class="text-sm text-muted italic border-l-4 border-red-500 pl-3 py-1 bg-black/10 rounded-r-lg"></p>
-                    
-                    <div id="apresentacaoRegraEletronico" class="hidden text-[10px] text-amber-500 font-bold bg-amber-500/10 p-2 rounded-lg mt-1 inline-block">
-                        <i class="fas fa-exclamation-triangle"></i> Atenção: Apenas pais ou responsáveis podem buscar na secretaria.
-                    </div>
-
-                    <div class="flex flex-wrap items-center justify-between text-xs sm:text-sm text-muted pt-3 border-t border-color gap-2 mt-2">
-                        <span><i class="fas fa-map-marker-alt text-red-500 mr-1.5"></i> Local: <strong id="apresentacaoLocal" class="text-main"></strong></span>
-                        <span><i class="fas fa-calendar-alt text-red-500 mr-1.5"></i> Data: <strong id="apresentacaoData" class="text-main"></strong></span>
-                    </div>
-
-                    <div class="pt-2 flex gap-3">
-                        <button onclick="abrirDetalhesDoItemAtualApresentacao()" class="flex-grow dynamic-btn font-bold py-3 rounded-xl text-xs uppercase transition">
-                            <i class="fas fa-info-circle mr-1"></i> Ver Mais Detalhes / Solicitar
-                        </button>
-                    </div>
-                </div>
-
-                <button onclick="navegarApresentacao(-1)" class="absolute left-6 top-44 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition border border-white/10">
-                    <i class="fas fa-chevron-left text-sm"></i>
-                </button>
-                <button onclick="navegarApresentacao(1)" class="absolute right-6 top-44 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition border border-white/10">
-                    <i class="fas fa-chevron-right text-sm"></i>
-                </button>
-            </div>
-        </section>
-
-        <!-- SEÇÃO: CATÁLOGO -->
+        <!-- CATÁLOGO -->
         <section id="catalogScreen" class="space-y-6">
             <div class="space-y-4">
                 <div class="relative w-full">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        oninput="filtrarPorPalavraChave()" 
-                        placeholder="Buscar por palavra-chave..." 
-                        class="w-full bg-card border border-color text-main text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-sm placeholder:text-muted"
-                    >
-                    <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
+                    <input type="text" id="searchInput" oninput="filtrarPorPalavraChave()" placeholder="Buscar objeto..." class="w-full bg-card border border-color text-main text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-sm">
+                    <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1"><i class="fas fa-times text-xs"></i></button>
                 </div>
-
                 <div>
-                    <h3 class="text-xs font-bold uppercase text-muted mb-3">FILTRAR POR CATEGORIA:</h3>
                     <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
                         <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
                         <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
                     </div>
                 </div>
-
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
-                    <h3 class="text-xs font-bold uppercase text-muted">STATUS DO OBJETO:</h3>
-                    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition cursor-pointer">
+                    <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition">
                         <option value="TODOS">TODOS OS STATUS</option>
                         <option value="DISPONÍVEL">DISPONÍVEL</option>
                         <option value="SOLICITADO">SOLICITADO</option>
                         <option value="ENTREGUE">ENTREGUE</option>
-                        <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
-                        <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
                     </select>
                 </div>
             </div>
-
             <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
-        <!-- SEÇÃO: MURAL "PERDI ALGO" -->
+        <!-- MURAL -->
         <section id="muralScreen" class="hidden space-y-6">
-            <div class="bg-card border border-color rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
-                <div>
-                    <h2 class="text-xl font-black text-main flex items-center gap-2">
-                        <i class="fas fa-search-location text-amber-500"></i>
-                        Perdeu algum pertence na escola?
-                    </h2>
-                    <p class="text-xs text-muted mt-1">
-                        Cadastre o que você perdeu. Vamos enviar um e-mail automaticamente se ele for encontrado.
-                    </p>
-                </div>
-
+            <div class="bg-card border border-color rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-xl font-black text-main flex items-center gap-2"><i class="fas fa-search-location text-amber-500"></i>Perdeu algo?</h2>
+                <p class="text-xs text-muted">Vamos te avisar automaticamente se for encontrado.</p>
                 <form id="formMural" onsubmit="enviarAvisoMural(event)" class="space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-muted uppercase mb-1">Nome Completo:</label>
-                            <input type="text" id="muralNome" required placeholder="Ex: Gustavo Henrique" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-muted uppercase mb-1">RM:</label>
-                            <input type="number" id="muralRM" required placeholder="Seu registro" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                        </div>
-                    </div>
-                    
-                    <!-- NOVO CAMPO DE EMAIL -->
-                    <div>
-                        <label class="block text-xs font-bold text-muted uppercase mb-1">Seu E-mail (Para Notificações Automáticas):</label>
-                        <input type="email" id="muralEmail" required placeholder="nome@etec.sp.gov.br" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-muted uppercase mb-1">Categoria:</label>
-                        <select id="muralCategoria" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-muted uppercase mb-1">Descreva o que você perdeu:</label>
-                        <textarea id="muralDescricao" required rows="3" placeholder="Ex: perdi minha garrafinha termica azul no laboratorio..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
-                    </div>
-
-                    <button type="submit" id="btnPublicarMural" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase flex items-center justify-center gap-2">
-                        <i class="fas fa-paper-plane"></i>
-                        <span>Publicar no Mural</span>
-                    </button>
+                    <select id="muralCategoria" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></select>
+                    <textarea id="muralDescricao" required rows="3" placeholder="Descreva exatamente o que perdeu..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
+                    <button type="submit" id="btnPublicarMural" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase flex justify-center gap-2"><i class="fas fa-paper-plane"></i> Publicar</button>
                 </form>
             </div>
         </section>
 
-        <!-- TELA DE DETALHES -->
+        <!-- DETALHES -->
         <section id="detailScreen" class="hidden max-w-lg mx-auto bg-card border border-color rounded-2xl p-6">
             <button onclick="voltarParaCatalogo()" class="text-xs text-muted hover:text-main mb-4"><i class="fas fa-arrow-left"></i> Voltar</button>
-
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-xs font-bold dynamic-text uppercase">INFORMAÇÕES DO ITEM</h2>
-                <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border"></span>
-            </div>
-
+            <div class="flex justify-between items-center mb-2"><h2 class="text-xs font-bold dynamic-text uppercase">INFORMAÇÕES</h2><span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border"></span></div>
             <div class="relative bg-black/20 rounded-xl overflow-hidden mb-4 border border-color h-64">
-                <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
-                    <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
-                </div>
+                <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 text-white text-[11px] font-bold px-2.5 py-1 rounded-full"><span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span></div>
                 <div id="carouselContainer" class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"></div>
-                <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
-                    <i class="fas fa-chevron-left text-xs"></i>
-                </button>
-                <button id="btnNextPhoto" onclick="navegarFotos(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80 transition">
-                    <i class="fas fa-chevron-right text-xs"></i>
-                </button>
-                <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center">
-                    <i class="fas fa-box-open text-5xl mb-2"></i>
-                    <p class="text-xs">Sem registro de imagem</p>
-                </div>
+                <button id="btnPrevPhoto" onclick="navegarFotos(-1)" class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-chevron-left text-xs"></i></button>
+                <button id="btnNextPhoto" onclick="navegarFotos(1)" class="hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-chevron-right text-xs"></i></button>
+                <div id="detailPlaceholder" class="hidden h-full text-center p-6 text-muted flex flex-col items-center justify-center"><i class="fas fa-box-open text-5xl mb-2"></i></div>
             </div>
-
             <div class="space-y-3">
                 <h3 id="detailTitle" class="text-2xl font-black text-main"></h3>
-                <p id="detailDescription" class="text-sm text-muted bg-header p-3 rounded-lg border border-color"></p>
-                
-                <div id="detailRegraEletronico" class="hidden text-xs text-amber-500 font-bold bg-amber-500/10 p-3 rounded-lg flex items-center gap-2">
-                    <i class="fas fa-exclamation-triangle text-xl"></i>
-                    <p>Atenção: Por medida de segurança, somente os pais ou responsáveis legais podem retirar este item na secretaria da escola.</p>
-                </div>
-
-                <div class="flex justify-between items-center text-xs text-muted pt-2 border-t border-color">
-                    <span>Local: <strong id="detailLocal" class="text-main"></strong></span>
-                    <span>Data: <strong id="detailDate" class="text-main"></strong></span>
-                </div>
-
+                <p id="detailDescription" class="text-sm text-muted bg-header p-3 rounded-lg"></p>
+                <div class="flex justify-between items-center text-xs text-muted pt-2 border-t border-color"><span>Local: <strong id="detailLocal" class="text-main"></strong></span><span>Data: <strong id="detailDate" class="text-main"></strong></span></div>
                 <div class="pt-4 flex flex-col sm:flex-row gap-2">
-                    <button id="btnSolicitar" onclick="abrirNovoModal()" class="flex-grow dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">
-                        ESTE É O MEU ITEM / SOLICITAR
-                    </button>
-                    <button onclick="abrirChatComItem()" class="sm:w-auto px-5 py-3.5 rounded-xl bg-header border border-color text-main hover:border-red-500 font-bold text-xs uppercase transition flex items-center justify-center gap-2">
-                        <i class="fas fa-comments text-red-500"></i>
-                        <span>Secretaria</span>
-                    </button>
+                    <button id="btnSolicitar" onclick="abrirNovoModal()" class="flex-grow dynamic-btn font-bold py-3.5 rounded-xl text-sm uppercase">ESTE É O MEU ITEM</button>
+                    <button onclick="abrirChatComItem()" class="sm:w-auto px-5 py-3.5 rounded-xl bg-header border border-color text-main hover:border-red-500 font-bold text-xs uppercase flex items-center justify-center gap-2"><i class="fas fa-comments text-red-500"></i> Secretaria</button>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- WIDGET FLUTUANTE DE CHAT -->
+    <!-- CHAT FLUTUANTE -->
     <div class="fixed bottom-5 right-5 z-50">
-        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-2xl transition transform hover:scale-105">
-            <i class="fas fa-comment-dots text-2xl"></i>
-            <span id="badgeChatWeb" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-black rounded-full flex items-center justify-center">0</span>
-        </button>
-
-        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 bg-card border border-color rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[480px]">
-            <div class="bg-header border-b border-color p-3.5 flex justify-between items-center">
-                <div class="flex items-center gap-2.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <div>
-                        <h4 class="font-bold text-xs text-main">Secretaria ETEC (Chat Direto)</h4>
-                        <p id="chatSubtitulo" class="text-[10px] text-muted">Tire dúvidas sobre itens perdidos</p>
-                    </div>
-                </div>
-                <button onclick="alternarJanelaChat()" class="text-muted hover:text-main text-xs p-1"><i class="fas fa-times"></i></button>
-            </div>
-
-            <div id="chatAuthBar" class="bg-card border-b border-color p-2.5 flex gap-2">
-                <input type="text" id="chatInputNome" placeholder="Seu Nome" class="w-1/2 bg-header border border-color text-xs rounded-lg px-2.5 py-1.5 text-main focus:outline-none focus:border-red-500">
-                <input type="number" id="chatInputRM" placeholder="Seu RM" class="w-1/2 bg-header border border-color text-xs rounded-lg px-2.5 py-1.5 text-main focus:outline-none focus:border-red-500">
-            </div>
-
-            <div id="chatMensagens" class="flex-grow p-3 space-y-2 overflow-y-auto text-xs scrollbar-none bg-black/10">
-                <div class="text-center text-muted italic my-4 text-[11px]">Inicie a conversa informando seus dados acima.</div>
-            </div>
-
-            <form id="formChat" onsubmit="enviarMensagemChat(event)" class="p-2.5 bg-header border-t border-color flex gap-2">
-                <input type="text" id="chatInputTexto" placeholder="Digite sua mensagem..." class="flex-grow bg-card border border-color rounded-xl px-3 py-2 text-xs text-main focus:outline-none focus:border-red-500">
-                <button type="submit" class="dynamic-btn w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
-                    <i class="fas fa-paper-plane text-xs"></i>
-                </button>
-            </form>
+        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl transition"><i class="fas fa-comment-dots text-2xl"></i><span id="badgeChatWeb" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-black rounded-full flex items-center justify-center">0</span></button>
+        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 bg-card border border-color rounded-2xl shadow-2xl flex flex-col h-[480px]">
+            <div class="bg-header border-b border-color p-3.5 flex justify-between items-center"><div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><h4 class="font-bold text-xs text-main">Secretaria ETEC</h4></div><button onclick="alternarJanelaChat()" class="text-muted"><i class="fas fa-times"></i></button></div>
+            <div id="chatMensagens" class="flex-grow p-3 space-y-2 overflow-y-auto text-xs bg-black/10 scrollbar-none"></div>
+            <form id="formChat" onsubmit="enviarMensagemChat(event)" class="p-2.5 bg-header border-t border-color flex gap-2"><input type="text" id="chatInputTexto" placeholder="Sua mensagem..." class="flex-grow bg-card border border-color rounded-xl px-3 text-xs text-main"><button type="submit" class="dynamic-btn w-9 h-9 rounded-xl flex items-center justify-center"><i class="fas fa-paper-plane text-xs"></i></button></form>
         </div>
     </div>
 
-    <!-- MODAL MATCH IMEDIATO -->
-    <div id="modalMatchImediato" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-card border border-amber-500/50 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="text-center space-y-1">
-                <i class="fas fa-check-circle text-4xl text-emerald-400 mb-1"></i>
-                <h3 class="font-black text-main text-xl">Encontramos algo parecido!</h3>
-            </div>
-            <div id="matchItensLista" class="space-y-3"></div>
-            <button onclick="fecharModalMatch()" class="w-full bg-header border border-color text-main font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-card">Fechar / Não é o meu</button>
-        </div>
-    </div>
+    <!-- MODAL DE MATCH -->
+    <div id="modalMatchImediato" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"><div class="bg-card w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-amber-500/50"><div class="text-center"><i class="fas fa-check-circle text-4xl text-emerald-400 mb-1"></i><h3 class="font-black text-main text-xl">Parecido encontrado!</h3></div><div id="matchItensLista" class="space-y-3 mt-4"></div><button onclick="document.getElementById('modalMatchImediato').classList.add('hidden')" class="w-full bg-header border border-color text-main font-bold py-2.5 rounded-xl text-xs uppercase hover:bg-card mt-4">Fechar</button></div></div>
 
-    <!-- MODAL DE SOLICITAÇÃO -->
-    <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-main text-lg"><i class="fas fa-id-card text-red-500 mr-2"></i>Identificação do Aluno</h3>
-                <button onclick="fecharNovoModal()" class="text-muted hover:text-main"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="space-y-3">
-                <input type="text" id="campoNomeNovo" placeholder="Digite seu nome completo" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                <input type="number" id="campoRmNovo" placeholder="Digite seu RM" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-                
-                <!-- NOVO CAMPO DE EMAIL NO MODAL -->
-                <input type="email" id="campoEmailNovo" placeholder="Digite seu e-mail de contato" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500">
-            </div>
-            <div id="erroNovo" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800 p-2 rounded-lg"></div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="fecharNovoModal()" class="w-1/2 bg-header border border-color text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button>
-                <button id="btnNovo" onclick="enviarNovo()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Confirmar</button>
-            </div>
-        </div>
-    </div>
+    <!-- MODAL CONFIRMAR SOLICITAÇÃO -->
+    <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"><div class="bg-card border border-color w-full max-w-sm rounded-2xl p-6 space-y-4"><h3 class="font-bold text-main text-lg text-center"><i class="fas fa-question-circle text-red-500 mr-2"></i>Confirmar Retirada?</h3><p class="text-sm text-muted text-center">Vamos enviar o comprovante para o seu e-mail institucional.</p><div class="flex gap-2 pt-2"><button onclick="document.getElementById('modalNovo').classList.add('hidden')" class="w-1/2 bg-header text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button><button id="btnNovo" onclick="enviarNovo()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Sim, é meu!</button></div></div></div>
 
     <script src="script.js"></script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then((reg) => console.log('PWA Service Worker Registrado!', reg.scope))
-                    .catch((err) => console.error('Falha ao registrar PWA:', err));
-            });
-        }
-    </script>
 </body>
 </html>
