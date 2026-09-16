@@ -2,23 +2,21 @@ import os
 import json
 import re
 import psycopg2
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from threading import Thread
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, timedelta
 from functools import wraps
-
 from werkzeug.security import check_password_hash
-
 import cloudinary
 import cloudinary.uploader
 import jwt
 
-# ==========================================
-# CONFIGURAÇÃO DE ESTRUTURA RAIZ
-# ==========================================
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
 ORIGENS_PERMITIDAS = [
@@ -40,6 +38,12 @@ cloudinary.config(
 JWT_SECRET = os.environ.get("JWT_SECRET", "chave_fallback_local_temporaria_apenas")
 EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br")
 SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000$dummy$hash")
+
+# --- CONFIGURAÇÕES DE E-MAIL ---
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 465))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
 
 TENTATIVAS_LOGIN = {}
 MAX_TENTATIVAS = 5
@@ -92,20 +96,39 @@ def processar_fotos(fotos_array):
     urls_finais = []
     if not fotos_array: return urls_finais
     for foto in fotos_array:
-        if foto.startswith('http'): 
-            urls_finais.append(foto)
+        if foto.startswith('http'): urls_finais.append(foto)
         else:
             try:
-                # Sistema de Fallback: Se o Cloudinary falhar, salva direto no banco em Base64
-                if os.environ.get("CLOUDINARY_CLOUD_NAME"):
-                    resposta = cloudinary.uploader.upload(foto, folder="etec_achados")
-                    urls_finais.append(resposta["secure_url"])
-                else:
-                    urls_finais.append(foto)
-            except Exception as e: 
-                print(f"Erro Cloudinary: {e}")
-                urls_finais.append(foto)
+                resposta = cloudinary.uploader.upload(foto, folder="etec_achados")
+                urls_finais.append(resposta["secure_url"])
+            except Exception as e: print(f"Erro Cloudinary: {e}")
     return urls_finais
+
+# --- ENVIO DE E-MAIL ASSÍNCRONO ---
+def enviar_email_async(destinatario, assunto, html_content):
+    if not SMTP_USER or not SMTP_PASS or not destinatario:
+        return
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = assunto
+        msg["From"] = f"Achados e Perdidos ETEC <{SMTP_USER}>"
+        msg["To"] = destinatario
+        msg.attach(MIMEText(html_content, "html"))
+
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_USER, destinatario, msg.as_string())
+        else:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_USER, destinatario, msg.as_string())
+    except Exception as e:
+        print(f"Erro ao enviar e-mail para {destinatario}: {e}")
+
+def disparar_email(destinatario, assunto, html_content):
+    Thread(target=enviar_email_async, args=(destinatario, assunto, html_content)).start()
 
 def init_db():
     try:
@@ -122,18 +145,31 @@ def init_db():
             data_encontrado VARCHAR(20) NOT NULL, local_encontrado VARCHAR(100) NOT NULL, foto_base64 TEXT,
             fotos_json TEXT, status VARCHAR(30) DEFAULT 'DISPONÍVEL', solicitado_por VARCHAR(100), rm_aluno VARCHAR(20), prova_propriedade TEXT
         );''')
+        
         cursor.execute('''CREATE TABLE IF NOT EXISTS entregues (
             id SERIAL PRIMARY KEY, item_id INT NOT NULL, nome_item TEXT NOT NULL, retirado_por VARCHAR(100) NOT NULL,
             rm_retirante VARCHAR(30) NOT NULL, turma_curso VARCHAR(50), data_entrega VARCHAR(30) NOT NULL, funcionario_responsavel VARCHAR(100)
         );''')
+        
         cursor.execute('''CREATE TABLE IF NOT EXISTS mural_perdidos (
             id SERIAL PRIMARY KEY, nome_aluno VARCHAR(100) NOT NULL, rm_aluno VARCHAR(20) NOT NULL, categoria VARCHAR(50) NOT NULL,
             descricao TEXT NOT NULL, data_registro VARCHAR(30) NOT NULL, status VARCHAR(30) DEFAULT 'PROCURANDO', item_encontrado_id INT
         );''')
+        
         cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens_chat (
             id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) NOT NULL, nome_aluno VARCHAR(100) NOT NULL, remetente VARCHAR(20) NOT NULL, 
             mensagem TEXT NOT NULL, data_envio VARCHAR(30) NOT NULL, lida BOOLEAN DEFAULT FALSE
         );''')
+        
+        # ATUALIZAÇÃO AUTOMÁTICA DO BANCO DE DADOS PARA SUPORTAR E-MAIL
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='mural_perdidos' AND column_name='email_aluno';")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE mural_perdidos ADD COLUMN email_aluno VARCHAR(150);")
+            
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='itens' AND column_name='email_solicitante';")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE itens ADD COLUMN email_solicitante VARCHAR(150);")
+
         conn.commit()
         cursor.close(); conn.close()
     except Exception as e: print(f"Erro DB: {e}")
@@ -201,7 +237,7 @@ def get_itens():
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 # ==========================================
-# ROTAS DO MURAL E INTELIGÊNCIA
+# ROTAS DO MURAL E INTELIGÊNCIA COM E-MAIL
 # ==========================================
 @app.route('/api/mural', methods=['GET'])
 def get_mural():
@@ -217,7 +253,7 @@ def get_mural():
 @app.route('/api/mural', methods=['POST'])
 def criar_mural():
     data = request.json or {}
-    nome, rm, categoria, descricao = data.get('nome'), data.get('rm'), data.get('categoria'), data.get('descricao')
+    nome, rm, email_aluno, categoria, descricao = data.get('nome'), data.get('rm'), data.get('email'), data.get('categoria'), data.get('descricao')
     if not nome or not rm or not descricao: return jsonify({"success": False, "message": "Dados incompletos"}), 400
         
     try:
@@ -225,13 +261,11 @@ def criar_mural():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         data_reg = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # Mantém SEMPRE como PROCURANDO para a secretaria gerenciar depois
-        cursor.execute('''INSERT INTO mural_perdidos (nome_aluno, rm_aluno, categoria, descricao, data_registro, status) 
-                          VALUES (%s, %s, %s, %s, %s, 'PROCURANDO') RETURNING id;''', 
-                       (nome, rm, categoria, descricao, data_reg))
+        cursor.execute('''INSERT INTO mural_perdidos (nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro, status) 
+                          VALUES (%s, %s, %s, %s, %s, %s, 'PROCURANDO') RETURNING id;''', 
+                       (nome, rm, email_aluno, categoria, descricao, data_reg))
         mural_id = cursor.fetchone()['id']
         
-        # Sugere Matches imediatos no momento do cadastro
         termos_mural = extrair_termos(descricao)
         cursor.execute("SELECT * FROM itens WHERE status = 'DISPONÍVEL' AND categoria = %s;", (categoria,))
         itens_disp = cursor.fetchall()
@@ -259,25 +293,35 @@ def deletar_mural(id):
 
 @app.route('/api/mural/notificacoes/<string:rm>', methods=['GET'])
 def mural_notificacoes(rm):
-    return jsonify([]) # Desativado no front, usamos o chat!
+    return jsonify([]) 
 
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json or {}
-    item_id, nome, rm = data.get('id'), data.get('nome'), data.get('rm')
+    item_id, nome, rm, email_aluno = data.get('id'), data.get('nome'), data.get('rm'), data.get('email')
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s WHERE id = %s AND status = 'DISPONÍVEL';", (nome, rm, item_id))
+        cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s WHERE id = %s AND status = 'DISPONÍVEL';", (nome, rm, email_aluno, item_id))
         if cursor.rowcount > 0:
             conn.commit()
-            return jsonify({"success": True, "message": "Solicitação enviada com sucesso! Dirija-se à secretaria."})
+            
+            if email_aluno:
+                html = f"""
+                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                    <h2 style="color: #dc2626;">Solicitação Confirmada!</h2>
+                    <p>Olá <strong>{nome}</strong>,</p>
+                    <p>Você solicitou a retirada do item <strong>#{item_id}</strong> no sistema de Achados e Perdidos.</p>
+                    <p>Por favor, dirija-se à secretaria da ETEC informando o seu RM ({rm}) para comprovar a propriedade e retirar o objeto.</p>
+                    <br><p>Atenciosamente,<br>Equipe ETEC</p>
+                </div>
+                """
+                disparar_email(email_aluno, f"Reserva de Item #{item_id} - Achados e Perdidos ETEC", html)
+                
+            return jsonify({"success": True, "message": "Solicitação enviada com sucesso! Verifique seu e-mail e dirija-se à secretaria."})
         return jsonify({"success": False, "message": "Este item não está mais disponível."}), 400
     except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
 
-# ==========================================
-# CHAT DA SECRETARIA
-# ==========================================
 @app.route('/api/chat/enviar', methods=['POST'])
 def enviar_mensagem_chat():
     data = request.json or {}
@@ -308,9 +352,6 @@ def buscar_mensagens_aluno(rm):
         return jsonify(msgs)
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
-# ==========================================
-# ROTAS PROTEGIDAS PELA SECRETARIA
-# ==========================================
 @app.route('/api/categorias', methods=['POST'])
 @token_required
 def add_categoria():
@@ -338,9 +379,7 @@ def cadastrar_item():
         cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, foto_capa, json.dumps(urls_nuvem), status))
         novo_id = cursor.fetchone()['id']
         
-        # ==============================================================
-        # TRIGGER INTELIGENTE: AVISA O ALUNO NO CHAT SE BATER COM O MURAL
-        # ==============================================================
+        # GATILHO: AVISA O ALUNO POR EMAIL SE HOUVER MATCH NO MURAL
         try:
             termos_novo_item = extrair_termos((nome or "") + " " + (descricao or ""))
             cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
@@ -350,14 +389,26 @@ def cadastrar_item():
             for mural in murais_ativos:
                 termos_mural = extrair_termos(mural['descricao'])
                 if len(termos_novo_item.intersection(termos_mural)) >= 1:
-                    msg = f"Olá {mural['nome_aluno']}! A secretaria acabou de registrar algo parecido com o que você perdeu: '{nome}'. Dê uma olhada no catálogo do site para confirmar se é o seu!"
+                    msg = f"Olá {mural['nome_aluno']}! A secretaria acabou de registrar algo parecido com o seu relato de perda: '{nome}'. Dê uma olhada no catálogo do site para confirmar se é seu!"
                     cursor.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
                                    (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg, agora))
+                    
+                    if mural.get('email_aluno'):
+                        html_email = f"""
+                        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                            <h2 style="color: #dc2626;">Item Encontrado!</h2>
+                            <p>Olá <strong>{mural['nome_aluno']}</strong>,</p>
+                            <p>A secretaria da ETEC acabou de registrar no sistema um objeto que bate com a descrição do seu relato no mural: <strong>{nome}</strong>.</p>
+                            <p>Acesse o painel web ou o aplicativo para verificar a foto e os detalhes. Se for o seu, clique em "ESTE É O MEU ITEM" para reservá-lo!</p>
+                            <br><p>Atenciosamente,<br>Equipe ETEC</p>
+                        </div>
+                        """
+                        disparar_email(mural['email_aluno'], "Encontramos um item parecido com o seu!", html_email)
         except Exception as msg_err:
             print("Erro ao notificar aluno:", msg_err)
             
         conn.commit(); cursor.close(); conn.close()
-        return jsonify({"success": True, "message": "Objeto salvo com sucesso!", "id": novo_id})
+        return jsonify({"success": True, "message": "Objeto salvo com sucesso na nuvem!", "id": novo_id})
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['PUT'])
@@ -368,7 +419,7 @@ def atualizar_item(item_id):
     data_enc, local, status = data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         if descricao and data_enc and local:
             fotos_recebidas = data.get('fotos')
             if fotos_recebidas is not None and len(fotos_recebidas) > 0:
@@ -383,8 +434,27 @@ def atualizar_item(item_id):
             retirado_por, rm_retirante = data.get('retirado_por', 'Não informado'), data.get('rm_retirante', 'Não informado')
             turma_curso, data_entrega = data.get('turma_curso', '-'), data.get('data_entrega', data_enc or datetime.now().strftime("%d/%m/%Y %H:%M"))
             func_resp = data.get('funcionario_responsavel', 'Secretaria')
+            
+            cursor.execute("SELECT email_solicitante FROM itens WHERE id = %s", (item_id,))
+            email_solicitante = cursor.fetchone().get('email_solicitante') if cursor.rowcount > 0 else None
+            
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             cursor.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, (nome or descricao or f"Item #{item_id}"), retirado_por, rm_retirante, turma_curso, data_entrega, func_resp))
+            
+            # GATILHO: ENVIA O COMPROVANTE POR EMAIL
+            if email_solicitante:
+                html_recibo = f"""
+                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                    <h2 style="color: #059669;">Comprovante de Devolução</h2>
+                    <p>Olá <strong>{retirado_por}</strong>,</p>
+                    <p>Confirmamos a devolução do item <strong>#{item_id}</strong> ({nome or descricao}) na secretaria.</p>
+                    <p><strong>Data da Entrega:</strong> {data_entrega}</p>
+                    <p><strong>Responsável:</strong> {func_resp}</p>
+                    <br><p>Agradecemos por usar o sistema da ETEC!</p>
+                </div>
+                """
+                disparar_email(email_solicitante, f"Comprovante de Retirada - Item #{item_id}", html_recibo)
+                
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "message": f"Item #{item_id} atualizado!"})
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
@@ -395,7 +465,7 @@ def recusar_solicitacao(item_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, prova_propriedade = NULL WHERE id = %s;", (item_id,))
+        cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, prova_propriedade = NULL, email_solicitante = NULL WHERE id = %s;", (item_id,))
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
