@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <!-- CABEÇALHO COM A NOVA ABA DO MURAL -->
+    <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -64,6 +64,10 @@
                 <button onclick="mudarAbaSec('chat')" id="btnTabChat" class="relative px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition">
                     <i class="fas fa-comments text-blue-400"></i>
                     <span id="badgeChatSec" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
+                </button>
+                <!-- NOVO BOTÃO DE SAIR -->
+                <button onclick="sairSecretaria()" class="px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-900 text-xs font-bold text-red-500 hover:text-white transition" title="Sair do Painel">
+                    <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
         </div>
@@ -374,6 +378,23 @@
         const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
         const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
 
+        // --- NOVO: CHECAR SE JÁ ESTÁ LOGADO AO ABRIR O APP ---
+        window.onload = () => {
+            const tokenSalvo = localStorage.getItem('secretaria_token');
+            if (tokenSalvo) {
+                tokenSecretaria = tokenSalvo;
+                document.getElementById('loginScreen').classList.add('hidden');
+                carregarItensSecretaria();
+                carregarCategorias();
+            }
+        };
+
+        // --- NOVO: FUNÇÃO PARA DESLOGAR ---
+        function sairSecretaria() {
+            localStorage.removeItem('secretaria_token');
+            window.location.reload();
+        }
+
         async function fazerLoginSec() {
             const erroEl = document.getElementById('loginErroMsg');
             const emailInput = document.getElementById('loginEmailInput').value.trim();
@@ -393,6 +414,7 @@
                 
                 if (res.ok && data.success) {
                     tokenSecretaria = data.token;
+                    localStorage.setItem('secretaria_token', data.token); // <-- SALVA AQUI A SESSÃO
                     document.getElementById('loginScreen').classList.add('hidden');
                     mostrarToast("Conexão Segura Estabelecida!", "success");
                     carregarItensSecretaria();
@@ -406,7 +428,7 @@
                 erroEl.innerText = "Erro ao conectar com o servidor.";
                 erroEl.classList.remove('hidden');
             }
-            btnLogin.innerHTML = `<span>Entrar no Painel Seguro</span>`;
+            btnLogin.innerHTML = `<span>Entrar no Painel</span>`;
         }
 
         function mostrarToast(mensagem, tipo = 'info') {
