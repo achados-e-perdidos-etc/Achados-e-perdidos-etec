@@ -10,7 +10,7 @@ let abaAtiva = 'catalogo';
 let chatAberto = false;
 let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
-let alunoSessao = null; // Guarda Token, RM, Nome, Email
+let alunoSessao = null;
 
 // --- SISTEMA DE AUTENTICAÇÃO ---
 function checarSessao() {
@@ -153,6 +153,7 @@ async function carregarItensDaAPI() {
 
 function normalizarStatus(status) { return (status || 'DISPONÍVEL').toUpperCase(); }
 
+// --- ALGORITMO DE ANIMAÇÃO CASCATA (STAGGERED) ---
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     grid.innerHTML = '';
@@ -162,12 +163,16 @@ function renderizarItens() {
                (statusAtual === 'TODOS' || st === statusAtual) &&
                (!termoBusca || (i.nome||'').toLowerCase().includes(termoBusca) || (i.txt_descricao||'').toLowerCase().includes(termoBusca));
     });
-    filtrados.forEach(item => {
+    
+    filtrados.forEach((item, index) => {
         const fotosArr = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
         const st = normalizarStatus(item.status);
         let badge = st === 'SOLICITADO' ? 'text-amber-400 border-amber-700/50 bg-amber-900/40' : (st === 'ENTREGUE' ? 'text-slate-400 border-slate-700 bg-slate-800' : 'text-emerald-400 border-emerald-700/50 bg-emerald-900/40');
+        
+        const delay = Math.min(index * 0.08, 0.8);
+        
         grid.innerHTML += `
-            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm">
+            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="card-animate bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:shadow-red-900/20 hover:-translate-y-1 transition-all duration-300" style="animation-delay: ${delay}s">
                 ${fotosArr[0] ? `<img src="${fotosArr[0]}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
                 <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border">${item.categoria}</span><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${badge}">${st}</span></div>
                 <h4 class="font-bold text-sm text-main truncate mt-2">${item.nome || item.txt_descricao}</h4>
