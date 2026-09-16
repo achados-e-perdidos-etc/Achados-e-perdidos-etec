@@ -2,9 +2,7 @@ import os
 import json
 import re
 import psycopg2
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from threading import Thread
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
@@ -39,13 +37,9 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "chave_fallback_local_temporaria_apena
 EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br")
 SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000$dummy$hash")
 
-# --- CONFIGURAÇÕES DE E-MAIL ---
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 465))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-# GATILHO CORRIGIDO: Usa o seu e-mail real do Brevo como remetente
-SMTP_SENDER = os.environ.get("SMTP_SENDER", SMTP_USER) 
+# --- CONFIGURAÇÕES DA API DE E-MAIL (BREVO REST API) ---
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
+SMTP_SENDER = os.environ.get("SMTP_SENDER", "secretaria@etec.sp.gov.br")
 
 TENTATIVAS_LOGIN = {}
 MAX_TENTATIVAS = 5
@@ -106,33 +100,47 @@ def processar_fotos(fotos_array):
             except Exception as e: print(f"Erro Cloudinary: {e}")
     return urls_finais
 
-# --- ENVIO DE E-MAIL ASSÍNCRONO ---
-def enviar_email_async(destinatario, assunto, html_content):
-    if not SMTP_USER or not SMTP_PASS or not destinatario:
-        print("Credenciais de SMTP ausentes ou destinatário inválido.")
+# =======================================================
+# SISTEMA DE E-MAIL VIA API REST (IMUNE A BLOQUEIOS DE PORTA)
+# =======================================================
+def enviar_email_api_async(destinatario, assunto, html_content):
+    if not BREVO_API_KEY or not destinatario:
+        print("Erro: BREVO_API_KEY não configurada ou destinatário inválido.")
         return
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = assunto
-        msg["From"] = f"Achados e Perdidos ETEC <{SMTP_SENDER}>" # Remetente real
-        msg["To"] = destinatario
-        msg.attach(MIMEText(html_content, "html"))
+        
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    
+    payload = {
+        "sender": {
+            "name": "Achados e Perdidos ETEC",
+            "email": SMTP_SENDER
+        },
+        "to": [
+            {
+                "email": destinatario
+            }
+        ],
+        "subject": assunto,
+        "htmlContent": html_content
+    }
 
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_SENDER, destinatario, msg.as_string())
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        if response.status_code in [200, 201, 202]:
+            print(f"E-mail enviado com sucesso via API para {destinatario}!")
         else:
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_SENDER, destinatario, msg.as_string())
-        print(f"E-mail enviado com sucesso para {destinatario}!")
+            print(f"Erro ao enviar e-mail via API Brevo: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"Erro ao enviar e-mail para {destinatario}: {e}")
+        print(f"Erro de comunicação com a API do Brevo: {e}")
 
 def disparar_email(destinatario, assunto, html_content):
-    Thread(target=enviar_email_async, args=(destinatario, assunto, html_content)).start()
+    Thread(target=enviar_email_api_async, args=(destinatario, assunto, html_content)).start()
+# =======================================================
 
 def init_db():
     try:
@@ -239,9 +247,6 @@ def get_itens():
         return jsonify(itens)
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
-# ==========================================
-# ROTAS DO MURAL E INTELIGÊNCIA COM E-MAIL
-# ==========================================
 @app.route('/api/mural', methods=['GET'])
 def get_mural():
     try:
