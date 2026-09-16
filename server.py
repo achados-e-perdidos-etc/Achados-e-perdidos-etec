@@ -123,7 +123,7 @@ def enviar_codigo():
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("INSERT INTO codigos_auth (email, codigo, expiracao) VALUES (%s, %s, %s) ON CONFLICT (email) DO UPDATE SET codigo = EXCLUDED.codigo, expiracao = EXCLUDED.expiracao;", (email, codigo, expiracao))
         conn.commit(); cursor.close(); conn.close()
-        html = f"<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'><h2 style='color: #dc2626;'>Código de Acesso ETEC Mind</h2><p>Seu código de segurança é: <strong style='font-size: 24px; color: #000;'>{codigo}</strong></p><p>Válido por 15 minutos.</p></div>"
+        html = f"<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'><h2 style='color: #dc2626;'>Código de Acesso - Achados e Perdidos ETEC</h2><p>Seu código de segurança é: <strong style='font-size: 24px; color: #000;'>{codigo}</strong></p><p>Válido por 15 minutos.</p></div>"
         disparar_email(email, "Seu código de acesso - Achados e Perdidos ETEC", html)
         return jsonify({"success": True})
     except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
@@ -225,7 +225,6 @@ def itens():
         cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), status))
         novo_id = cursor.fetchone()['id']
         
-        # O ÚNICO GATILHO DE E-MAIL MANTIDO: O MURAL (Matches Inteligentes)
         try:
             termos_novo = extrair_termos((nome or "") + " " + (descricao or ""))
             cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
@@ -259,7 +258,6 @@ def gerenciar_item(item_id):
         if status.upper() == 'ENTREGUE':
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             cursor.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, nome or descricao, data.get('retirado_por', ''), data.get('rm_retirante', ''), data.get('turma_curso', '-'), data.get('data_entrega', data_enc), data.get('funcionario_responsavel', 'Secretaria')))
-            # E-mail removido conforme solicitado
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
