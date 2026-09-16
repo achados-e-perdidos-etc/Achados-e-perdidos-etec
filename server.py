@@ -44,6 +44,8 @@ SMTP_SERVER = os.environ.get("SMTP_SERVER", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 465))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
+# GATILHO CORRIGIDO: Usa o seu e-mail real do Brevo como remetente
+SMTP_SENDER = os.environ.get("SMTP_SENDER", SMTP_USER) 
 
 TENTATIVAS_LOGIN = {}
 MAX_TENTATIVAS = 5
@@ -107,23 +109,25 @@ def processar_fotos(fotos_array):
 # --- ENVIO DE E-MAIL ASSÍNCRONO ---
 def enviar_email_async(destinatario, assunto, html_content):
     if not SMTP_USER or not SMTP_PASS or not destinatario:
+        print("Credenciais de SMTP ausentes ou destinatário inválido.")
         return
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = assunto
-        msg["From"] = f"Achados e Perdidos ETEC <{SMTP_USER}>"
+        msg["From"] = f"Achados e Perdidos ETEC <{SMTP_SENDER}>" # Remetente real
         msg["To"] = destinatario
         msg.attach(MIMEText(html_content, "html"))
 
         if SMTP_PORT == 465:
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
                 server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_USER, destinatario, msg.as_string())
+                server.sendmail(SMTP_SENDER, destinatario, msg.as_string())
         else:
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_USER, destinatario, msg.as_string())
+                server.sendmail(SMTP_SENDER, destinatario, msg.as_string())
+        print(f"E-mail enviado com sucesso para {destinatario}!")
     except Exception as e:
         print(f"Erro ao enviar e-mail para {destinatario}: {e}")
 
@@ -161,7 +165,6 @@ def init_db():
             mensagem TEXT NOT NULL, data_envio VARCHAR(30) NOT NULL, lida BOOLEAN DEFAULT FALSE
         );''')
         
-        # ATUALIZAÇÃO AUTOMÁTICA DO BANCO DE DADOS PARA SUPORTAR E-MAIL
         cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='mural_perdidos' AND column_name='email_aluno';")
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE mural_perdidos ADD COLUMN email_aluno VARCHAR(150);")
@@ -379,7 +382,6 @@ def cadastrar_item():
         cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, foto_capa, json.dumps(urls_nuvem), status))
         novo_id = cursor.fetchone()['id']
         
-        # GATILHO: AVISA O ALUNO POR EMAIL SE HOUVER MATCH NO MURAL
         try:
             termos_novo_item = extrair_termos((nome or "") + " " + (descricao or ""))
             cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
@@ -441,7 +443,6 @@ def atualizar_item(item_id):
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             cursor.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, (nome or descricao or f"Item #{item_id}"), retirado_por, rm_retirante, turma_curso, data_entrega, func_resp))
             
-            # GATILHO: ENVIA O COMPROVANTE POR EMAIL
             if email_solicitante:
                 html_recibo = f"""
                 <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
