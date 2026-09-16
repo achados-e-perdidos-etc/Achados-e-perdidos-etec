@@ -1,4 +1,4 @@
-const API_URL = "";
+const API_URL = "https://etec-achados.up.railway.app";
 let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
@@ -17,14 +17,10 @@ let chatAberto = false;
 let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 
-// ==========================================
-// FUNÇÕES DE ZOOM DE IMAGEM (LIGHTBOX)
-// ==========================================
 function abrirZoomImagem(src) {
     const modal = document.getElementById('modalZoomImagem');
     const img = document.getElementById('imgZoomConteudo');
     if (!modal || !img || !src) return;
-
     img.src = src;
     modal.classList.add('ativo');
     document.body.style.overflow = 'hidden'; 
@@ -34,55 +30,28 @@ function fecharZoomImagemDirect() {
     const modal = document.getElementById('modalZoomImagem');
     const img = document.getElementById('imgZoomConteudo');
     if (!modal) return;
-
     modal.classList.remove('ativo');
     document.body.style.overflow = '';
     setTimeout(() => { if (img) img.src = ''; }, 300);
 }
 
 function fecharZoomImagem(event) {
-    if (event.target.id === 'modalZoomImagem') {
-        fecharZoomImagemDirect();
-    }
+    if (event.target.id === 'modalZoomImagem') fecharZoomImagemDirect();
 }
 
 window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        fecharZoomImagemDirect();
-    }
+    if (e.key === 'Escape') fecharZoomImagemDirect();
 });
 
-// ==========================================
-// SISTEMA DE NOTIFICAÇÕES (TOAST)
-// ==========================================
 function mostrarToast(mensagem, tipo = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-
     const toast = document.createElement('div');
-    let icone = 'fa-info-circle text-blue-400';
-    let classeTipo = 'toast-info';
-    
-    if (tipo === 'success') {
-        icone = 'fa-check-circle text-emerald-400';
-        classeTipo = 'toast-success';
-    } else if (tipo === 'error') {
-        icone = 'fa-exclamation-circle text-red-400';
-        classeTipo = 'toast-error';
-    }
-
+    let icone = tipo === 'success' ? 'fa-check-circle text-emerald-400' : (tipo === 'error' ? 'fa-exclamation-circle text-red-400' : 'fa-info-circle text-blue-400');
+    let classeTipo = tipo === 'success' ? 'toast-success' : (tipo === 'error' ? 'toast-error' : 'toast-info');
     toast.className = `bg-card border border-color text-main px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 toast-enter ${classeTipo} pointer-events-auto min-w-[280px] max-w-sm`;
-    
-    toast.innerHTML = `
-        <i class="fas ${icone} text-lg"></i>
-        <p class="text-sm font-semibold flex-grow">${mensagem}</p>
-        <button onclick="this.parentElement.remove()" class="text-muted hover:text-main transition">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-
+    toast.innerHTML = `<i class="fas ${icone} text-lg"></i><p class="text-sm font-semibold flex-grow">${mensagem}</p><button onclick="this.parentElement.remove()" class="text-muted hover:text-main transition"><i class="fas fa-times"></i></button>`;
     container.appendChild(toast);
-
     setTimeout(() => {
         toast.classList.remove('toast-enter');
         toast.classList.add('toast-exit');
@@ -95,23 +64,16 @@ async function carregarCategoriasDinamicamente() {
         const res = await fetch(`${API_URL}/api/categorias`);
         if (res.ok) {
             const cats = await res.json();
-            
             const container = document.getElementById('categoryContainer');
-            container.innerHTML = `
-                <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
-                <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
-            `;
-            
+            container.innerHTML = `<div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div><button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>`;
             const selectMural = document.getElementById('muralCategoria');
             if (selectMural) selectMural.innerHTML = '';
-
             cats.forEach(c => {
                 const btn = document.createElement('button');
                 btn.onclick = function() { filtrarCategoria(c.nome, this) };
                 btn.className = "cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted hover:text-main border border-color bg-card transition-colors duration-200";
                 btn.innerText = c.nome;
                 container.appendChild(btn);
-
                 if (selectMural) {
                     const opt = document.createElement('option');
                     opt.value = c.nome;
@@ -120,18 +82,16 @@ async function carregarCategoriasDinamicamente() {
                 }
             });
         }
-    } catch (e) { console.error("Erro ao buscar categorias", e); }
+    } catch (e) {}
 }
 
 function mudarAba(aba) {
     abaAtiva = aba;
     pararTemporizadorApresentacao();
-
     const catScreen = document.getElementById('catalogScreen');
     const muralScreen = document.getElementById('muralScreen');
     const apScreen = document.getElementById('apresentacaoScreen');
     const detScreen = document.getElementById('detailScreen');
-
     const btnCat = document.getElementById('tabBtnCatalogo');
     const btnMural = document.getElementById('tabBtnMural');
 
@@ -148,7 +108,6 @@ function mudarAba(aba) {
         muralScreen.classList.remove('hidden');
         btnMural.className = "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main transition flex items-center gap-1.5";
         btnCat.className = "px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
-        carregarFeedMural();
     }
 }
 
@@ -207,10 +166,8 @@ async function carregarItensDaAPI() {
             todosItens = await response.json();
             renderizarItens();
             atualizarItensApresentacao();
-            verificarNotificacoesAutomaticas();
         }
     } catch (error) { 
-        console.error("Erro API:", error); 
         mostrarToast("Erro ao conectar com o servidor.", "error");
     } finally {
         if (loading) {
@@ -221,16 +178,13 @@ async function carregarItensDaAPI() {
 }
 
 function filtrarPorPalavraChave() {
-    const input = document.getElementById('searchInput');
-    const btnClear = document.getElementById('btnClearSearch');
-    termoBusca = input.value.trim().toLowerCase();
-    if (btnClear) btnClear.classList.toggle('hidden', termoBusca.length === 0);
+    termoBusca = document.getElementById('searchInput').value.trim().toLowerCase();
+    document.getElementById('btnClearSearch')?.classList.toggle('hidden', termoBusca.length === 0);
     renderizarItens();
 }
 
 function limparBusca() {
-    const input = document.getElementById('searchInput');
-    if (input) input.value = '';
+    document.getElementById('searchInput').value = '';
     termoBusca = '';
     document.getElementById('btnClearSearch')?.classList.add('hidden');
     renderizarItens();
@@ -281,11 +235,9 @@ function renderizarItens() {
         const stUpper = normalizarStatus(item.status);
         const stFiltro = normalizarStatus(statusAtual);
         const atendeStatus = statusAtual === 'TODOS' || stUpper === stFiltro;
-        
         const nomeStr = (item.nome || '').toLowerCase();
         const descStr = (item.txt_descricao || '').toLowerCase();
         const local = (item.txt_local || '').toLowerCase();
-        
         const atendeBusca = !termoBusca || nomeStr.includes(termoBusca) || descStr.includes(termoBusca) || local.includes(termoBusca);
         return atendeCategoria && atendeStatus && atendeBusca;
     });
@@ -362,7 +314,7 @@ function abrirDetalhes(item) {
         fotosAtuais.forEach((f) => {
             const slide = document.createElement('div');
             slide.className = "w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-2";
-            slide.innerHTML = `<img src="${f}" onclick="abrirZoomImagem('${f}')" title="Clique para ampliar" class="max-h-full max-w-full object-contain rounded-lg cursor-zoom-in hover:opacity-95 transition-opacity">`;
+            slide.innerHTML = `<img src="${f}" onclick="abrirZoomImagem('${f}')" class="max-h-full max-w-full object-contain rounded-lg cursor-zoom-in hover:opacity-95 transition-opacity">`;
             container.appendChild(slide);
         });
         document.getElementById('photoCurrentIdx').innerText = 1;
@@ -537,27 +489,28 @@ document.getElementById('apresentacaoCard')?.addEventListener('mouseleave', () =
     if (modoApresentacaoAtivo) iniciarTemporizadorApresentacao();
 });
 
-// MURAL E CHAT
+// MURAL 
 async function enviarAvisoMural(e) {
     e.preventDefault();
     const nome = document.getElementById('muralNome').value.trim();
     const rm = document.getElementById('muralRM').value.trim();
+    const email = document.getElementById('muralEmail').value.trim();
     const categoria = document.getElementById('muralCategoria').value;
     const descricao = document.getElementById('muralDescricao').value.trim();
     const btn = document.getElementById('btnPublicarMural');
 
-    if (!nome || !rm || !descricao) {
+    if (!nome || !rm || !email || !descricao) {
         mostrarToast("Preencha todos os campos do formulário!", "error");
         return;
     }
 
-    localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
+    localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm, email }));
     btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`;
 
     try {
         const res = await fetch(`${API_URL}/api/mural`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, rm, categoria, descricao })
+            body: JSON.stringify({ nome, rm, email, categoria, descricao })
         });
         const resp = await res.json();
         if (res.ok && resp.success) {
@@ -565,9 +518,8 @@ async function enviarAvisoMural(e) {
             if (resp.matches_encontrados && resp.matches_encontrados.length > 0) {
                 exibirMatchesImediatos(resp.matches_encontrados);
             } else {
-                mostrarToast("Aviso registrado! Você será notificado se encontrarmos.", "success");
+                mostrarToast("Relato registrado! Vamos te mandar um e-mail se ele for cadastrado.", "success");
             }
-            carregarFeedMural();
         } else {
             mostrarToast(resp.message || "Erro ao publicar no mural.", "error");
         }
@@ -609,44 +561,6 @@ function selecionarMatchDirect(itemId) {
     const item = todosItens.find(i => String(i.id) === String(itemId));
     fecharModalMatch();
     if (item) abrirDetalhes(item);
-}
-
-async function carregarFeedMural() {
-    const feed = document.getElementById('muralFeed');
-    try {
-        const res = await fetch(`${API_URL}/api/mural`);
-        if (!res.ok) return;
-        const avisos = await res.json();
-        feed.innerHTML = '';
-        avisos.forEach(a => {
-            const el = document.createElement('div');
-            el.className = "bg-card border border-color rounded-xl p-4 space-y-1.5";
-            const st = a.status === 'LOCALIZADO' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-amber-900/40 text-amber-400';
-            el.innerHTML = `
-                <div class="flex justify-between items-center text-xs">
-                    <span class="font-bold text-main">${a.nome_aluno}</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase border border-color ${st}">${a.status}</span>
-                </div>
-                <p class="text-xs text-muted italic">"${a.descricao}"</p>
-            `;
-            feed.appendChild(el);
-        });
-    } catch (e) {}
-}
-
-async function verificarNotificacoesAutomaticas() {
-    const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (!salvo.rm) return;
-    try {
-        const res = await fetch(`${API_URL}/api/mural/notificacoes/${salvo.rm}`);
-        if (res.ok) {
-            const notifs = await res.json();
-            const badge = document.getElementById('badgeNotificacaoMural');
-            if (notifs && notifs.length > 0) {
-                badge.classList.remove('hidden'); badge.innerText = notifs.length;
-            } else badge.classList.add('hidden');
-        }
-    } catch (e) {}
 }
 
 function alternarJanelaChat() {
@@ -712,7 +626,10 @@ async function enviarMensagemChat(e) {
     const rm = document.getElementById('chatInputRM').value.trim();
     const inputTexto = document.getElementById('chatInputTexto');
     if (!rm || !nome || !inputTexto.value.trim()) return;
-    localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
+    
+    const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
+    localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm, email: salvo.email || '' }));
+    
     try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -727,8 +644,12 @@ function abrirNovoModal() {
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
     const campoNome = document.getElementById('campoNomeNovo');
     const campoRm = document.getElementById('campoRmNovo');
+    const campoEmail = document.getElementById('campoEmailNovo');
+    
     if (campoNome && salvo.nome) campoNome.value = salvo.nome;
     if (campoRm && salvo.rm) campoRm.value = salvo.rm;
+    if (campoEmail && salvo.email) campoEmail.value = salvo.email;
+    
     document.getElementById('erroNovo').classList.add('hidden');
     document.getElementById('modalNovo').classList.remove('hidden');
 }
@@ -740,11 +661,12 @@ function fecharNovoModal() {
 async function enviarNovo() {
     const nome = document.getElementById('campoNomeNovo').value.trim();
     const rm = document.getElementById('campoRmNovo').value.trim();
+    const email = document.getElementById('campoEmailNovo').value.trim();
     const erroEl = document.getElementById('erroNovo');
     const btn = document.getElementById('btnNovo');
     
-    if (!nome || !rm) {
-        erroEl.innerText = "Preencha o Nome e o RM obrigatoriamente!";
+    if (!nome || !rm || !email) {
+        erroEl.innerText = "Preencha todos os campos obrigatórios!";
         erroEl.classList.remove('hidden');
         return;
     }
@@ -757,13 +679,13 @@ async function enviarNovo() {
         const response = await fetch(`${API_URL}/api/solicitar`, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: itemSelecionado.id, nome: nome, rm: rm })
+            body: JSON.stringify({ id: itemSelecionado.id, nome: nome, rm: rm, email: email })
         });
         const res = await response.json();
         
         if (response.ok && res.success) {
-            localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm }));
-            mostrarToast(res.message, "success");
+            localStorage.setItem('aluno_dados', JSON.stringify({ nome, rm, email }));
+            mostrarToast("Uma cópia do aviso foi enviada para o seu e-mail!", "success");
             fecharNovoModal();
             voltarParaCatalogo();
             carregarItensDaAPI();
@@ -786,11 +708,10 @@ window.onload = () => {
     carregarItensDaAPI();
     
     const salvo = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-    if (salvo.nome) {
-        if(document.getElementById('chatInputNome')) document.getElementById('chatInputNome').value = salvo.nome;
-    }
-    if (salvo.rm) {
-        if(document.getElementById('chatInputRM')) document.getElementById('chatInputRM').value = salvo.rm;
+    if (salvo.nome) { if(document.getElementById('chatInputNome')) document.getElementById('chatInputNome').value = salvo.nome; }
+    if (salvo.rm) { if(document.getElementById('chatInputRM')) document.getElementById('chatInputRM').value = salvo.rm; }
+    if (salvo.email) {
+        if(document.getElementById('muralEmail')) document.getElementById('muralEmail').value = salvo.email;
     }
     setTimeout(() => { const dBtn = document.querySelector('.cat-btn'); if (dBtn) moveIndicator(dBtn); }, 200);
 };
