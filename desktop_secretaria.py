@@ -16,26 +16,41 @@ import qrcode
 API_URL = "https://etec-achados.up.railway.app"
 TOKEN_SECRETARIA = None
 
+# Paleta de Cores Visual Moderna
+COR_BG_GERAL = "#0d1117"
+COR_BG_CARD = "#161b22"
+COR_BG_HEADER = "#21262d"
+COR_TEXTO_PRINCIPAL = "#c9d1d9"
+COR_DESTAQUE = "#dc2626"      # Vermelho ETEC
+COR_VERDE = "#10b981"
+COR_AZUL = "#1f6feb"
+COR_BORDA = "#30363d"
+
 class SecretariaApp:
     def __init__(self, root):
         self.root = root
         self.root.title("ETEC - Painel da Secretaria")
-        self.root.geometry("1100x750")
-        self.root.configure(bg="#0d1117")
+        self.root.geometry("1150x780")
+        self.root.configure(bg=COR_BG_GERAL)
         
         self.itens_atuais = []
         self.categorias_atuais = []
         self.chat_timer = None
         self.rm_chat_ativo = None
 
+        # Estilização Moderna para o Tkinter/TTK
         self.estilo = ttk.Style()
         self.estilo.theme_use("clam")
-        self.estilo.configure("TNotebook", background="#0d1117", borderwidth=0)
-        self.estilo.configure("TNotebook.Tab", background="#161b22", foreground="#c9d1d9", padding=[15, 5], font=("Arial", 10, "bold"))
-        self.estilo.map("TNotebook.Tab", background=[("selected", "#dc2626")], foreground=[("selected", "white")])
-        self.estilo.configure("Treeview", background="#161b22", foreground="#c9d1d9", fieldbackground="#161b22", rowheight=30)
-        self.estilo.map("Treeview", background=[("selected", "#dc2626")])
-        self.estilo.configure("Treeview.Heading", background="#21262d", foreground="#ffffff", font=("Arial", 10, "bold"))
+        
+        # Notebook (Abas) com visual moderno e espaçado
+        self.estilo.configure("TNotebook", background=COR_BG_GERAL, borderwidth=0)
+        self.estilo.configure("TNotebook.Tab", background=COR_BG_HEADER, foreground=COR_TEXTO_PRINCIPAL, padding=[16, 8], font=("Segoe UI", 10, "bold"), relief="flat")
+        self.estilo.map("TNotebook.Tab", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
+        
+        # Tabelas (Treeview) refinadas e limpas
+        self.estilo.configure("Treeview", background=COR_BG_CARD, foreground=COR_TEXTO_PRINCIPAL, fieldbackground=COR_BG_CARD, borderwidth=0, rowheight=34, font=("Segoe UI", 10))
+        self.estilo.map("Treeview", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
+        self.estilo.configure("Treeview.Heading", background=COR_BG_HEADER, foreground="#ffffff", font=("Segoe UI", 10, "bold"), relief="flat")
 
         self.tela_login()
 
@@ -50,26 +65,36 @@ class SecretariaApp:
             "Authorization": f"Bearer {TOKEN_SECRETARIA}"
         }
 
+    # ==========================================
+    # TELA DE LOGIN REFORMULADA (MODERNA)
+    # ==========================================
     def tela_login(self):
-        self.frame_login = tk.Frame(self.root, bg="#0d1117")
-        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=420, height=320)
+        self.frame_login = tk.Frame(self.root, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
+        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=380)
 
-        tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=15)
-        tk.Label(self.frame_login, text="Área Administrativa", font=("Arial", 8, "italic"), bg="#0d1117", fg="#10b981").pack(pady=(0, 10))
+        # Ícone ou Cabeçalho Visual do Card
+        tk.Label(self.frame_login, text="🔐", font=("Segoe UI", 24), bg=COR_BG_CARD).pack(pady=(25, 0))
+        tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Segoe UI", 16, "bold"), bg=COR_BG_CARD, fg=COR_DESTAQUE).pack(pady=(5, 2))
+        tk.Label(self.frame_login, text="Painel Administrativo Seguro", font=("Segoe UI", 9, "italic"), bg=COR_BG_CARD, fg=COR_VERDE).pack(pady=(0, 20))
 
-        tk.Label(self.frame_login, text="E-mail:", bg="#0d1117", fg="#c9d1d9").pack(anchor="w", padx=40)
-        self.entry_email = ttk.Entry(self.frame_login, width=35)
-        self.entry_email.pack(pady=2, padx=40, fill="x")
+        # Campos de Entrada com Padding e Cores Harmonizadas
+        frame_inputs = tk.Frame(self.frame_login, bg=COR_BG_CARD)
+        frame_inputs.pack(fill="x", padx=40)
 
-        tk.Label(self.frame_login, text="Senha:", bg="#0d1117", fg="#c9d1d9").pack(anchor="w", padx=40, pady=(5,0))
-        self.entry_senha = ttk.Entry(self.frame_login, show="*", width=35)
-        self.entry_senha.pack(pady=2, padx=40, fill="x")
+        tk.Label(frame_inputs, text="E-mail Institucional:", font=("Segoe UI", 9, "bold"), bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL).pack(anchor="w", pady=(0, 2))
+        self.entry_email = tk.Entry(frame_inputs, font=("Segoe UI", 11), bg=COR_BG_GERAL, fg="white", insertbackground="white", relief="flat", highlightbackground=COR_BORDA, highlightcolor=COR_DESTAQUE, highlightthickness=1)
+        self.entry_email.pack(fill="x", pady=(0, 12), ipady=6)
+
+        tk.Label(frame_inputs, text="Senha de Acesso:", font=("Segoe UI", 9, "bold"), bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL).pack(anchor="w", pady=(0, 2))
+        self.entry_senha = tk.Entry(frame_inputs, font=("Segoe UI", 11), show="*", bg=COR_BG_GERAL, fg="white", insertbackground="white", relief="flat", highlightbackground=COR_BORDA, highlightcolor=COR_DESTAQUE, highlightthickness=1)
+        self.entry_senha.pack(fill="x", pady=(0, 20), ipady=6)
 
         self.entry_email.bind("<Return>", lambda e: self.entry_senha.focus())
         self.entry_senha.bind("<Return>", lambda e: self.verificar_login())
 
-        self.btn_entrar = tk.Button(self.frame_login, text="ENTRAR NO SISTEMA", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.verificar_login)
-        self.btn_entrar.pack(pady=20, fill="x", padx=40)
+        self.btn_entrar = tk.Button(self.frame_login, text="ENTRAR NO SISTEMA", font=("Segoe UI", 10, "bold"), bg=COR_DESTAQUE, fg="white", activebackground="#b91c1c", activeforeground="white", relief="flat", cursor="hand2", command=self.verificar_login)
+        self.btn_entrar.pack(fill="x", padx=40, ipady=10)
+        
         self.entry_email.focus()
 
     def verificar_login(self):
@@ -100,23 +125,23 @@ class SecretariaApp:
 
     def construir_interface_principal(self):
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
+        self.notebook.pack(fill="both", expand=True, padx=12, pady=12)
 
-        self.tab_dash = tk.Frame(self.notebook, bg="#0d1117")
-        self.tab_itens = tk.Frame(self.notebook, bg="#0d1117")
-        self.tab_categorias = tk.Frame(self.notebook, bg="#0d1117")
-        self.tab_entregues = tk.Frame(self.notebook, bg="#0d1117")
-        self.tab_doacoes = tk.Frame(self.notebook, bg="#0d1117")
-        self.tab_chat = tk.Frame(self.notebook, bg="#0d1117")
-        self.tab_mural = tk.Frame(self.notebook, bg="#0d1117") # NOVA ABA MURAL
+        self.tab_dash = tk.Frame(self.notebook, bg=COR_BG_GERAL)
+        self.tab_itens = tk.Frame(self.notebook, bg=COR_BG_GERAL)
+        self.tab_categorias = tk.Frame(self.notebook, bg=COR_BG_GERAL)
+        self.tab_entregues = tk.Frame(self.notebook, bg=COR_BG_GERAL)
+        self.tab_doacoes = tk.Frame(self.notebook, bg=COR_BG_GERAL)
+        self.tab_chat = tk.Frame(self.notebook, bg=COR_BG_GERAL)
+        self.tab_mural = tk.Frame(self.notebook, bg=COR_BG_GERAL)
 
-        self.notebook.add(self.tab_dash, text="Dashboard")
-        self.notebook.add(self.tab_itens, text="Estoque / Gerenciar")
-        self.notebook.add(self.tab_categorias, text="Categorias")
-        self.notebook.add(self.tab_entregues, text="Histórico Entregues")
-        self.notebook.add(self.tab_doacoes, text="Doações")
-        self.notebook.add(self.tab_chat, text="Chat Alunos")
-        self.notebook.add(self.tab_mural, text="Mural de Relatos")
+        self.notebook.add(self.tab_dash, text="📊 Dashboard")
+        self.notebook.add(self.tab_itens, text="📦 Estoque / Gerenciar")
+        self.notebook.add(self.tab_categorias, text="🏷️ Categorias")
+        self.notebook.add(self.tab_entregues, text="📋 Histórico Entregues")
+        self.notebook.add(self.tab_doacoes, text="🎁 Doações")
+        self.notebook.add(self.tab_chat, text="💬 Chat Alunos")
+        self.notebook.add(self.tab_mural, text="📢 Mural de Relatos")
 
         self.construir_tab_dash()
         self.construir_tab_itens()
@@ -138,28 +163,29 @@ class SecretariaApp:
         
     # --- DASHBOARD E RELATÓRIOS ---
     def construir_tab_dash(self):
-        tk.Label(self.tab_dash, text="Visão Geral do Sistema", font=("Arial", 18, "bold"), bg="#0d1117", fg="#f87171").pack(pady=20)
-        frame_cards = tk.Frame(self.tab_dash, bg="#0d1117")
-        frame_cards.pack(pady=20)
+        tk.Label(self.tab_dash, text="Visão Geral do Sistema", font=("Segoe UI", 18, "bold"), bg=COR_BG_GERAL, fg="#f87171").pack(pady=25)
+        
+        frame_cards = tk.Frame(self.tab_dash, bg=COR_BG_GERAL)
+        frame_cards.pack(pady=10)
         
         def criar_card(parent, titulo, cor):
-            f = tk.Frame(parent, bg="#161b22", bd=1, relief="solid", width=200, height=120)
+            f = tk.Frame(parent, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1, width=220, height=130)
             f.pack_propagate(False)
             f.pack(side="left", padx=15)
-            tk.Label(f, text=titulo, font=("Arial", 10, "bold"), bg="#161b22", fg="#8b949e").pack(pady=(15,5))
-            lbl_valor = tk.Label(f, text="0", font=("Arial", 28, "bold"), bg="#161b22", fg=cor)
+            tk.Label(f, text=titulo, font=("Segoe UI", 10, "bold"), bg=COR_BG_CARD, fg="#8b949e").pack(pady=(20, 5))
+            lbl_valor = tk.Label(f, text="0", font=("Segoe UI", 28, "bold"), bg=COR_BG_CARD, fg=cor)
             lbl_valor.pack()
             return lbl_valor
 
         self.lbl_stat_itens = criar_card(frame_cards, "TOTAL DE ITENS", "#3b82f6")
-        self.lbl_stat_entregues = criar_card(frame_cards, "ITENS ENTREGUES", "#10b981")
+        self.lbl_stat_entregues = criar_card(frame_cards, "ITENS ENTREGUES", COR_VERDE)
         self.lbl_stat_doacoes = criar_card(frame_cards, "DOAÇÕES", "#f59e0b")
 
-        frame_botoes = tk.Frame(self.tab_dash, bg="#0d1117")
-        frame_botoes.pack(pady=30)
+        frame_botoes = tk.Frame(self.tab_dash, bg=COR_BG_GERAL)
+        frame_botoes.pack(pady=40)
         
-        tk.Button(frame_botoes, text="Atualizar Dados", bg="#21262d", fg="white", font=("Arial", 10), relief="solid", command=self.carregar_dashboard).pack(side="left", padx=10)
-        tk.Button(frame_botoes, text="📊 Exportar Relatório (Excel/CSV)", bg="#10b981", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.exportar_relatorio).pack(side="left", padx=10)
+        tk.Button(frame_botoes, text="🔄 Atualizar Dados", bg=COR_BG_HEADER, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=8, cursor="hand2", command=self.carregar_dashboard).pack(side="left", padx=10)
+        tk.Button(frame_botoes, text="📊 Exportar Relatório (CSV)", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=8, cursor="hand2", command=self.exportar_relatorio).pack(side="left", padx=10)
 
     def carregar_dashboard(self):
         try:
@@ -196,16 +222,17 @@ class SecretariaApp:
 
     # --- ABA: MURAL DE RELATOS ---
     def construir_tab_mural(self):
-        frame_top = tk.Frame(self.tab_mural, bg="#0d1117")
-        frame_top.pack(fill="x", pady=10, padx=10)
-        tk.Button(frame_top, text="🔄 Atualizar Mural", command=self.carregar_mural, bg="#1f6feb", fg="white", font=("Arial", 9, "bold")).pack(side="left")
-        tk.Button(frame_top, text="🗑️ Excluir Relato", command=self.excluir_mural, bg="#dc2626", fg="white", font=("Arial", 9, "bold")).pack(side="right")
+        frame_top = tk.Frame(self.tab_mural, bg=COR_BG_GERAL)
+        frame_top.pack(fill="x", pady=12, padx=12)
+        
+        tk.Button(frame_top, text="🔄 Atualizar Mural", command=self.carregar_mural, bg=COR_AZUL, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left")
+        tk.Button(frame_top, text="🗑️ Excluir Relato", command=self.excluir_mural, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
         
         colunas = ("ID", "Aluno", "RM", "Categoria", "Descrição", "Data")
         self.tree_mural = ttk.Treeview(self.tab_mural, columns=colunas, show="headings", height=20)
         for col in colunas: self.tree_mural.heading(col, text=col); self.tree_mural.column(col, anchor="center")
-        self.tree_mural.column("Descrição", width=400, anchor="w")
-        self.tree_mural.pack(fill="both", expand=True, pady=5, padx=10)
+        self.tree_mural.column("Descrição", width=420, anchor="w")
+        self.tree_mural.pack(fill="both", expand=True, pady=5, padx=12)
         
     def carregar_mural(self):
         try:
@@ -228,40 +255,40 @@ class SecretariaApp:
 
     # --- ESTOQUE ---
     def construir_tab_itens(self):
-        frame_top = tk.Frame(self.tab_itens, bg="#0d1117")
-        frame_top.pack(fill="x", pady=10, padx=10)
+        frame_top = tk.Frame(self.tab_itens, bg=COR_BG_GERAL)
+        frame_top.pack(fill="x", pady=12, padx=12)
 
-        tk.Button(frame_top, text="➕ CADASTRAR NOVO ITEM", bg="#059669", fg="white", font=("Arial", 10, "bold"), command=lambda: self.abrir_modal_form()).pack(side="left", padx=10)
+        tk.Button(frame_top, text="➕ CADASTRAR NOVO ITEM", bg="#059669", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=lambda: self.abrir_modal_form()).pack(side="left")
 
-        frame_busca = tk.Frame(frame_top, bg="#0d1117")
-        frame_busca.pack(side="right", padx=10)
+        frame_busca = tk.Frame(frame_top, bg=COR_BG_GERAL)
+        frame_busca.pack(side="right")
 
-        tk.Label(frame_busca, text="Buscar ID:", bg="#0d1117", fg="white").pack(side="left")
-        self.entry_busca = ttk.Entry(frame_busca, width=15)
-        self.entry_busca.pack(side="left", padx=5)
+        tk.Label(frame_busca, text="Buscar ID:", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 9)).pack(side="left")
+        self.entry_busca = ttk.Entry(frame_busca, width=12)
+        self.entry_busca.pack(side="left", padx=6)
         self.entry_busca.bind("<Return>", lambda e: self.buscar_por_id_direto())
 
-        tk.Label(frame_busca, text="Status:", bg="#0d1117", fg="white").pack(side="left", padx=(10,0))
-        self.combo_filtro_status = ttk.Combobox(frame_busca, values=["TODOS", "DISPONÍVEL", "SOLICITADO", "PARA DOAÇÃO"], state="readonly", width=15)
+        tk.Label(frame_busca, text="Status:", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 9)).pack(side="left", padx=(10,0))
+        self.combo_filtro_status = ttk.Combobox(frame_busca, values=["TODOS", "DISPONÍVEL", "SOLICITADO", "PARA DOAÇÃO"], state="readonly", width=14)
         self.combo_filtro_status.current(0)
-        self.combo_filtro_status.pack(side="left", padx=5)
+        self.combo_filtro_status.pack(side="left", padx=6)
         self.combo_filtro_status.bind("<<ComboboxSelected>>", lambda e: self.aplicar_filtros_tabela())
 
-        tk.Button(frame_busca, text="🔍 Buscar ID", bg="#1f6feb", fg="white", command=self.buscar_por_id_direto).pack(side="left")
+        tk.Button(frame_busca, text="🔍 Buscar", bg=COR_AZUL, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5, cursor="hand2", command=self.buscar_por_id_direto).pack(side="left", padx=(6,0))
         
         colunas = ("ID", "Nome / Descrição", "Categoria", "Status", "Local", "Solicitante")
-        self.tree_itens = ttk.Treeview(self.tab_itens, columns=colunas, show="headings", height=15)
+        self.tree_itens = ttk.Treeview(self.tab_itens, columns=colunas, show="headings", height=18)
         for col in colunas:
             self.tree_itens.heading(col, text=col)
             self.tree_itens.column(col, anchor="center")
         
-        self.tree_itens.column("ID", width=40)
-        self.tree_itens.column("Nome / Descrição", width=250, anchor="w")
-        self.tree_itens.column("Solicitante", width=150)
-        self.tree_itens.pack(fill="both", expand=True, pady=5, padx=10)
+        self.tree_itens.column("ID", width=50)
+        self.tree_itens.column("Nome / Descrição", width=280, anchor="w")
+        self.tree_itens.column("Solicitante", width=160)
+        self.tree_itens.pack(fill="both", expand=True, pady=5, padx=12)
 
         self.tree_itens.bind("<Double-1>", self.abrir_modal_detalhes_item)
-        tk.Label(self.tab_itens, text="Dê um duplo-clique em um item da lista para Ver Fotos, Editar ou Dar Baixa.", bg="#0d1117", fg="#8b949e", font=("Arial", 9, "italic")).pack(pady=5)
+        tk.Label(self.tab_itens, text="💡 Dica: Dê um duplo-clique em um item da lista para visualizar fotos, editar os dados ou dar baixa.", bg=COR_BG_GERAL, fg="#8b949e", font=("Segoe UI", 9, "italic")).pack(pady=6)
 
     def carregar_itens(self):
         try:
@@ -304,12 +331,14 @@ class SecretariaApp:
     def abrir_modal_form(self, item_edit=None):
         modal = tk.Toplevel(self.root)
         modal.title("Novo Item" if not item_edit else f"Editar Item #{item_edit['id']}")
-        modal.geometry("500x650")
-        modal.configure(bg="#161b22")
+        modal.geometry("520x680")
+        modal.configure(bg=COR_BG_CARD)
         modal.transient(self.root)
         modal.grab_set()
 
-        tk.Label(modal, text="CADASTRAR NOVO OBJETO" if not item_edit else "EDITAR OBJETO", font=("Arial", 14, "bold"), bg="#161b22", fg="#38bdf8").pack(pady=15)
+        # TÍTULO CORRIGIDO: Vermelho ETEC para edição ou Azul para cadastro novo
+        cor_titulo = COR_DESTAQUE if item_edit else "#38bdf8"
+        tk.Label(modal, text="CADASTRAR NOVO OBJETO" if not item_edit else "EDITAR OBJETO", font=("Segoe UI", 15, "bold"), bg=COR_BG_CARD, fg=cor_titulo).pack(pady=20)
 
         var_nome = tk.StringVar(value=item_edit.get('nome', '') if item_edit else "")
         var_desc = tk.StringVar(value=item_edit.get('txt_descricao', '') if item_edit else "")
@@ -320,17 +349,17 @@ class SecretariaApp:
         fotos_upload_base64 = fotos_atuais.copy()
 
         def criar_campo(label, var, widget_type="entry", values=None):
-            frame = tk.Frame(modal, bg="#161b22")
-            frame.pack(fill="x", padx=40, pady=5)
-            tk.Label(frame, text=label, bg="#161b22", fg="#c9d1d9", font=("Arial", 9, "bold")).pack(anchor="w")
+            frame = tk.Frame(modal, bg=COR_BG_CARD)
+            frame.pack(fill="x", padx=40, pady=6)
+            tk.Label(frame, text=label, bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL, font=("Segoe UI", 9, "bold")).pack(anchor="w")
             if widget_type == "entry":
-                w = ttk.Entry(frame, textvariable=var, font=("Arial", 11))
-                w.pack(fill="x", pady=2)
+                w = ttk.Entry(frame, textvariable=var, font=("Segoe UI", 11))
+                w.pack(fill="x", pady=3)
                 return w
             else:
-                w = ttk.Combobox(frame, values=values, state="readonly", font=("Arial", 10))
+                w = ttk.Combobox(frame, values=values, state="readonly", font=("Segoe UI", 10))
                 if var: w.set(var)
-                w.pack(fill="x", pady=2)
+                w.pack(fill="x", pady=3)
                 return w
 
         criar_campo("Nome / Título Curto:", var_nome)
@@ -340,9 +369,9 @@ class SecretariaApp:
         criar_campo("Local Encontrado:", var_local)
         cb_status = criar_campo("Status:", item_edit.get('status', 'DISPONÍVEL') if item_edit else "DISPONÍVEL", "combo", ["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO"])
 
-        frame_fotos = tk.Frame(modal, bg="#161b22")
+        frame_fotos = tk.Frame(modal, bg=COR_BG_CARD)
         frame_fotos.pack(fill="x", padx=40, pady=10)
-        lbl_foto_status = tk.Label(frame_fotos, text=f"Fotos carregadas: {len(fotos_upload_base64)} (Máx 4)", bg="#161b22", fg="#94a3b8")
+        lbl_foto_status = tk.Label(frame_fotos, text=f"Fotos carregadas: {len(fotos_upload_base64)} (Máx 4)", bg=COR_BG_CARD, fg="#94a3b8", font=("Segoe UI", 9))
         lbl_foto_status.pack(side="right")
 
         def selecionar_fotos():
@@ -355,9 +384,9 @@ class SecretariaApp:
                             enc = base64.b64encode(image_file.read()).decode('utf-8')
                             fotos_upload_base64.append(f"data:image/jpeg;base64,{enc}")
                     except: pass
-                lbl_foto_status.config(text=f"Fotos prontas para envio: {len(fotos_upload_base64)}", fg="#10b981")
+                lbl_foto_status.config(text=f"Fotos prontas: {len(fotos_upload_base64)}", fg=COR_VERDE)
 
-        tk.Button(frame_fotos, text="📷 Selecionar Fotos do PC", bg="#4b5563", fg="white", relief="flat", command=selecionar_fotos).pack(side="left")
+        tk.Button(frame_fotos, text="📷 Selecionar Fotos", bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5, cursor="hand2", command=selecionar_fotos).pack(side="left")
 
         def salvar():
             payload = {
@@ -380,7 +409,7 @@ class SecretariaApp:
                 else: messagebox.showerror("Erro", "Acesso Negado ou erro no servidor.")
             except Exception as e: messagebox.showerror("Erro", str(e))
 
-        tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg="#16a34a", fg="white", font=("Arial", 11, "bold"), pady=10, relief="flat", command=salvar).pack(fill="x", padx=40, pady=20)
+        tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg=COR_VERDE, fg="white", font=("Segoe UI", 11, "bold"), pady=12, relief="flat", cursor="hand2", command=salvar).pack(fill="x", padx=40, pady=25)
 
     # --- MODAL DETALHES DO ITEM ---
     def abrir_modal_detalhes_item(self, event=None, item_direto=None):
@@ -395,30 +424,30 @@ class SecretariaApp:
 
         modal = tk.Toplevel(self.root)
         modal.title(f"Detalhes do Item #{item['id']}")
-        modal.geometry("750x650")
-        modal.configure(bg="#0d1117")
+        modal.geometry("780x680")
+        modal.configure(bg=COR_BG_GERAL)
         modal.transient(self.root)
 
         nome_titulo = item.get('nome') or item.get('txt_descricao') or 'Sem Título'
-        tk.Label(modal, text=nome_titulo, font=("Arial", 16, "bold"), bg="#0d1117", fg="#f87171").pack(pady=10)
+        tk.Label(modal, text=nome_titulo, font=("Segoe UI", 16, "bold"), bg=COR_BG_GERAL, fg="#f87171").pack(pady=12)
 
-        frame_info = tk.Frame(modal, bg="#161b22", bd=1, relief="solid")
+        frame_info = tk.Frame(modal, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
         frame_info.pack(fill="x", padx=20, pady=5)
         st = item.get('status', 'DISPONÍVEL').upper()
 
         info_texto = f"CATEGORIA: {item.get('categoria', '')}   |   STATUS: {st}\n\nLOCAL: {item.get('txt_local', '')}\nDATA: {item.get('txt_data', '')}\nDESCRIÇÃO: {item.get('txt_descricao', '')}\n"
         if item.get('solicitado_por'): info_texto += f"\n🚨 SOLICITADO POR: {item.get('solicitado_por')} (RM: {item.get('rm_aluno', '')})"
 
-        tk.Label(frame_info, text=info_texto, justify="left", bg="#161b22", fg="#c9d1d9", font=("Arial", 11)).pack(padx=15, pady=10, anchor="w")
+        tk.Label(frame_info, text=info_texto, justify="left", bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL, font=("Segoe UI", 11)).pack(padx=20, pady=15, anchor="w")
 
-        tk.Label(modal, text="Galeria de Fotos:", font=("Arial", 12, "bold"), bg="#0d1117", fg="#c9d1d9").pack(pady=5, anchor="w", padx=20)
-        frame_fotos = tk.Frame(modal, bg="#0d1117")
+        tk.Label(modal, text="Galeria de Fotos:", font=("Segoe UI", 12, "bold"), bg=COR_BG_GERAL, fg=COR_TEXTO_PRINCIPAL).pack(pady=(10, 5), anchor="w", padx=20)
+        frame_fotos = tk.Frame(modal, bg=COR_BG_GERAL)
         frame_fotos.pack(fill="both", expand=True, padx=20)
 
         fotos_array = item.get('fotos', [])
         if not fotos_array and item.get('foto'): fotos_array = [item['foto']]
 
-        if not fotos_array: tk.Label(frame_fotos, text="Nenhuma foto registrada.", bg="#0d1117", fg="#8b949e").pack(pady=10)
+        if not fotos_array: tk.Label(frame_fotos, text="Nenhuma foto registrada.", bg=COR_BG_GERAL, fg="#8b949e", font=("Segoe UI", 10)).pack(pady=10, anchor="w")
         else:
             for col, foto_url in enumerate(fotos_array):
                 try:
@@ -426,37 +455,37 @@ class SecretariaApp:
                         import urllib.request
                         with urllib.request.urlopen(foto_url) as u: raw_data = u.read()
                         img = Image.open(io.BytesIO(raw_data))
-                        img.thumbnail((180, 180), Image.Resampling.LANCZOS)
+                        img.thumbnail((160, 160), Image.Resampling.LANCZOS)
                         img_tk = ImageTk.PhotoImage(img)
-                        lbl_img = tk.Label(frame_fotos, image=img_tk, bg="#161b22", bd=2, relief="solid")
+                        lbl_img = tk.Label(frame_fotos, image=img_tk, bg=COR_BG_CARD, bd=1, relief="solid")
                         lbl_img.image = img_tk
-                        lbl_img.grid(row=0, column=col, padx=10, pady=5)
+                        lbl_img.grid(row=0, column=col, padx=8, pady=5)
                 except: pass
 
-        frame_acoes = tk.Frame(modal, bg="#0d1117")
-        frame_acoes.pack(fill="x", pady=15, padx=20)
+        frame_acoes = tk.Frame(modal, bg=COR_BG_GERAL)
+        frame_acoes.pack(fill="x", pady=20, padx=20)
 
         def btn(txt, cor, cmd):
-            tk.Button(frame_acoes, text=txt, bg=cor, fg="white", font=("Arial", 9, "bold"), command=cmd).pack(side="left", padx=5, fill="x", expand=True)
+            tk.Button(frame_acoes, text=txt, bg=cor, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=8, cursor="hand2", command=cmd).pack(side="left", padx=4, fill="x", expand=True)
 
-        btn("🖨️ Etiqueta QR", "#2563eb", lambda: self.abrir_modal_etiqueta_qr(item))
-        btn("✏️ Editar", "#eab308", lambda: [modal.destroy(), self.abrir_modal_form(item)])
+        btn("🖨️ Etiqueta", COR_AZUL, lambda: self.abrir_modal_etiqueta_qr(item))
+        btn("✏️ Editar", "#d97706", lambda: [modal.destroy(), self.abrir_modal_form(item)])
         
-        if st == 'SOLICITADO': btn("🚫 Recusar", "#d97706", lambda: self.acao_rapida(item['id'], 'recusar', modal))
-        if st not in ['ENTREGUE', 'DOAÇÃO FEITA']: btn("✅ Dar Baixa", "#059669", lambda: [modal.destroy(), self.abrir_dar_baixa(item)])
-        if st not in ['PARA DOAÇÃO', 'DOAÇÃO FEITA', 'ENTREGUE']: btn("🎁 Marcar Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
-        btn("🗑️ Excluir", "#991b1b", lambda: self.acao_rapida(item['id'], 'excluir', modal))
+        if st == 'SOLICITADO': btn("🚫 Recusar", "#b45309", lambda: self.acao_rapida(item['id'], 'recusar', modal))
+        if st not in ['ENTREGUE', 'DOAÇÃO FEITA']: btn("✅ Baixa", COR_VERDE, lambda: [modal.destroy(), self.abrir_dar_baixa(item)])
+        if st not in ['PARA DOAÇÃO', 'DOAÇÃO FEITA', 'ENTREGUE']: btn("🎁 Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
+        btn("🗑️ Excluir", COR_DESTAQUE, lambda: self.acao_rapida(item['id'], 'excluir', modal))
 
     # --- GERADOR DE QR CODE ETIQUETA ---
     def abrir_modal_etiqueta_qr(self, item):
         modal = tk.Toplevel(self.root)
         modal.title("Impressão de Etiqueta QR")
-        modal.geometry("350x450")
-        modal.configure(bg="#161b22")
+        modal.geometry("360x470")
+        modal.configure(bg=COR_BG_CARD)
         modal.transient(self.root)
         modal.grab_set()
 
-        tk.Label(modal, text=f"Etiqueta do Item #{item['id']}", font=("Arial", 14, "bold"), bg="#161b22", fg="#f87171").pack(pady=15)
+        tk.Label(modal, text=f"Etiqueta do Item #{item['id']}", font=("Segoe UI", 14, "bold"), bg=COR_BG_CARD, fg="#f87171").pack(pady=15)
         
         payload = f"ETEC-ITEM-{item['id']}"
         qr = qrcode.QRCode(version=1, box_size=8, border=1)
@@ -479,9 +508,9 @@ class SecretariaApp:
         draw.text((x_texto, altura), texto, fill="black", font=fonte)
 
         preview = etiqueta_img.copy()
-        preview.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        preview.thumbnail((190, 190), Image.Resampling.LANCZOS)
         preview_tk = ImageTk.PhotoImage(preview)
-        lbl_preview = tk.Label(modal, image=preview_tk, bg="#161b22", bd=2, relief="solid")
+        lbl_preview = tk.Label(modal, image=preview_tk, bg=COR_BG_CARD, bd=1, relief="solid")
         lbl_preview.image = preview_tk
         lbl_preview.pack(pady=10)
 
@@ -497,8 +526,8 @@ class SecretariaApp:
             try: os.startfile(temp_path, "print")
             except Exception as e: messagebox.showerror("Erro", f"Erro na impressão direta: {e}", parent=modal)
 
-        tk.Button(modal, text="💾 SALVAR COMO IMAGEM (.PNG)", bg="#16a34a", fg="white", font=("Arial", 10, "bold"), pady=8, command=salvar_png).pack(fill="x", padx=30, pady=5)
-        tk.Button(modal, text="🖨️ IMPRIMIR DIRETO", bg="#2563eb", fg="white", font=("Arial", 10, "bold"), pady=8, command=imprimir_direto).pack(fill="x", padx=30, pady=5)
+        tk.Button(modal, text="💾 SALVAR COMO PNG", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=salvar_png).pack(fill="x", padx=30, pady=5)
+        tk.Button(modal, text="🖨️ IMPRIMIR DIRETO", bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=imprimir_direto).pack(fill="x", padx=30, pady=5)
 
     # --- AÇÕES RÁPIDAS COM JWT ---
     def acao_rapida(self, item_id, acao, modal=None):
@@ -523,25 +552,26 @@ class SecretariaApp:
     def abrir_dar_baixa(self, item):
         modal_baixa = tk.Toplevel(self.root)
         modal_baixa.title(f"Dar Baixa - Item #{item['id']}")
-        modal_baixa.geometry("450x400")
-        modal_baixa.configure(bg="#0d1117")
+        modal_baixa.geometry("460x420")
+        modal_baixa.configure(bg=COR_BG_GERAL)
         modal_baixa.transient(self.root)
         modal_baixa.grab_set()
 
-        tk.Label(modal_baixa, text="Registrar Entrega ao Dono", font=("Arial", 14, "bold"), bg="#0d1117", fg="#10b981").pack(pady=15)
-        tk.Label(modal_baixa, text="Nome Completo do Aluno:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
-        entry_nome = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
+        tk.Label(modal_baixa, text="Registrar Entrega ao Dono", font=("Segoe UI", 14, "bold"), bg=COR_BG_GERAL, fg=COR_VERDE).pack(pady=15)
+        
+        tk.Label(modal_baixa, text="Nome Completo do Aluno:", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=35, pady=(5,2))
+        entry_nome = ttk.Entry(modal_baixa, font=("Segoe UI", 11))
         entry_nome.insert(0, item.get('solicitado_por') or '')
-        entry_nome.pack(padx=30, pady=(0, 10))
+        entry_nome.pack(padx=35, pady=(0, 10), fill="x")
 
-        tk.Label(modal_baixa, text="RM:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
-        entry_rm = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
+        tk.Label(modal_baixa, text="RM do Aluno:", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=35, pady=(5,2))
+        entry_rm = ttk.Entry(modal_baixa, font=("Segoe UI", 11))
         entry_rm.insert(0, item.get('rm_aluno') or '')
-        entry_rm.pack(padx=30, pady=(0, 10))
+        entry_rm.pack(padx=35, pady=(0, 10), fill="x")
 
-        tk.Label(modal_baixa, text="Turma / Curso:", bg="#0d1117", fg="white", font=("Arial", 9, "bold")).pack(anchor="w", padx=30, pady=(5,2))
-        entry_turma = ttk.Entry(modal_baixa, width=45, font=("Arial", 11))
-        entry_turma.pack(padx=30, pady=(0, 20))
+        tk.Label(modal_baixa, text="Turma / Curso:", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=35, pady=(5,2))
+        entry_turma = ttk.Entry(modal_baixa, font=("Segoe UI", 11))
+        entry_turma.pack(padx=35, pady=(0, 20), fill="x")
 
         def confirmar():
             n, r, t = entry_nome.get().strip(), entry_rm.get().strip(), entry_turma.get().strip() or "-"
@@ -557,7 +587,7 @@ class SecretariaApp:
                 else: messagebox.showerror("Erro", "Acesso Negado.", parent=modal_baixa)
             except Exception as e: messagebox.showerror("Erro", str(e), parent=modal_baixa)
 
-        tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg="#059669", fg="white", font=("Arial", 10, "bold"), pady=8, command=confirmar).pack(fill="x", padx=30)
+        tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=10, cursor="hand2", command=confirmar).pack(fill="x", padx=35)
         entry_nome.focus()
 
     def abrir_tela_comprovante(self, item_id, nome_item, desc_item, local_item, retirado_por, rm, turma):
@@ -572,34 +602,35 @@ class SecretariaApp:
         folha = tk.Frame(top_comp, bg="white", padx=40, pady=30)
         folha.pack(fill="both", expand=True, padx=30, pady=20)
 
-        tk.Label(folha, text="ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO", font=("Arial", 14, "bold"), bg="white", fg="black").pack()
-        tk.Label(folha, text="Sistema de Achados e Perdidos - Termo de Retirada", font=("Arial", 10, "bold"), bg="white", fg="#4b5563").pack(pady=(0, 20))
+        tk.Label(folha, text="ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO", font=("Segoe UI", 13, "bold"), bg="white", fg="black").pack()
+        tk.Label(folha, text="Sistema de Achados e Perdidos - Termo de Retirada", font=("Segoe UI", 10, "bold"), bg="white", fg="#4b5563").pack(pady=(0, 20))
 
         f_aluno = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_aluno.pack(fill="x", pady=5)
-        tk.Label(f_aluno, text=f"Nome: {retirado_por}\nRM: {rm}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_aluno, text=f"Nome: {retirado_por}\nRM: {rm}\nTurma/Curso: {turma}", font=("Segoe UI", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
 
         f_item = tk.Frame(folha, bg="#f3f4f6", padx=15, pady=10)
         f_item.pack(fill="x", pady=5)
-        tk.Label(f_item, text=f"Item #{item_id}: {nome_item}\nData da Entrega: {data_atual}", font=("Arial", 11), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
+        tk.Label(f_item, text=f"Item #{item_id}: {nome_item}\nLocal Encontrado: {local_item}\nData da Entrega: {data_atual}", font=("Segoe UI", 10), bg="#f3f4f6", fg="black", anchor="w").pack(fill="x")
 
         def baixar_comprovante_txt():
             file_path = filedialog.asksaveasfilename(parent=top_comp, defaultextension=".txt", initialfile=f"comprovante_{rm}.txt", title="Salvar Comprovante")
             if file_path:
-                txt_content = f"ETEC - TERMO DE RETIRADA\nAluno: {retirado_por} (RM: {rm})\nItem #{item_id}: {nome_item}\nData: {data_atual}"
+                txt_content = f"ETEC - TERMO DE RETIRADA\nAluno: {retirado_por} (RM: {rm}, Turma: {turma})\nItem #{item_id}: {nome_item}\nData: {data_atual}"
                 with open(file_path, "w", encoding="utf-8") as f: f.write(txt_content)
                 messagebox.showinfo("Sucesso", "Comprovante salvo!", parent=top_comp)
 
         b_frame = tk.Frame(top_comp, bg="#e5e7eb")
         b_frame.pack(fill="x", padx=30, pady=(0, 20))
-        tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg="#2563eb", fg="white", font=("Arial", 10, "bold"), pady=10).pack(side="left", fill="x", expand=True, padx=(0, 5))
-        tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Arial", 10, "bold"), pady=10).pack(side="left", fill="x", expand=True, padx=(5, 0))
+        tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(0, 5))
+        tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(5, 0))
 
     # --- DOAÇÕES E CATEGORIAS ---
     def construir_tab_doacoes(self):
-        frame_top = tk.Frame(self.tab_doacoes, bg="#0d1117")
-        frame_top.pack(fill="x", pady=10, padx=10)
-        tk.Label(frame_top, text="Gerenciamento de Doações", font=("Arial", 14, "bold"), bg="#0d1117", fg="#f59e0b").pack(side="left")
+        frame_top = tk.Frame(self.tab_doacoes, bg=COR_BG_GERAL)
+        frame_top.pack(fill="x", pady=12, padx=12)
+        tk.Label(frame_top, text="Gerenciamento de Doações", font=("Segoe UI", 14, "bold"), bg=COR_BG_GERAL, fg="#f59e0b").pack(side="left")
+        
         def concluir_doacoes():
             if messagebox.askyesno("Confirmar Doação", "Deseja remover todos os itens doados do sistema?"):
                 try:
@@ -609,22 +640,25 @@ class SecretariaApp:
                     messagebox.showinfo("Sucesso", "Doações concluídas!")
                     self.carregar_dados()
                 except: pass
-        tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES", bg="#f59e0b", fg="#0d1117", font=("Arial", 10, "bold"), command=concluir_doacoes).pack(side="right")
+                
+        tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES", bg="#f59e0b", fg="#0d1117", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=concluir_doacoes).pack(side="right")
+        
         colunas = ("ID", "Nome / Descrição", "Categoria", "Status", "Data Encontrado")
-        self.tree_doacoes = ttk.Treeview(self.tab_doacoes, columns=colunas, show="headings", height=15)
+        self.tree_doacoes = ttk.Treeview(self.tab_doacoes, columns=colunas, show="headings", height=18)
         for col in colunas: self.tree_doacoes.heading(col, text=col); self.tree_doacoes.column(col, anchor="center")
-        self.tree_doacoes.pack(fill="both", expand=True, pady=5, padx=10)
+        self.tree_doacoes.pack(fill="both", expand=True, pady=5, padx=12)
 
     def construir_tab_categorias(self):
-        frame_add = tk.Frame(self.tab_categorias, bg="#0d1117")
-        frame_add.pack(pady=20)
-        tk.Label(frame_add, text="Nova Categoria:", bg="#0d1117", fg="white").pack(side="left", padx=5)
-        self.entry_cat = ttk.Entry(frame_add, width=30)
-        self.entry_cat.pack(side="left", padx=5)
+        frame_add = tk.Frame(self.tab_categorias, bg=COR_BG_GERAL)
+        frame_add.pack(pady=25)
+        tk.Label(frame_add, text="Nova Categoria:", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 10, "bold")).pack(side="left", padx=6)
+        self.entry_cat = ttk.Entry(frame_add, width=30, font=("Segoe UI", 10))
+        self.entry_cat.pack(side="left", padx=6)
         self.entry_cat.bind("<Return>", lambda e: self.adicionar_categoria())
-        tk.Button(frame_add, text="Adicionar", bg="#dc2626", fg="white", command=self.adicionar_categoria).pack(side="left", padx=5)
-        self.listbox_cats = tk.Listbox(self.tab_categorias, bg="#161b22", fg="white", font=("Arial", 12), height=15)
-        self.listbox_cats.pack(fill="x", padx=50, pady=10)
+        tk.Button(frame_add, text="Adicionar", bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=12, pady=5, cursor="hand2", command=self.adicionar_categoria).pack(side="left", padx=6)
+        
+        self.listbox_cats = tk.Listbox(self.tab_categorias, bg=COR_BG_CARD, fg="white", font=("Segoe UI", 11), height=15, bd=0, highlightthickness=1, highlightbackground=COR_BORDA)
+        self.listbox_cats.pack(fill="x", padx=60, pady=15)
 
     def carregar_categorias(self):
         try:
@@ -633,7 +667,7 @@ class SecretariaApp:
                 self.listbox_cats.delete(0, tk.END)
                 self.categorias_atuais = []
                 for c in res.json():
-                    self.listbox_cats.insert(tk.END, c['nome'])
+                    self.listbox_cats.insert(tk.END, f"   • {c['nome']}")
                     self.categorias_atuais.append(c['nome'])
         except: pass
 
@@ -648,16 +682,17 @@ class SecretariaApp:
             except: pass
 
     def construir_tab_entregues(self):
-        frame_top = tk.Frame(self.tab_entregues, bg="#0d1117")
-        frame_top.pack(fill="x", pady=10, padx=10)
-        tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg="#1f6feb", fg="white", font=("Arial", 9, "bold")).pack(side="left")
-        tk.Button(frame_top, text="🗑️ Excluir Registro", command=self.excluir_entregue, bg="#dc2626", fg="white", font=("Arial", 9, "bold")).pack(side="right", padx=(10, 0))
-        tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Arial", 9, "bold")).pack(side="right")
+        frame_top = tk.Frame(self.tab_entregues, bg=COR_BG_GERAL)
+        frame_top.pack(fill="x", pady=12, padx=12)
+        
+        tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg=COR_AZUL, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left")
+        tk.Button(frame_top, text="🗑️ Excluir Registro", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
+        tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
 
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")
-        self.tree_entregues = ttk.Treeview(self.tab_entregues, columns=colunas, show="headings", height=20)
+        self.tree_entregues = ttk.Treeview(self.tab_entregues, columns=colunas, show="headings", height=18)
         for col in colunas: self.tree_entregues.heading(col, text=col); self.tree_entregues.column(col, anchor="center")
-        self.tree_entregues.pack(fill="both", expand=True, pady=5, padx=10)
+        self.tree_entregues.pack(fill="both", expand=True, pady=5, padx=12)
         self.tree_entregues.bind("<Double-1>", self.abrir_detalhes_do_historico)
 
     def carregar_entregues(self):
@@ -699,26 +734,31 @@ class SecretariaApp:
 
     # --- CHAT ---
     def construir_tab_chat(self):
-        frame_esq = tk.Frame(self.tab_chat, bg="#0d1117", width=250)
-        frame_esq.pack(side="left", fill="y", padx=10, pady=10)
-        tk.Label(frame_esq, text="Conversas Ativas", bg="#0d1117", fg="white", font=("Arial", 12, "bold")).pack(pady=5)
-        self.listbox_chat = tk.Listbox(frame_esq, bg="#161b22", fg="white", font=("Arial", 10))
+        frame_esq = tk.Frame(self.tab_chat, bg=COR_BG_GERAL, width=280)
+        frame_esq.pack(side="left", fill="y", padx=12, pady=12)
+        
+        tk.Label(frame_esq, text="Conversas Ativas", bg=COR_BG_GERAL, fg="white", font=("Segoe UI", 12, "bold")).pack(pady=(0, 8))
+        self.listbox_chat = tk.Listbox(frame_esq, bg=COR_BG_CARD, fg="white", font=("Segoe UI", 10), bd=0, highlightthickness=1, highlightbackground=COR_BORDA)
         self.listbox_chat.pack(fill="both", expand=True)
         self.listbox_chat.bind("<<ListboxSelect>>", self.selecionar_conversa)
         
-        frame_dir = tk.Frame(self.tab_chat, bg="#161b22", bd=1, relief="solid")
-        frame_dir.pack(side="right", fill="both", expand=True, padx=10, pady=10)
-        self.lbl_chat_titulo = tk.Label(frame_dir, text="Selecione um aluno", bg="#161b22", fg="#f87171", font=("Arial", 14, "bold"))
-        self.lbl_chat_titulo.pack(pady=10)
-        self.txt_mensagens = tk.Text(frame_dir, bg="#0d1117", fg="white", state="disabled", wrap="word", font=("Arial", 11))
-        self.txt_mensagens.pack(fill="both", expand=True, padx=10, pady=5)
+        frame_dir = tk.Frame(self.tab_chat, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
+        frame_dir.pack(side="right", fill="both", expand=True, padx=12, pady=12)
         
-        frame_input = tk.Frame(frame_dir, bg="#161b22")
-        frame_input.pack(fill="x", padx=10, pady=10)
-        self.entry_chat = ttk.Entry(frame_input, font=("Arial", 12))
-        self.entry_chat.pack(side="left", fill="x", expand=True, padx=5)
+        self.lbl_chat_titulo = tk.Label(frame_dir, text="Selecione um aluno para iniciar", bg=COR_BG_CARD, fg="#f87171", font=("Segoe UI", 13, "bold"))
+        self.lbl_chat_titulo.pack(pady=12)
+        
+        self.txt_mensagens = tk.Text(frame_dir, bg=COR_BG_GERAL, fg="white", state="disabled", wrap="word", font=("Segoe UI", 11), bd=0)
+        self.txt_mensagens.pack(fill="both", expand=True, padx=12, pady=5)
+        
+        frame_input = tk.Frame(frame_dir, bg=COR_BG_CARD)
+        frame_input.pack(fill="x", padx=12, pady=12)
+        
+        self.entry_chat = ttk.Entry(frame_input, font=("Segoe UI", 11))
+        self.entry_chat.pack(side="left", fill="x", expand=True, padx=(0, 8))
         self.entry_chat.bind("<Return>", lambda e: self.enviar_mensagem())
-        tk.Button(frame_input, text="Enviar", bg="#dc2626", fg="white", font=("Arial", 10, "bold"), command=self.enviar_mensagem).pack(side="right")
+        
+        tk.Button(frame_input, text="Enviar", bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=6, cursor="hand2", command=self.enviar_mensagem).pack(side="right")
         self.atualizar_chat_continuo()
 
     def carregar_conversas(self):
@@ -729,8 +769,8 @@ class SecretariaApp:
                 self.listbox_chat.delete(0, tk.END)
                 self.mapa_conversas = []
                 for c in res.json():
-                    notif = f"({c['nao_lidas']} novas) " if c['nao_lidas'] > 0 else ""
-                    self.listbox_chat.insert(tk.END, f"{notif}{c['nome_aluno']} - RM: {c['rm_aluno']}")
+                    notif = f"🔥 ({c['nao_lidas']} novas) " if c['nao_lidas'] > 0 else "   "
+                    self.listbox_chat.insert(tk.END, f"{notif}{c['nome_aluno']} (RM: {c['rm_aluno']})")
                     self.mapa_conversas.append(c['rm_aluno'])
         except: pass
 
@@ -739,7 +779,7 @@ class SecretariaApp:
         if selecao:
             idx = selecao[0]
             self.rm_chat_ativo = self.mapa_conversas[idx]
-            self.lbl_chat_titulo.config(text=f"Chat: {self.listbox_chat.get(idx)}")
+            self.lbl_chat_titulo.config(text=f"Chat com: {self.listbox_chat.get(idx)}")
             self.carregar_mensagens_aluno()
 
     def carregar_mensagens_aluno(self):
