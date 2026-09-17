@@ -12,7 +12,14 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-theme min-h-screen flex flex-col justify-between">
+<body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- TELA DE ABERTURA (SPLASH SCREEN COM A SUA ANIMAÇÃO) -->
+    <div id="splashScreenAnimacao" class="fixed inset-0 z-[300] bg-black flex items-center justify-center transition-opacity duration-1000">
+        <video id="videoSplash" class="w-full h-full object-cover sm:object-contain" autoplay muted playsinline>
+            <source src="animacao.mp4" type="video/mp4">
+        </video>
+    </div>
 
     <!-- TELA DE LOGIN INSTITUCIONAL OBRIGATÓRIO -->
     <div id="loginAlunoScreen" class="fixed inset-0 z-[200] bg-card flex flex-col items-center justify-center p-4">
