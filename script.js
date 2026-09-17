@@ -125,7 +125,7 @@ function mudarAba(aba) {
     document.getElementById('tabBtnMural').className = aba === 'mural' ? "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main flex items-center gap-1.5" : "relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
 }
 
-// --- CONTROLE DO MENU SUSPENSO DE CATEGORIAS ---
+// --- MENU SUSPENSO DE CATEGORIAS ---
 function toggleFiltroDropdown() {
     const menu = document.getElementById('dropdownFiltrosMenu');
     menu.classList.toggle('hidden');
@@ -191,7 +191,7 @@ function renderizarItens() {
         const st = normalizarStatus(item.status);
         let badge = st === 'SOLICITADO' ? 'text-amber-400 border-amber-700/50 bg-amber-900/40' : (st === 'ENTREGUE' ? 'text-slate-400 border-slate-700 bg-slate-800' : 'text-emerald-400 border-emerald-700/50 bg-emerald-900/40');
         grid.innerHTML += `
-            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm">
+            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:border-indigo-500/50 transition">
                 ${fotosArr[0] ? `<img src="${fotosArr[0]}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
                 <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border">${item.categoria}</span><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${badge}">${st}</span></div>
                 <h4 class="font-bold text-sm text-main truncate mt-2">${item.nome || item.txt_descricao}</h4>
@@ -257,6 +257,7 @@ function exibirMatchesImediatos(itens) {
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
+// --- CHAT MODERNO COM BOLHAS ESTILO SAAS (NEXUS AI) ---
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
@@ -274,11 +275,23 @@ async function atualizarMensagensChat() {
         const c = document.getElementById('chatMensagens');
         if(msgs.length !== ultimaQtdMensagens) {
             ultimaQtdMensagens = msgs.length; c.innerHTML = '';
-            msgs.forEach(m => { const eu = m.remetente === 'ALUNO'; c.innerHTML += `<div class="flex flex-col ${eu ? 'items-end' : 'items-start'}"><span class="text-[9px] text-muted">${eu?'Você':'Secretaria'}</span><div class="max-w-[80%] px-3 py-2 rounded-xl mt-1 ${eu?'bg-red-600 text-white rounded-tr-none':'bg-header text-main rounded-tl-none'}">${m.mensagem}</div></div>`; });
+            msgs.forEach(m => { 
+                const eu = m.remetente === 'ALUNO'; 
+                c.innerHTML += `
+                    <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
+                        <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
+                            ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md"><i class="fas fa-sparkles text-[10px] text-white"></i></div>` : ''}
+                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-md ${eu ? 'rounded-tr-md bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_8px_24px_-4px_rgba(99,102,241,0.4)]' : 'rounded-tl-md border border-white/10 bg-zinc-800/90 text-zinc-100 backdrop-blur-sm'}">
+                                ${m.mensagem}
+                            </div>
+                        </div>
+                    </div>`; 
+            });
             c.scrollTop = c.scrollHeight;
         }
     } catch(e){}
 }
+
 async function enviarMensagemChat(e) {
     e.preventDefault();
     const txt = document.getElementById('chatInputTexto').value.trim();
