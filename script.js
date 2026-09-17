@@ -137,7 +137,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endswith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!email.endsWith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -207,11 +207,9 @@ async function abrirPainelMeusItens() {
     listaRel.innerHTML = `<p class="text-xs text-muted italic">Buscando relatos...</p>`;
 
     try {
-        // Busca itens do catálogo que o aluno solicitou
         const resItens = await fetch(`${API_URL}/api/itens`);
         if (resItens.ok) {
             const itens = await resItens.json();
-            // Filtra os itens onde o RM do aluno consta na solicitação (ou criados por ele)
             const meus = itens.filter(i => i.aluno_solicitante_rm === alunoSessao.rm || (i.solicitacoes && i.solicitacoes.some(s => s.rm === alunoSessao.rm)));
             
             if (meus.length > 0) {
@@ -231,7 +229,6 @@ async function abrirPainelMeusItens() {
             }
         }
 
-        // Busca relatos do mural do aluno
         const resMural = await fetch(`${API_URL}/api/mural/aluno/${alunoSessao.rm}`);
         if (resMural.ok) {
             const relatos = await resMural.json();
@@ -318,13 +315,16 @@ function renderizarItens() {
                (statusAtual === 'TODOS' || st === statusAtual) &&
                (!termoBusca || (i.nome||'').toLowerCase().includes(termoBusca) || (i.txt_descricao||'').toLowerCase().includes(termoBusca));
     });
+    
     filtrados.forEach(item => {
-        const fotosArr = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
+        // Unificação: lê a propriedade 'foto' vinda do backend
+        const imagemSrc = item.foto || (item.fotos && item.fotos[0]) || '';
         const st = normalizarStatus(item.status);
         let badge = st === 'SOLICITADO' ? 'text-amber-400 border-amber-700/50 bg-amber-900/40' : (st === 'ENTREGUE' ? 'text-slate-400 border-slate-700 bg-slate-800' : 'text-emerald-400 border-emerald-700/50 bg-emerald-900/40');
+        
         grid.innerHTML += `
             <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:border-red-500/50 transition">
-                ${fotosArr[0] ? `<img src="${fotosArr[0]}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
+                ${imagemSrc ? `<img src="${imagemSrc}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
                 <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border">${item.categoria}</span><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${badge}">${st}</span></div>
                 <h4 class="font-bold text-sm text-main truncate mt-2">${item.nome || item.txt_descricao}</h4>
                 <p class="text-[10px] text-muted mt-2"><i class="fas fa-map-marker-alt"></i> ${item.txt_local}</p>
@@ -349,7 +349,10 @@ function abrirDetalhes(item) {
     document.getElementById('detailDate').innerText = item.txt_data;
     
     const cont = document.getElementById('carouselContainer');
-    cont.innerHTML = ''; fotosAtuais = item.fotos && item.fotos.length > 0 ? item.fotos : (item.foto ? [item.foto] : []);
+    cont.innerHTML = ''; 
+    const imagemUnica = item.foto || (item.fotos && item.fotos[0]) || '';
+    fotosAtuais = imagemUnica ? [imagemUnica] : [];
+    
     if(fotosAtuais.length > 0) {
         document.getElementById('detailPlaceholder').classList.add('hidden');
         fotosAtuais.forEach(f => cont.innerHTML += `<div class="w-full h-full flex-shrink-0 snap-center flex justify-center p-2"><img src="${f}" onclick="abrirZoomImagem('${f}')" class="max-h-full max-w-full object-contain rounded-lg"></div>`);
@@ -466,13 +469,16 @@ async function enviarCadastroAluno(e) {
     btn.innerText = "Enviando..."; btn.disabled = true;
 
     const fileInput = document.getElementById('alunoItemFoto');
-    let fotoBase64 = "";
+    let fotoUrl = "";
 
     if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.readAsDataURL(fileInput.files[0]);
-        await new Promise(resolve => reader.onload = resolve);
-        fotoBase64 = reader.result;
+        const file = fileInput.files[0];
+        // Converte para Base64 temporário para envio ou armazena no Cloudinary via backend
+        fotoUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.readAsDataURL(file);
+        });
     }
 
     const payload = {
@@ -482,7 +488,7 @@ async function enviarCadastroAluno(e) {
         local: document.getElementById('alunoItemLocal').value.trim(),
         data: new Date().toLocaleDateString('pt-BR'),
         rm: alunoSessao.rm,
-        fotos: fotoBase64 ? [fotoBase64] : []
+        foto: fotoUrl // <--- Agora usa estritamente o campo 'foto'
     };
 
     try {
