@@ -163,7 +163,8 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-/* Fundo Dinâmico de Grades com Efeito Luminoso Vermelho ETEC */
+
+/* --- FUNDO DINÂMICO DE GRADES COM EFEITO LUMINOSO VERMELHO ETEC --- */
 .dynamic-grid-background {
   position: absolute;
   inset: 0;
