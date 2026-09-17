@@ -8,6 +8,12 @@
     <link rel="manifest" href="/manifest_secretaria.json">
     <meta name="theme-color" content="#dc2626">
     <link rel="apple-touch-icon" href="/logo_secretaria.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -23,24 +29,49 @@
         }
     </style>
 </head>
-<body class="dark-theme min-h-screen flex flex-col justify-between bg-[#090d13] text-slate-100 antialiased">
+<body class="dark-theme min-h-screen flex flex-col justify-between bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
-    <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+    <!-- CONTAINER DE TOASTS COM Z-INDEX SUPERIOR (SOBREPÕE O MODAL DE LOGIN) -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-[500] flex flex-col gap-3 pointer-events-none"></div>
 
     <!-- TELA DE LOGIN DA SECRETARIA -->
     <div id="loginScreen" class="fixed inset-0 z-[200] bg-[#090d13]/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
         <div class="glass-panel border border-red-500/30 w-full max-w-sm rounded-3xl p-7 space-y-4 shadow-2xl text-center glow-red">
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-2">
-                <i class="fas fa-lock"></i>
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-2 ring-4 ring-red-500/20">
+                <i class="fas fa-shield-alt"></i>
             </div>
-            <h2 class="text-xl font-black text-white">Painel da Secretaria</h2>
-            <p class="text-xs text-slate-400 font-medium">Controle e Moderação de Achados e Perdidos</p>
-            <input type="email" id="loginEmailInput" placeholder="E-mail da secretaria" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 text-center">
-            <input type="password" id="loginSenhaInput" placeholder="Senha mestra" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500 text-center">
-            <button id="btnLoginSec" onclick="fazerLoginSec()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-95 flex items-center justify-center gap-2">
-                <span>Entrar no Painel</span>
-            </button>
-            <p id="loginErroMsg" class="text-xs text-rose-400 font-semibold hidden"></p>
+            <h2 class="text-xl font-black text-white tracking-tight">Painel da Secretaria</h2>
+            <p class="text-xs text-slate-400 font-medium">Acesso Administrativo - Achados e Perdidos ETEC</p>
+            
+            <form id="formLoginSec" onsubmit="fazerLoginSec(event)" class="space-y-3.5 text-left">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">E-mail da Secretaria</label>
+                    <div class="relative">
+                        <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="email" id="loginEmailInput" required autocomplete="username" value="secretaria@etec.sp.gov.br" placeholder="secretaria@etec.sp.gov.br" class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Senha de Acesso</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="password" id="loginSenhaInput" required autocomplete="current-password" placeholder="Digite sua senha" class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-10 pr-10 py-3 focus:outline-none focus:border-red-500 transition">
+                        <button type="button" onclick="toggleSenhaVisivel()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white p-1">
+                            <i id="iconToggleSenha" class="fas fa-eye text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MENSAGEM DE ERRO VISÍVEL -->
+                <div id="loginErroContainer" class="hidden p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center">
+                    <p id="loginErroMsg" class="text-xs text-rose-400 font-semibold"></p>
+                </div>
+
+                <button type="submit" id="btnLoginSec" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-95 flex items-center justify-center gap-2 mt-2">
+                    <span>Entrar no Painel</span>
+                </button>
+            </form>
         </div>
     </div>
 
@@ -48,10 +79,13 @@
     <header class="glass-header p-4 sticky top-0 z-50 border-b border-white/10">
         <div class="max-w-5xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3">
-                <img src="logo_secretaria.png" alt="Logo" class="w-10 h-10 shrink-0 object-cover rounded-full ring-2 ring-red-500/40">
+                <img src="logo_secretaria.png" alt="Logo" class="w-10 h-10 shrink-0 object-cover rounded-full ring-2 ring-red-500/40 shadow-md">
                 <div>
                     <h1 class="font-extrabold text-base text-white leading-tight">SECRETARIA ETEC</h1>
-                    <p class="text-[10px] text-emerald-400 font-bold"><i class="fas fa-shield-alt"></i> Sessão Administrativa Ativa</p>
+                    <p class="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Sessão Administrativa Ativa
+                    </p>
                 </div>
             </div>
             <div class="flex gap-1.5 overflow-x-auto scrollbar-none">
@@ -68,7 +102,7 @@
                     <i class="fas fa-comments text-blue-400"></i>
                     <span id="badgeChatSec" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
                 </button>
-                <button onclick="sairSecretaria()" class="px-3 py-2 rounded-xl bg-red-950/40 border border-red-900 text-xs font-bold text-red-500 hover:text-white transition" title="Sair do Painel">
+                <button onclick="sairSecretaria()" class="px-3 py-2 rounded-xl bg-red-950/40 border border-red-900 text-xs font-bold text-red-400 hover:text-white transition" title="Sair do Painel">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
@@ -76,12 +110,12 @@
     </header>
 
     <main class="max-w-5xl mx-auto w-full p-4 flex-grow space-y-5">
-        <!-- MODERAÇÃO DE ITENS PENDENTES (NOVA ABA) -->
+        <!-- MODERAÇÃO DE ITENS PENDENTES -->
         <section id="secPendentesScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center glass-panel p-4 rounded-2xl border border-white/10">
                 <div>
                     <h3 class="text-xs font-black uppercase text-amber-400 tracking-wider"><i class="fas fa-inbox mr-1"></i> Moderação de Itens Enviados por Alunos</h3>
-                    <p class="text-[11px] text-slate-400">Pertences achados na escola aguardando validação para ir ao catálogo público.</p>
+                    <p class="text-[11px] text-slate-400">Pertences achados aguardando validação da secretaria para aparecer no catálogo público.</p>
                 </div>
                 <button onclick="carregarItensPendentes()" class="text-xs text-white font-bold hover:text-red-400"><i class="fas fa-sync-alt"></i> Atualizar</button>
             </div>
@@ -91,10 +125,10 @@
         <!-- ITENS CADASTRADOS -->
         <section id="secItensScreen" class="space-y-4">
             <div class="flex gap-2">
-                <button onclick="abrirModalCadastrar()" class="flex-grow bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 transition">
+                <button onclick="abrirModalCadastrar()" class="flex-grow bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 transition">
                     <i class="fas fa-plus-circle"></i> Cadastrar Item na Secretaria
                 </button>
-                <button onclick="abrirLeitorQR()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-5 rounded-xl text-xs shadow-lg transition flex items-center justify-center">
+                <button onclick="abrirLeitorQR()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-5 rounded-xl text-xs shadow-lg transition flex items-center justify-center" title="Escanear QR Code">
                     <i class="fas fa-qrcode text-lg"></i>
                 </button>
             </div>
@@ -397,7 +431,6 @@
         let categoriasSec = [];
         let chatRmAtivo = null;
         let chatPollTimer = null;
-        let tentativasIncorretas = 0;
         let acaoConfirmacaoCallback = null;
         let html5QrcodeScanner = null;
         let fotosEdicaoAtuais = [];
@@ -405,7 +438,21 @@
         const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
         const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
 
-        // Validação da Sessão na Abertura
+        function toggleSenhaVisivel() {
+            const input = document.getElementById('loginSenhaInput');
+            const icon = document.getElementById('iconToggleSenha');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Validação da Sessão Salva na Abertura
         window.onload = async () => {
             const tokenSalvo = localStorage.getItem('secretaria_token');
             if (tokenSalvo) {
@@ -419,7 +466,10 @@
                     }
                 } catch(e) {}
 
-                document.getElementById('loginScreen').classList.add('hidden');
+                const loginScreen = document.getElementById('loginScreen');
+                loginScreen.style.display = 'none';
+                loginScreen.classList.add('hidden');
+                
                 carregarItensSecretaria();
                 carregarItensPendentes();
                 carregarCategorias();
@@ -430,50 +480,92 @@
             localStorage.removeItem('secretaria_token');
             tokenSecretaria = null;
             if (recarregar) window.location.reload();
-            else document.getElementById('loginScreen').classList.remove('hidden');
+            else {
+                const loginScreen = document.getElementById('loginScreen');
+                loginScreen.style.display = 'flex';
+                loginScreen.classList.remove('hidden');
+            }
         }
 
-        async function fazerLoginSec() {
+        // FUNÇÃO DE LOGIN TOTALMENTE REFEITA COM FEEDBACK IMEDIATO
+        async function fazerLoginSec(e) {
+            if (e && e.preventDefault) e.preventDefault();
+
+            const erroContainer = document.getElementById('loginErroContainer');
             const erroEl = document.getElementById('loginErroMsg');
-            const emailInput = document.getElementById('loginEmailInput').value.trim();
-            const senhaInput = document.getElementById('loginSenhaInput').value.trim();
+            const emailInput = document.getElementById('loginEmailInput');
+            const senhaInput = document.getElementById('loginSenhaInput');
             const btnLogin = document.getElementById('btnLoginSec');
 
-            if (!emailInput || !senhaInput) return mostrarToast("Preencha e-mail e senha!", "error");
-            btnLogin.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Conectando...`;
+            const email = (emailInput.value || '').trim();
+            const senha = (senhaInput.value || '').trim();
+
+            if (!email) {
+                erroEl.innerText = "Por favor, digite o e-mail da secretaria.";
+                erroContainer.classList.remove('hidden');
+                emailInput.focus();
+                return;
+            }
+            if (!senha) {
+                erroEl.innerText = "Por favor, digite a senha da secretaria.";
+                erroContainer.classList.remove('hidden');
+                senhaInput.focus();
+                return;
+            }
+
+            erroContainer.classList.add('hidden');
+            btnLogin.disabled = true;
+            btnLogin.innerHTML = `<i class="fas fa-circle-notch fa-spin text-sm"></i> Conectando...`;
 
             try {
                 const res = await fetch(`${API_URL}/api/login`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: emailInput, senha: senhaInput })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: email, senha: senha })
                 });
-                const data = await res.json();
+
+                const data = await res.json().catch(() => ({}));
                 
                 if (res.ok && data.success && data.token) {
                     tokenSecretaria = data.token.trim();
                     localStorage.setItem('secretaria_token', tokenSecretaria);
-                    document.getElementById('loginScreen').classList.add('hidden');
+                    
+                    const loginScreen = document.getElementById('loginScreen');
+                    loginScreen.style.display = 'none';
+                    loginScreen.classList.add('hidden');
+                    
                     mostrarToast("Acesso administrativo autorizado!", "success");
                     carregarItensSecretaria();
                     carregarItensPendentes();
                     carregarCategorias();
                 } else {
-                    erroEl.innerText = data.message || "Acesso negado. Credenciais inválidas.";
-                    erroEl.classList.remove('hidden');
+                    const msg = data.message || "Acesso negado. Credenciais inválidas.";
+                    erroEl.innerText = msg;
+                    erroContainer.classList.remove('hidden');
+                    mostrarToast(msg, "error");
+                    senhaInput.value = '';
+                    senhaInput.focus();
                 }
-            } catch (e) {
-                erroEl.innerText = "Erro ao conectar com o servidor.";
-                erroEl.classList.remove('hidden');
+            } catch (err) {
+                console.error("Erro no login:", err);
+                const msgErro = "Não foi possível conectar ao servidor Railway. Verifique sua conexão ou se a API está online.";
+                erroEl.innerText = msgErro;
+                erroContainer.classList.remove('hidden');
+                mostrarToast(msgErro, "error");
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = `<span>Entrar no Painel</span>`;
             }
-            btnLogin.innerHTML = `<span>Entrar no Painel</span>`;
         }
 
         function mostrarToast(mensagem, tipo = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             let icone = tipo === 'success' ? 'fa-check-circle text-emerald-400' : 'fa-exclamation-circle text-rose-400';
-            toast.className = `glass-panel text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 toast-enter border border-white/10 min-w-[280px] max-w-sm`;
+            toast.className = `glass-panel text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 toast-enter border border-white/10 min-w-[280px] max-w-sm pointer-events-auto`;
             toast.innerHTML = `<i class="fas ${icone} text-lg shrink-0"></i><p class="text-xs font-semibold flex-grow">${mensagem}</p>`;
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 4000);
@@ -598,7 +690,7 @@
             try {
                 const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
                 if (res.ok) {
-                    mostrarToast("Item aprovado para o catálogo!", "success");
+                    mostrarToast("Item aprovado para o catálogo público!", "success");
                     carregarItensPendentes();
                     carregarItensSecretaria();
                 } else mostrarToast("Erro ao aprovar item.", "error");
@@ -618,7 +710,7 @@
                     itensSec = await res.json(); 
                     renderizarListaSec(itensSec); 
                 }
-            } catch (e) { mostrarToast("Erro ao carregar dados.", "error"); }
+            } catch (e) { mostrarToast("Erro ao carregar itens.", "error"); }
         }
 
         function renderizarListaSec(lista) {
@@ -697,7 +789,6 @@
         }
         function fecharModalAcoesItem() { document.getElementById('modalAcoesItem').classList.add('hidden'); }
 
-        // --- EXECUTOR DE AÇÕES COM VERIFICAÇÃO AUTOMÁTICA DE 401 ---
         function confirmarAcaoJWT(titulo, mensagem, url, metodo, bodyData = null, callback = null) {
             fecharModalAcoesItem();
             document.getElementById('modalConfirmTitulo').innerText = titulo;
@@ -738,8 +829,6 @@
             container.innerHTML = '';
             if (fotosEdicaoAtuais.length > 0) {
                 container.classList.remove('hidden');
-                fotosEdicaoAtuais.length > 0) {
-                container.classList.remove('hidden');
                 fotosEdicaoAtuais.forEach((foto, i) => { 
                     container.innerHTML += `<div class="relative w-16 h-16 shrink-0"><img src="${foto}" class="w-full h-full object-cover rounded-xl border border-white/10"><button type="button" onclick="fotosEdicaoAtuais.splice(${i}, 1); renderizarGridFotosEdicao();" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button></div>`; 
                 });
@@ -764,3 +853,288 @@
         async function abrirModalEditar(id) {
             const item = itensSec.find(i => String(i.id) === String(id)); 
             if (!item) return;
+            await carregarCategorias();
+            document.getElementById('editItemId').value = item.id; 
+            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-edit text-red-500 mr-2"></i>Editar Item #${id}`;
+            document.getElementById('cadNome').value = item.nome || ''; 
+            document.getElementById('cadDescricao').value = item.txt_descricao || ''; 
+            document.getElementById('cadCategoria').value = item.categoria || ''; 
+            document.getElementById('cadData').value = item.txt_data || ''; 
+            document.getElementById('cadLocal').value = item.txt_local || ''; 
+            document.getElementById('cadStatus').value = item.status || 'DISPONÍVEL';
+            fotosEdicaoAtuais = [...(item.fotos || [])]; 
+            renderizarGridFotosEdicao(); 
+            document.getElementById('modalCadastrar').classList.remove('hidden');
+        }
+
+        async function salvarItemSecretaria(e) {
+            e.preventDefault();
+            const id = document.getElementById('editItemId').value;
+            const btn = document.getElementById('btnSalvarItem');
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Salvando...`; btn.disabled = true;
+            const payload = { 
+                nome: document.getElementById('cadNome').value.trim(), 
+                descricao: document.getElementById('cadDescricao').value.trim(), 
+                categoria: document.getElementById('cadCategoria').value, 
+                data: document.getElementById('cadData').value.trim(), 
+                local: document.getElementById('cadLocal').value.trim(), 
+                status: document.getElementById('cadStatus').value, 
+                fotos: fotosEdicaoAtuais 
+            };
+            try {
+                const res = await fetch(id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`, { 
+                    method: id ? 'PUT' : 'POST', 
+                    headers: getAuthHeaders(), 
+                    body: JSON.stringify(payload) 
+                });
+                if (res.status === 401) {
+                    sairSecretaria(false);
+                    return mostrarToast("Sua sessão expirou. Faça login novamente.", "error");
+                }
+                if (res.ok) { 
+                    mostrarToast("Objeto salvo com sucesso!", "success"); 
+                    fecharModalCadastrar(); 
+                    carregarItensSecretaria(); 
+                    carregarEstatisticas(); 
+                } else mostrarToast("Erro ao gravar item.", "error");
+            } catch (err) { mostrarToast("Erro de conexão.", "error"); }
+            btn.innerHTML = `Salvar Objeto`; btn.disabled = false;
+        }
+
+        function abrirModalBaixa(id, nomeAluno, rmAluno) {
+            document.getElementById('baixaItemId').value = id;
+            document.getElementById('baixaNome').value = nomeAluno || ''; 
+            document.getElementById('baixaRm').value = rmAluno || ''; 
+            document.getElementById('baixaTurma').value = '';
+            document.getElementById('modalBaixa').classList.remove('hidden');
+        }
+        function fecharModalBaixa() { document.getElementById('modalBaixa').classList.add('hidden'); }
+
+        async function confirmarBaixaEntrega() {
+            const id = document.getElementById('baixaItemId').value;
+            const payload = { 
+                status: 'ENTREGUE', 
+                retirado_por: document.getElementById('baixaNome').value.trim(), 
+                rm_retirante: document.getElementById('baixaRm').value.trim(), 
+                turma_curso: document.getElementById('baixaTurma').value.trim(), 
+                funcionario_responsavel: 'Secretaria' 
+            };
+            if (!payload.retirado_por || !payload.rm_retirante) return mostrarToast("Preencha Nome e RM do aluno.", "error");
+            try {
+                const res = await fetch(`${API_URL}/api/itens/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+                if (res.status === 401) return sairSecretaria(false);
+                if (res.ok) {
+                    mostrarToast("Entrega concluída!", "success"); 
+                    fecharModalBaixa(); 
+                    carregarItensSecretaria(); 
+                    carregarEstatisticas();
+                    const itemObj = itensSec.find(i => String(i.id) === String(id));
+                    exibirComprovante({ 
+                        aluno: payload.retirado_por, 
+                        rm: payload.rm_retirante, 
+                        turma: payload.turma_curso || '-', 
+                        nomeItem: itemObj ? (itemObj.nome || itemObj.txt_descricao) : `Item #${id}`, 
+                        descItem: itemObj ? itemObj.txt_descricao : '', 
+                        localItem: itemObj ? itemObj.txt_local : '', 
+                        dataEntrega: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') 
+                    });
+                } else mostrarToast("Erro ao registrar entrega.", "error");
+            } catch (e) { mostrarToast("Erro de conexão.", "error"); }
+        }
+
+        function exibirComprovante(dados) {
+            document.getElementById('compNomeAluno').innerText = dados.aluno; 
+            document.getElementById('compRmAluno').innerText = dados.rm; 
+            document.getElementById('compTurmaAluno').innerText = dados.turma;
+            document.getElementById('compNomeItem').innerText = dados.nomeItem; 
+            document.getElementById('compDescItem').innerText = dados.descItem; 
+            document.getElementById('compLocalItem').innerText = dados.localItem; 
+            document.getElementById('compDataEntrega').innerText = dados.dataEntrega;
+            document.getElementById('modalComprovante').classList.remove('hidden');
+        }
+        function fecharComprovante() { document.getElementById('modalComprovante').classList.add('hidden'); }
+
+        async function carregarEstatisticas() { 
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/estatisticas`, {headers: getAuthHeadersGet()}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(res.ok){ 
+                    const data = await res.json(); 
+                    document.getElementById('statTotalItens').innerText = data.total_itens || 0; 
+                    document.getElementById('statTotalEntregues').innerText = data.total_entregues || 0; 
+                    document.getElementById('statTotalDoacoes').innerText = data.total_doacoes || 0; 
+                } 
+            } catch(e){} 
+        }
+
+        async function carregarCategorias() { 
+            try { 
+                const res = await fetch(`${API_URL}/api/categorias`); 
+                if(res.ok){ 
+                    categoriasSec = await res.json(); 
+                    const sel = document.getElementById('cadCategoria'); 
+                    if(sel) { 
+                        sel.innerHTML = ''; 
+                        categoriasSec.forEach(c => sel.innerHTML += `<option value="${c.nome}">${c.nome}</option>`); 
+                    } 
+                    document.getElementById('listaCategoriasSec').innerHTML = categoriasSec.map(c => `<div class="glass-panel border border-white/10 rounded-xl p-3 text-xs font-bold text-white">${c.nome}</div>`).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        async function adicionarCategoriaSec() { 
+            const nome = document.getElementById('novaCatInput').value.trim().toUpperCase(); 
+            if(!nome) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/categorias`, {method:'POST', headers: getAuthHeaders(), body: JSON.stringify({nome})}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(res.ok){ 
+                    document.getElementById('novaCatInput').value=''; 
+                    carregarCategorias(); 
+                    mostrarToast("Categoria adicionada!", "success");
+                } 
+            } catch(e){} 
+        }
+
+        async function carregarEntregues() { 
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/entregues`, {headers: getAuthHeadersGet()}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(res.ok){ 
+                    const entregues = await res.json(); 
+                    document.getElementById('listaEntreguesSec').innerHTML = entregues.length === 0 ? `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum item entregue registrado.</div>` : entregues.map(e => `
+                        <div class="glass-panel rounded-2xl p-4 space-y-1 text-xs border border-white/5">
+                            <div class="flex justify-between items-center font-bold text-white">
+                                <span>${e.nome_item}</span>
+                                <span class="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-800 px-2 py-0.5 rounded uppercase">Entregue</span>
+                            </div>
+                            <p class="text-slate-400">Retirado por: <strong class="text-white">${e.retirado_por}</strong> (RM: ${e.rm_retirante}) em ${e.data_entrega}</p>
+                        </div>
+                    `).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        async function carregarMuralSec() {
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/mural`); 
+                if(res.ok){ 
+                    const mural = await res.json(); 
+                    document.getElementById('listaMuralSec').innerHTML = mural.length === 0 ? `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum relato no mural.</div>` : mural.map(m => `
+                        <div class="glass-panel rounded-2xl p-4 space-y-2 text-xs border border-white/10">
+                            <div class="flex justify-between items-start">
+                                <div class="font-bold text-white">
+                                    <span>${m.nome_aluno}</span>
+                                    <span class="text-[10px] text-slate-400 block mt-0.5"><i class="fas fa-id-badge"></i> RM: ${m.rm_aluno} | <i class="fas fa-clock"></i> ${m.data_registro}</span>
+                                </div>
+                                <button onclick="excluirMuralSec(${m.id})" class="text-red-400 hover:text-white p-2 bg-red-950/40 border border-red-900 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="p-3 rounded-xl bg-[#0d1117] border border-white/5">
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase bg-white/5 text-amber-400 border border-amber-500/20 mb-1.5 inline-block">${m.categoria}</span>
+                                <p class="text-slate-300 italic">"${m.descricao}"</p>
+                            </div>
+                        </div>`).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        function excluirMuralSec(id) {
+            confirmarAcaoJWT("Excluir Relato", `Deseja apagar definitivamente o relato #${id} do mural?`, `${API_URL}/api/mural/${id}`, 'DELETE', null, carregarMuralSec);
+        }
+
+        // --- CHAT COM ALUNOS ---
+        async function carregarConversasChat() { 
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/chat/conversas`, {headers: getAuthHeadersGet()}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(!res.ok) return; 
+                const conversas = await res.json(); 
+                let total = 0; 
+                document.getElementById('listaConversasChat').innerHTML = conversas.map(c => { 
+                    if(c.nao_lidas > 0) total += c.nao_lidas; 
+                    return `
+                        <div onclick="abrirConversaAluno('${c.rm_aluno}', '${c.nome_aluno}')" class="glass-panel rounded-2xl p-3.5 flex justify-between items-center cursor-pointer border border-white/10 hover:border-red-500/50 transition">
+                            <div>
+                                <h4 class="font-extrabold text-xs text-white">${c.nome_aluno} (RM: ${c.rm_aluno})</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Última mensagem: ${c.ultima_msg_data}</p>
+                            </div>
+                            ${c.nao_lidas > 0 ? `<span class="bg-red-600 text-white font-bold text-[10px] px-2.5 py-0.5 rounded-full">${c.nao_lidas}</span>` : `<i class="fas fa-chevron-right text-xs text-slate-500"></i>`}
+                        </div>`; 
+                }).join(''); 
+                const badge = document.getElementById('badgeChatSec'); 
+                if(total > 0){ badge.classList.remove('hidden'); badge.innerText = total; } else badge.classList.add('hidden'); 
+            } catch(e){} 
+        }
+
+        async function abrirConversaAluno(rm, nome) { 
+            chatRmAtivo = rm; 
+            document.getElementById('listaConversasChat').classList.add('hidden'); 
+            document.getElementById('painelConversaAtiva').classList.remove('hidden'); 
+            document.getElementById('chatAlunoNomeTitulo').innerText = nome; 
+            document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; 
+            atualizarMensagensSec(); 
+        }
+
+        function fecharConversaAtiva() { 
+            chatRmAtivo = null; 
+            document.getElementById('painelConversaAtiva').classList.add('hidden'); 
+            document.getElementById('listaConversasChat').classList.remove('hidden'); 
+            carregarConversasChat(); 
+        }
+
+        async function atualizarMensagensSec() { 
+            if (!chatRmAtivo || !tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(!res.ok) return; 
+                const container = document.getElementById('chatSecMensagens'); 
+                container.innerHTML = (await res.json()).map(m => { 
+                    const eu = m.remetente === 'SECRETARIA'; 
+                    return `
+                        <div class="flex flex-col ${eu ? 'items-end' : 'items-start'}">
+                            <span class="text-[9px] text-slate-500 mb-1">${eu ? 'Secretaria' : m.nome_aluno}</span>
+                            <div class="max-w-[85%] px-3.5 py-2.5 rounded-2xl ${eu ? 'bg-red-600 text-white rounded-tr-sm' : 'bg-[#161c28] border border-white/10 text-slate-200 rounded-tl-sm'} shadow-sm break-words">
+                                ${m.mensagem}
+                            </div>
+                        </div>`; 
+                }).join(''); 
+                container.scrollTop = container.scrollHeight; 
+            } catch(e){} 
+        }
+
+        async function enviarMensagemSecretaria(e) { 
+            e.preventDefault(); 
+            const input = document.getElementById('inputMsgSec');
+            if (!chatRmAtivo || !input.value.trim()) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/chat/enviar`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ rm: chatRmAtivo, nome: 'Secretaria', remetente: 'SECRETARIA', mensagem: input.value.trim() }) 
+                });
+                if (res.ok) { 
+                    input.value = ''; 
+                    atualizarMensagensSec(); 
+                } 
+            } catch(e){} 
+        }
+
+        function iniciarPollingChatSec() { 
+            pararPollingChatSec(); 
+            chatPollTimer = setInterval(() => { 
+                carregarConversasChat(); 
+                if (chatRmAtivo) atualizarMensagensSec(); 
+            }, 3000); 
+        }
+
+        function pararPollingChatSec() { 
+            if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } 
+        }
+    </script>
+</body>
+</html>
