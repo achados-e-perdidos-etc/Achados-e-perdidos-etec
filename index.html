@@ -96,7 +96,6 @@
                 <button onclick="mudarAba('catalogo')" id="tabBtnCatalogo" class="px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5"><i class="fas fa-boxes"></i><span class="hidden sm:inline">Catálogo</span></button>
                 <button onclick="mudarAba('mural')" id="tabBtnMural" class="relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5"><i class="fas fa-bullhorn text-amber-500"></i><span class="hidden sm:inline">Perdi Algo</span><span id="badgeNotificacaoMural" class="hidden absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span></button>
                 
-                <!-- NOVO BOTÃO: COLABORAÇÃO DO ALUNO -->
                 <button onclick="abrirModalCadastrarAluno()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5"><i class="fas fa-hand-holding-heart"></i><span class="hidden sm:inline">Achei Algo</span></button>
 
                 <div class="relative">
@@ -119,12 +118,20 @@
                     <input type="text" id="searchInput" oninput="filtrarPorPalavraChave()" placeholder="Buscar objeto..." class="w-full bg-card border border-color text-main text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-sm">
                     <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1"><i class="fas fa-times text-xs"></i></button>
                 </div>
-                <div>
-                    <div id="categoryContainer" class="relative flex flex-wrap gap-2 p-1">
-                        <div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div>
-                        <button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white border border-transparent transition-colors duration-200">TODOS</button>
+
+                <!-- MENU SUSPENSO DE CATEGORIAS (LIMPO E MODERNO) -->
+                <div class="relative w-full">
+                    <button onclick="toggleFiltroDropdown()" class="w-full flex items-center justify-between px-4 py-3 bg-card border border-color rounded-xl text-xs font-bold text-main hover:border-red-500 transition shadow-sm">
+                        <span class="flex items-center gap-2"><i class="fas fa-filter text-red-500"></i> <span id="labelFiltroSelecionado">Todas as Categorias</span></span>
+                        <i class="fas fa-chevron-down text-[10px] text-muted"></i>
+                    </button>
+                    
+                    <div id="dropdownFiltrosMenu" class="hidden absolute top-full left-0 right-0 mt-2 bg-card border border-color rounded-xl shadow-2xl p-2 z-50 space-y-1">
+                        <button onclick="selecionarFiltroCategoria('TODOS', 'Todas as Categorias')" class="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-main hover:bg-header transition"><i class="fas fa-th-large mr-2 text-red-500"></i> Todas as Categorias</button>
+                        <div id="listaOpcoesFiltro" class="space-y-1 border-t border-color pt-1"></div>
                     </div>
                 </div>
+
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-color">
                     <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-card border border-color text-main text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 transition">
                         <option value="TODOS">TODOS OS STATUS</option>
