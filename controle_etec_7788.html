@@ -256,7 +256,6 @@
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <h3 id="modalConfirmTitulo" class="font-black text-lg text-white">Atenção</h3>
-            <pmodalConfirmTitulo" class="font-black text-lg text-white">Atenção</h3>
             <p id="modalConfirmMsg" class="text-xs text-slate-300"></p>
             <div class="flex gap-2 pt-2">
                 <button onclick="fecharModalConfirmacao()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase transition">Cancelar</button>
@@ -311,4 +310,679 @@
     <!-- MODAL DE CADASTRO / EDIÇÃO -->
     <div id="modalCadastrar" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="glass-panel border border-white/10 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl my-8">
-            <div class="flex justify-
+            <div class="flex justify-between items-center">
+                <h3 id="modalTituloForm" class="font-bold text-white text-base"><i class="fas fa-box text-red-500 mr-2"></i>Cadastrar Objeto</h3>
+                <button onclick="fecharModalCadastrar()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="formCadastrarItem" onsubmit="salvarItemSecretaria(event)" class="space-y-3">
+                <input type="hidden" id="editItemId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Título:</label>
+                    <input type="text" id="cadNome" required class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descrição Detalhada:</label>
+                    <textarea id="cadDescricao" required rows="2" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Categoria:</label>
+                        <select id="cadCategoria" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Data:</label>
+                        <input type="text" id="cadData" required class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Local:</label>
+                        <input type="text" id="cadLocal" required class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Status:</label>
+                        <select id="cadStatus" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
+                            <option value="DISPONÍVEL">DISPONÍVEL</option>
+                            <option value="SOLICITADO">SOLICITADO</option>
+                            <option value="ENTREGUE">ENTREGUE</option>
+                            <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
+                            <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Fotos do Item:</label>
+                    <input type="file" id="cadFotoFile" accept="image/*" multiple onchange="adicionarFotosEdicao(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
+                    <div id="gridFotosEdicao" class="mt-2 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
+                </div>
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="fecharModalCadastrar()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
+                    <button type="submit" id="btnSalvarItem" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs uppercase">Salvar Objeto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE BAIXA E COMPROVANTE -->
+    <div id="modalBaixa" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel border border-white/10 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-white text-base"><i class="fas fa-check-circle text-emerald-400 mr-2"></i>Registrar Entrega</h3>
+                <button onclick="fecharModalBaixa()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="hidden" id="baixaItemId">
+            <div class="space-y-3">
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nome Completo do Retirante:</label><input type="text" id="baixaNome" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">RM do Aluno:</label><input type="text" id="baixaRm" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Turma / Curso:</label><input type="text" id="baixaTurma" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="fecharModalBaixa()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
+                <button onclick="confirmarBaixaEntrega()" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs uppercase transition">Concluir Entrega</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPROVANTE PARA IMPRESSÃO -->
+    <div id="modalComprovante" class="hidden fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white text-black w-full max-w-xl rounded-3xl p-8 space-y-6 shadow-2xl my-6" id="comprovantePrintArea">
+            <div class="text-center border-b pb-4 space-y-1">
+                <h2 class="font-black text-lg uppercase">ETEC Profº José Ignácio Azevedo Filho</h2>
+                <p class="text-xs font-semibold text-gray-600">Termo de Retirada de Objeto - Achados e Perdidos</p>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div class="bg-gray-100 p-3.5 rounded-xl space-y-1">
+                    <p class="font-bold uppercase text-gray-700 mb-1">Dados do Aluno Retirante:</p>
+                    <p><strong>Nome:</strong> <span id="compNomeAluno"></span></p>
+                    <p><strong>RM:</strong> <span id="compRmAluno"></span></p>
+                    <p><strong>Turma/Curso:</strong> <span id="compTurmaAluno"></span></p>
+                </div>
+                <div class="bg-gray-100 p-3.5 rounded-xl space-y-1">
+                    <p class="font-bold uppercase text-gray-700 mb-1">Informações do Item Devolvido:</p>
+                    <p><strong>Item:</strong> <span id="compNomeItem"></span></p>
+                    <p><strong>Descrição:</strong> <span id="compDescItem"></span></p>
+                    <p><strong>Local Encontrado:</strong> <span id="compLocalItem"></span></p>
+                    <p><strong>Data da Entrega:</strong> <span id="compDataEntrega"></span></p>
+                </div>
+                <p class="text-[11px] text-gray-700 italic pt-2">
+                    Declaro para os devidos fins que retirei o objeto acima nas dependências da secretaria da ETEC, atestando seu recebimento e perfeito estado.
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-8 pt-10 text-center text-xs">
+                <div class="space-y-2"><div class="border-b border-black pb-1"></div><p class="font-bold">Assinatura do Aluno</p></div>
+                <div class="space-y-2"><div class="border-b border-black pb-1"></div><p class="font-bold">Responsável (Secretaria)</p></div>
+            </div>
+            <div class="flex gap-3 pt-4 no-print">
+                <button onclick="window.print()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase transition flex items-center justify-center gap-2">
+                    <i class="fas fa-print"></i> Imprimir Termo
+                </button>
+                <button onclick="fecharComprovante()" class="w-1/2 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl text-xs uppercase transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://etec-achados.up.railway.app";
+        let tokenSecretaria = null;
+        let itensSec = [];
+        let itensPendentesSec = [];
+        let categoriasSec = [];
+        let chatRmAtivo = null;
+        let chatPollTimer = null;
+        let acaoConfirmacaoCallback = null;
+        let html5QrcodeScanner = null;
+        let fotosEdicaoAtuais = [];
+
+        const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
+        const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
+
+        function toggleSenhaVisivel() {
+            const input = document.getElementById('loginSenhaInput');
+            const icon = document.getElementById('iconToggleSenha');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        window.onload = async () => {
+            const tokenSalvo = localStorage.getItem('secretaria_token');
+            if (tokenSalvo) {
+                tokenSecretaria = tokenSalvo.trim();
+                try {
+                    const res = await fetch(`${API_URL}/api/auth/verificar`, { headers: getAuthHeadersGet() });
+                    if (res.status === 401) {
+                        sairSecretaria(false);
+                        mostrarToast("Sua sessão expirou. Faça login novamente.", "info");
+                        return;
+                    }
+                } catch(e) {}
+
+                const loginScreen = document.getElementById('loginScreen');
+                loginScreen.style.display = 'none';
+                loginScreen.classList.add('hidden');
+                
+                carregarItensSecretaria();
+                carregarItensPendentes();
+                carregarCategorias();
+            }
+        };
+
+        function sairSecretaria(recarregar = true) {
+            localStorage.removeItem('secretaria_token');
+            tokenSecretaria = null;
+            if (recarregar) window.location.reload();
+            else {
+                const loginScreen = document.getElementById('loginScreen');
+                loginScreen.style.display = 'flex';
+                loginScreen.classList.remove('hidden');
+            }
+        }
+
+        async function fazerLoginSec(e) {
+            if (e && e.preventDefault) e.preventDefault();
+
+            const erroContainer = document.getElementById('loginErroContainer');
+            const erroEl = document.getElementById('loginErroMsg');
+            const emailInput = document.getElementById('loginEmailInput');
+            const senhaInput = document.getElementById('loginSenhaInput');
+            const btnLogin = document.getElementById('btnLoginSec');
+
+            const email = (emailInput.value || '').trim();
+            const senha = (senhaInput.value || '').trim();
+
+            if (!email) {
+                erroEl.innerText = "Por favor, digite o e-mail da secretaria.";
+                erroContainer.classList.remove('hidden');
+                emailInput.focus();
+                return;
+            }
+            if (!senha) {
+                erroEl.innerText = "Por favor, digite a senha da secretaria.";
+                erroContainer.classList.remove('hidden');
+                senhaInput.focus();
+                return;
+            }
+
+            erroContainer.classList.add('hidden');
+            btnLogin.disabled = true;
+            btnLogin.innerHTML = `<i class="fas fa-circle-notch fa-spin text-sm"></i> Conectando...`;
+
+            try {
+                const res = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: email, senha: senha })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                
+                if (res.ok && data.success && data.token) {
+                    tokenSecretaria = data.token.trim();
+                    localStorage.setItem('secretaria_token', tokenSecretaria);
+                    
+                    const loginScreen = document.getElementById('loginScreen');
+                    loginScreen.style.display = 'none';
+                    loginScreen.classList.add('hidden');
+                    
+                    mostrarToast("Acesso administrativo autorizado!", "success");
+                    carregarItensSecretaria();
+                    carregarItensPendentes();
+                    carregarCategorias();
+                } else {
+                    const msg = data.message || "Acesso negado. Credenciais inválidas.";
+                    erroEl.innerText = msg;
+                    erroContainer.classList.remove('hidden');
+                    mostrarToast(msg, "error");
+                    senhaInput.value = '';
+                    senhaInput.focus();
+                }
+            } catch (err) {
+                const msgErro = "Não foi possível conectar ao servidor Railway. Verifique se a API está online.";
+                erroEl.innerText = msgErro;
+                erroContainer.classList.remove('hidden');
+                mostrarToast(msgErro, "error");
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = `<span>Entrar no Painel</span>`;
+            }
+        }
+
+        function mostrarToast(mensagem, tipo = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let icone = tipo === 'success' ? 'fa-check-circle text-emerald-400' : 'fa-exclamation-circle text-rose-400';
+            toast.className = `glass-panel text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 toast-enter border border-white/10 min-w-[280px] max-w-sm pointer-events-auto`;
+            toast.innerHTML = `<i class="fas ${icone} text-lg shrink-0"></i><p class="text-xs font-semibold flex-grow">${mensagem}</p>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // --- SISTEMA DE QR CODE ---
+        function abrirLeitorQR() {
+            document.getElementById('modalScannerQR').classList.remove('hidden');
+            html5QrcodeScanner = new Html5QrcodeScanner("readerBox", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+        function fecharLeitorQR() {
+            if (html5QrcodeScanner) { html5QrcodeScanner.clear().catch(() => {}); html5QrcodeScanner = null; }
+            document.getElementById('modalScannerQR').classList.add('hidden');
+            document.getElementById('readerBox').innerHTML = '';
+        }
+        function onScanSuccess(decodedText) {
+            if (decodedText.startsWith("ETEC-ITEM-")) {
+                fecharLeitorQR();
+                const itemId = parseInt(decodedText.replace("ETEC-ITEM-", ""));
+                if (itensSec.find(i => String(i.id) === String(itemId))) { 
+                    mostrarToast("Etiqueta validada!", "success"); 
+                    abrirModalAcoesItem(itemId); 
+                } else mostrarToast(`Item #${itemId} não encontrado no catálogo.`, "error");
+            } else mostrarToast("QR Code inválido.", "error");
+        }
+        function onScanFailure(error) { }
+
+        function gerarEtiquetaVisual(id) {
+            fecharModalAcoesItem();
+            const canvas = document.createElement('canvas');
+            canvas.width = 400; canvas.height = 460;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 400, 460);
+            const qr = new QRious({ value: `ETEC-ITEM-${id}`, size: 360, level: 'H' });
+            ctx.drawImage(qr.canvas, 20, 20);
+            ctx.fillStyle = "#000000"; ctx.font = "bold 40px Arial"; ctx.textAlign = "center";
+            ctx.fillText(`ID: ${id}`, 200, 430);
+            const dataUrl = canvas.toDataURL("image/png");
+            document.getElementById('imgEtiquetaPreview').src = dataUrl;
+            document.getElementById('btnBaixarPNG').onclick = () => { 
+                const link = document.createElement('a'); 
+                link.download = `etiqueta_qr_${id}.png`; 
+                link.href = dataUrl; 
+                link.click(); 
+            };
+            document.getElementById('btnImprimirWeb').onclick = () => { 
+                const win = window.open(''); 
+                win.document.write(`<html><head><title>Imprimir</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;}</style></head><body><img src="${dataUrl}"></body></html>`); 
+                win.document.close(); 
+                win.focus(); 
+                setTimeout(() => { win.print(); win.close(); }, 500); 
+            };
+            document.getElementById('modalGerarEtiqueta').classList.remove('hidden');
+        }
+
+        // --- NAVEGAÇÃO ENTRE ABAS ---
+        function mudarAbaSec(aba) {
+            ['itens', 'pendentes', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
+                const el = document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`);
+                const btn = document.getElementById(`btnTab${a.charAt(0).toUpperCase() + a.slice(1)}`);
+                if (el) el.classList.add('hidden');
+                if (btn) btn.className = "px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition";
+            });
+            const telaAtiva = document.getElementById(`sec${aba.charAt(0).toUpperCase() + aba.slice(1)}Screen`);
+            const btnAtivo = document.getElementById(`btnTab${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
+            if (telaAtiva) telaAtiva.classList.remove('hidden');
+            if (btnAtivo) btnAtivo.className = "px-3 py-2 rounded-xl bg-red-600 text-white text-xs font-bold transition shadow-sm";
+
+            if (aba === 'pendentes') carregarItensPendentes();
+            if (aba === 'stats') carregarEstatisticas();
+            if (aba === 'cats') carregarCategorias();
+            if (aba === 'entregues') carregarEntregues();
+            if (aba === 'mural') carregarMuralSec();
+            if (aba === 'chat') { carregarConversasChat(); iniciarPollingChatSec(); } else pararPollingChatSec();
+        }
+
+        // --- ITENS PENDENTES (MODERAÇÃO) ---
+        async function carregarItensPendentes() {
+            if (!tokenSecretaria) return;
+            try {
+                const res = await fetch(`${API_URL}/api/itens/pendentes`, { headers: getAuthHeadersGet() });
+                if (res.status === 401) return sairSecretaria(false);
+                if (res.ok) {
+                    itensPendentesSec = await res.json();
+                    const badge = document.getElementById('badgePendentesSec');
+                    if (badge) {
+                        badge.innerText = itensPendentesSec.length;
+                        badge.classList.toggle('hidden', itensPendentesSec.length === 0);
+                    }
+                    const container = document.getElementById('listaPendentesSec');
+                    if (container) {
+                        if (itensPendentesSec.length === 0) {
+                            container.innerHTML = `<div class="glass-panel p-8 text-center text-xs text-slate-400 rounded-2xl">Nenhum item aguardando moderação.</div>`;
+                            return;
+                        }
+                        container.innerHTML = itensPendentesSec.map(i => {
+                            const foto = i.fotos && i.fotos.length > 0 ? i.fotos[0] : '';
+                            return `
+                                <div class="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-amber-500/30">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        ${foto ? `<img src="${foto}" class="w-14 h-14 object-cover rounded-xl shrink-0">` : `<div class="w-14 h-14 rounded-xl bg-black/30 flex items-center justify-center text-slate-500 shrink-0"><i class="fas fa-box"></i></div>`}
+                                        <div class="min-w-0">
+                                            <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">${i.categoria}</span>
+                                            <h4 class="text-sm font-extrabold text-white truncate mt-1">${i.nome || i.txt_descricao}</h4>
+                                            <p class="text-[11px] text-slate-400">Local: ${i.txt_local} | Enviado por RM: <strong class="text-white">${i.rm_aluno || '-'}</strong></p>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 w-full sm:w-auto">
+                                        <button onclick="aprovarItemDireto(${i.id})" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">Aprovar</button>
+                                        <button onclick="recusarItemPendente(${i.id})" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 text-red-400 border border-red-900 text-xs font-bold transition">Recusar</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function aprovarItemDireto(id) {
+            try {
+                const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
+                if (res.ok) {
+                    mostrarToast("Item aprovado para o catálogo público!", "success");
+                    carregarItensPendentes();
+                    carregarItensSecretaria();
+                } else mostrarToast("Erro ao aprovar item.", "error");
+            } catch(e) { mostrarToast("Erro de conexão.", "error"); }
+        }
+
+        function recusarItemPendente(id) {
+            confirmarAcaoJWT("Recusar Objeto", `Deseja recusar e excluir o envio do item #${id}?`, `${API_URL}/api/itens/${id}`, 'DELETE', null, carregarItensPendentes);
+        }
+
+        // --- CARREGAMENTO DE ITENS DA SECRETARIA ---
+        async function carregarItensSecretaria() {
+            if (!tokenSecretaria) return;
+            try {
+                const res = await fetch(`${API_URL}/api/itens`);
+                if (res.ok) { 
+                    itensSec = await res.json(); 
+                    renderizarListaSec(itensSec); 
+                }
+            } catch (e) { mostrarToast("Erro ao carregar itens.", "error"); }
+        }
+
+        function renderizarListaSec(lista) {
+            const container = document.getElementById('listaItensSec');
+            container.innerHTML = '';
+            if (lista.length === 0) return container.innerHTML = `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum objeto encontrado no catálogo.</div>`;
+            
+            lista.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "interactive-card glass-panel rounded-2xl p-4 flex items-center gap-4 cursor-pointer border border-white/10";
+                card.onclick = () => abrirModalAcoesItem(item.id);
+                const foto = item.fotos && item.fotos.length > 0 ? item.fotos[0] : '';
+                const imgTag = foto ? `<img src="${foto}" class="w-16 h-16 object-cover rounded-xl shrink-0">` : `<div class="w-16 h-16 bg-[#0d1117] rounded-xl flex items-center justify-center text-slate-600 shrink-0"><i class="fas fa-box text-xl"></i></div>`;
+                
+                let stBadge = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+                if (item.status === 'SOLICITADO') stBadge = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+                if (item.status === 'ENTREGUE' || item.status.includes('DOAÇÃO')) stBadge = 'bg-slate-800 text-slate-400 border-slate-700';
+
+                card.innerHTML = `
+                    ${imgTag}
+                    <div class="min-w-0 flex-grow">
+                        <div class="flex gap-2 mb-1">
+                            <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-white/5 border border-white/10 text-slate-300">${item.categoria}</span>
+                            <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border ${stBadge}">${item.status}</span>
+                        </div>
+                        <h4 class="font-extrabold text-sm text-white truncate">#${item.id} -${item.nome || item.txt_descricao}</h4>
+                        <p class="text-[10px] text-slate-400 truncate mt-0.5"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${item.txt_local}</p>${item.solicitado_por ? `<p class="text-[10px] text-amber-400 mt-1 font-bold"><i class="fas fa-user mr-1"></i>Reivindicado por: ${item.solicitado_por} (RM: ${item.rm_aluno || '-'})</p>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filtrarItensSec() {
+            const termo = document.getElementById('searchSecInput').value.toLowerCase().trim();
+            renderizarListaSec(itensSec.filter(i => (i.nome || '').toLowerCase().includes(termo) || (i.txt_descricao || '').toLowerCase().includes(termo) || String(i.id) === termo));
+        }
+
+        function abrirModalAcoesItem(id) {
+            const item = itensSec.find(i => String(i.id) === String(id));
+            if (!item) return;
+            const galeria = document.getElementById('acaoItemGaleria'); 
+            galeria.innerHTML = '';
+            if (item.fotos && item.fotos.length > 0) {
+                item.fotos.forEach(f => { galeria.innerHTML += `<img src="${f}" class="w-16 h-16 object-cover rounded-xl shrink-0 border border-white/10">`; });
+            } else galeria.innerHTML = `<div class="w-16 h-16 bg-black/20 rounded-xl flex items-center justify-center text-slate-600"><i class="fas fa-box"></i></div>`;
+            
+            document.getElementById('acaoItemCat').innerText = item.categoria; 
+            document.getElementById('acaoItemStatus').innerText = item.status;
+            document.getElementById('acaoItemId').innerText = item.id; 
+            document.getElementById('acaoItemTitulo').innerText = item.nome || item.txt_descricao;
+            document.getElementById('acaoItemLocal').innerHTML = `<i class="fas fa-map-marker-alt text-red-500 mr-1"></i> ${item.txt_local}`;
+            document.getElementById('acaoItemDesc').innerText = item.txt_descricao; 
+            document.getElementById('acaoItemData').innerText = item.txt_data;
+            
+            if (item.solicitado_por) { 
+                document.getElementById('acaoItemSolicitanteNome').innerText = item.solicitado_por; 
+                document.getElementById('acaoItemSolicitanteRm').innerText = `RM: ${item.rm_aluno || '-'}`; 
+                document.getElementById('acaoItemSolicitanteBox').classList.remove('hidden'); 
+            } else document.getElementById('acaoItemSolicitanteBox').classList.add('hidden');
+            
+            const st = item.status.toUpperCase();
+            document.getElementById('btnAcaoBaixa').classList.toggle('hidden', st === 'ENTREGUE' || st.includes('DOAÇÃO'));
+            document.getElementById('btnAcaoRecusar').classList.toggle('hidden', st !== 'SOLICITADO');
+            document.getElementById('btnAcaoDoacao').classList.toggle('hidden', st === 'ENTREGUE' || st.includes('DOAÇÃO'));
+
+            document.getElementById('btnAcaoGerarQR').onclick = () => gerarEtiquetaVisual(item.id);
+            document.getElementById('btnAcaoEditar').onclick = () => { fecharModalAcoesItem(); abrirModalEditar(item.id); };
+            document.getElementById('btnAcaoBaixa').onclick = () => { fecharModalAcoesItem(); abrirModalBaixa(item.id, item.solicitado_por || '', item.rm_aluno || ''); };
+            document.getElementById('btnAcaoRecusar').onclick = () => confirmarAcaoJWT("Recusar", `Deseja recusar a solicitação do item #${item.id}?`, `${API_URL}/api/itens/${item.id}/recusar`, 'PUT');
+            document.getElementById('btnAcaoDoacao').onclick = () => confirmarAcaoJWT("Marcar Doação", `Enviar item #${item.id} para doação?`, `${API_URL}/api/itens/${item.id}`, 'PUT', {status: 'PARA DOAÇÃO'});
+            document.getElementById('btnAcaoExcluir').onclick = () => confirmarAcaoJWT("Excluir", `Excluir permanentemente o item #${item.id}?`, `${API_URL}/api/itens/${item.id}`, 'DELETE');
+            
+            document.getElementById('modalAcoesItem').classList.remove('hidden');
+        }
+        function fecharModalAcoesItem() { document.getElementById('modalAcoesItem').classList.add('hidden'); }
+
+        function confirmarAcaoJWT(titulo, mensagem, url, metodo, bodyData = null, callback = null) {
+            fecharModalAcoesItem();
+            document.getElementById('modalConfirmTitulo').innerText = titulo;
+            document.getElementById('modalConfirmMsg').innerText = mensagem;
+            acaoConfirmacaoCallback = async () => {
+                document.getElementById('modalConfirmacao').classList.add('hidden');
+                try {
+                    const options = { method: metodo, headers: getAuthHeaders() };
+                    if (bodyData) options.body = JSON.stringify(bodyData);
+                    const res = await fetch(url, options);
+                    if (res.status === 401) {
+                        sairSecretaria(false);
+                        return mostrarToast("Sua sessão expirou. Faça login novamente.", "error");
+                    }
+                    if (res.ok) { 
+                        mostrarToast("Operação realizada com sucesso!", "success"); 
+                        if (callback) { callback(); } else { carregarItensSecretaria(); carregarEstatisticas(); }
+                    } else mostrarToast("Acesso Negado ou erro na requisição.", "error");
+                } catch(e) { mostrarToast("Erro de conexão.", "error"); }
+            };
+            document.getElementById('modalConfirmacao').classList.remove('hidden');
+        }
+        function fecharModalConfirmacao() { document.getElementById('modalConfirmacao').classList.add('hidden'); }
+        document.getElementById('btnConfirmarAcao').addEventListener('click', () => { if (acaoConfirmacaoCallback) acaoConfirmacaoCallback(); });
+
+        function adicionarFotosEdicao(input) {
+            if (input.files) {
+                Array.from(input.files).forEach(file => { 
+                    const reader = new FileReader(); 
+                    reader.onload = e => { fotosEdicaoAtuais.push(e.target.result); renderizarGridFotosEdicao(); }; 
+                    reader.readAsDataURL(file); 
+                });
+                input.value = '';
+            }
+        }
+        function renderizarGridFotosEdicao() {
+            const container = document.getElementById('gridFotosEdicao'); 
+            container.innerHTML = '';
+            if (fotosEdicaoAtuais.length > 0) {
+                container.classList.remove('hidden');
+                fotosEdicaoAtuais.forEach((foto, i) => { 
+                    container.innerHTML += `<div class="relative w-16 h-16 shrink-0"><img src="${foto}" class="w-full h-full object-cover rounded-xl border border-white/10"><button type="button" onclick="fotosEdicaoAtuais.splice(${i}, 1); renderizarGridFotosEdicao();" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button></div>`; 
+                });
+            } else container.classList.add('hidden');
+        }
+
+        async function abrirModalCadastrar() {
+            await carregarCategorias();
+            document.getElementById('editItemId').value = ''; 
+            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-box text-red-500 mr-2"></i>Cadastrar Objeto`;
+            document.getElementById('cadNome').value = ''; 
+            document.getElementById('cadDescricao').value = ''; 
+            document.getElementById('cadData').value = new Date().toLocaleDateString('pt-BR'); 
+            document.getElementById('cadLocal').value = '';
+            document.getElementById('cadStatus').value = 'DISPONÍVEL'; 
+            fotosEdicaoAtuais = []; 
+            renderizarGridFotosEdicao(); 
+            document.getElementById('modalCadastrar').classList.remove('hidden');
+        }
+        function fecharModalCadastrar() { document.getElementById('modalCadastrar').classList.add('hidden'); }
+
+        async function abrirModalEditar(id) {
+            const item = itensSec.find(i => String(i.id) === String(id)); 
+            if (!item) return;
+            await carregarCategorias();
+            document.getElementById('editItemId').value = item.id; 
+            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-edit text-red-500 mr-2"></i>Editar Item #${id}`;
+            document.getElementById('cadNome').value = item.nome || ''; 
+            document.getElementById('cadDescricao').value = item.txt_descricao || ''; 
+            document.getElementById('cadCategoria').value = item.categoria || ''; 
+            document.getElementById('cadData').value = item.txt_data || ''; 
+            document.getElementById('cadLocal').value = item.txt_local || ''; 
+            document.getElementById('cadStatus').value = item.status || 'DISPONÍVEL';
+            fotosEdicaoAtuais = [...(item.fotos || [])]; 
+            renderizarGridFotosEdicao(); 
+            document.getElementById('modalCadastrar').classList.remove('hidden');
+        }
+
+        // SALVAMENTO DE ITENS COM EXIBIÇÃO EXATA DO ERRO
+        async function salvarItemSecretaria(e) {
+            e.preventDefault();
+            const id = document.getElementById('editItemId').value;
+            const btn = document.getElementById('btnSalvarItem');
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Salvando...`; 
+            btn.disabled = true;
+
+            const payload = { 
+                nome: document.getElementById('cadNome').value.trim(), 
+                descricao: document.getElementById('cadDescricao').value.trim(), 
+                categoria: document.getElementById('cadCategoria').value, 
+                data: document.getElementById('cadData').value.trim(), 
+                local: document.getElementById('cadLocal').value.trim(), 
+                status: document.getElementById('cadStatus').value, 
+                fotos: fotosEdicaoAtuais 
+            };
+
+            try {
+                const res = await fetch(id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`, { 
+                    method: id ? 'PUT' : 'POST', 
+                    headers: getAuthHeaders(), 
+                    body: JSON.stringify(payload) 
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (res.status === 401) {
+                    sairSecretaria(false);
+                    return mostrarToast("Sua sessão expirou. Faça login novamente.", "error");
+                }
+
+                if (res.ok && data.success) { 
+                    mostrarToast("Objeto salvo com sucesso!", "success"); 
+                    fecharModalCadastrar(); 
+                    carregarItensSecretaria(); 
+                    carregarEstatisticas(); 
+                } else {
+                    const erroMsg = data.error || data.message || "Erro ao gravar item no banco de dados.";
+                    mostrarToast(erroMsg, "error");
+                }
+            } catch (err) { 
+                mostrarToast("Erro de conexão com o servidor Railway.", "error"); 
+            } finally {
+                btn.innerHTML = `Salvar Objeto`; 
+                btn.disabled = false;
+            }
+        }
+
+        function abrirModalBaixa(id, nomeAluno, rmAluno) {
+            document.getElementById('baixaItemId').value = id;
+            document.getElementById('baixaNome').value = nomeAluno || ''; 
+            document.getElementById('baixaRm').value = rmAluno || ''; 
+            document.getElementById('baixaTurma').value = '';
+            document.getElementById('modalBaixa').classList.remove('hidden');
+        }
+        function fecharModalBaixa() { document.getElementById('modalBaixa').classList.add('hidden'); }
+
+        async function confirmarBaixaEntrega() {
+            const id = document.getElementById('baixaItemId').value;
+            const payload = { 
+                status: 'ENTREGUE', 
+                retirado_por: document.getElementById('baixaNome').value.trim(), 
+                rm_retirante: document.getElementById('baixaRm').value.trim(), 
+                turma_curso: document.getElementById('baixaTurma').value.trim(), 
+                funcionario_responsavel: 'Secretaria' 
+            };
+            if (!payload.retirado_por || !payload.rm_retirante) return mostrarToast("Preencha Nome e RM do aluno.", "error");
+            try {
+                const res = await fetch(`${API_URL}/api/itens/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+                if (res.status === 401) return sairSecretaria(false);
+                if (res.ok) {
+                    mostrarToast("Entrega concluída!", "success"); 
+                    fecharModalBaixa(); 
+                    carregarItensSecretaria(); 
+                    carregarEstatisticas();
+                    const itemObj = itensSec.find(i => String(i.id) === String(id));
+                    exibirComprovante({ 
+                        aluno: payload.retirado_por, 
+                        rm: payload.rm_retirante, 
+                        turma: payload.turma_curso || '-', 
+                        nomeItem: itemObj ? (itemObj.nome || itemObj.txt_descricao) : `Item #${id}`, 
+                        descItem: itemObj ? itemObj.txt_descricao : '', 
+                        localItem: itemObj ? itemObj.txt_local : '', 
+                        dataEntrega: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') 
+                    });
+                } else mostrarToast("Erro ao registrar entrega.", "error");
+            } catch (e) { mostrarToast("Erro de conexão.", "error"); }
+        }
+
+        function exibirComprovante(dados) {
+            document.getElementById('compNomeAluno').innerText = dados.aluno; 
+            document.getElementById('compRmAluno').innerText = dados.rm; 
+            document.getElementById('compTurmaAluno').innerText = dados.turma;
+            document.getElementById('compNomeItem').innerText = dados.nomeItem; 
+            document.getElementById('compDescItem').innerText = dados.descItem; 
+            document.getElementById('compLocalItem').innerText = dados.localItem; 
+            document.getElementById('compDataEntrega').innerText = dados.dataEntrega;
+            document.getElementById('modalComprovante').classList.remove('hidden');
+        }
+        function fecharComprovante() { document.getElementById('modalComprovante').classList.add('hidden'); }
+
+        async function carregarEstatisticas() { 
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/estatisticas`, {headers: getAuthHeadersGet()}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(res.ok){ 
+                    const data = await res.json(); 
+                    document.getElementById('statTotalItens').innerText = data.total_itens || 0; 
+                    document.getElementById('statTotalEntregues').innerText = data.total_entregues || 0; 
+                    document.getElementById('statTotalDoacoes').innerText = data.total_doacoes || 0; 
+                } 
+            } catch(e){} 
+        }
+
+        async function carregarCategorias() { 
+            try { 
+                const res = await fetch(`${API_URL}/api/categorias`); 
+                if(res.ok){ 
+                    categoriasSec = await res.json(); 
+                    const sel = document.getElementById('cadCategoria'); 
+                    if(sel) { 
+                        sel.innerHTML = ''; 
+                        categoriasSec.forEach(c => sel.innerHTML += `<option value="${c.nome}">${c.
