@@ -53,7 +53,6 @@ function checarSessao() {
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Bem-vindo(a), ${alunoSessao.nome.split(' ')[0]}!`;
         
-        // Preenche os dados no Menu de Perfil Flutuante
         document.getElementById('perfilNomeCompleto').innerText = alunoSessao.nome;
         document.getElementById('perfilEmailInstitucional').innerText = alunoSessao.email;
         document.getElementById('perfilRM').innerText = alunoSessao.rm || 'N/A';
@@ -69,16 +68,36 @@ function checarSessao() {
     }
 }
 
+// --- CONTROLES DOS MENUS FLUTUANTES (HAMBÚRGUER E PERFIL) ---
+function toggleMenuNavegacao() {
+    const menu = document.getElementById('menuNavegacaoDropdown');
+    const perfilMenu = document.getElementById('perfilMenu');
+    if(perfilMenu) perfilMenu.classList.add('hidden');
+    menu.classList.toggle('hidden');
+}
+
+function fecharMenuNavegacao() {
+    document.getElementById('menuNavegacaoDropdown').classList.add('hidden');
+}
+
 function togglePerfilMenu() {
     const menu = document.getElementById('perfilMenu');
+    const navMenu = document.getElementById('menuNavegacaoDropdown');
+    if(navMenu) navMenu.classList.add('hidden');
     menu.classList.toggle('hidden');
 }
 
 window.addEventListener('click', (e) => {
-    const menu = document.getElementById('perfilMenu');
-    const btn = menu?.previousElementSibling;
-    if (menu && !menu.contains(e.target) && !btn?.contains(e.target)) {
-        menu.classList.add('hidden');
+    const navMenu = document.getElementById('menuNavegacaoDropdown');
+    const navBtn = navMenu?.previousElementSibling;
+    if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) {
+        navMenu.classList.add('hidden');
+    }
+
+    const perfilMenu = document.getElementById('perfilMenu');
+    const perfilBtn = perfilMenu?.previousElementSibling;
+    if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) {
+        perfilMenu.classList.add('hidden');
     }
 });
 
@@ -118,7 +137,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endsWith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!email.endswith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -173,8 +192,14 @@ function mudarAba(aba) {
     document.getElementById('catalogScreen').classList.toggle('hidden', aba !== 'catalogo');
     document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
     document.getElementById('detailScreen').classList.add('hidden');
-    document.getElementById('tabBtnCatalogo').className = aba === 'catalogo' ? "px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main flex items-center gap-1.5" : "px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted flex items-center gap-1.5";
-    document.getElementById('tabBtnMural').className = aba === 'mural' ? "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main flex items-center gap-1.5" : "relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
+    
+    // Atualiza destaque visual dentro do menu hambúrguer
+    const btnCat = document.getElementById('menuBtnCatalogo');
+    const btnMur = document.getElementById('menuBtnMural');
+    if(btnCat && btnMur) {
+        btnCat.className = aba === 'catalogo' ? "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-main bg-header transition text-left" : "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left";
+        btnMur.className = aba === 'mural' ? "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-main bg-header transition text-left" : "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left";
+    }
 }
 
 // --- MENU SUSPENSO DE CATEGORIAS ---
