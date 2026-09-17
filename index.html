@@ -14,7 +14,7 @@
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-zinc-950 text-white">
 
-    <!-- TELA DE ABERTURA (SPLASH SCREEN COM A ANIMAÇÃO DO VÍDEO) -->
+    <!-- TELA DE ABERTURA (SPLASH SCREEN COM VÍDEO) -->
     <div id="splashScreenAnimacao" class="fixed inset-0 z-[300] bg-black flex items-center justify-center transition-opacity duration-1000">
         <video id="videoSplash" class="w-full h-full object-cover sm:object-contain" autoplay muted playsinline>
             <source src="animacao.mp4" type="video/mp4">
@@ -99,6 +99,7 @@
 
     <div id="toastContainer" class="fixed top-5 right-5 z-[250] flex flex-col gap-3 pointer-events-none"></div>
 
+    <!-- HEADER OTIMIZADO COM MENU DE PERFIL DO ALUNO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
@@ -114,12 +115,30 @@
                 
                 <button onclick="abrirModalCadastrarAluno()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5"><i class="fas fa-hand-holding-heart"></i><span class="hidden sm:inline">Achei Algo</span></button>
 
+                <!-- BOTÃO DE PERFIL DO ALUNO -->
                 <div class="relative">
-                    <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition"><i class="fas fa-cog"></i></button>
-                    <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
-                        <button onclick="solicitarPermissaoNotificacao()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main mb-2"><span id="notifLabel">Ativar Notificações</span><i class="fas fa-bell text-emerald-400"></i></button>
-                        <button onclick="alternarModoEscuroClaro()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-header border border-color text-xs text-main mb-2"><span id="themeLabel">Modo Escuro</span><i id="themeIcon" class="fas fa-moon text-yellow-400"></i></button>
-                        <button onclick="fazerLogoff()" class="w-full text-center px-3 py-2 rounded-lg bg-red-950/40 text-red-500 border border-red-900 font-bold text-xs">Sair da Conta</button>
+                    <button onclick="togglePerfilMenu()" class="w-9 h-9 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
+                        <i class="fas fa-user text-xs"></i>
+                    </button>
+                    <!-- DROPDOWN DE PERFIL COM INFORMAÇÕES COMPLETAS -->
+                    <div id="perfilMenu" class="hidden absolute right-0 mt-2 w-64 bg-card border border-color rounded-2xl shadow-2xl p-4 z-50 space-y-3">
+                        <div class="border-b border-color pb-3">
+                            <p class="text-[10px] text-muted uppercase font-bold">Aluno Conectado</p>
+                            <p id="perfilNomeCompleto" class="text-sm font-black text-main truncate mt-0.5">Carregando...</p>
+                            <p id="perfilEmailInstitucional" class="text-[11px] text-zinc-400 truncate">...</p>
+                            <div class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-950/40 text-red-400 border border-red-900/50 text-[10px] font-bold">
+                                RM: <span id="perfilRM">-----</span>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <button onclick="solicitarPermissaoNotificacao()" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-header border border-color text-xs text-main hover:border-red-500 transition">
+                                <span>Notificações Push</span>
+                                <i class="fas fa-bell text-emerald-400 text-xs"></i>
+                            </button>
+                            <button onclick="fazerLogoff()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-red-950/40 text-red-500 border border-red-900/50 font-bold text-xs hover:bg-red-900/40 transition">
+                                <i class="fas fa-sign-out-alt text-xs"></i> Sair da Conta
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
