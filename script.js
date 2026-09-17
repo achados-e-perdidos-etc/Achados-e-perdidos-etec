@@ -44,7 +44,7 @@ function dispararNotificacaoNativa(titulo, corpo) {
     }
 }
 
-// --- SISTEMA DE AUTENTICAÇÃO ---
+// --- SISTEMA DE AUTENTICAÇÃO E PERFIL ---
 function checarSessao() {
     const token = localStorage.getItem('aluno_token');
     const dados = localStorage.getItem('aluno_dados');
@@ -52,6 +52,12 @@ function checarSessao() {
         alunoSessao = JSON.parse(dados);
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Bem-vindo(a), ${alunoSessao.nome.split(' ')[0]}!`;
+        
+        // Preenche os dados no Menu de Perfil Flutuante
+        document.getElementById('perfilNomeCompleto').innerText = alunoSessao.nome;
+        document.getElementById('perfilEmailInstitucional').innerText = alunoSessao.email;
+        document.getElementById('perfilRM').innerText = alunoSessao.rm || 'N/A';
+
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
         
@@ -62,6 +68,19 @@ function checarSessao() {
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
 }
+
+function togglePerfilMenu() {
+    const menu = document.getElementById('perfilMenu');
+    menu.classList.toggle('hidden');
+}
+
+window.addEventListener('click', (e) => {
+    const menu = document.getElementById('perfilMenu');
+    const btn = menu?.previousElementSibling;
+    if (menu && !menu.contains(e.target) && !btn?.contains(e.target)) {
+        menu.classList.add('hidden');
+    }
+});
 
 function fazerLogoff() {
     localStorage.removeItem('aluno_token');
@@ -99,7 +118,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endswith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!email.endsWith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -148,9 +167,6 @@ function fecharZoomImagemDirect() {
 }
 function fecharZoomImagem(e) { if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect(); }
 function abrirZoomImagem(src) { document.getElementById('imgZoomConteudo').src = src; document.getElementById('modalZoomImagem').classList.add('ativo'); document.body.style.overflow = 'hidden'; }
-
-function toggleConfigMenu() { document.getElementById('configMenu').classList.toggle('hidden'); }
-function alternarModoEscuroClaro() { document.body.classList.toggle('light-theme'); document.body.classList.toggle('dark-theme'); }
 
 function mudarAba(aba) {
     abaAtiva = aba;
@@ -301,7 +317,7 @@ function exibirMatchesImediatos(itens) {
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
-// --- CHAT MODERNO COM BOLHAS EM GRADIENTE VERMELHO ELEGANTE ---
+// --- CHAT MODERNO ---
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
@@ -401,7 +417,7 @@ async function enviarCadastroAluno(e) {
     btn.innerText = "Enviar para a Secretaria"; btn.disabled = false;
 }
 
-// --- INICIALIZAÇÃO E GESTÃO DA SPLASH SCREEN (APENAS AO ENTRAR/RECARREGAR) ---
+// --- INICIALIZAÇÃO DA SPLASH SCREEN ---
 window.onload = () => { 
     document.body.classList.add('dark-theme'); 
     
