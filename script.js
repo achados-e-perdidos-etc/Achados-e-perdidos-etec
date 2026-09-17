@@ -10,7 +10,7 @@ let abaAtiva = 'catalogo';
 let chatAberto = false;
 let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
-let alunoSessao = null; // Guarda Token, RM, Nome, Email
+let alunoSessao = null;
 
 // --- SISTEMA DE AUTENTICAÇÃO ---
 function checarSessao() {
@@ -122,7 +122,28 @@ function mudarAba(aba) {
     document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
     document.getElementById('detailScreen').classList.add('hidden');
     document.getElementById('tabBtnCatalogo').className = aba === 'catalogo' ? "px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main flex items-center gap-1.5" : "px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted flex items-center gap-1.5";
-    document.getElementById('tabBtnMural').className = aba === 'mural' ? "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main flex items-center gap-1.5" : "relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted flex items-center gap-1.5";
+    document.getElementById('tabBtnMural').className = aba === 'mural' ? "relative px-3 py-2 rounded-lg bg-header border border-amber-500 text-xs font-bold text-main flex items-center gap-1.5" : "relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5";
+}
+
+// --- CONTROLE DO MENU SUSPENSO DE CATEGORIAS ---
+function toggleFiltroDropdown() {
+    const menu = document.getElementById('dropdownFiltrosMenu');
+    menu.classList.toggle('hidden');
+}
+
+window.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('dropdownFiltrosMenu');
+    const btn = dropdown?.previousElementSibling;
+    if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+function selecionarFiltroCategoria(catNome, catLabel) {
+    categoriaAtual = catNome;
+    document.getElementById('labelFiltroSelecionado').innerText = catLabel;
+    document.getElementById('dropdownFiltrosMenu').classList.add('hidden');
+    renderizarItens();
 }
 
 async function carregarCategoriasDinamicamente() {
@@ -130,15 +151,18 @@ async function carregarCategoriasDinamicamente() {
         const res = await fetch(`${API_URL}/api/categorias`);
         if (res.ok) {
             const cats = await res.json();
-            const container = document.getElementById('categoryContainer');
-            container.innerHTML = `<div id="catIndicator" class="sliding-pill absolute rounded-full z-0 opacity-0"></div><button onclick="filtrarCategoria('TODOS', this)" class="cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-white">TODOS</button>`;
+            const containerOpcoes = document.getElementById('listaOpcoesFiltro');
+            if(containerOpcoes) {
+                containerOpcoes.innerHTML = '';
+                cats.forEach(c => {
+                    containerOpcoes.innerHTML += `<button onclick="selecionarFiltroCategoria('${c.nome}', '${c.nome}')" class="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-muted hover:text-main hover:bg-header transition">• ${c.nome}</button>`;
+                });
+            }
             const selectMural = document.getElementById('muralCategoria');
-            if(selectMural) selectMural.innerHTML = '';
-            cats.forEach(c => {
-                const b = document.createElement('button'); b.onclick = function(){ filtrarCategoria(c.nome, this) }; b.className = "cat-btn relative z-10 px-4 py-2 rounded-full text-xs font-bold text-muted bg-card"; b.innerText = c.nome;
-                container.appendChild(b);
-                if(selectMural) selectMural.innerHTML += `<option value="${c.nome}">${c.nome}</option>`;
-            });
+            if(selectMural) {
+                selectMural.innerHTML = '';
+                cats.forEach(c => { selectMural.innerHTML += `<option value="${c.nome}">${c.nome}</option>`; });
+            }
         }
     } catch (e) {}
 }
@@ -180,13 +204,6 @@ function renderizarItens() {
 function filtrarPorPalavraChave() { termoBusca = document.getElementById('searchInput').value.toLowerCase(); renderizarItens(); }
 function limparBusca() { document.getElementById('searchInput').value = ''; termoBusca = ''; renderizarItens(); }
 function filtrarStatus(st) { statusAtual = st; renderizarItens(); }
-function filtrarCategoria(cat, btn) {
-    categoriaAtual = cat;
-    document.querySelectorAll('.cat-btn').forEach(b => { b.classList.remove('text-white'); b.classList.add('text-muted'); });
-    btn.classList.add('text-white'); btn.classList.remove('text-muted');
-    const ind = document.getElementById('catIndicator'); ind.style.left = btn.offsetLeft+'px'; ind.style.width = btn.offsetWidth+'px'; ind.classList.remove('opacity-0');
-    renderizarItens();
-}
 
 function abrirDetalhes(item) {
     itemSelecionado = item;
