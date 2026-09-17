@@ -12,6 +12,39 @@ let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 let alunoSessao = null;
 
+// --- SISTEMA DE NOTIFICAÇÕES (NOVO) ---
+function solicitarPermissaoNotificacao() {
+    if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+            mostrarToast("As notificações já estão ativadas!", "success");
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    mostrarToast("Notificações ativadas com sucesso!", "success");
+                }
+            });
+        } else {
+            mostrarToast("Permissão negada. Ative nas configurações do navegador.", "error");
+        }
+    } else {
+        mostrarToast("Seu navegador não suporta notificações nativas.", "error");
+    }
+}
+
+function dispararNotificacaoNativa(titulo, corpo) {
+    // Só dispara se o usuário permitiu e se o navegador suporta
+    if ("Notification" in window && Notification.permission === "granted") {
+        const notificacao = new Notification(titulo, {
+            body: corpo,
+            icon: "logo.png"
+        });
+        notificacao.onclick = function() {
+            window.focus(); // Traz a aba do navegador para frente
+            this.close();
+        };
+    }
+}
+
 // --- SISTEMA DE AUTENTICAÇÃO ---
 function checarSessao() {
     const token = localStorage.getItem('aluno_token');
@@ -22,6 +55,11 @@ function checarSessao() {
         document.getElementById('lblBemVindo').innerText = `Bem-vindo(a), ${alunoSessao.nome.split(' ')[0]}!`;
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
+        
+        // Pede permissão gentilmente se ainda não tiver respondido
+        if ("Notification" in window && Notification.permission === "default") {
+            setTimeout(solicitarPermissaoNotificacao, 3000);
+        }
     } else {
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
@@ -247,7 +285,16 @@ async function enviarAvisoMural(e) {
     try {
         const res = await fetch(`${API_URL}/api/mural`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('aluno_token')}` }, body: JSON.stringify({ nome: alunoSessao.nome, rm: alunoSessao.rm, email: alunoSessao.email, categoria: document.getElementById('muralCategoria').value, descricao: document.getElementById('muralDescricao').value }) });
         const data = await res.json();
-        if (res.ok) { document.getElementById('muralDescricao').value = ''; if (data.matches_encontrados && data.matches_encontrados.length > 0) { exibirMatchesImediatos(data.matches_encontrados); } else mostrarToast("Relato publicado! Avisaremos por e-mail se acharmos.", "success"); }
+        if (res.ok) { 
+            document.getElementById('muralDescricao').value = ''; 
+            if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
+                // Dispara notificação OS se achar um match
+                dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
+                exibirMatchesImediatos(data.matches_encontrados); 
+            } else {
+                mostrarToast("Relato publicado! Avisaremos se acharmos.", "success"); 
+            }
+        }
     } catch { mostrarToast("Erro", "error"); }
     btn.disabled = false;
 }
@@ -273,7 +320,17 @@ async function atualizarMensagensChat() {
         if(!res.ok) return;
         const msgs = await res.json();
         const c = document.getElementById('chatMensagens');
+        
         if(msgs.length !== ultimaQtdMensagens) {
+            // Se chegou mensagem nova e não foi o próprio aluno que enviou, dispara notificação
+            if (ultimaQtdMensagens > 0) {
+                const ultimaMensagem = msgs[msgs.length - 1];
+                // Se a janela estiver em background ou o chat fechado, notifica
+                if (ultimaMensagem.remetente !== 'ALUNO' && (document.hidden || !chatAberto)) {
+                    dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
+                }
+            }
+
             ultimaQtdMensagens = msgs.length; c.innerHTML = '';
             msgs.forEach(m => { 
                 const eu = m.remetente === 'ALUNO'; 
@@ -357,7 +414,6 @@ window.onload = () => {
     const video = document.getElementById('videoSplash');
     
     if (splash && video) {
-        // Quando o vídeo acabar, esconde a tela de loading suavemente e checa a sessão
         video.onended = () => {
             splash.classList.add('opacity-0');
             setTimeout(() => {
@@ -365,9 +421,6 @@ window.onload = () => {
                 checarSessao();
             }, 1000);
         };
-
-        // Fallback de segurança: se por algum motivo o navegador bloquear o autoplay, 
-        // a tela some em 9 segundos (tempo aproximado do seu vídeo)
         setTimeout(() => {
             if (!splash.classList.contains('hidden')) {
                 splash.classList.add('opacity-0');
