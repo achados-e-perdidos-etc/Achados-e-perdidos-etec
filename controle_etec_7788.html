@@ -12,7 +12,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     
-    <!-- Bibliotecas de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
@@ -45,7 +44,7 @@
         </div>
     </div>
 
-    <!-- CABEÇALHO COM MENU HAMBÚRGUER E PERFIL/SAIR -->
+    <!-- CABEÇALHO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
@@ -57,7 +56,6 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
-                <!-- MENU HAMBÚRGUER (TRÊS RISQUINHOS) -->
                 <div class="relative">
                     <button onclick="toggleMenuSec()" class="w-9 h-9 rounded-lg bg-header border border-color text-main hover:border-red-500 transition flex items-center justify-center shadow-sm">
                         <i class="fas fa-bars text-sm"></i>
@@ -86,7 +84,6 @@
                     </div>
                 </div>
 
-                <!-- BOTÃO DE PERFIL / SAIR DA SECRETARIA -->
                 <div class="relative">
                     <button onclick="togglePerfilSec()" class="w-9 h-9 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
                         <i class="fas fa-user-shield text-xs"></i>
@@ -111,7 +108,6 @@
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow space-y-4">
         
-        <!-- ABA: MURAL DE RELATOS -->
         <section id="secMuralScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center bg-card border border-color p-3 rounded-xl">
                 <h3 class="text-xs font-bold uppercase text-amber-500"><i class="fas fa-bullhorn mr-1"></i> Mural de Relatos</h3>
@@ -120,7 +116,6 @@
             <div id="listaMuralSec" class="space-y-3"></div>
         </section>
 
-        <!-- ABA: ITENS E GESTÃO -->
         <section id="secItensScreen" class="space-y-4">
             <div class="flex gap-2">
                 <button onclick="abrirModalCadastrar()" class="flex-grow dynamic-btn font-bold py-3.5 rounded-xl text-xs uppercase flex items-center justify-center gap-2 shadow-lg">
@@ -137,7 +132,6 @@
             <div id="listaItensSec" class="space-y-3"></div>
         </section>
 
-        <!-- ABA: ESTATÍSTICAS -->
         <section id="secStatsScreen" class="hidden space-y-4">
             <h3 class="text-xs font-bold uppercase text-muted">Visão Geral do Sistema:</h3>
             <div class="grid grid-cols-3 gap-3">
@@ -159,7 +153,6 @@
             </div>
         </section>
 
-        <!-- ABA: CATEGORIAS -->
         <section id="secCatsScreen" class="hidden space-y-4">
             <div class="bg-card border border-color rounded-2xl p-4 space-y-3">
                 <h3 class="text-xs font-bold uppercase text-muted">Adicionar Nova Categoria:</h3>
@@ -174,7 +167,6 @@
             </div>
         </section>
 
-        <!-- ABA: HISTÓRICO DE ENTREGUES -->
         <section id="secEntreguesScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="text-xs font-bold uppercase text-muted">Histórico de Devoluções:</h3>
@@ -183,7 +175,6 @@
             <div id="listaEntreguesSec" class="space-y-3"></div>
         </section>
 
-        <!-- ABA: CHAT -->
         <section id="secChatScreen" class="hidden space-y-4">
             <h3 class="text-xs font-bold uppercase text-muted">Conversas com Alunos:</h3>
             <div id="listaConversasChat" class="space-y-2"></div>
@@ -205,7 +196,7 @@
         </section>
     </main>
 
-    <!-- MODAL DO SCANNER QR CODE -->
+    <!-- MODAIS -->
     <div id="modalScannerQR" class="hidden fixed inset-0 z-[500] bg-black/95 flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-sm bg-card rounded-2xl overflow-hidden shadow-2xl relative border border-color">
             <div class="bg-header p-4 flex justify-between items-center border-b border-color">
@@ -213,41 +204,27 @@
                 <button onclick="fecharLeitorQR()" class="text-muted text-xl"><i class="fas fa-times"></i></button>
             </div>
             <div id="readerBox" class="w-full bg-black min-h-[300px]"></div>
-            <div class="p-4 text-center">
-                <p class="text-xs text-muted">Aponte a câmera para o código gerado pelo sistema (ETEC-ITEM-XX).</p>
-            </div>
+            <div class="p-4 text-center"><p class="text-xs text-muted">Aponte a câmera para o código gerado pelo sistema (ETEC-ITEM-XX).</p></div>
         </div>
     </div>
 
-    <!-- MODAL DE GERAÇÃO DA ETIQUETA -->
     <div id="modalGerarEtiqueta" class="hidden fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-xs p-6 shadow-2xl text-center space-y-4 border-2 border-gray-300">
             <div class="flex justify-between items-center text-black mb-2">
                 <h3 class="font-bold">Etiqueta do Item</h3>
                 <button onclick="document.getElementById('modalGerarEtiqueta').classList.add('hidden')" class="text-gray-500 text-xl"><i class="fas fa-times"></i></button>
             </div>
-            
-            <div class="bg-gray-100 p-2 rounded-xl border border-gray-300 flex justify-center items-center">
-                <img id="imgEtiquetaPreview" src="" class="w-48 h-auto">
-            </div>
-
+            <div class="bg-gray-100 p-2 rounded-xl border border-gray-300 flex justify-center items-center"><img id="imgEtiquetaPreview" src="" class="w-48 h-auto"></div>
             <div class="space-y-2 pt-2">
-                <button id="btnBaixarPNG" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-md flex items-center justify-center gap-2">
-                    <i class="fas fa-download"></i> Salvar como Imagem
-                </button>
-                <button id="btnImprimirWeb" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-md flex items-center justify-center gap-2">
-                    <i class="fas fa-print"></i> Imprimir Etiqueta
-                </button>
+                <button id="btnBaixarPNG" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-md flex items-center justify-center gap-2"><i class="fas fa-download"></i> Salvar como Imagem</button>
+                <button id="btnImprimirWeb" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-md flex items-center justify-center gap-2"><i class="fas fa-print"></i> Imprimir Etiqueta</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO -->
     <div id="modalConfirmacao" class="hidden fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-2xl text-center">
-            <div id="modalConfirmIconBg" class="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-2">
-                <i id="modalConfirmIcon" class="fas fa-exclamation-triangle"></i>
-            </div>
+            <div id="modalConfirmIconBg" class="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-2"><i id="modalConfirmIcon" class="fas fa-exclamation-triangle"></i></div>
             <h3 id="modalConfirmTitulo" class="font-black text-lg text-main">Atenção</h3>
             <p id="modalConfirmMsg" class="text-sm text-muted">Tem certeza que deseja realizar esta ação?</p>
             <div class="flex gap-3 pt-2">
@@ -257,7 +234,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE AÇÕES / DETALHES DO ITEM -->
+    <!-- MODAL DE DETALHES -->
     <div id="modalAcoesItem" class="hidden fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
         <div class="bg-card border-t sm:border border-color w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
@@ -300,7 +277,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO / EDIÇÃO -->
+    <!-- MODAL DE CADASTRO / EDIÇÃO COM ATÉ 4 FOTOS -->
     <div id="modalCadastrar" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-card border border-color w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl my-8">
             <div class="flex justify-between items-center">
@@ -329,19 +306,19 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">Foto do Item:</label>
-                    <input type="file" id="cadFotoFile" accept="image/*" onchange="adicionarFotoEdicao(this)" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs focus:outline-none focus:border-red-500 cursor-pointer">
-                    <div id="gridFotosEdicao" class="mt-2 hidden"></div>
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">Fotos do Objeto (Até 4):</label>
+                    <input type="file" id="cadFotoFile" accept="image/*" multiple onchange="adicionarFotosEdicao(this)" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs focus:outline-none focus:border-red-500 cursor-pointer">
+                    <div id="gridFotosEdicao" class="mt-2 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
                 </div>
                 <div class="flex gap-2 pt-3">
                     <button type="button" onclick="fecharModalCadastrar()" class="w-1/2 bg-header border border-color text-muted font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
-                    <button type="submit" id="btnSalvarItem" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase">Salvar Objeto</button>
+                    <button type="submit" id="btnSalvarItem" class="w-1/2 dynamic-btn font-bold py-3 rounded-xl text-xs uppercase">Salvar Objeto</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL DE DAR BAIXA (ENTREGA) -->
+    <!-- MODAL DE BAIXA E COMPROVANTE -->
     <div id="modalBaixa" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
@@ -361,7 +338,6 @@
         </div>
     </div>
 
-    <!-- MODAL DO COMPROVANTE PARA IMPRESSÃO -->
     <div id="modalComprovante" class="hidden fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white text-black w-full max-w-xl rounded-2xl p-8 space-y-6 shadow-2xl my-6" id="comprovantePrintArea">
             <div class="text-center border-b pb-4 space-y-1">
@@ -382,23 +358,19 @@
                     <p><strong>Local Encontrado:</strong> <span id="compLocalItem"></span></p>
                     <p><strong>Data da Entrega:</strong> <span id="compDataEntrega"></span></p>
                 </div>
-                <p class="text-[11px] text-gray-700 italic pt-2">
-                    Declaro para os devidos fins que recebi o item acima descrito, conferindo suas características e estado atual de conservação nas dependências da secretaria da ETEC.
-                </p>
             </div>
             <div class="grid grid-cols-2 gap-8 pt-10 text-center text-xs">
                 <div class="space-y-2"><div class="border-b border-black pb-1"></div><p class="font-bold">Assinatura do Aluno</p></div>
                 <div class="space-y-2"><div class="border-b border-black pb-1"></div><p class="font-bold">Funcionário Responsável (Secretaria)</p></div>
             </div>
             <div class="flex gap-3 pt-4 no-print">
-                <button onclick="window.print()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase transition flex items-center justify-center gap-2">
-                    <i class="fas fa-print"></i> Imprimir / PDF
-                </button>
+                <button onclick="window.print()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase transition flex items-center justify-center gap-2"><i class="fas fa-print"></i> Imprimir / PDF</button>
                 <button onclick="fecharComprovante()" class="w-1/2 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl text-xs uppercase transition">Fechar</button>
             </div>
         </div>
     </div>
 
+    <!-- SCRIPT DA SECRETARIA -->
     <script>
         const API_URL = "https://etec-achados.up.railway.app";
         let tokenSecretaria = null;
@@ -409,7 +381,7 @@
         let tentativasIncorretas = 0;
         let acaoConfirmacaoCallback = null;
         let html5QrcodeScanner = null;
-        let fotoEdicaoAtual = "";
+        let fotosEdicaoAtuais = [];
 
         const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
         const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
@@ -429,7 +401,6 @@
             window.location.reload();
         }
 
-        // --- CONTROLES DOS MENUS FLUTUANTES DA SECRETARIA ---
         function toggleMenuSec() {
             const menu = document.getElementById('menuSecDropdown');
             const perfilMenu = document.getElementById('perfilSecDropdown');
@@ -437,9 +408,7 @@
             menu.classList.toggle('hidden');
         }
 
-        function fecharMenuSec() {
-            document.getElementById('menuSecDropdown').classList.add('hidden');
-        }
+        function fecharMenuSec() { document.getElementById('menuSecDropdown').classList.add('hidden'); }
 
         function togglePerfilSec() {
             const perfilMenu = document.getElementById('perfilSecDropdown');
@@ -451,15 +420,10 @@
         window.addEventListener('click', (e) => {
             const navMenu = document.getElementById('menuSecDropdown');
             const navBtn = navMenu?.previousElementSibling;
-            if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) {
-                navMenu.classList.add('hidden');
-            }
-
+            if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) navMenu.classList.add('hidden');
             const perfilMenu = document.getElementById('perfilSecDropdown');
             const perfilBtn = perfilMenu?.previousElementSibling;
-            if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) {
-                perfilMenu.classList.add('hidden');
-            }
+            if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) perfilMenu.classList.add('hidden');
         });
 
         async function fazerLoginSec() {
@@ -473,12 +437,10 @@
 
             try {
                 const res = await fetch(`${API_URL}/api/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: emailInput, senha: senhaInput })
                 });
                 const data = await res.json();
-                
                 if (res.ok && data.success) {
                     tokenSecretaria = data.token;
                     localStorage.setItem('secretaria_token', data.token);
@@ -508,7 +470,6 @@
             setTimeout(() => toast.remove(), 4000);
         }
 
-        // --- SISTEMA DE QR CODE ---
         function abrirLeitorQR() {
             document.getElementById('modalScannerQR').classList.remove('hidden');
             html5QrcodeScanner = new Html5QrcodeScanner("readerBox", { fps: 10, qrbox: {width: 250, height: 250} }, false);
@@ -529,7 +490,6 @@
         }
         function onScanFailure(error) { }
 
-        // --- GERAÇÃO DA ETIQUETA ---
         function gerarEtiquetaVisual(id) {
             fecharModalAcoesItem();
             const canvas = document.createElement('canvas');
@@ -547,7 +507,6 @@
             document.getElementById('modalGerarEtiqueta').classList.remove('hidden');
         }
 
-        // --- NAVEGAÇÃO E LISTAGEM DAS ABAS ---
         function mudarAbaSec(aba) {
             ['itens', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
                 document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`).classList.add('hidden');
@@ -561,9 +520,6 @@
             if (aba === 'chat') { carregarConversasChat(); iniciarPollingChatSec(); } else pararPollingChatSec();
         }
 
-        // ==========================================
-        // MURAL DE PERDIDOS
-        // ==========================================
         async function carregarMuralSec() {
             if(!tokenSecretaria) return; 
             try { 
@@ -608,8 +564,7 @@
                 const card = document.createElement('div');
                 card.className = "bg-card border border-color rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:border-gray-500 transition shadow-sm";
                 card.onclick = () => abrirModalAcoesItem(item.id);
-                // Unificação da foto única padronizada
-                const foto = item.foto || (item.fotos && item.fotos[0]) || '';
+                const foto = (item.fotos && item.fotos.length > 0) ? item.fotos[0] : (item.foto || '');
                 const imgTag = foto ? `<img src="${foto}" class="w-16 h-16 object-cover rounded-xl shrink-0">` : `<div class="w-16 h-16 bg-header border border-color rounded-xl flex items-center justify-center text-muted shrink-0"><i class="fas fa-box"></i></div>`;
                 let stBadge = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
                 if (item.status === 'SOLICITADO') stBadge = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
@@ -618,27 +573,37 @@
                 container.appendChild(card);
             });
         }
+
         function filtrarItensSec() {
             const termo = document.getElementById('searchSecInput').value.toLowerCase();
             renderizarListaSec(itensSec.filter(i => (i.nome || '').toLowerCase().includes(termo) || (i.txt_descricao || '').toLowerCase().includes(termo) || String(i.id) === termo));
         }
 
-        // --- DETALHES E AÇÕES JWT ---
         function abrirModalAcoesItem(id) {
             const item = itensSec.find(i => String(i.id) === String(id));
             if (!item) return;
             const galeria = document.getElementById('acaoItemGaleria'); galeria.innerHTML = '';
-            const fotoUnica = item.foto || (item.fotos && item.fotos[0]) || '';
-            if (fotoUnica) { 
-                galeria.innerHTML += `<img src="${fotoUnica}" class="w-20 h-20 object-cover rounded-lg shrink-0 border border-color">`; 
+            
+            const listaFotos = (item.fotos && item.fotos.length > 0) ? item.fotos : (item.foto ? [item.foto] : []);
+            if (listaFotos.length > 0) { 
+                listaFotos.forEach(f => { galeria.innerHTML += `<img src="${f}" class="w-20 h-20 object-cover rounded-lg shrink-0 border border-color">`; });
             } else { 
                 galeria.innerHTML = `<div class="w-20 h-20 bg-card rounded-lg border border-color flex items-center justify-center shrink-0"><i class="fas fa-box text-xl text-muted"></i></div>`; 
             }
-            document.getElementById('acaoItemCat').innerText = item.categoria; document.getElementById('acaoItemStatus').innerText = item.status;
-            document.getElementById('acaoItemId').innerText = item.id; document.getElementById('acaoItemTitulo').innerText = item.nome || item.txt_descricao;
+
+            document.getElementById('acaoItemCat').innerText = item.categoria; 
+            document.getElementById('acaoItemStatus').innerText = item.status;
+            document.getElementById('acaoItemId').innerText = item.id; 
+            document.getElementById('acaoItemTitulo').innerText = item.nome || item.txt_descricao;
             document.getElementById('acaoItemLocal').innerHTML = `<i class="fas fa-map-marker-alt text-red-500 mr-1"></i> ${item.txt_local}`;
-            document.getElementById('acaoItemDesc').innerText = item.txt_descricao; document.getElementById('acaoItemData').innerText = item.txt_data;
-            if (item.solicitado_por) { document.getElementById('acaoItemSolicitanteNome').innerText = item.solicitado_por; document.getElementById('acaoItemSolicitanteRm').innerText = `RM: ${item.rm_aluno || '-'}`; document.getElementById('acaoItemSolicitanteBox').classList.remove('hidden'); } else document.getElementById('acaoItemSolicitanteBox').classList.add('hidden');
+            document.getElementById('acaoItemDesc').innerText = item.txt_descricao; 
+            document.getElementById('acaoItemData').innerText = item.txt_data;
+            
+            if (item.solicitado_por) { 
+                document.getElementById('acaoItemSolicitanteNome').innerText = item.solicitado_por; 
+                document.getElementById('acaoItemSolicitanteRm').innerText = `RM: ${item.rm_aluno || '-'}`; 
+                document.getElementById('acaoItemSolicitanteBox').classList.remove('hidden'); 
+            } else document.getElementById('acaoItemSolicitanteBox').classList.add('hidden');
             
             const st = item.status.toUpperCase();
             document.getElementById('btnAcaoBaixa').classList.toggle('hidden', st === 'ENTREGUE' || st.includes('DOAÇÃO'));
@@ -668,9 +633,8 @@
                     const res = await fetch(url, options);
                     if (res.ok) { 
                         mostrarToast("Operação concluída!", "success"); 
-                        if (callback) { callback(); } else { carregarItensSecretaria(); carregarEstatisticas(); }
-                    }
-                    else mostrarToast("Acesso Negado (Token Inválido)", "error");
+                        if (callback) callback(); else { carregarItensSecretaria(); carregarEstatisticas(); }
+                    } else mostrarToast("Acesso Negado (Token Inválido)", "error");
                 } catch(e) { mostrarToast("Erro de rede", "error"); }
             };
             document.getElementById('modalConfirmacao').classList.remove('hidden');
@@ -678,18 +642,37 @@
         function fecharModalConfirmacao() { document.getElementById('modalConfirmacao').classList.add('hidden'); }
         document.getElementById('btnConfirmarAcao').addEventListener('click', () => { if (acaoConfirmacaoCallback) acaoConfirmacaoCallback(); });
 
-        // --- CADASTRO E EDIÇÃO COM FOTO ÚNICA PADRONIZADA ---
-        function adicionarFotoEdicao(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => { 
-                    fotoEdicaoAtual = e.target.result; 
-                    const container = document.getElementById('gridFotosEdicao');
-                    container.innerHTML = `<img src="${fotoEdicaoAtual}" class="w-20 h-20 object-cover rounded-xl border border-color">`;
-                    container.classList.remove('hidden');
-                }; 
-                reader.readAsDataURL(input.files[0]);
+        // --- GERENCIAMENTO DE ATÉ 4 FOTOS NO PAINEL DA SECRETARIA ---
+        function adicionarFotosEdicao(input) {
+            if (input.files) {
+                const arquivos = Array.from(input.files).slice(0, 4 - fotosEdicaoAtuais.length);
+                arquivos.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (fotosEdicaoAtuais.length < 4) {
+                            fotosEdicaoAtuais.push(e.target.result);
+                            renderizarGridFotosEdicao();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+                input.value = '';
             }
+        }
+
+        function renderizarGridFotosEdicao() {
+            const container = document.getElementById('gridFotosEdicao');
+            container.innerHTML = '';
+            if (fotosEdicaoAtuais.length > 0) {
+                container.classList.remove('hidden');
+                fotosEdicaoAtuais.forEach((foto, i) => {
+                    container.innerHTML += `
+                        <div class="relative w-20 h-20 shrink-0">
+                            <img src="${foto}" class="w-full h-full object-cover rounded-xl border border-color">
+                            <button type="button" onclick="fotosEdicaoAtuais.splice(${i}, 1); renderizarGridFotosEdicao();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"><i class="fas fa-times"></i></button>
+                        </div>`;
+                });
+            } else container.classList.add('hidden');
         }
 
         async function abrirModalCadastrar() {
@@ -701,8 +684,8 @@
             document.getElementById('cadData').value = new Date().toLocaleDateString('pt-BR'); 
             document.getElementById('cadLocal').value = '';
             document.getElementById('cadStatus').value = 'DISPONÍVEL'; 
-            fotoEdicaoAtual = ""; 
-            document.getElementById('gridFotosEdicao').classList.add('hidden');
+            fotosEdicaoAtuais = []; 
+            renderizarGridFotosEdicao(); 
             document.getElementById('modalCadastrar').classList.remove('hidden');
         }
         function fecharModalCadastrar() { document.getElementById('modalCadastrar').classList.add('hidden'); }
@@ -719,14 +702,8 @@
             document.getElementById('cadLocal').value = item.txt_local || ''; 
             document.getElementById('cadStatus').value = item.status || 'DISPONÍVEL';
             
-            fotoEdicaoAtual = item.foto || (item.fotos && item.fotos[0]) || '';
-            const container = document.getElementById('gridFotosEdicao');
-            if (fotoEdicaoAtual) {
-                container.innerHTML = `<img src="${fotoEdicaoAtual}" class="w-20 h-20 object-cover rounded-xl border border-color">`;
-                container.classList.remove('hidden');
-            } else {
-                container.classList.add('hidden');
-            }
+            fotosEdicaoAtuais = (item.fotos && item.fotos.length > 0) ? [...item.fotos] : (item.foto ? [item.foto] : []);
+            renderizarGridFotosEdicao(); 
             document.getElementById('modalCadastrar').classList.remove('hidden');
         }
 
@@ -743,17 +720,17 @@
                 data: document.getElementById('cadData').value.trim(), 
                 local: document.getElementById('cadLocal').value.trim(), 
                 status: document.getElementById('cadStatus').value, 
-                foto: fotoEdicaoAtual // <--- Unificado no campo 'foto'
+                fotos: fotosEdicaoAtuais, 
+                foto: fotosEdicaoAtuais[0] || "" 
             };
             
             try {
                 const res = await fetch(id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`, { method: id ? 'PUT' : 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
-                if (res.ok) { mostrarToast("Salvo com sucesso!", "success"); fecharModalCadastrar(); carregarItensSecretaria(); carregarEstatisticas(); } else mostrarToast("Sem permissão (Token). Faça login novamente.", "error");
+                if (res.ok) { mostrarToast("Salvo com sucesso!", "success"); fecharModalCadastrar(); carregarItensSecretaria(); carregarEstatisticas(); } else mostrarToast("Sem permissão (Token).", "error");
             } catch (err) { mostrarToast("Erro ao conectar", "error"); }
             btn.innerHTML = `Salvar Objeto`; btn.disabled = false;
         }
 
-        // --- BAIXA E COMPROVANTE COM JWT ---
         function abrirModalBaixa(id, nomeAluno, rmAluno) {
             document.getElementById('baixaItemId').value = id;
             document.getElementById('baixaNome').value = nomeAluno || ''; document.getElementById('baixaRm').value = rmAluno || ''; document.getElementById('baixaTurma').value = '';
@@ -774,6 +751,7 @@
                 } else mostrarToast("Acesso Negado.", "error");
             } catch (e) { mostrarToast("Erro", "error"); }
         }
+
         function exibirComprovante(dados) {
             document.getElementById('compNomeAluno').innerText = dados.aluno; document.getElementById('compRmAluno').innerText = dados.rm; document.getElementById('compTurmaAluno').innerText = dados.turma;
             document.getElementById('compNomeItem').innerText = dados.nomeItem; document.getElementById('compDescItem').innerText = dados.descItem; document.getElementById('compLocalItem').innerText = dados.localItem; document.getElementById('compDataEntrega').innerText = dados.dataEntrega;
@@ -781,17 +759,15 @@
         }
         function fecharComprovante() { document.getElementById('modalComprovante').classList.add('hidden'); }
 
-        // --- ESTATISTICAS, CATEGORIAS E HISTORICO JWT ---
         async function carregarEstatisticas() { if(!tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/estatisticas`, {headers: getAuthHeadersGet()}); if(res.ok){ const data = await res.json(); document.getElementById('statTotalItens').innerText = data.total_itens || 0; document.getElementById('statTotalEntregues').innerText = data.total_entregues || 0; document.getElementById('statTotalDoacoes').innerText = data.total_doacoes || 0; } }catch(e){} }
         async function carregarCategorias() { try { const res = await fetch(`${API_URL}/api/categorias`); if(res.ok){ categoriasSec = await res.json(); const sel = document.getElementById('cadCategoria'); if(sel) { sel.innerHTML = ''; categoriasSec.forEach(c => sel.innerHTML += `<option value="${c.nome}">${c.nome}</option>`); } document.getElementById('listaCategoriasSec').innerHTML = categoriasSec.map(c => `<div class="bg-header border border-color rounded-xl p-3 text-xs font-bold text-main">${c.nome}</div>`).join(''); } }catch(e){} }
         async function adicionarCategoriaSec() { const nome = document.getElementById('novaCatInput').value.trim().toUpperCase(); if(!nome) return; try { if((await fetch(`${API_URL}/api/categorias`, {method:'POST', headers: getAuthHeaders(), body: JSON.stringify({nome})})).ok){ document.getElementById('novaCatInput').value=''; carregarCategorias(); } }catch(e){} }
         async function carregarEntregues() { if(!tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/entregues`, {headers: getAuthHeadersGet()}); if(res.ok){ const entregues = await res.json(); document.getElementById('listaEntreguesSec').innerHTML = entregues.length === 0 ? `<div class="text-center py-8 text-muted text-xs">Nenhum item entregue.</div>` : entregues.map(e => `<div class="bg-card border border-color rounded-2xl p-4 space-y-1 text-xs"><div class="flex justify-between items-center font-bold text-main"><span>${e.nome_item}</span><span class="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-800 px-2 py-0.5 rounded uppercase">Entregue</span></div><p class="text-muted">Retirado por: <strong class="text-main">${e.retirado_por}</strong> (RM: ${e.rm_retirante})</p></div>`).join(''); } }catch(e){} }
 
-        // --- CHAT PROTEGIDO ---
         async function carregarConversasChat() { if(!tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/chat/conversas`, {headers: getAuthHeadersGet()}); if(!res.ok) return; const conversas = await res.json(); let total = 0; document.getElementById('listaConversasChat').innerHTML = conversas.map(c => { if(c.nao_lidas > 0) total += c.nao_lidas; return `<div onclick="abrirConversaAluno('${c.rm_aluno}', '${c.nome_aluno}')" class="bg-card border border-color rounded-xl p-3 flex justify-between items-center cursor-pointer"><div><h4 class="font-bold text-xs text-main">${c.nome_aluno} (RM: ${c.rm_aluno})</h4><p class="text-[10px] text-muted">Última: ${c.ultima_msg_data}</p></div>${c.nao_lidas > 0 ? `<span class="bg-red-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">${c.nao_lidas}</span>` : `<i class="fas fa-chevron-right text-xs text-muted"></i>`}</div>`; }).join(''); const badge = document.getElementById('badgeChatSec'); if(total > 0){ badge.classList.remove('hidden'); badge.innerText = total; } else badge.classList.add('hidden'); } catch(e){} }
-        async function abrirConversaAluno(rm, nome) { chatRmAtivo = rm; document.getElementById('secChatScreen').classList.add('space-y-4'); document.getElementById('listaConversasChat').classList.add('hidden'); document.getElementById('painelConversaAtiva').classList.remove('hidden'); document.getElementById('chatAlunoNomeTitulo').innerText = nome; document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; atualizarMensagensSec(); }
+        async function abrirConversaAluno(rm, nome) { chatRmAtivo = rm; document.getElementById('listaConversasChat').classList.add('hidden'); document.getElementById('painelConversaAtiva').classList.remove('hidden'); document.getElementById('chatAlunoNomeTitulo').innerText = nome; document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; atualizarMensagensSec(); }
         function fecharConversaAtiva() { chatRmAtivo = null; document.getElementById('painelConversaAtiva').classList.add('hidden'); document.getElementById('listaConversasChat').classList.remove('hidden'); carregarConversasChat(); }
-        async function atualizarMensagensSec() { if (!chatRmAtivo || !tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); if(!res.ok) return; const container = document.getElementById('chatSecMensagens'); container.innerHTML = (await res.json()).json ? [] : (await res.json()).map(m => { const eu = m.remetente === 'SECRETARIA'; return `<div class="flex flex-col ${eu ? 'items-end' : 'items-start'}"><span class="text-[9px] text-muted mb-0.5">${eu ? 'Secretaria' : m.nome_aluno}</span><div class="max-w-[85%] px-3 py-2 rounded-xl ${eu ? 'bg-red-600 text-white rounded-tr-none' : 'bg-header border border-color text-main rounded-tl-none'} shadow-sm break-words">${m.mensagem}</div></div>`; }).join(''); container.scrollTop = container.scrollHeight; } catch(e){} }
+        async function atualizarMensagensSec() { if (!chatRmAtivo || !tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); if(!res.ok) return; const container = document.getElementById('chatSecMensagens'); const dados = await res.json(); container.innerHTML = Array.isArray(dados) ? dados.map(m => { const eu = m.remetente === 'SECRETARIA'; return `<div class="flex flex-col ${eu ? 'items-end' : 'items-start'}"><span class="text-[9px] text-muted mb-0.5">${eu ? 'Secretaria' : m.nome_aluno}</span><div class="max-w-[85%] px-3 py-2 rounded-xl ${eu ? 'bg-red-600 text-white rounded-tr-none' : 'bg-header border border-color text-main rounded-tl-none'} shadow-sm break-words">${m.mensagem}</div></div>`; }).join('') : ''; container.scrollTop = container.scrollHeight; } catch(e){} }
         async function enviarMensagemSecretaria(e) { e.preventDefault(); if (!chatRmAtivo || !document.getElementById('inputMsgSec').value.trim()) return; try { if ((await fetch(`${API_URL}/api/chat/enviar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rm: chatRmAtivo, nome: 'Secretaria', remetente: 'SECRETARIA', mensagem: document.getElementById('inputMsgSec').value.trim() }) })).ok) { document.getElementById('inputMsgSec').value = ''; atualizarMensagensSec(); } } catch(e){} }
         function iniciarPollingChatSec() { pararPollingChatSec(); chatPollTimer = setInterval(() => { carregarConversasChat(); if (chatRmAtivo) atualizarMensagensSec(); }, 3000); }
         function pararPollingChatSec() { if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } }
