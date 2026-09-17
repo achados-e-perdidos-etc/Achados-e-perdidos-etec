@@ -124,7 +124,6 @@
                         <button onclick="abrirModalCadastrarAluno(); fecharMenuNavegacao();" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 hover:bg-header transition text-left border-t border-color pt-2 mt-1">
                             <i class="fas fa-hand-holding-heart w-4"></i> Achei Algo
                         </button>
-                        <!-- NOVO ATALHO AQUI -->
                         <button onclick="abrirPainelMeusItens(); fecharMenuNavegacao();" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 hover:bg-header transition text-left">
                             <i class="fas fa-user-clock w-4"></i> Meus Itens e Relatos
                         </button>
@@ -146,7 +145,6 @@
                             </div>
                         </div>
                         <div class="space-y-1.5">
-                            <!-- NOVO ATALHO AQUI TAMBÉM -->
                             <button onclick="abrirPainelMeusItens(); togglePerfilMenu();" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-header border border-color text-xs text-main hover:border-blue-500 transition">
                                 <span>Meus Itens e Relatos</span>
                                 <i class="fas fa-user-clock text-blue-400 text-xs"></i>
@@ -212,7 +210,7 @@
             </div>
         </section>
 
-        <!-- PAINEL MEUS ITENS E RELATOS (NOVA ABA) -->
+        <!-- PAINEL MEUS ITENS E RELATOS -->
         <section id="meusItensScreen" class="hidden space-y-6">
             <div class="bg-card border border-color rounded-2xl p-5 shadow-xl space-y-4">
                 <div class="flex justify-between items-center border-b border-color pb-3">
@@ -295,7 +293,7 @@
     <!-- MODAL CONFIRMAR SOLICITAÇÃO -->
     <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"><div class="bg-card border border-color w-full max-w-sm rounded-2xl p-6 space-y-4"><h3 class="font-bold text-main text-lg text-center"><i class="fas fa-question-circle text-red-500 mr-2"></i>Confirmar Retirada?</h3><p class="text-sm text-muted text-center">Vamos enviar o comprovante para o seu e-mail institucional.</p><div class="flex gap-2 pt-2"><button onclick="document.getElementById('modalNovo').classList.add('hidden')" class="w-1/2 bg-header text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button><button id="btnNovo" onclick="enviarNovo()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Sim, é meu!</button></div></div></div>
 
-    <!-- MODAL DE CADASTRO PELO ALUNO (MODERADO) -->
+    <!-- MODAL DE CADASTRO PELO ALUNO (COM SUPORTE A ATÉ 4 FOTOS) -->
     <div id="modalCadastrarAluno" class="hidden fixed inset-0 z-[250] bg-black/80 flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
@@ -309,14 +307,508 @@
                 <select id="alunoItemCat" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-emerald-500"></select>
                 <input type="text" id="alunoItemLocal" required placeholder="Onde você encontrou? (ex: Pátio)" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-emerald-500">
                 <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">Foto do Objeto:</label>
-                    <input type="file" id="alunoItemFoto" accept="image/*" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs cursor-pointer">
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">Fotos do Objeto (Até 4):</label>
+                    <input type="file" id="alunoItemFoto" accept="image/*" multiple onchange="prepararFotosAluno(this)" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs cursor-pointer">
+                    <div id="gridPreviewAluno" class="mt-2 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
                 </div>
                 <button type="submit" id="btnSalvarAlunoItem" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-lg transition">Enviar para a Secretaria</button>
             </form>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- SCRIPT DO ALUNO -->
+    <script>
+        const API_URL = "https://etec-achados.up.railway.app";
+        let todosItens = [];
+        let itemSelecionado = null;
+        let categoriaAtual = 'TODOS';
+        let statusAtual = 'TODOS';
+        let termoBusca = '';
+        let fotosAtuais = [];
+        let fotoIndiceAtual = 0;
+        let abaAtiva = 'catalogo';
+        let chatAberto = false;
+        let chatTimerPolling = null;
+        let ultimaQtdMensagens = 0;
+        let alunoSessao = null;
+        let fotosAlunoSelecionadas = [];
+
+        function solicitarPermissaoNotificacao() {
+            if ("Notification" in window) {
+                if (Notification.permission === "granted") {
+                    mostrarToast("As notificações já estão ativadas!", "success");
+                } else if (Notification.permission !== "denied") {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") mostrarToast("Notificações ativadas com sucesso!", "success");
+                    });
+                }
+            } else {
+                mostrarToast("Seu navegador não suporta notificações nativas.", "error");
+            }
+        }
+
+        function dispararNotificacaoNativa(titulo, corpo) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                const notificacao = new Notification(titulo, { body: corpo, icon: "logo.png" });
+                notificacao.onclick = function() { window.focus(); this.close(); };
+            }
+        }
+
+        function checarSessao() {
+            const token = localStorage.getItem('aluno_token');
+            const dados = localStorage.getItem('aluno_dados');
+            if (token && dados) {
+                alunoSessao = JSON.parse(dados);
+                document.getElementById('loginAlunoScreen').classList.add('hidden');
+                document.getElementById('lblBemVindo').innerText = `Bem-vindo(a), ${alunoSessao.nome.split(' ')[0]}!`;
+                document.getElementById('perfilNomeCompleto').innerText = alunoSessao.nome;
+                document.getElementById('perfilEmailInstitucional').innerText = alunoSessao.email;
+                document.getElementById('perfilRM').innerText = alunoSessao.rm || 'N/A';
+                carregarItensDaAPI();
+                carregarCategoriasDinamicamente();
+                if ("Notification" in window && Notification.permission === "default") setTimeout(solicitarPermissaoNotificacao, 3000);
+            } else {
+                document.getElementById('loginAlunoScreen').classList.remove('hidden');
+            }
+        }
+
+        function toggleMenuNavegacao() {
+            const menu = document.getElementById('menuNavegacaoDropdown');
+            const perfilMenu = document.getElementById('perfilMenu');
+            if(perfilMenu) perfilMenu.classList.add('hidden');
+            menu.classList.toggle('hidden');
+        }
+
+        function fecharMenuNavegacao() { document.getElementById('menuNavegacaoDropdown').classList.add('hidden'); }
+
+        function togglePerfilMenu() {
+            const menu = document.getElementById('perfilMenu');
+            const navMenu = document.getElementById('menuNavegacaoDropdown');
+            if(navMenu) navMenu.classList.add('hidden');
+            menu.classList.toggle('hidden');
+        }
+
+        window.addEventListener('click', (e) => {
+            const navMenu = document.getElementById('menuNavegacaoDropdown');
+            const navBtn = navMenu?.previousElementSibling;
+            if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) navMenu.classList.add('hidden');
+            const perfilMenu = document.getElementById('perfilMenu');
+            const perfilBtn = perfilMenu?.previousElementSibling;
+            if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) perfilMenu.classList.add('hidden');
+        });
+
+        function fazerLogoff() {
+            localStorage.removeItem('aluno_token');
+            localStorage.removeItem('aluno_dados');
+            window.location.reload();
+        }
+
+        function alternarTelaAuth(tela) {
+            document.getElementById('formLoginAluno').classList.add('hidden');
+            document.getElementById('formCadastroAluno').classList.add('hidden');
+            document.getElementById('formRecuperarAluno').classList.add('hidden');
+            if (tela === 'login') document.getElementById('formLoginAluno').classList.remove('hidden');
+            if (tela === 'cadastro') document.getElementById('formCadastroAluno').classList.remove('hidden');
+            if (tela === 'recuperar') document.getElementById('formRecuperarAluno').classList.remove('hidden');
+        }
+
+        async function fazerLoginAluno(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnAcessoLogin');
+            btn.innerText = "Entrando..."; btn.disabled = true;
+            try {
+                const res = await fetch(`${API_URL}/api/auth/login-aluno`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: document.getElementById('loginEmailAluno').value, senha: document.getElementById('loginSenhaAluno').value })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('aluno_token', data.token);
+                    localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
+                    checarSessao();
+                } else mostrarToast(data.message, "error");
+            } catch { mostrarToast("Erro de conexão.", "error"); }
+            btn.innerText = "Entrar"; btn.disabled = false;
+        }
+
+        async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
+            const email = document.getElementById(idEmail).value.trim();
+            if (!email.endswith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+            const btn = document.getElementById(idBtn);
+            btn.innerText = "Enviando..."; btn.disabled = true;
+            try {
+                const res = await fetch(`${API_URL}/api/auth/enviar-codigo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+                const data = await res.json();
+                if (data.success) { document.getElementById(idShow).classList.remove('hidden'); document.getElementById(idHide).classList.add('hidden'); }
+                else mostrarToast(data.message, "error");
+            } catch { mostrarToast("Erro na rede.", "error"); }
+            btn.innerText = "Enviar Código"; btn.disabled = false;
+        }
+
+        async function confirmarCadastro(e) {
+            e.preventDefault();
+            const payload = { email: document.getElementById('cadEmailAluno').value, codigo: document.getElementById('cadCodigo').value, nome: document.getElementById('cadNome').value, rm: document.getElementById('cadRM').value, senha: document.getElementById('cadSenha').value };
+            try {
+                const res = await fetch(`${API_URL}/api/auth/cadastrar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('aluno_token', data.token); localStorage.setItem('aluno_dados', JSON.stringify(data.aluno)); checarSessao();
+                } else mostrarToast(data.message, "error");
+            } catch { mostrarToast("Erro.", "error"); }
+        }
+
+        async function confirmarRedefinicao(e) {
+            e.preventDefault();
+            const payload = { email: document.getElementById('recEmailAluno').value, codigo: document.getElementById('recCodigo').value, senha: document.getElementById('recSenha').value };
+            try {
+                const res = await fetch(`${API_URL}/api/auth/redefinir`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (data.success) { mostrarToast("Senha alterada! Faça login.", "success"); alternarTelaAuth('login'); }
+                else mostrarToast(data.message, "error");
+            } catch { mostrarToast("Erro.", "error"); }
+        }
+
+        function mostrarToast(mensagem, tipo = 'info') {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `bg-card border border-color text-main px-4 py-3 rounded-xl flex items-center gap-3 toast-enter pointer-events-auto shadow-lg ${tipo==='success'?'text-emerald-400':tipo==='error'?'text-red-400':'text-blue-400'}`;
+            t.innerHTML = `<p class="text-xs font-bold flex-grow">${mensagem}</p>`;
+            c.appendChild(t); setTimeout(() => t.remove(), 4000);
+        }
+
+        function fecharZoomImagemDirect() { document.getElementById('modalZoomImagem').classList.remove('ativo'); document.body.style.overflow = ''; }
+        function fecharZoomImagem(e) { if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect(); }
+        function abrirZoomImagem(src) { document.getElementById('imgZoomConteudo').src = src; document.getElementById('modalZoomImagem').classList.add('ativo'); document.body.style.overflow = 'hidden'; }
+
+        function mudarAba(aba) {
+            abaAtiva = aba;
+            document.getElementById('catalogScreen').classList.toggle('hidden', aba !== 'catalogo');
+            document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
+            document.getElementById('meusItensScreen').classList.toggle('hidden', aba !== 'meusItens');
+            document.getElementById('detailScreen').classList.add('hidden');
+        }
+
+        async function abrirPainelMeusItens() {
+            mudarAba('meusItens');
+            if (!alunoSessao) return;
+            const listaSol = document.getElementById('listaMinhasSolicitacoes');
+            const listaRel = document.getElementById('listaMeusRelatosMural');
+            listaSol.innerHTML = `<p class="text-xs text-muted italic">Buscando solicitações...</p>`;
+            listaRel.innerHTML = `<p class="text-xs text-muted italic">Buscando relatos...</p>`;
+
+            try {
+                const resItens = await fetch(`${API_URL}/api/itens`);
+                if (resItens.ok) {
+                    const itens = await resItens.json();
+                    const meus = itens.filter(i => i.aluno_solicitante_rm === alunoSessao.rm || (i.solicitacoes && i.solicitacoes.some(s => s.rm === alunoSessao.rm)));
+                    if (meus.length > 0) {
+                        listaSol.innerHTML = '';
+                        meus.forEach(i => {
+                            listaSol.innerHTML += `
+                                <div class="bg-header border border-color rounded-xl p-3 flex justify-between items-center gap-3">
+                                    <div>
+                                        <p class="text-xs font-bold text-main">${i.nome || i.txt_descricao}</p>
+                                        <p class="text-[10px] text-muted">Status: <span class="font-bold text-amber-400 uppercase">${i.status || 'SOLICITADO'}</span></p>
+                                    </div>
+                                    <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")})' class="px-3 py-1.5 rounded-lg bg-card border border-color text-xs font-bold text-main hover:border-red-500 transition">VER</button>
+                                </div>`;
+                        });
+                    } else listaSol.innerHTML = `<p class="text-xs text-muted italic">Você ainda não solicitou nenhum item.</p>`;
+                }
+
+                const resMural = await fetch(`${API_URL}/api/mural/aluno/${alunoSessao.rm}`);
+                if (resMural.ok) {
+                    const relatos = await resMural.json();
+                    if (relatos.length > 0) {
+                        listaRel.innerHTML = '';
+                        relatos.forEach(r => {
+                            listaRel.innerHTML += `
+                                <div class="bg-header border border-color rounded-xl p-3 flex justify-between items-center gap-3">
+                                    <div>
+                                        <p class="text-xs font-bold text-main">[${r.categoria}] ${r.descricao}</p>
+                                        <p class="text-[10px] text-muted">Data: ${r.data || 'recente'}</p>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-950/40 text-amber-400 border border-amber-900">ATIVO NO MURAL</span>
+                                </div>`;
+                        });
+                    } else listaRel.innerHTML = `<p class="text-xs text-muted italic">Nenhum relato publicado no mural.</p>`;
+                }
+            } catch (e) {
+                listaSol.innerHTML = `<p class="text-xs text-red-400">Erro ao carregar dados.</p>`;
+                listaRel.innerHTML = `<p class="text-xs text-red-400">Erro ao carregar dados.</p>`;
+            }
+        }
+
+        function toggleFiltroDropdown() { document.getElementById('dropdownFiltrosMenu').classList.toggle('hidden'); }
+        window.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('dropdownFiltrosMenu');
+            const btn = dropdown?.previousElementSibling;
+            if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) dropdown.classList.add('hidden');
+        });
+
+        function selecionarFiltroCategoria(catNome, catLabel) {
+            categoriaAtual = catNome;
+            document.getElementById('labelFiltroSelecionado').innerText = catLabel;
+            document.getElementById('dropdownFiltrosMenu').classList.add('hidden');
+            renderizarItens();
+        }
+
+        async function carregarCategoriasDinamicamente() {
+            try {
+                const res = await fetch(`${API_URL}/api/categorias`);
+                if (res.ok) {
+                    const cats = await res.json();
+                    const containerOpcoes = document.getElementById('listaOpcoesFiltro');
+                    if(containerOpcoes) {
+                        containerOpcoes.innerHTML = '';
+                        cats.forEach(c => { containerOpcoes.innerHTML += `<button onclick="selecionarFiltroCategoria('${c.nome}', '${c.nome}')" class="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-muted hover:text-main hover:bg-header transition">• ${c.nome}</button>`; });
+                    }
+                    const selectMural = document.getElementById('muralCategoria');
+                    if(selectMural) {
+                        selectMural.innerHTML = '';
+                        cats.forEach(c => { selectMural.innerHTML += `<option value="${c.nome}">${c.nome}</option>`; });
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function carregarItensDaAPI() {
+            try {
+                const response = await fetch(`${API_URL}/api/itens`);
+                if (response.ok) { todosItens = await response.json(); renderizarItens(); }
+            } catch(e){}
+            setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 500);
+        }
+
+        function normalizarStatus(status) { return (status || 'DISPONÍVEL').toUpperCase(); }
+
+        function renderizarItens() {
+            const grid = document.getElementById('itemsGrid');
+            grid.innerHTML = '';
+            const filtrados = todosItens.filter(i => {
+                const st = normalizarStatus(i.status);
+                return (categoriaAtual === 'TODOS' || (i.categoria && i.categoria.toUpperCase() === categoriaAtual)) &&
+                       (statusAtual === 'TODOS' || st === statusAtual) &&
+                       (!termoBusca || (i.nome||'').toLowerCase().includes(termoBusca) || (i.txt_descricao||'').toLowerCase().includes(termoBusca));
+            });
+            filtrados.forEach(item => {
+                const imagemSrc = (item.fotos && item.fotos.length > 0) ? item.fotos[0] : (item.foto || '');
+                const st = normalizarStatus(item.status);
+                let badge = st === 'SOLICITADO' ? 'text-amber-400 border-amber-700/50 bg-amber-900/40' : (st === 'ENTREGUE' ? 'text-slate-400 border-slate-700 bg-slate-800' : 'text-emerald-400 border-emerald-700/50 bg-emerald-900/40');
+                grid.innerHTML += `
+                    <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:border-red-500/50 transition">
+                        ${imagemSrc ? `<img src="${imagemSrc}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
+                        <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border">${item.categoria}</span><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${badge}">${st}</span></div>
+                        <h4 class="font-bold text-sm text-main truncate mt-2">${item.nome || item.txt_descricao}</h4>
+                        <p class="text-[10px] text-muted mt-2"><i class="fas fa-map-marker-alt"></i> ${item.txt_local}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function filtrarPorPalavraChave() { termoBusca = document.getElementById('searchInput').value.toLowerCase(); renderizarItens(); }
+        function limparBusca() { document.getElementById('searchInput').value = ''; termoBusca = ''; renderizarItens(); }
+        function filtrarStatus(st) { statusAtual = st; renderizarItens(); }
+
+        function abrirDetalhes(item) {
+            itemSelecionado = item;
+            document.getElementById('catalogScreen').classList.add('hidden');
+            document.getElementById('muralScreen').classList.add('hidden');
+            document.getElementById('meusItensScreen').classList.add('hidden');
+            document.getElementById('detailScreen').classList.remove('hidden');
+            document.getElementById('detailTitle').innerText = item.nome || item.txt_descricao;
+            document.getElementById('detailDescription').innerText = item.txt_descricao;
+            document.getElementById('detailLocal').innerText = item.txt_local;
+            document.getElementById('detailDate').innerText = item.txt_data;
+            
+            const cont = document.getElementById('carouselContainer');
+            cont.innerHTML = ''; 
+            fotosAtuais = (item.fotos && item.fotos.length > 0) ? item.fotos : (item.foto ? [item.foto] : []);
+            
+            if(fotosAtuais.length > 0) {
+                document.getElementById('detailPlaceholder').classList.add('hidden');
+                fotosAtuais.forEach(f => cont.innerHTML += `<div class="w-full h-full flex-shrink-0 snap-center flex justify-center p-2"><img src="${f}" onclick="abrirZoomImagem('${f}')" class="max-h-full max-w-full object-contain rounded-lg"></div>`);
+            } else document.getElementById('detailPlaceholder').classList.remove('hidden');
+            
+            const st = normalizarStatus(item.status);
+            const b = document.getElementById('btnSolicitar');
+            if (st !== 'DISPONÍVEL') { b.disabled = true; b.innerText = `STATUS: ${st}`; b.className = "w-full bg-gray-700 text-gray-400 font-bold py-3.5 rounded-xl text-sm"; }
+            else { b.disabled = false; b.innerText = "ESTE É O MEU ITEM"; b.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm"; }
+        }
+
+        function voltarParaCatalogo() { mudarAba('catalogo'); }
+        function navegarFotos(dir) { const c = document.getElementById('carouselContainer'); if(fotosAtuais.length) { fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); } }
+
+        function abrirNovoModal() { if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); }
+        async function enviarNovo() {
+            const btn = document.getElementById('btnNovo'); btn.disabled = true; btn.innerText = "Processando...";
+            try {
+                const res = await fetch(`${API_URL}/api/solicitar`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('aluno_token')}` }, body: JSON.stringify({ id: itemSelecionado.id, nome: alunoSessao.nome, rm: alunoSessao.rm, email: alunoSessao.email }) });
+                const data = await res.json();
+                if(res.ok) { mostrarToast("Solicitação realizada! Vá até a secretaria.", "success"); document.getElementById('modalNovo').classList.add('hidden'); voltarParaCatalogo(); carregarItensDaAPI(); }
+                else mostrarToast(data.message, "error");
+            } catch { mostrarToast("Erro na solicitação", "error"); }
+            btn.disabled = false; btn.innerText = "Sim, é meu!";
+        }
+
+        async function enviarAvisoMural(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnPublicarMural'); btn.disabled = true;
+            try {
+                const res = await fetch(`${API_URL}/api/mural`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('aluno_token')}` }, body: JSON.stringify({ nome: alunoSessao.nome, rm: alunoSessao.rm, email: alunoSessao.email, categoria: document.getElementById('muralCategoria').value, descricao: document.getElementById('muralDescricao').value }) });
+                const data = await res.json();
+                if (res.ok) { 
+                    document.getElementById('muralDescricao').value = ''; 
+                    if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
+                        dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
+                        exibirMatchesImediatos(data.matches_encontrados); 
+                    } else mostrarToast("Relato publicado! Avisaremos se acharmos.", "success"); 
+                }
+            } catch { mostrarToast("Erro", "error"); }
+            btn.disabled = false;
+        }
+
+        function exibirMatchesImediatos(itens) {
+            const lst = document.getElementById('matchItensLista'); lst.innerHTML = '';
+            itens.forEach(i => lst.innerHTML += `<div class="bg-header p-3 rounded-lg flex justify-between items-center gap-3"><div><p class="text-xs font-bold text-main">${i.nome || i.txt_descricao}</p></div><button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")}); document.getElementById("modalMatchImediato").classList.add("hidden");' class="dynamic-btn px-3 py-1 rounded text-[10px]">VER</button></div>`);
+            document.getElementById('modalMatchImediato').classList.remove('hidden');
+        }
+
+        function alternarJanelaChat() {
+            chatAberto = !chatAberto;
+            document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
+            document.getElementById('badgeChatWeb').classList.add('hidden');
+            if (chatAberto) { atualizarMensagensChat(); chatTimerPolling = setInterval(atualizarMensagensChat, 3000); } else clearInterval(chatTimerPolling);
+        }
+
+        function abrirChatComItem() { if(!chatAberto) alternarJanelaChat(); if(itemSelecionado) document.getElementById('chatInputTexto').value = `Sobre o item #${itemSelecionado.id}: `; }
+
+        async function atualizarMensagensChat() {
+            if(!alunoSessao) return;
+            try {
+                const res = await fetch(`${API_URL}/api/chat/mensagens/${alunoSessao.rm}?marcar_lida=true&origem=ALUNO`);
+                if(!res.ok) return;
+                const msgs = await res.json();
+                const c = document.getElementById('chatMensagens');
+                if(msgs.length !== ultimaQtdMensagens) {
+                    if (ultimaQtdMensagens > 0) {
+                        const ultimaMensagem = msgs[msgs.length - 1];
+                        if (ultimaMensagem.remetente !== 'ALUNO' && (document.hidden || !chatAberto)) dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
+                    }
+                    ultimaQtdMensagens = msgs.length; c.innerHTML = '';
+                    msgs.forEach(m => { 
+                        const eu = m.remetente === 'ALUNO'; 
+                        c.innerHTML += `
+                            <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
+                                <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
+                                    ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-rose-900 shadow-md"><i class="fas fa-shield-alt text-[10px] text-white"></i></div>` : ''}
+                                    <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-md ${eu ? 'rounded-tr-md bg-gradient-to-r from-red-600 to-rose-800 text-white shadow-[0_8px_24px_-4px_rgba(220,38,38,0.4)]' : 'rounded-tl-md border border-white/10 bg-zinc-800/90 text-zinc-100 backdrop-blur-sm'}">${m.mensagem}</div>
+                                </div>
+                            </div>`; 
+                    });
+                    c.scrollTop = c.scrollHeight;
+                }
+            } catch(e){}
+        }
+
+        async function enviarMensagemChat(e) {
+            e.preventDefault();
+            const txt = document.getElementById('chatInputTexto').value.trim();
+            if(!txt || !alunoSessao) return;
+            try {
+                if((await fetch(`${API_URL}/api/chat/enviar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt }) })).ok) {
+                    document.getElementById('chatInputTexto').value = ''; atualizarMensagensChat();
+                }
+            } catch(e){}
+        }
+
+        // --- GESTÃO DE ATÉ 4 FOTOS PELO ALUNO ---
+        function abrirModalCadastrarAluno() {
+            const sel = document.getElementById('alunoItemCat');
+            sel.innerHTML = document.getElementById('muralCategoria').innerHTML;
+            fotosAlunoSelecionadas = [];
+            renderizarGridPreviewAluno();
+            document.getElementById('modalCadastrarAluno').classList.remove('hidden');
+        }
+
+        function prepararFotosAluno(input) {
+            if (input.files) {
+                const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
+                arquivos.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (fotosAlunoSelecionadas.length < 4) {
+                            fotosAlunoSelecionadas.push(e.target.result);
+                            renderizarGridPreviewAluno();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+                input.value = '';
+            }
+        }
+
+        function renderizarGridPreviewAluno() {
+            const container = document.getElementById('gridPreviewAluno');
+            container.innerHTML = '';
+            if (fotosAlunoSelecionadas.length > 0) {
+                container.classList.remove('hidden');
+                fotosAlunoSelecionadas.forEach((f, i) => {
+                    container.innerHTML += `
+                        <div class="relative w-20 h-20 shrink-0">
+                            <img src="${f}" class="w-full h-full object-cover rounded-xl border border-color">
+                            <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"><i class="fas fa-times"></i></button>
+                        </div>`;
+                });
+            } else container.classList.add('hidden');
+        }
+
+        async function enviarCadastroAluno(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSalvarAlunoItem');
+            btn.innerText = "Enviando..."; btn.disabled = true;
+
+            const payload = {
+                nome: document.getElementById('alunoItemNome').value.trim(),
+                descricao: document.getElementById('alunoItemDesc').value.trim(),
+                categoria: document.getElementById('alunoItemCat').value,
+                local: document.getElementById('alunoItemLocal').value.trim(),
+                data: new Date().toLocaleDateString('pt-BR'),
+                rm: alunoSessao.rm,
+                fotos: fotosAlunoSelecionadas,
+                foto: fotosAlunoSelecionadas[0] || ""
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    mostrarToast("Objeto enviado para moderação da secretaria!", "success");
+                    document.getElementById('modalCadastrarAluno').classList.add('hidden');
+                    e.target.reset();
+                } else mostrarToast(data.message, "error");
+            } catch { mostrarToast("Erro de rede.", "error"); }
+            btn.innerText = "Enviar para a Secretaria"; btn.disabled = false;
+        }
+
+        window.onload = () => { 
+            document.body.classList.add('dark-theme'); 
+            const splash = document.getElementById('splashScreenAnimacao');
+            const video = document.getElementById('videoSplash');
+            if (splash && video) {
+                video.muted = true;
+                video.play().catch(() => {});
+                const encerrarSplash = () => {
+                    splash.classList.add('opacity-0');
+                    setTimeout(() => { splash.classList.add('hidden'); splash.style.display = 'none'; checarSessao(); }, 1000);
+                };
+                video.onended = encerrarSplash;
+                setTimeout(() => { if (!splash.classList.contains('hidden')) encerrarSplash(); }, 11000); 
+            } else checarSessao();
+        };
+    </script>
 </body>
 </html>
