@@ -351,7 +351,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Fotos do Item:</label>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Fotos do Item (Até 4):</label>
                     <input type="file" id="cadFotoFile" accept="image/*" multiple onchange="adicionarFotosEdicao(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
                     <div id="gridFotosEdicao" class="mt-2 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
                 </div>
@@ -421,6 +421,7 @@
         </div>
     </div>
 
+    <!-- SCRIPT DA SECRETARIA COM CORREÇÃO DE TOKEN JWT -->
     <script>
         const API_URL = "https://etec-achados.up.railway.app";
         let tokenSecretaria = null;
@@ -433,8 +434,21 @@
         let html5QrcodeScanner = null;
         let fotosEdicaoAtuais = [];
 
-        const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
-        const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
+        // Correção rigorosa para ler e enviar o Token JWT sem falhas
+        const getAuthHeaders = () => {
+            const tokenAtual = (tokenSecretaria || localStorage.getItem('secretaria_token') || '').trim();
+            return { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${tokenAtual}` 
+            };
+        };
+
+        const getAuthHeadersGet = () => {
+            const tokenAtual = (tokenSecretaria || localStorage.getItem('secretaria_token') || '').trim();
+            return { 
+                'Authorization': `Bearer ${tokenAtual}` 
+            };
+        };
 
         function toggleSenhaVisivel() {
             const input = document.getElementById('loginSenhaInput');
@@ -464,8 +478,10 @@
                 } catch(e) {}
 
                 const loginScreen = document.getElementById('loginScreen');
-                loginScreen.style.display = 'none';
-                loginScreen.classList.add('hidden');
+                if (loginScreen) {
+                    loginScreen.style.display = 'none';
+                    loginScreen.classList.add('hidden');
+                }
                 
                 carregarItensSecretaria();
                 carregarItensPendentes();
@@ -479,8 +495,10 @@
             if (recarregar) window.location.reload();
             else {
                 const loginScreen = document.getElementById('loginScreen');
-                loginScreen.style.display = 'flex';
-                loginScreen.classList.remove('hidden');
+                if (loginScreen) {
+                    loginScreen.style.display = 'flex';
+                    loginScreen.classList.remove('hidden');
+                }
             }
         }
 
@@ -496,16 +514,9 @@
             const email = (emailInput.value || '').trim();
             const senha = (senhaInput.value || '').trim();
 
-            if (!email) {
-                erroEl.innerText = "Por favor, digite o e-mail da secretaria.";
+            if (!email || !senha) {
+                erroEl.innerText = "Preencha o e-mail e a senha!";
                 erroContainer.classList.remove('hidden');
-                emailInput.focus();
-                return;
-            }
-            if (!senha) {
-                erroEl.innerText = "Por favor, digite a senha da secretaria.";
-                erroContainer.classList.remove('hidden');
-                senhaInput.focus();
                 return;
             }
 
@@ -516,10 +527,7 @@
             try {
                 const res = await fetch(`${API_URL}/api/login`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({ email: email, senha: senha })
                 });
 
@@ -530,8 +538,10 @@
                     localStorage.setItem('secretaria_token', tokenSecretaria);
                     
                     const loginScreen = document.getElementById('loginScreen');
-                    loginScreen.style.display = 'none';
-                    loginScreen.classList.add('hidden');
+                    if (loginScreen) {
+                        loginScreen.style.display = 'none';
+                        loginScreen.classList.add('hidden');
+                    }
                     
                     mostrarToast("Acesso administrativo autorizado!", "success");
                     carregarItensSecretaria();
@@ -546,7 +556,7 @@
                     senhaInput.focus();
                 }
             } catch (err) {
-                const msgErro = "Não foi possível conectar ao servidor Railway. Verifique se a API está online.";
+                const msgErro = "Erro ao conectar com o servidor Railway.";
                 erroEl.innerText = msgErro;
                 erroContainer.classList.remove('hidden');
                 mostrarToast(msgErro, "error");
@@ -566,7 +576,6 @@
             setTimeout(() => toast.remove(), 4000);
         }
 
-        // --- SISTEMA DE QR CODE ---
         function abrirLeitorQR() {
             document.getElementById('modalScannerQR').classList.remove('hidden');
             html5QrcodeScanner = new Html5QrcodeScanner("readerBox", { fps: 10, qrbox: {width: 250, height: 250} }, false);
@@ -617,7 +626,6 @@
             document.getElementById('modalGerarEtiqueta').classList.remove('hidden');
         }
 
-        // --- NAVEGAÇÃO ENTRE ABAS ---
         function mudarAbaSec(aba) {
             ['itens', 'pendentes', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
                 const el = document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`);
@@ -638,7 +646,6 @@
             if (aba === 'chat') { carregarConversasChat(); iniciarPollingChatSec(); } else pararPollingChatSec();
         }
 
-        // --- ITENS PENDENTES (MODERAÇÃO) ---
         async function carregarItensPendentes() {
             if (!tokenSecretaria) return;
             try {
@@ -684,6 +691,7 @@
         async function aprovarItemDireto(id) {
             try {
                 const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
+                if (res.status === 401) return sairSecretaria(false);
                 if (res.ok) {
                     mostrarToast("Item aprovado para o catálogo público!", "success");
                     carregarItensPendentes();
@@ -696,11 +704,11 @@
             confirmarAcaoJWT("Recusar Objeto", `Deseja recusar e excluir o envio do item #${id}?`, `${API_URL}/api/itens/${id}`, 'DELETE', null, carregarItensPendentes);
         }
 
-        // --- CARREGAMENTO DE ITENS DA SECRETARIA ---
         async function carregarItensSecretaria() {
             if (!tokenSecretaria) return;
             try {
                 const res = await fetch(`${API_URL}/api/itens`);
+                if (res.status === 401) return sairSecretaria(false);
                 if (res.ok) { 
                     itensSec = await res.json(); 
                     renderizarListaSec(itensSec); 
@@ -862,7 +870,6 @@
             document.getElementById('modalCadastrar').classList.remove('hidden');
         }
 
-        // SALVAMENTO DE ITENS COM EXIBIÇÃO EXATA DO ERRO
         async function salvarItemSecretaria(e) {
             e.preventDefault();
             const id = document.getElementById('editItemId').value;
@@ -1055,7 +1062,6 @@
             confirmarAcaoJWT("Excluir Relato", `Deseja apagar definitivamente o relato #${id} do mural?`, `${API_URL}/api/mural/${id}`, 'DELETE', null, carregarMuralSec);
         }
 
-        // --- CHAT COM ALUNOS ---
         async function carregarConversasChat() { 
             if(!tokenSecretaria) return; 
             try { 
@@ -1135,9 +1141,6 @@
         }
 
         function iniciarPollingChatSec() { 
-            pararPollingChatSec(); 
-            chatPollTimer = setInterval(() => { 
-                carregar
             pararPollingChatSec(); 
             chatPollTimer = setInterval(() => { 
                 carregarConversasChat(); 
