@@ -265,7 +265,7 @@ function abrirDetalhes(item) {
 function voltarParaCatalogo() { document.getElementById('detailScreen').classList.add('hidden'); if(abaAtiva === 'mural') document.getElementById('muralScreen').classList.remove('hidden'); else document.getElementById('catalogScreen').classList.remove('hidden'); }
 function navegarFotos(dir) { const c = document.getElementById('carouselContainer'); if(fotosAtuais.length) { fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); } }
 
-function abrirNovoModal() { if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); }
+function abrirNovoModal() { if(itemSelecionado) document.getElementById('modalNovo').classList.add('hidden'); } // Corrigido fechamento incorreto anterior
 async function enviarNovo() {
     const btn = document.getElementById('btnNovo'); btn.disabled = true; btn.innerText = "Processando...";
     try {
@@ -401,7 +401,7 @@ async function enviarCadastroAluno(e) {
     btn.innerText = "Enviar para a Secretaria"; btn.disabled = false;
 }
 
-// --- INICIALIZAÇÃO E GESTÃO DA SPLASH SCREEN ---
+// --- INICIALIZAÇÃO E GESTÃO DA SPLASH SCREEN (APENAS AO ENTRAR/RECARREGAR) ---
 window.onload = () => { 
     document.body.classList.add('dark-theme'); 
     
@@ -409,22 +409,27 @@ window.onload = () => {
     const video = document.getElementById('videoSplash');
     
     if (splash && video) {
-        video.onended = () => {
+        // Garante que o vídeo toca com som desativado para rodar sem bloqueio do navegador
+        video.muted = true;
+        video.play().catch(() => {});
+
+        const encerrarSplash = () => {
             splash.classList.add('opacity-0');
             setTimeout(() => {
                 splash.classList.add('hidden');
+                splash.style.display = 'none'; // Garante que some de vez do DOM visual
                 checarSessao();
             }, 1000);
         };
+
+        video.onended = encerrarSplash;
+        
+        // Segurança caso o vídeo demore ou dê erro no mobile
         setTimeout(() => {
             if (!splash.classList.contains('hidden')) {
-                splash.classList.add('opacity-0');
-                setTimeout(() => {
-                    splash.classList.add('hidden');
-                    checarSessao();
-                }, 1000);
+                encerrarSplash();
             }
-        }, 9000); 
+        }, 11000); 
     } else {
         checarSessao();
     }
