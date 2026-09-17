@@ -12,7 +12,7 @@ let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 let alunoSessao = null;
 
-// --- SISTEMA DE NOTIFICAÇÕES (NOVO) ---
+// --- SISTEMA DE NOTIFICAÇÕES (PUSH) ---
 function solicitarPermissaoNotificacao() {
     if ("Notification" in window) {
         if (Notification.permission === "granted") {
@@ -32,14 +32,13 @@ function solicitarPermissaoNotificacao() {
 }
 
 function dispararNotificacaoNativa(titulo, corpo) {
-    // Só dispara se o usuário permitiu e se o navegador suporta
     if ("Notification" in window && Notification.permission === "granted") {
         const notificacao = new Notification(titulo, {
             body: corpo,
             icon: "logo.png"
         });
         notificacao.onclick = function() {
-            window.focus(); // Traz a aba do navegador para frente
+            window.focus();
             this.close();
         };
     }
@@ -56,7 +55,6 @@ function checarSessao() {
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
         
-        // Pede permissão gentilmente se ainda não tiver respondido
         if ("Notification" in window && Notification.permission === "default") {
             setTimeout(solicitarPermissaoNotificacao, 3000);
         }
@@ -288,7 +286,6 @@ async function enviarAvisoMural(e) {
         if (res.ok) { 
             document.getElementById('muralDescricao').value = ''; 
             if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
-                // Dispara notificação OS se achar um match
                 dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
                 exibirMatchesImediatos(data.matches_encontrados); 
             } else {
@@ -322,10 +319,8 @@ async function atualizarMensagensChat() {
         const c = document.getElementById('chatMensagens');
         
         if(msgs.length !== ultimaQtdMensagens) {
-            // Se chegou mensagem nova e não foi o próprio aluno que enviou, dispara notificação
             if (ultimaQtdMensagens > 0) {
                 const ultimaMensagem = msgs[msgs.length - 1];
-                // Se a janela estiver em background ou o chat fechado, notifica
                 if (ultimaMensagem.remetente !== 'ALUNO' && (document.hidden || !chatAberto)) {
                     dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
                 }
