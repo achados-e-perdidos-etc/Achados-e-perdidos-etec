@@ -180,21 +180,21 @@
         </section>
     </main>
 
-    <!-- CHAT FLUTUANTE COM O PADRÃO DE CORES VERMELHO ETEC -->
+    <!-- CHAT FLUTUANTE COM GRADIENTE VERMELHO ELEGANTE -->
     <div class="fixed bottom-5 right-5 z-50">
-        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-full bg-gradient-to-br from-red-600 to-red-800 text-white flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(220,38,38,0.5)] transition hover:scale-105"><i class="fas fa-comment-dots text-xl"></i><span id="badgeChatWeb" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-black rounded-full flex items-center justify-center">0</span></button>
+        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-full bg-gradient-to-br from-red-600 to-rose-900 text-white flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(220,38,38,0.5)] transition hover:scale-105"><i class="fas fa-comment-dots text-xl"></i><span id="badgeChatWeb" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-black rounded-full flex items-center justify-center">0</span></button>
         
-        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 border border-red-500/30 bg-gradient-to-b from-zinc-900 to-zinc-950 rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,0,0,0.7)] flex flex-col h-[500px] overflow-hidden backdrop-blur-md">
+        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 border border-white/10 bg-gradient-to-b from-zinc-900 to-zinc-950 rounded-2xl shadow-[0_24px_64px_-16px_rgba(0,0,0,0.5)] flex flex-col h-[500px] overflow-hidden backdrop-blur-md">
             
             <!-- Chat Header -->
-            <div class="flex items-center justify-between border-b border-white/5 px-4 py-3 bg-zinc-900/90">
+            <div class="flex items-center justify-between border-b border-white/5 px-4 py-3 bg-zinc-900/80">
                 <div class="flex items-center gap-2.5">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-red-800 shadow-md">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-rose-900 shadow-md">
                         <i class="fas fa-shield-alt text-white text-xs"></i>
                     </div>
                     <div>
                         <h4 class="text-sm font-medium text-white">Secretaria ETEC</h4>
-                        <p class="text-[10px] text-red-400 font-bold">Atendimento Oficial</p>
+                        <p class="text-[10px] text-white/40">Atendimento oficial</p>
                     </div>
                 </div>
                 <button onclick="alternarJanelaChat()" class="text-white/60 hover:text-white p-1 transition"><i class="fas fa-times text-sm"></i></button>
@@ -205,7 +205,7 @@
 
             <!-- Chat Footer Input -->
             <div class="border-t border-white/5 p-3 bg-zinc-900/60">
-                <form id="formChat" onsubmit="enviarMensagemChat(event)" class="flex items-center gap-2 rounded-xl border border-red-500/30 bg-zinc-800/50 px-4 py-2 backdrop-blur-sm focus-within:border-red-500">
+                <form id="formChat" onsubmit="enviarMensagemChat(event)" class="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-800/50 px-4 py-2 backdrop-blur-sm focus-within:border-white/20">
                     <input type="text" id="chatInputTexto" placeholder="Escreva sua mensagem..." class="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30">
                     <button type="submit" class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 transition shadow-md"><i class="fas fa-paper-plane text-xs"></i></button>
                 </form>
