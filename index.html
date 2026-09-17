@@ -95,6 +95,10 @@
             <div class="flex items-center space-x-2 shrink-0">
                 <button onclick="mudarAba('catalogo')" id="tabBtnCatalogo" class="px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5"><i class="fas fa-boxes"></i><span class="hidden sm:inline">Catálogo</span></button>
                 <button onclick="mudarAba('mural')" id="tabBtnMural" class="relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5"><i class="fas fa-bullhorn text-amber-500"></i><span class="hidden sm:inline">Perdi Algo</span><span id="badgeNotificacaoMural" class="hidden absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span></button>
+                
+                <!-- NOVO BOTÃO: COLABORAÇÃO DO ALUNO -->
+                <button onclick="abrirModalCadastrarAluno()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5"><i class="fas fa-hand-holding-heart"></i><span class="hidden sm:inline">Achei Algo</span></button>
+
                 <div class="relative">
                     <button onclick="toggleConfigMenu()" class="p-2 rounded-lg bg-card border border-color text-muted hover:text-main transition"><i class="fas fa-cog"></i></button>
                     <div id="configMenu" class="hidden absolute right-0 mt-2 w-48 bg-card border border-color rounded-xl shadow-2xl p-3 z-50">
@@ -184,6 +188,28 @@
 
     <!-- MODAL CONFIRMAR SOLICITAÇÃO -->
     <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"><div class="bg-card border border-color w-full max-w-sm rounded-2xl p-6 space-y-4"><h3 class="font-bold text-main text-lg text-center"><i class="fas fa-question-circle text-red-500 mr-2"></i>Confirmar Retirada?</h3><p class="text-sm text-muted text-center">Vamos enviar o comprovante para o seu e-mail institucional.</p><div class="flex gap-2 pt-2"><button onclick="document.getElementById('modalNovo').classList.add('hidden')" class="w-1/2 bg-header text-muted font-bold py-2.5 rounded-xl text-xs uppercase">Cancelar</button><button id="btnNovo" onclick="enviarNovo()" class="w-1/2 dynamic-btn font-bold py-2.5 rounded-xl text-xs uppercase">Sim, é meu!</button></div></div></div>
+
+    <!-- MODAL DE CADASTRO PELO ALUNO (MODERADO) -->
+    <div id="modalCadastrarAluno" class="hidden fixed inset-0 z-[250] bg-black/80 flex items-center justify-center p-4">
+        <div class="bg-card border border-color w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-main text-base"><i class="fas fa-hand-holding-heart text-emerald-500 mr-2"></i>Entregar Objeto Achado</h3>
+                <button onclick="document.getElementById('modalCadastrarAluno').classList.add('hidden')" class="text-muted"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-xs text-muted">Cadastre o objeto que você encontrou. Após a aprovação da secretaria, ele aparecerá no catálogo geral!</p>
+            <form onsubmit="enviarCadastroAluno(event)" class="space-y-3">
+                <input type="text" id="alunoItemNome" required placeholder="Nome do objeto (ex: Casaco Azul)" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-emerald-500">
+                <textarea id="alunoItemDesc" required rows="2" placeholder="Descrição detalhada..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-emerald-500"></textarea>
+                <select id="alunoItemCat" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-emerald-500"></select>
+                <input type="text" id="alunoItemLocal" required placeholder="Onde você encontrou? (ex: Pátio)" class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-emerald-500">
+                <div>
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">Foto do Objeto:</label>
+                    <input type="file" id="alunoItemFoto" accept="image/*" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs cursor-pointer">
+                </div>
+                <button type="submit" id="btnSalvarAlunoItem" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-lg transition">Enviar para a Secretaria</button>
+            </form>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
