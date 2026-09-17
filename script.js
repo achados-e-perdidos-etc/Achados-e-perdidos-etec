@@ -63,7 +63,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endsWith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!email.endswith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -271,6 +271,52 @@ async function enviarMensagemChat(e) {
             document.getElementById('chatInputTexto').value = ''; atualizarMensagensChat();
         }
     } catch(e){}
+}
+
+// --- COLABORAÇÃO DO ALUNO (ACHEI ALGO) ---
+function abrirModalCadastrarAluno() {
+    const sel = document.getElementById('alunoItemCat');
+    sel.innerHTML = document.getElementById('muralCategoria').innerHTML;
+    document.getElementById('modalCadastrarAluno').classList.remove('hidden');
+}
+
+async function enviarCadastroAluno(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSalvarAlunoItem');
+    btn.innerText = "Enviando..."; btn.disabled = true;
+
+    const fileInput = document.getElementById('alunoItemFoto');
+    let fotoBase64 = "";
+
+    if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.readAsDataURL(fileInput.files[0]);
+        await new Promise(resolve => reader.onload = resolve);
+        fotoBase64 = reader.result;
+    }
+
+    const payload = {
+        nome: document.getElementById('alunoItemNome').value.trim(),
+        descricao: document.getElementById('alunoItemDesc').value.trim(),
+        categoria: document.getElementById('alunoItemCat').value,
+        local: document.getElementById('alunoItemLocal').value.trim(),
+        data: new Date().toLocaleDateString('pt-BR'),
+        rm: alunoSessao.rm,
+        fotos: fotoBase64 ? [fotoBase64] : []
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            mostrarToast("Objeto enviado para moderação da secretaria!", "success");
+            document.getElementById('modalCadastrarAluno').classList.add('hidden');
+        } else mostrarToast(data.message, "error");
+    } catch { mostrarToast("Erro de rede.", "error"); }
+    btn.innerText = "Enviar para a Secretaria"; btn.disabled = false;
 }
 
 window.onload = () => { checarSessao(); document.body.classList.add('dark-theme'); };
