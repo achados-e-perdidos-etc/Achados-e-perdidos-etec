@@ -8,7 +8,7 @@ from threading import Thread
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 import cloudinary
@@ -18,8 +18,15 @@ import jwt
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
-ORIGENS_PERMITIDAS = ["https://etec-achados.up.railway.app", "http://localhost:5000", "http://127.0.0.1:5000"]
-CORS(app, resources={r"/api/*": {"origins": ORIGENS_PERMITIDAS}})
+# Configuração robusta de CORS para suportar Web, Mobile e PWAs
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -30,27 +37,74 @@ cloudinary.config(
   secure = True
 )
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "chave_fallback_local_temporaria_apenas")
-EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br")
+# Chave secreta oficial para o JWT
+JWT_SECRET = os.environ.get("JWT_SECRET", "@#Etec_Achad0s_2026_Secret_T0ken!)").strip()
+EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br").strip().lower()
 SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000$dummy$hash")
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 SMTP_SENDER = os.environ.get("SMTP_SENDER", "secretaria@etec.sp.gov.br")
 
+# ==========================================
+# SEGURANÇA E VALIDAÇÃO JWT
+# ==========================================
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Permitir requisições preflight OPTIONS sem bloqueio de token
+        if request.method == 'OPTIONS':
+            return jsonify({"success": True}), 200
+
         token = None
-        if 'Authorization' in request.headers:
-            parts = request.headers['Authorization'].split()
-            if len(parts) == 2 and parts[0] == 'Bearer': token = parts[1]
-        if not token: return jsonify({"success": False, "message": "Acesso negado: Token ausente."}), 401
-        try: jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        except: return jsonify({"success": False, "message": "Acesso negado: Token inválido ou expirado."}), 401
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0].lower() == 'bearer':
+                token = parts.strip('"\'' )
+            elif len(parts) == 1:
+                token = parts[0].strip('"\'' )
+
+        # Fallback via query string caso necessário
+        if not token:
+            token = request.args.get('token', '').strip('"\'' )
+
+        if not token or token.lower() in ['null', 'undefined', 'none', '']:
+            return jsonify({
+                "success": False, 
+                "message": "Acesso negado: Token de autenticação ausente ou inválido."
+            }), 401
+
+        try:
+            payload = jwt.decode(
+                token, 
+                JWT_SECRET, 
+                algorithms=["HS256"],
+                leeway=timedelta(seconds=60),
+                options={"verify_exp": True}
+            )
+            request.user = payload
+        except jwt.ExpiredSignatureError:
+            return jsonify({
+                "success": False, 
+                "message": "Sua sessão expirou. Por favor, faça login novamente.", 
+                "expired": True
+            }), 401
+        except jwt.InvalidTokenError as e:
+            return jsonify({
+                "success": False, 
+                "message": f"Acesso negado: Token inválido ({str(e)})."
+            }), 401
+        except Exception as e:
+            return jsonify({
+                "success": False, 
+                "message": f"Erro de validação do token: {str(e)}"
+            }), 401
+
         return f(*args, **kwargs)
     return decorated
 
-def get_db_connection(): return psycopg2.connect(DATABASE_URL, sslmode='require')
+def get_db_connection(): 
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def extrair_termos(texto):
     if not texto: return set()
@@ -65,10 +119,13 @@ def processar_fotos(fotos_array):
     urls_finais = []
     if not fotos_array: return urls_finais
     for foto in fotos_array:
-        if foto.startswith('http'): urls_finais.append(foto)
+        if foto.startswith('http'): 
+            urls_finais.append(foto)
         else:
-            try: urls_finais.append(cloudinary.uploader.upload(foto, folder="etec_achados")["secure_url"])
-            except Exception as e: print(f"Erro Cloudinary: {e}")
+            try: 
+                urls_finais.append(cloudinary.uploader.upload(foto, folder="etec_achados")["secure_url"])
+            except Exception as e: 
+                print(f"Erro Cloudinary: {e}")
     return urls_finais
 
 def enviar_email_api_async(destinatario, assunto, html_content):
@@ -99,7 +156,6 @@ def init_db():
             email_solicitante VARCHAR(150), aprovado BOOLEAN DEFAULT TRUE, cadastrado_por_aluno BOOLEAN DEFAULT FALSE
         );''')
         
-        # Garantir colunas novas se a tabela já existia
         cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='itens' AND column_name='aprovado';")
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE itens ADD COLUMN aprovado BOOLEAN DEFAULT TRUE, ADD COLUMN cadastrado_por_aluno BOOLEAN DEFAULT FALSE;")
@@ -110,17 +166,27 @@ def init_db():
         
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL);''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL);''')
-        
-        # Tabela para Push Notifications
         cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) UNIQUE NOT NULL, subscription_json TEXT NOT NULL);''')
 
         conn.commit(); cursor.close(); conn.close()
-    except Exception as e: print(f"Erro DB: {e}")
+    except Exception as e: 
+        print(f"Erro DB: {e}")
 
 if DATABASE_URL: init_db()
 
 @app.route('/')
-def home(): return send_from_directory(app.static_folder, 'index.html')
+def home(): 
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Rota para verificar a integridade da sessão JWT
+@app.route('/api/auth/verificar', methods=['GET', 'OPTIONS'])
+@token_required
+def verificar_token():
+    return jsonify({
+        "success": True, 
+        "user": getattr(request, 'user', {}),
+        "message": "Token válido."
+    })
 
 # ==========================================
 # ROTAS DE AUTENTICAÇÃO DO ALUNO
@@ -128,7 +194,8 @@ def home(): return send_from_directory(app.static_folder, 'index.html')
 @app.route('/api/auth/enviar-codigo', methods=['POST'])
 def enviar_codigo():
     email = request.json.get('email', '').strip().lower()
-    if not email.endswith('@aluno.cps.sp.gov.br'): return jsonify({"success": False, "message": "Use apenas o e-mail institucional (@aluno.cps.sp.gov.br)."}), 400
+    if not email.endswith('@aluno.cps.sp.gov.br'): 
+        return jsonify({"success": False, "message": "Use apenas o e-mail institucional (@aluno.cps.sp.gov.br)."}), 400
     
     codigo = str(random.randint(100000, 999999))
     expiracao = datetime.now() + timedelta(minutes=15)
@@ -139,71 +206,109 @@ def enviar_codigo():
         html = f"<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'><h2 style='color: #dc2626;'>Código de Acesso - Achados e Perdidos ETEC</h2><p>Seu código de segurança é: <strong style='font-size: 24px; color: #000;'>{codigo}</strong></p><p>Válido por 15 minutos.</p></div>"
         disparar_email(email, "Seu código de acesso - Achados e Perdidos ETEC", html)
         return jsonify({"success": True})
-    except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/auth/cadastrar', methods=['POST'])
 def cadastrar_aluno():
     data = request.json or {}
-    email, codigo, nome, rm, senha = data.get('email', '').lower(), data.get('codigo'), data.get('nome'), data.get('rm'), data.get('senha')
+    email, codigo, nome, rm, senha = data.get('email', '').lower().strip(), data.get('codigo', '').strip(), data.get('nome', '').strip(), data.get('rm', '').strip(), data.get('senha', '').strip()
     try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
         reg = cursor.fetchone()
-        if not reg or reg['codigo'] != codigo or reg['expiracao'] < datetime.now(): return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
+        if not reg or reg['codigo'] != codigo or reg['expiracao'] < datetime.now(): 
+            return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
         
         cursor.execute("SELECT email FROM alunos WHERE email = %s;", (email,))
-        if cursor.fetchone(): return jsonify({"success": False, "message": "E-mail já cadastrado. Faça login."}), 400
+        if cursor.fetchone(): 
+            return jsonify({"success": False, "message": "E-mail já cadastrado. Faça login."}), 400
         
         senha_hash = generate_password_hash(senha)
         cursor.execute("INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", (email, nome, rm, senha_hash))
         cursor.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
         conn.commit(); cursor.close(); conn.close()
         
-        token = jwt.encode({"email": email, "nome": nome, "rm": rm, "exp": datetime.utcnow() + timedelta(days=30)}, JWT_SECRET, algorithm="HS256")
+        token = jwt.encode({
+            "email": email, 
+            "nome": nome, 
+            "rm": rm, 
+            "role": "aluno",
+            "exp": datetime.now(timezone.utc) + timedelta(days=30),
+            "iat": datetime.now(timezone.utc)
+        }, JWT_SECRET, algorithm="HS256")
+        
         return jsonify({"success": True, "token": token, "aluno": {"nome": nome, "rm": rm, "email": email}})
-    except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/auth/login-aluno', methods=['POST'])
 def login_aluno():
-    email, senha = request.json.get('email', '').lower(), request.json.get('senha', '')
+    email, senha = request.json.get('email', '').lower().strip(), request.json.get('senha', '').strip()
     try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM alunos WHERE email = %s;", (email,))
         aluno = cursor.fetchone()
         cursor.close(); conn.close()
         if aluno and check_password_hash(aluno['senha_hash'], senha):
-            token = jwt.encode({"email": aluno['email'], "nome": aluno['nome'], "rm": aluno['rm'], "exp": datetime.utcnow() + timedelta(days=30)}, JWT_SECRET, algorithm="HS256")
+            token = jwt.encode({
+                "email": aluno['email'], 
+                "nome": aluno['nome'], 
+                "rm": aluno['rm'], 
+                "role": "aluno",
+                "exp": datetime.now(timezone.utc) + timedelta(days=30),
+                "iat": datetime.now(timezone.utc)
+            }, JWT_SECRET, algorithm="HS256")
             return jsonify({"success": True, "token": token, "aluno": {"nome": aluno['nome'], "rm": aluno['rm'], "email": aluno['email']}})
         return jsonify({"success": False, "message": "Senha incorreta ou usuário não encontrado."}), 401
-    except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/auth/redefinir', methods=['POST'])
 def redefinir_senha():
-    email, codigo, nova_senha = request.json.get('email', '').lower(), request.json.get('codigo'), request.json.get('senha')
+    email, codigo, nova_senha = request.json.get('email', '').lower().strip(), request.json.get('codigo', '').strip(), request.json.get('senha', '').strip()
     try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
         reg = cursor.fetchone()
-        if not reg or reg['codigo'] != codigo or reg['expiracao'] < datetime.now(): return jsonify({"success": False, "message": "Código inválido/expirado."}), 400
+        if not reg or reg['codigo'] != codigo or reg['expiracao'] < datetime.now(): 
+            return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
         
         senha_hash = generate_password_hash(nova_senha)
         cursor.execute("UPDATE alunos SET senha_hash = %s WHERE email = %s;", (senha_hash, email))
-        if cursor.rowcount == 0: return jsonify({"success": False, "message": "Conta não encontrada."}), 404
+        if cursor.rowcount == 0: 
+            return jsonify({"success": False, "message": "Conta não encontrada."}), 404
         cursor.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
-    except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "message": str(e)}), 500
 
 # ==========================================
-# ROTAS DO SISTEMA
+# ROTAS DA SECRETARIA
 # ==========================================
 @app.route('/api/login', methods=['POST'])
 def login_secretaria():
-    email, senha = request.json.get('email', '').strip().lower(), request.json.get('senha', '').strip()
-    if email == EMAIL_SECRETARIA and check_password_hash(SENHA_SECRETARIA_HASH, senha):
-        token = jwt.encode({"user": "secretaria", "exp": datetime.utcnow() + timedelta(hours=4)}, JWT_SECRET, algorithm="HS256")
+    email = (request.json.get('email') or '').strip().lower()
+    senha = (request.json.get('senha') or '').strip()
+    
+    login_valido = False
+    if email == EMAIL_SECRETARIA:
+        if SENHA_SECRETARIA_HASH and SENHA_SECRETARIA_HASH != "pbkdf2:sha256:600000$dummy$hash":
+            login_valido = check_password_hash(SENHA_SECRETARIA_HASH, senha)
+        else:
+            login_valido = check_password_hash(SENHA_SECRETARIA_HASH, senha)
+            
+    if login_valido:
+        token = jwt.encode({
+            "user": "secretaria", 
+            "role": "secretaria",
+            "email": email,
+            "exp": datetime.now(timezone.utc) + timedelta(days=7),
+            "iat": datetime.now(timezone.utc)
+        }, JWT_SECRET, algorithm="HS256")
         return jsonify({"success": True, "token": token})
-    return jsonify({"success": False, "message": "Credenciais inválidas"}), 401
+    return jsonify({"success": False, "message": "Credenciais inválidas. Verifique o e-mail e a senha."}), 401
 
 @app.route('/api/categorias', methods=['GET', 'POST'])
 def categorias():
@@ -214,6 +319,8 @@ def categorias():
         return jsonify(res)
     else:
         nome = (request.json.get('nome') or '').strip().upper()
+        if not nome:
+            return jsonify({"success": False, "message": "Nome da categoria obrigatório."}), 400
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (nome,))
         conn.commit(); cursor.close(); conn.close()
@@ -223,15 +330,17 @@ def categorias():
 def get_itens():
     try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        # Retorna apenas itens aprovados para o catálogo geral
         cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno, aprovado, cadastrado_por_aluno FROM itens WHERE aprovado = TRUE ORDER BY id DESC;")
         itens = cursor.fetchall()
         for item in itens:
-            try: item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
-            except: item['fotos'] = []
+            try: 
+                item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
+            except: 
+                item['fotos'] = []
         cursor.close(); conn.close()
         return jsonify(itens)
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/pendentes', methods=['GET'])
 @token_required
@@ -241,11 +350,14 @@ def get_itens_pendentes():
         cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, rm_aluno FROM itens WHERE aprovado = FALSE ORDER BY id DESC;")
         itens = cursor.fetchall()
         for item in itens:
-            try: item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
-            except: item['fotos'] = []
+            try: 
+                item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
+            except: 
+                item['fotos'] = []
         cursor.close(); conn.close()
         return jsonify(itens)
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/cadastrar-aluno', methods=['POST'])
 def cadastrar_item_aluno():
@@ -258,7 +370,8 @@ def cadastrar_item_aluno():
         cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status, aprovado, cadastrado_por_aluno, rm_aluno) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), rm))
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "message": "Item enviado para moderação da secretaria!"})
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>/aprovar', methods=['PUT'])
 @token_required
@@ -267,8 +380,9 @@ def aprovar_item(item_id):
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("UPDATE itens SET aprovado = TRUE WHERE id = %s;", (item_id,))
         conn.commit(); cursor.close(); conn.close()
-        return jsonify({"success": True})
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": True, "message": "Item aprovado com sucesso!"})
+    except Exception as e: 
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens', methods=['POST'])
 @token_required
@@ -292,7 +406,8 @@ def cadastrar_item():
         except: pass
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "id": novo_id})
-    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['PUT', 'DELETE'])
 @token_required
@@ -308,9 +423,11 @@ def gerenciar_item(item_id):
             fotos_rec = data.get('fotos')
             if fotos_rec:
                 urls = processar_fotos(fotos_rec)
-                cursor.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, foto_base64=%s, fotos_json=%s, status=%s WHERE id=%s;", (nome, descricao, categoria, data_enc, local, urls[0], json.dumps(urls), status, item_id))
-            else: cursor.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s WHERE id=%s;", (nome, descricao, categoria, data_enc, local, status, item_id))
-        else: cursor.execute("UPDATE itens SET status=%s WHERE id=%s;", (status, item_id))
+                cursor.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, foto_base64=%s, fotos_json=%s, status=%s WHERE id=%s;", (nome, descricao, categoria, data_enc, local, urls[0] if urls else '', json.dumps(urls), status, item_id))
+            else: 
+                cursor.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s WHERE id=%s;", (nome, descricao, categoria, data_enc, local, status, item_id))
+        else: 
+            cursor.execute("UPDATE itens SET status=%s WHERE id=%s;", (status, item_id))
         
         if status.upper() == 'ENTREGUE':
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
@@ -334,6 +451,9 @@ def concluir_doacoes():
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
+# ==========================================
+# ROTAS DO MURAL
+# ==========================================
 @app.route('/api/mural', methods=['GET', 'POST'])
 def mural():
     if request.method == 'GET':
@@ -346,8 +466,31 @@ def mural():
         nome, rm, email_aluno, categoria, descricao = data.get('nome'), data.get('rm'), data.get('email'), data.get('categoria'), data.get('descricao')
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("INSERT INTO mural_perdidos (nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro, status) VALUES (%s, %s, %s, %s, %s, %s, 'PROCURANDO') RETURNING id;", (nome, rm, email_aluno, categoria, descricao, datetime.now().strftime("%d/%m/%Y %H:%M")))
+        
+        matches = []
+        try:
+            termos_relato = extrair_termos(descricao or "")
+            cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria FROM itens WHERE aprovado = TRUE AND status = 'DISPONÍVEL' AND categoria = %s;", (categoria,))
+            for item in cursor.fetchall():
+                termos_item = extrair_termos((item.get('nome') or "") + " " + (item.get('txt_descricao') or ""))
+                if len(termos_relato.intersection(termos_item)) >= 1:
+                    matches.append(item)
+        except Exception as e:
+            print("Erro ao checar matches:", e)
+            
         conn.commit(); cursor.close(); conn.close()
-        return jsonify({"success": True})
+        return jsonify({"success": True, "matches_encontrados": matches})
+
+# Rota dedicada para as publicações do próprio aluno
+@app.route('/api/mural/aluno/<string:rm>', methods=['GET'])
+def mural_aluno(rm):
+    try:
+        conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, categoria, descricao, data_registro as data, status FROM mural_perdidos WHERE rm_aluno = %s ORDER BY id DESC;", (rm,))
+        res = cursor.fetchall(); cursor.close(); conn.close()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/mural/<int:id>', methods=['DELETE'])
 @token_required
@@ -357,6 +500,9 @@ def deletar_mural(id):
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
+# ==========================================
+# SOLICITAÇÃO DE ITEM
+# ==========================================
 @app.route('/api/solicitar', methods=['POST'])
 def solicitar_item():
     data = request.json or {}
@@ -365,13 +511,19 @@ def solicitar_item():
     cursor.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s WHERE id = %s AND status = 'DISPONÍVEL';", (nome, rm, email_aluno, item_id))
     afetados = cursor.rowcount
     conn.commit(); cursor.close(); conn.close()
-    if afetados > 0: return jsonify({"success": True, "message": "Solicitação enviada com sucesso! Dirija-se à secretaria."})
-    return jsonify({"success": False, "message": "Este item não está mais disponível."}), 400
+    if afetados > 0: 
+        return jsonify({"success": True, "message": "Solicitação enviada com sucesso! Dirija-se à secretaria para retirar seu objeto."})
+    return jsonify({"success": False, "message": "Este item não está mais disponível ou já foi solicitado."}), 400
 
+# ==========================================
+# ROTAS DO CHAT
+# ==========================================
 @app.route('/api/chat/enviar', methods=['POST'])
 def enviar_chat():
     data = request.json or {}
     rm, nome, remetente, mensagem = str(data.get('rm', '')).strip(), data.get('nome', 'Anônimo').strip(), data.get('remetente', 'ALUNO').upper().strip(), data.get('mensagem', '').strip()
+    if not rm or not mensagem:
+        return jsonify({"success": False, "message": "RM e mensagem são obrigatórios."}), 400
     conn = get_db_connection(); cursor = conn.cursor()
     cursor.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", (rm, nome, remetente, mensagem, datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
     conn.commit(); cursor.close(); conn.close()
@@ -397,6 +549,9 @@ def listar_conversas():
     res = cursor.fetchall(); cursor.close(); conn.close()
     return jsonify(res)
 
+# ==========================================
+# ESTATÍSTICAS E ENTREGAS
+# ==========================================
 @app.route('/api/entregues', methods=['GET'])
 @token_required
 def get_entregues():
