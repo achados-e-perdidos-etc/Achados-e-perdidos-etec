@@ -164,32 +164,26 @@ body {
     scrollbar-width: none;
 }
 
-/* --- FUNDO DINÂMICO DE GRADES COM EFEITO LUMINOSO VERMELHO ETEC --- */
+/* --- FUNDO DINÂMICO OTIMIZADO (SEM TRAVAMENTOS - 60 FPS GPU) --- */
 .dynamic-grid-background {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(22px, 1fr));
-  grid-auto-rows: 10px;
-  gap: 1px;
   pointer-events: none;
   z-index: 1;
-  opacity: 0.45;
+  opacity: 0.35;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(220, 38, 38, 0.15) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  animation: smooth-bg-move 12s linear infinite;
 }
 
-.grid-bar {
-  background-color: rgba(20, 20, 24, 0.8);
-  border-radius: 2px;
-  animation: glow-wave 6s infinite ease-in-out;
-}
-
-@keyframes glow-wave {
-  0%, 100% {
-    background-color: #120808;
-    box-shadow: none;
+@keyframes smooth-bg-move {
+  0% {
+    background-position: 0 0, 0 0, 0 0;
   }
-  50% {
-    background-color: #dc2626; /* Vermelho ETEC */
-    box-shadow: 0 0 12px #dc2626, 0 0 20px #991b1b;
+  100% {
+    background-position: 0 0, 40px 40px, 40px 40px;
   }
 }
