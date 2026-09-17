@@ -191,7 +191,7 @@ function renderizarItens() {
         const st = normalizarStatus(item.status);
         let badge = st === 'SOLICITADO' ? 'text-amber-400 border-amber-700/50 bg-amber-900/40' : (st === 'ENTREGUE' ? 'text-slate-400 border-slate-700 bg-slate-800' : 'text-emerald-400 border-emerald-700/50 bg-emerald-900/40');
         grid.innerHTML += `
-            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:border-indigo-500/50 transition">
+            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:border-red-500/50 transition">
                 ${fotosArr[0] ? `<img src="${fotosArr[0]}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
                 <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border">${item.categoria}</span><span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${badge}">${st}</span></div>
                 <h4 class="font-bold text-sm text-main truncate mt-2">${item.nome || item.txt_descricao}</h4>
@@ -257,7 +257,7 @@ function exibirMatchesImediatos(itens) {
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
-// --- CHAT MODERNO COM BOLHAS ESTILO SAAS (NEXUS AI) ---
+// --- CHAT MODERNO COM BOLHAS EM GRADIENTE VERMELHO ELEGANTE ---
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
@@ -280,8 +280,8 @@ async function atualizarMensagensChat() {
                 c.innerHTML += `
                     <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
                         <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
-                            ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md"><i class="fas fa-sparkles text-[10px] text-white"></i></div>` : ''}
-                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-md ${eu ? 'rounded-tr-md bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_8px_24px_-4px_rgba(99,102,241,0.4)]' : 'rounded-tl-md border border-white/10 bg-zinc-800/90 text-zinc-100 backdrop-blur-sm'}">
+                            ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-rose-900 shadow-md"><i class="fas fa-shield-alt text-[10px] text-white"></i></div>` : ''}
+                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-md ${eu ? 'rounded-tr-md bg-gradient-to-r from-red-600 to-rose-800 text-white shadow-[0_8px_24px_-4px_rgba(220,38,38,0.4)]' : 'rounded-tl-md border border-white/10 bg-zinc-800/90 text-zinc-100 backdrop-blur-sm'}">
                                 ${m.mensagem}
                             </div>
                         </div>
