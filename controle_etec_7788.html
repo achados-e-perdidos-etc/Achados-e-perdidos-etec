@@ -24,7 +24,7 @@
         }
     </style>
 </head>
-<body class="dark-theme min-h-screen flex flex-col justify-between">
+<body class="dark-theme min-h-screen flex flex-col justify-between bg-zinc-950 text-white">
 
     <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none"></div>
 
@@ -45,30 +45,66 @@
         </div>
     </div>
 
-    <!-- CABEÇALHO -->
+    <!-- CABEÇALHO COM MENU HAMBÚRGUER E PERFIL/SAIR -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <img src="logo_secretaria.png" alt="Logo Secretaria" class="w-10 h-10 min-w-[40px] min-h-[40px] shrink-0 object-cover rounded-full shadow-lg border border-red-500/30">
-                <div>
-                    <h1 class="font-bold text-base text-main leading-tight">PAINEL SECRETARIA</h1>
-                    <p class="text-[10px] text-muted font-bold"><i class="fas fa-lock"></i> Acesso Restrito</p>
+        <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 min-w-0">
+                <img src="logo_secretaria.png" alt="Logo Secretaria" class="w-10 h-10 shrink-0 object-cover rounded-full shadow-lg border border-red-500/30">
+                <div class="min-w-0">
+                    <h1 class="font-bold text-base text-main leading-tight truncate">PAINEL SECRETARIA</h1>
+                    <p class="text-[10px] text-muted font-bold truncate"><i class="fas fa-lock"></i> Acesso Restrito</p>
                 </div>
             </div>
-            <div class="flex gap-1 overflow-x-auto scrollbar-none">
-                <button onclick="mudarAbaSec('itens')" id="btnTabItens" class="px-2.5 py-1.5 rounded-xl bg-header border border-red-500 text-xs font-bold text-main transition"><i class="fas fa-boxes"></i></button>
-                <button onclick="mudarAbaSec('stats')" id="btnTabStats" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition"><i class="fas fa-chart-bar"></i></button>
-                <button onclick="mudarAbaSec('cats')" id="btnTabCats" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition"><i class="fas fa-tags"></i></button>
-                <button onclick="mudarAbaSec('entregues')" id="btnTabEntregues" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition"><i class="fas fa-history"></i></button>
-                <button onclick="mudarAbaSec('mural')" id="btnTabMural" class="px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition" title="Mural de Relatos"><i class="fas fa-bullhorn text-amber-500"></i></button>
-                <button onclick="mudarAbaSec('chat')" id="btnTabChat" class="relative px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition">
-                    <i class="fas fa-comments text-blue-400"></i>
-                    <span id="badgeChatSec" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
-                </button>
-                <!-- NOVO BOTÃO DE SAIR -->
-                <button onclick="sairSecretaria()" class="px-2.5 py-1.5 rounded-xl bg-red-950/40 border border-red-900 text-xs font-bold text-red-500 hover:text-white transition" title="Sair do Painel">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
+
+            <div class="flex items-center space-x-2 shrink-0">
+                <!-- MENU HAMBÚRGUER (TRÊS RISQUINHOS) -->
+                <div class="relative">
+                    <button onclick="toggleMenuSec()" class="w-9 h-9 rounded-lg bg-header border border-color text-main hover:border-red-500 transition flex items-center justify-center shadow-sm">
+                        <i class="fas fa-bars text-sm"></i>
+                    </button>
+
+                    <div id="menuSecDropdown" class="hidden absolute right-0 mt-2 w-56 bg-card border border-color rounded-2xl shadow-2xl p-2 z-50 space-y-1">
+                        <button onclick="mudarAbaSec('itens'); fecharMenuSec();" id="btnTabItens" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-main bg-header transition text-left">
+                            <i class="fas fa-boxes text-red-500 w-4"></i> Estoque / Gerenciar
+                        </button>
+                        <button onclick="mudarAbaSec('stats'); fecharMenuSec();" id="btnTabStats" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
+                            <i class="fas fa-chart-bar text-blue-400 w-4"></i> Dashboard / Estatísticas
+                        </button>
+                        <button onclick="mudarAbaSec('cats'); fecharMenuSec();" id="btnTabCats" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
+                            <i class="fas fa-tags text-amber-400 w-4"></i> Categorias
+                        </button>
+                        <button onclick="mudarAbaSec('entregues'); fecharMenuSec();" id="btnTabEntregues" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
+                            <i class="fas fa-history text-emerald-400 w-4"></i> Histórico Entregues
+                        </button>
+                        <button onclick="mudarAbaSec('mural'); fecharMenuSec();" id="btnTabMural" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
+                            <span class="flex items-center gap-2.5"><i class="fas fa-bullhorn text-amber-500 w-4"></i> Mural de Relatos</span>
+                        </button>
+                        <button onclick="mudarAbaSec('chat'); fecharMenuSec();" id="btnTabChat" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left border-t border-color pt-2 mt-1">
+                            <span class="flex items-center gap-2.5"><i class="fas fa-comments text-blue-400 w-4"></i> Chat Alunos</span>
+                            <span id="badgeChatSec" class="hidden w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BOTÃO DE PERFIL / SAIR DA SECRETARIA -->
+                <div class="relative">
+                    <button onclick="togglePerfilSec()" class="w-9 h-9 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
+                        <i class="fas fa-user-shield text-xs"></i>
+                    </button>
+                    
+                    <div id="perfilSecDropdown" class="hidden absolute right-0 mt-2 w-56 bg-card border border-color rounded-2xl shadow-2xl p-4 z-50 space-y-3">
+                        <div class="border-b border-color pb-3">
+                            <p class="text-[10px] text-muted uppercase font-bold">Usuário Conectado</p>
+                            <p class="text-sm font-black text-main mt-0.5">Secretaria ETEC</p>
+                            <p class="text-[11px] text-zinc-400 truncate">Acesso Administrativo</p>
+                        </div>
+                        <div>
+                            <button onclick="sairSecretaria()" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-red-950/40 text-red-500 border border-red-900/50 font-bold text-xs hover:bg-red-900/40 transition">
+                                <i class="fas fa-sign-out-alt text-xs"></i> Sair do Painel
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -206,7 +242,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO (Adaptado para Callbacks) -->
+    <!-- MODAL DE CONFIRMAÇÃO -->
     <div id="modalConfirmacao" class="hidden fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-card border border-color w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-2xl text-center">
             <div id="modalConfirmIconBg" class="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-2">
@@ -293,13 +329,13 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-muted uppercase mb-1">Fotos do Item (Galeria / Câmera):</label>
-                    <input type="file" id="cadFotoFile" accept="image/*" multiple onchange="adicionarFotosEdicao(this)" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs focus:outline-none focus:border-red-500 cursor-pointer">
-                    <div id="gridFotosEdicao" class="mt-2 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
+                    <label class="block text-xs font-bold text-muted uppercase mb-1">Foto do Item:</label>
+                    <input type="file" id="cadFotoFile" accept="image/*" onchange="adicionarFotoEdicao(this)" class="w-full bg-header border border-color rounded-xl px-3 py-2 text-main text-xs focus:outline-none focus:border-red-500 cursor-pointer">
+                    <div id="gridFotosEdicao" class="mt-2 hidden"></div>
                 </div>
                 <div class="flex gap-2 pt-3">
                     <button type="button" onclick="fecharModalCadastrar()" class="w-1/2 bg-header border border-color text-muted font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
-                    <button type="submit" id="btnSalvarItem" class="w-1/2 dynamic-btn font-bold py-3 rounded-xl text-xs uppercase">Salvar Objeto</button>
+                    <button type="submit" id="btnSalvarItem" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase">Salvar Objeto</button>
                 </div>
             </form>
         </div>
@@ -373,12 +409,11 @@
         let tentativasIncorretas = 0;
         let acaoConfirmacaoCallback = null;
         let html5QrcodeScanner = null;
-        let fotosEdicaoAtuais = [];
+        let fotoEdicaoAtual = "";
 
         const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
         const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
 
-        // --- NOVO: CHECAR SE JÁ ESTÁ LOGADO AO ABRIR O APP ---
         window.onload = () => {
             const tokenSalvo = localStorage.getItem('secretaria_token');
             if (tokenSalvo) {
@@ -389,11 +424,43 @@
             }
         };
 
-        // --- NOVO: FUNÇÃO PARA DESLOGAR ---
         function sairSecretaria() {
             localStorage.removeItem('secretaria_token');
             window.location.reload();
         }
+
+        // --- CONTROLES DOS MENUS FLUTUANTES DA SECRETARIA ---
+        function toggleMenuSec() {
+            const menu = document.getElementById('menuSecDropdown');
+            const perfilMenu = document.getElementById('perfilSecDropdown');
+            if(perfilMenu) perfilMenu.classList.add('hidden');
+            menu.classList.toggle('hidden');
+        }
+
+        function fecharMenuSec() {
+            document.getElementById('menuSecDropdown').classList.add('hidden');
+        }
+
+        function togglePerfilSec() {
+            const perfilMenu = document.getElementById('perfilSecDropdown');
+            const navMenu = document.getElementById('menuSecDropdown');
+            if(navMenu) navMenu.classList.add('hidden');
+            perfilMenu.classList.toggle('hidden');
+        }
+
+        window.addEventListener('click', (e) => {
+            const navMenu = document.getElementById('menuSecDropdown');
+            const navBtn = navMenu?.previousElementSibling;
+            if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) {
+                navMenu.classList.add('hidden');
+            }
+
+            const perfilMenu = document.getElementById('perfilSecDropdown');
+            const perfilBtn = perfilMenu?.previousElementSibling;
+            if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) {
+                perfilMenu.classList.add('hidden');
+            }
+        });
 
         async function fazerLoginSec() {
             const erroEl = document.getElementById('loginErroMsg');
@@ -414,7 +481,7 @@
                 
                 if (res.ok && data.success) {
                     tokenSecretaria = data.token;
-                    localStorage.setItem('secretaria_token', data.token); // <-- SALVA AQUI A SESSÃO
+                    localStorage.setItem('secretaria_token', data.token);
                     document.getElementById('loginScreen').classList.add('hidden');
                     mostrarToast("Conexão Segura Estabelecida!", "success");
                     carregarItensSecretaria();
@@ -480,14 +547,12 @@
             document.getElementById('modalGerarEtiqueta').classList.remove('hidden');
         }
 
-        // --- NAVEGAÇÃO E LISTAGEM ---
+        // --- NAVEGAÇÃO E LISTAGEM DAS ABAS ---
         function mudarAbaSec(aba) {
             ['itens', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
                 document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`).classList.add('hidden');
-                document.getElementById(`btnTab${a.charAt(0).toUpperCase() + a.slice(1)}`).className = "px-2.5 py-1.5 rounded-xl bg-card border border-color text-xs font-bold text-muted hover:text-main transition";
             });
             document.getElementById(`sec${aba.charAt(0).toUpperCase() + aba.slice(1)}Screen`).classList.remove('hidden');
-            document.getElementById(`btnTab${aba.charAt(0).toUpperCase() + aba.slice(1)}`).className = "px-2.5 py-1.5 rounded-xl bg-header border border-red-500 text-xs font-bold text-main transition";
 
             if (aba === 'stats') carregarEstatisticas();
             if (aba === 'cats') carregarCategorias();
@@ -497,7 +562,7 @@
         }
 
         // ==========================================
-        // MURAL DE PERDIDOS (NOVO)
+        // MURAL DE PERDIDOS
         // ==========================================
         async function carregarMuralSec() {
             if(!tokenSecretaria) return; 
@@ -543,7 +608,8 @@
                 const card = document.createElement('div');
                 card.className = "bg-card border border-color rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:border-gray-500 transition shadow-sm";
                 card.onclick = () => abrirModalAcoesItem(item.id);
-                const foto = item.fotos && item.fotos.length > 0 ? item.fotos[0] : '';
+                // Unificação da foto única padronizada
+                const foto = item.foto || (item.fotos && item.fotos[0]) || '';
                 const imgTag = foto ? `<img src="${foto}" class="w-16 h-16 object-cover rounded-xl shrink-0">` : `<div class="w-16 h-16 bg-header border border-color rounded-xl flex items-center justify-center text-muted shrink-0"><i class="fas fa-box"></i></div>`;
                 let stBadge = 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
                 if (item.status === 'SOLICITADO') stBadge = 'bg-amber-900/40 text-amber-400 border-amber-700/50';
@@ -562,15 +628,18 @@
             const item = itensSec.find(i => String(i.id) === String(id));
             if (!item) return;
             const galeria = document.getElementById('acaoItemGaleria'); galeria.innerHTML = '';
-            if (item.fotos && item.fotos.length > 0) item.fotos.forEach(f => { galeria.innerHTML += `<img src="${f}" class="w-20 h-20 object-cover rounded-lg shrink-0 border border-color">`; });
-            else galeria.innerHTML = `<div class="w-20 h-20 bg-card rounded-lg border border-color flex items-center justify-center shrink-0"><i class="fas fa-box text-xl text-muted"></i></div>`;
+            const fotoUnica = item.foto || (item.fotos && item.fotos[0]) || '';
+            if (fotoUnica) { 
+                galeria.innerHTML += `<img src="${fotoUnica}" class="w-20 h-20 object-cover rounded-lg shrink-0 border border-color">`; 
+            } else { 
+                galeria.innerHTML = `<div class="w-20 h-20 bg-card rounded-lg border border-color flex items-center justify-center shrink-0"><i class="fas fa-box text-xl text-muted"></i></div>`; 
+            }
             document.getElementById('acaoItemCat').innerText = item.categoria; document.getElementById('acaoItemStatus').innerText = item.status;
             document.getElementById('acaoItemId').innerText = item.id; document.getElementById('acaoItemTitulo').innerText = item.nome || item.txt_descricao;
             document.getElementById('acaoItemLocal').innerHTML = `<i class="fas fa-map-marker-alt text-red-500 mr-1"></i> ${item.txt_local}`;
             document.getElementById('acaoItemDesc').innerText = item.txt_descricao; document.getElementById('acaoItemData').innerText = item.txt_data;
             if (item.solicitado_por) { document.getElementById('acaoItemSolicitanteNome').innerText = item.solicitado_por; document.getElementById('acaoItemSolicitanteRm').innerText = `RM: ${item.rm_aluno || '-'}`; document.getElementById('acaoItemSolicitanteBox').classList.remove('hidden'); } else document.getElementById('acaoItemSolicitanteBox').classList.add('hidden');
             
-            // Controle de Botões
             const st = item.status.toUpperCase();
             document.getElementById('btnAcaoBaixa').classList.toggle('hidden', st === 'ENTREGUE' || st.includes('DOAÇÃO'));
             document.getElementById('btnAcaoRecusar').classList.toggle('hidden', st !== 'SOLICITADO');
@@ -587,7 +656,6 @@
         }
         function fecharModalAcoesItem() { document.getElementById('modalAcoesItem').classList.add('hidden'); }
 
-        // --- EXECUTOR UNIVERSAL DE AÇÕES COM JWT ---
         function confirmarAcaoJWT(titulo, mensagem, url, metodo, bodyData = null, callback = null) {
             fecharModalAcoesItem();
             document.getElementById('modalConfirmTitulo').innerText = titulo;
@@ -610,35 +678,56 @@
         function fecharModalConfirmacao() { document.getElementById('modalConfirmacao').classList.add('hidden'); }
         document.getElementById('btnConfirmarAcao').addEventListener('click', () => { if (acaoConfirmacaoCallback) acaoConfirmacaoCallback(); });
 
-        // --- FORMULÁRIOS DE CADASTRO COM JWT ---
-        function adicionarFotosEdicao(input) {
-            if (input.files) {
-                Array.from(input.files).forEach(file => { const reader = new FileReader(); reader.onload = e => { fotosEdicaoAtuais.push(e.target.result); renderizarGridFotosEdicao(); }; reader.readAsDataURL(file); });
-                input.value = '';
+        // --- CADASTRO E EDIÇÃO COM FOTO ÚNICA PADRONIZADA ---
+        function adicionarFotoEdicao(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => { 
+                    fotoEdicaoAtual = e.target.result; 
+                    const container = document.getElementById('gridFotosEdicao');
+                    container.innerHTML = `<img src="${fotoEdicaoAtual}" class="w-20 h-20 object-cover rounded-xl border border-color">`;
+                    container.classList.remove('hidden');
+                }; 
+                reader.readAsDataURL(input.files[0]);
             }
-        }
-        function renderizarGridFotosEdicao() {
-            const container = document.getElementById('gridFotosEdicao'); container.innerHTML = '';
-            if (fotosEdicaoAtuais.length > 0) {
-                container.classList.remove('hidden');
-                fotosEdicaoAtuais.forEach((foto, i) => { container.innerHTML += `<div class="relative w-20 h-20 shrink-0"><img src="${foto}" class="w-full h-full object-cover rounded-xl border border-color"><button type="button" onclick="fotosEdicaoAtuais.splice(${i}, 1); renderizarGridFotosEdicao();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6"><i class="fas fa-times"></i></button></div>`; });
-            } else container.classList.add('hidden');
         }
 
         async function abrirModalCadastrar() {
             await carregarCategorias();
-            document.getElementById('editItemId').value = ''; document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-box text-red-500 mr-2"></i>Cadastrar Objeto`;
-            document.getElementById('cadNome').value = ''; document.getElementById('cadDescricao').value = ''; document.getElementById('cadData').value = new Date().toLocaleDateString('pt-BR'); document.getElementById('cadLocal').value = '';
-            document.getElementById('cadStatus').value = 'DISPONÍVEL'; fotosEdicaoAtuais = []; renderizarGridFotosEdicao(); document.getElementById('modalCadastrar').classList.remove('hidden');
+            document.getElementById('editItemId').value = ''; 
+            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-box text-red-500 mr-2"></i>Cadastrar Objeto`;
+            document.getElementById('cadNome').value = ''; 
+            document.getElementById('cadDescricao').value = ''; 
+            document.getElementById('cadData').value = new Date().toLocaleDateString('pt-BR'); 
+            document.getElementById('cadLocal').value = '';
+            document.getElementById('cadStatus').value = 'DISPONÍVEL'; 
+            fotoEdicaoAtual = ""; 
+            document.getElementById('gridFotosEdicao').classList.add('hidden');
+            document.getElementById('modalCadastrar').classList.remove('hidden');
         }
         function fecharModalCadastrar() { document.getElementById('modalCadastrar').classList.add('hidden'); }
 
         async function abrirModalEditar(id) {
             const item = itensSec.find(i => String(i.id) === String(id)); if (!item) return;
             await carregarCategorias();
-            document.getElementById('editItemId').value = item.id; document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-edit text-red-500 mr-2"></i>Editar Item #${id}`;
-            document.getElementById('cadNome').value = item.nome || ''; document.getElementById('cadDescricao').value = item.txt_descricao || ''; document.getElementById('cadCategoria').value = item.categoria || ''; document.getElementById('cadData').value = item.txt_data || ''; document.getElementById('cadLocal').value = item.txt_local || ''; document.getElementById('cadStatus').value = item.status || 'DISPONÍVEL';
-            fotosEdicaoAtuais = [...(item.fotos || [])]; renderizarGridFotosEdicao(); document.getElementById('modalCadastrar').classList.remove('hidden');
+            document.getElementById('editItemId').value = item.id; 
+            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-edit text-red-500 mr-2"></i>Editar Item #${id}`;
+            document.getElementById('cadNome').value = item.nome || ''; 
+            document.getElementById('cadDescricao').value = item.txt_descricao || ''; 
+            document.getElementById('cadCategoria').value = item.categoria || ''; 
+            document.getElementById('cadData').value = item.txt_data || ''; 
+            document.getElementById('cadLocal').value = item.txt_local || ''; 
+            document.getElementById('cadStatus').value = item.status || 'DISPONÍVEL';
+            
+            fotoEdicaoAtual = item.foto || (item.fotos && item.fotos[0]) || '';
+            const container = document.getElementById('gridFotosEdicao');
+            if (fotoEdicaoAtual) {
+                container.innerHTML = `<img src="${fotoEdicaoAtual}" class="w-20 h-20 object-cover rounded-xl border border-color">`;
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            document.getElementById('modalCadastrar').classList.remove('hidden');
         }
 
         async function salvarItemSecretaria(e) {
@@ -646,10 +735,20 @@
             const id = document.getElementById('editItemId').value;
             const btn = document.getElementById('btnSalvarItem');
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`; btn.disabled = true;
-            const payload = { nome: document.getElementById('cadNome').value.trim(), descricao: document.getElementById('cadDescricao').value.trim(), categoria: document.getElementById('cadCategoria').value, data: document.getElementById('cadData').value.trim(), local: document.getElementById('cadLocal').value.trim(), status: document.getElementById('cadStatus').value, fotos: fotosEdicaoAtuais };
+            
+            const payload = { 
+                nome: document.getElementById('cadNome').value.trim(), 
+                descricao: document.getElementById('cadDescricao').value.trim(), 
+                categoria: document.getElementById('cadCategoria').value, 
+                data: document.getElementById('cadData').value.trim(), 
+                local: document.getElementById('cadLocal').value.trim(), 
+                status: document.getElementById('cadStatus').value, 
+                foto: fotoEdicaoAtual // <--- Unificado no campo 'foto'
+            };
+            
             try {
                 const res = await fetch(id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`, { method: id ? 'PUT' : 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
-                if (res.ok) { mostrarToast("Salvo com sucesso!", "success"); fecharModalCadastrar(); carregarItensSecretaria(); carregarEstatisticas(); } else mostrarToast("Sem permissão (Token).", "error");
+                if (res.ok) { mostrarToast("Salvo com sucesso!", "success"); fecharModalCadastrar(); carregarItensSecretaria(); carregarEstatisticas(); } else mostrarToast("Sem permissão (Token). Faça login novamente.", "error");
             } catch (err) { mostrarToast("Erro ao conectar", "error"); }
             btn.innerHTML = `Salvar Objeto`; btn.disabled = false;
         }
@@ -690,13 +789,12 @@
 
         // --- CHAT PROTEGIDO ---
         async function carregarConversasChat() { if(!tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/chat/conversas`, {headers: getAuthHeadersGet()}); if(!res.ok) return; const conversas = await res.json(); let total = 0; document.getElementById('listaConversasChat').innerHTML = conversas.map(c => { if(c.nao_lidas > 0) total += c.nao_lidas; return `<div onclick="abrirConversaAluno('${c.rm_aluno}', '${c.nome_aluno}')" class="bg-card border border-color rounded-xl p-3 flex justify-between items-center cursor-pointer"><div><h4 class="font-bold text-xs text-main">${c.nome_aluno} (RM: ${c.rm_aluno})</h4><p class="text-[10px] text-muted">Última: ${c.ultima_msg_data}</p></div>${c.nao_lidas > 0 ? `<span class="bg-red-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">${c.nao_lidas}</span>` : `<i class="fas fa-chevron-right text-xs text-muted"></i>`}</div>`; }).join(''); const badge = document.getElementById('badgeChatSec'); if(total > 0){ badge.classList.remove('hidden'); badge.innerText = total; } else badge.classList.add('hidden'); } catch(e){} }
-        async function abrirConversaAluno(rm, nome) { chatRmAtivo = rm; document.getElementById('listaConversasChat').classList.add('hidden'); document.getElementById('painelConversaAtiva').classList.remove('hidden'); document.getElementById('chatAlunoNomeTitulo').innerText = nome; document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; atualizarMensagensSec(); }
+        async function abrirConversaAluno(rm, nome) { chatRmAtivo = rm; document.getElementById('secChatScreen').classList.add('space-y-4'); document.getElementById('listaConversasChat').classList.add('hidden'); document.getElementById('painelConversaAtiva').classList.remove('hidden'); document.getElementById('chatAlunoNomeTitulo').innerText = nome; document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; atualizarMensagensSec(); }
         function fecharConversaAtiva() { chatRmAtivo = null; document.getElementById('painelConversaAtiva').classList.add('hidden'); document.getElementById('listaConversasChat').classList.remove('hidden'); carregarConversasChat(); }
-        async function atualizarMensagensSec() { if (!chatRmAtivo || !tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); if(!res.ok) return; const container = document.getElementById('chatSecMensagens'); container.innerHTML = (await res.json()).map(m => { const eu = m.remetente === 'SECRETARIA'; return `<div class="flex flex-col ${eu ? 'items-end' : 'items-start'}"><span class="text-[9px] text-muted mb-0.5">${eu ? 'Secretaria' : m.nome_aluno}</span><div class="max-w-[85%] px-3 py-2 rounded-xl ${eu ? 'bg-red-600 text-white rounded-tr-none' : 'bg-header border border-color text-main rounded-tl-none'} shadow-sm break-words">${m.mensagem}</div></div>`; }).join(''); container.scrollTop = container.scrollHeight; } catch(e){} }
+        async function atualizarMensagensSec() { if (!chatRmAtivo || !tokenSecretaria) return; try { const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); if(!res.ok) return; const container = document.getElementById('chatSecMensagens'); container.innerHTML = (await res.json()).json ? [] : (await res.json()).map(m => { const eu = m.remetente === 'SECRETARIA'; return `<div class="flex flex-col ${eu ? 'items-end' : 'items-start'}"><span class="text-[9px] text-muted mb-0.5">${eu ? 'Secretaria' : m.nome_aluno}</span><div class="max-w-[85%] px-3 py-2 rounded-xl ${eu ? 'bg-red-600 text-white rounded-tr-none' : 'bg-header border border-color text-main rounded-tl-none'} shadow-sm break-words">${m.mensagem}</div></div>`; }).join(''); container.scrollTop = container.scrollHeight; } catch(e){} }
         async function enviarMensagemSecretaria(e) { e.preventDefault(); if (!chatRmAtivo || !document.getElementById('inputMsgSec').value.trim()) return; try { if ((await fetch(`${API_URL}/api/chat/enviar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rm: chatRmAtivo, nome: 'Secretaria', remetente: 'SECRETARIA', mensagem: document.getElementById('inputMsgSec').value.trim() }) })).ok) { document.getElementById('inputMsgSec').value = ''; atualizarMensagensSec(); } } catch(e){} }
         function iniciarPollingChatSec() { pararPollingChatSec(); chatPollTimer = setInterval(() => { carregarConversasChat(); if (chatRmAtivo) atualizarMensagensSec(); }, 3000); }
         function pararPollingChatSec() { if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } }
-
     </script>
 </body>
 </html>
