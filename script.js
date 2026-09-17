@@ -68,7 +68,7 @@ function checarSessao() {
     }
 }
 
-// --- CONTROLES DOS MENUS FLUTUANTES (HAMBÚRGUER E PERFIL) ---
+// --- CONTROLES DOS MENUS FLUTUANTES ---
 function toggleMenuNavegacao() {
     const menu = document.getElementById('menuNavegacaoDropdown');
     const perfilMenu = document.getElementById('perfilMenu');
@@ -191,14 +191,69 @@ function mudarAba(aba) {
     abaAtiva = aba;
     document.getElementById('catalogScreen').classList.toggle('hidden', aba !== 'catalogo');
     document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
+    document.getElementById('meusItensScreen').classList.toggle('hidden', aba !== 'meusItens');
     document.getElementById('detailScreen').classList.add('hidden');
+}
+
+// --- PAINEL MEUS ITENS E RELATOS ---
+async function abrirPainelMeusItens() {
+    mudarAba('meusItens');
+    if (!alunoSessao) return;
+
+    const listaSol = document.getElementById('listaMinhasSolicitacoes');
+    const listaRel = document.getElementById('listaMeusRelatosMural');
     
-    // Atualiza destaque visual dentro do menu hambúrguer
-    const btnCat = document.getElementById('menuBtnCatalogo');
-    const btnMur = document.getElementById('menuBtnMural');
-    if(btnCat && btnMur) {
-        btnCat.className = aba === 'catalogo' ? "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-main bg-header transition text-left" : "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left";
-        btnMur.className = aba === 'mural' ? "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-main bg-header transition text-left" : "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left";
+    listaSol.innerHTML = `<p class="text-xs text-muted italic">Buscando solicitações...</p>`;
+    listaRel.innerHTML = `<p class="text-xs text-muted italic">Buscando relatos...</p>`;
+
+    try {
+        // Busca itens do catálogo que o aluno solicitou
+        const resItens = await fetch(`${API_URL}/api/itens`);
+        if (resItens.ok) {
+            const itens = await resItens.json();
+            // Filtra os itens onde o RM do aluno consta na solicitação (ou criados por ele)
+            const meus = itens.filter(i => i.aluno_solicitante_rm === alunoSessao.rm || (i.solicitacoes && i.solicitacoes.some(s => s.rm === alunoSessao.rm)));
+            
+            if (meus.length > 0) {
+                listaSol.innerHTML = '';
+                meus.forEach(i => {
+                    listaSol.innerHTML += `
+                        <div class="bg-header border border-color rounded-xl p-3 flex justify-between items-center gap-3">
+                            <div>
+                                <p class="text-xs font-bold text-main">${i.nome || i.txt_descricao}</p>
+                                <p class="text-[10px] text-muted">Status: <span class="font-bold text-amber-400 uppercase">${i.status || 'SOLICITADO'}</span></p>
+                            </div>
+                            <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")})' class="px-3 py-1.5 rounded-lg bg-card border border-color text-xs font-bold text-main hover:border-red-500 transition">VER</button>
+                        </div>`;
+                });
+            } else {
+                listaSol.innerHTML = `<p class="text-xs text-muted italic">Você ainda não solicitou nenhum item.</p>`;
+            }
+        }
+
+        // Busca relatos do mural do aluno
+        const resMural = await fetch(`${API_URL}/api/mural/aluno/${alunoSessao.rm}`);
+        if (resMural.ok) {
+            const relatos = await resMural.json();
+            if (relatos.length > 0) {
+                listaRel.innerHTML = '';
+                relatos.forEach(r => {
+                    listaRel.innerHTML += `
+                        <div class="bg-header border border-color rounded-xl p-3 flex justify-between items-center gap-3">
+                            <div>
+                                <p class="text-xs font-bold text-main">[${r.categoria}] ${r.descricao}</p>
+                                <p class="text-[10px] text-muted">Data: ${r.data || 'recente'}</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-950/40 text-amber-400 border border-amber-900">ATIVO NO MURAL</span>
+                        </div>`;
+                });
+            } else {
+                listaRel.innerHTML = `<p class="text-xs text-muted italic">Nenhum relato publicado no mural.</p>`;
+            }
+        }
+    } catch (e) {
+        listaSol.innerHTML = `<p class="text-xs text-red-400">Erro ao carregar dados.</p>`;
+        listaRel.innerHTML = `<p class="text-xs text-red-400">Erro ao carregar dados.</p>`;
     }
 }
 
@@ -285,6 +340,8 @@ function filtrarStatus(st) { statusAtual = st; renderizarItens(); }
 function abrirDetalhes(item) {
     itemSelecionado = item;
     document.getElementById('catalogScreen').classList.add('hidden');
+    document.getElementById('muralScreen').classList.add('hidden');
+    document.getElementById('meusItensScreen').classList.add('hidden');
     document.getElementById('detailScreen').classList.remove('hidden');
     document.getElementById('detailTitle').innerText = item.nome || item.txt_descricao;
     document.getElementById('detailDescription').innerText = item.txt_descricao;
@@ -303,7 +360,7 @@ function abrirDetalhes(item) {
     if (st !== 'DISPONÍVEL') { b.disabled = true; b.innerText = `STATUS: ${st}`; b.className = "w-full bg-gray-700 text-gray-400 font-bold py-3.5 rounded-xl text-sm"; }
     else { b.disabled = false; b.innerText = "ESTE É O MEU ITEM"; b.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm"; }
 }
-function voltarParaCatalogo() { document.getElementById('detailScreen').classList.add('hidden'); if(abaAtiva === 'mural') document.getElementById('muralScreen').classList.remove('hidden'); else document.getElementById('catalogScreen').classList.remove('hidden'); }
+function voltarParaCatalogo() { mudarAba('catalogo'); }
 function navegarFotos(dir) { const c = document.getElementById('carouselContainer'); if(fotosAtuais.length) { fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); } }
 
 function abrirNovoModal() { if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); }
