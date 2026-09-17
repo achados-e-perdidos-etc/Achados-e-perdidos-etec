@@ -40,7 +40,10 @@ cloudinary.config(
 # Chave secreta oficial para o JWT
 JWT_SECRET = os.environ.get("JWT_SECRET", "@#Etec_Achad0s_2026_Secret_T0ken!)").strip()
 EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "secretaria@etec.sp.gov.br").strip().lower()
-SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000$dummy$hash")
+
+# Senha da secretaria definida no Railway
+ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "").strip()
+ADMIN_SENHA_HASH = os.environ.get("ADMIN_SENHA_HASH", "").strip()
 
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 SMTP_SENDER = os.environ.get("SMTP_SENDER", "secretaria@etec.sp.gov.br")
@@ -64,7 +67,6 @@ def token_required(f):
             elif len(parts) == 1:
                 token = parts[0].strip('"\'' )
 
-        # Fallback via query string caso necessário
         if not token:
             token = request.args.get('token', '').strip('"\'' )
 
@@ -144,11 +146,11 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS categorias (id SERIAL PRIMARY KEY, nome VARCHAR(50) UNIQUE NOT NULL);')
-        if cursor.execute("SELECT COUNT(*) FROM categorias;") or cursor.fetchone()[0] == 0:
-            for c in ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']:
-                cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
         
+        # 1. Tabela de Categorias
+        cursor.execute('CREATE TABLE IF NOT EXISTS categorias (id SERIAL PRIMARY KEY, nome VARCHAR(50) UNIQUE NOT NULL);')
+        
+        # 2. Tabela de Itens Principal
         cursor.execute('''CREATE TABLE IF NOT EXISTS itens (
             id SERIAL PRIMARY KEY, nome_item VARCHAR(150), descricao TEXT NOT NULL, categoria VARCHAR(50) NOT NULL, 
             data_encontrado VARCHAR(20) NOT NULL, local_encontrado VARCHAR(100) NOT NULL, foto_base64 TEXT, 
@@ -156,21 +158,47 @@ def init_db():
             email_solicitante VARCHAR(150), aprovado BOOLEAN DEFAULT TRUE, cadastrado_por_aluno BOOLEAN DEFAULT FALSE
         );''')
         
-        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='itens' AND column_name='aprovado';")
-        if not cursor.fetchone():
-            cursor.execute("ALTER TABLE itens ADD COLUMN aprovado BOOLEAN DEFAULT TRUE, ADD COLUMN cadastrado_por_aluno BOOLEAN DEFAULT FALSE;")
+        # 3. Auto-Reparo e Migração de Colunas caso a tabela já existisse
+        colunas_migracao = [
+            ("nome_item", "VARCHAR(150)"),
+            ("foto_base64", "TEXT"),
+            ("fotos_json", "TEXT"),
+            ("status", "VARCHAR(30) DEFAULT 'DISPONÍVEL'"),
+            ("solicitado_por", "VARCHAR(100)"),
+            ("rm_aluno", "VARCHAR(20)"),
+            ("email_solicitante", "VARCHAR(150)"),
+            ("aprovado", "BOOLEAN DEFAULT TRUE"),
+            ("cadastrado_por_aluno", "BOOLEAN DEFAULT FALSE")
+        ]
+        for col_nome, col_tipo in colunas_migracao:
+            try:
+                cursor.execute(f"ALTER TABLE itens ADD COLUMN IF NOT EXISTS {col_nome} {col_tipo};")
+            except Exception:
+                conn.rollback()
 
+        # 4. Sincronizar sequence de IDs para evitar conflito de chave primária
+        try:
+            cursor.execute("SELECT setval(pg_get_serial_sequence('itens', 'id'), COALESCE((SELECT MAX(id) FROM itens), 1));")
+        except Exception:
+            conn.rollback()
+
+        # 5. Outras Tabelas do Sistema
         cursor.execute('''CREATE TABLE IF NOT EXISTS entregues (id SERIAL PRIMARY KEY, item_id INT NOT NULL, nome_item TEXT NOT NULL, retirado_por VARCHAR(100) NOT NULL, rm_retirante VARCHAR(30) NOT NULL, turma_curso VARCHAR(50), data_entrega VARCHAR(30) NOT NULL, funcionario_responsavel VARCHAR(100));''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS mural_perdidos (id SERIAL PRIMARY KEY, nome_aluno VARCHAR(100) NOT NULL, rm_aluno VARCHAR(20) NOT NULL, email_aluno VARCHAR(150), categoria VARCHAR(50) NOT NULL, descricao TEXT NOT NULL, data_registro VARCHAR(30) NOT NULL, status VARCHAR(30) DEFAULT 'PROCURANDO');''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens_chat (id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) NOT NULL, nome_aluno VARCHAR(100) NOT NULL, remetente VARCHAR(20) NOT NULL, mensagem TEXT NOT NULL, data_envio VARCHAR(30) NOT NULL, lida BOOLEAN DEFAULT FALSE);''')
-        
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL);''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL);''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) UNIQUE NOT NULL, subscription_json TEXT NOT NULL);''')
 
+        # 6. Categorias Padrão
+        cursor.execute("SELECT COUNT(*) FROM categorias;")
+        if cursor.fetchone()[0] == 0:
+            for c in ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']:
+                cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
+
         conn.commit(); cursor.close(); conn.close()
     except Exception as e: 
-        print(f"Erro DB: {e}")
+        print(f"Erro DB na inicializacao: {e}")
 
 if DATABASE_URL: init_db()
 
@@ -178,7 +206,6 @@ if DATABASE_URL: init_db()
 def home(): 
     return send_from_directory(app.static_folder, 'index.html')
 
-# Rota para verificar a integridade da sessão JWT
 @app.route('/api/auth/verificar', methods=['GET', 'OPTIONS'])
 @token_required
 def verificar_token():
@@ -285,20 +312,25 @@ def redefinir_senha():
         return jsonify({"success": False, "message": str(e)}), 500
 
 # ==========================================
-# ROTAS DA SECRETARIA
+# ROTAS DA SECRETARIA (LOGIN)
 # ==========================================
 @app.route('/api/login', methods=['POST'])
 def login_secretaria():
-    email = (request.json.get('email') or '').strip().lower()
-    senha = (request.json.get('senha') or '').strip()
+    dados = request.json or {}
+    email = (dados.get('email') or '').strip().lower()
+    senha = (dados.get('senha') or '').strip()
     
     login_valido = False
-    if email == EMAIL_SECRETARIA:
-        if SENHA_SECRETARIA_HASH and SENHA_SECRETARIA_HASH != "pbkdf2:sha256:600000$dummy$hash":
-            login_valido = check_password_hash(SENHA_SECRETARIA_HASH, senha)
-        else:
-            login_valido = check_password_hash(SENHA_SECRETARIA_HASH, senha)
-            
+
+    if email == EMAIL_SECRETARIA and senha:
+        if ADMIN_SENHA and senha == ADMIN_SENHA:
+            login_valido = True
+        elif ADMIN_SENHA_HASH:
+            try:
+                login_valido = check_password_hash(ADMIN_SENHA_HASH, senha)
+            except Exception:
+                login_valido = (senha == ADMIN_SENHA_HASH)
+
     if login_valido:
         token = jwt.encode({
             "user": "secretaria", 
@@ -308,6 +340,7 @@ def login_secretaria():
             "iat": datetime.now(timezone.utc)
         }, JWT_SECRET, algorithm="HS256")
         return jsonify({"success": True, "token": token})
+        
     return jsonify({"success": False, "message": "Credenciais inválidas. Verifique o e-mail e a senha."}), 401
 
 @app.route('/api/categorias', methods=['GET', 'POST'])
@@ -362,12 +395,19 @@ def get_itens_pendentes():
 @app.route('/api/itens/cadastrar-aluno', methods=['POST'])
 def cadastrar_item_aluno():
     data = request.json or {}
-    nome, descricao, categoria = data.get('nome'), data.get('descricao'), data.get('categoria')
-    data_enc, local, rm = data.get('data'), data.get('local'), data.get('rm')
+    nome = (data.get('nome') or '').strip()
+    descricao = (data.get('descricao') or '').strip()
+    categoria = (data.get('categoria') or 'OUTROS').strip()
+    data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
+    local = (data.get('local') or 'Não informado').strip()
+    rm = (data.get('rm') or '').strip()
     urls_nuvem = processar_fotos(data.get('fotos', []))
+    foto_capa = urls_nuvem[0] if urls_nuvem else ''
+    fotos_json_str = json.dumps(urls_nuvem)
+
     try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status, aprovado, cadastrado_por_aluno, rm_aluno) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), rm))
+        cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status, aprovado, cadastrado_por_aluno, rm_aluno) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, rm))
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "message": "Item enviado para moderação da secretaria!"})
     except Exception as e: 
@@ -388,25 +428,70 @@ def aprovar_item(item_id):
 @token_required
 def cadastrar_item():
     data = request.json or {}
-    nome, descricao, categoria, data_enc, local, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
+    nome = (data.get('nome') or '').strip()
+    descricao = (data.get('descricao') or '').strip()
+    categoria = (data.get('categoria') or 'OUTROS').strip()
+    data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
+    local = (data.get('local') or 'Não informado').strip()
+    status = (data.get('status') or 'DISPONÍVEL').strip()
+
+    if not descricao:
+        return jsonify({"success": False, "error": "A descrição do item é obrigatória."}), 400
+
     urls_nuvem = processar_fotos(data.get('fotos', []))
+    foto_capa = urls_nuvem[0] if urls_nuvem else ''
+    fotos_json_str = json.dumps(urls_nuvem)
+
+    conn = None
     try:
-        conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status, aprovado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), status))
-        novo_id = cursor.fetchone()['id']
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
+        # Inserir o item com commit imediato
+        cursor.execute('''
+            INSERT INTO itens (
+                nome_item, descricao, categoria, data_encontrado, 
+                local_encontrado, foto_base64, fotos_json, status, aprovado
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE) 
+            RETURNING id;
+        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status))
+        
+        row = cursor.fetchone()
+        novo_id = row['id'] if isinstance(row, dict) else row[0]
+        conn.commit()
+
+        # Checagem de matches no mural protegida em bloco isolado
         try:
-            termos_novo = extrair_termos((nome or "") + " " + (descricao or ""))
+            termos_novo = extrair_termos(f"{nome} {descricao}")
             cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
             for mural in cursor.fetchall():
-                if len(termos_novo.intersection(extrair_termos(mural['descricao']))) >= 1:
-                    cursor.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', f"A secretaria registrou um objeto parecido com: '{nome}'. Veja o catálogo!", datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+                termos_mural = extrair_termos(mural.get('descricao', ''))
+                if len(termos_novo.intersection(termos_mural)) >= 1:
+                    msg_match = f"A secretaria registrou um objeto parecido com: '{nome or descricao}'. Veja o catálogo!"
+                    cursor.execute(
+                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
+                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                    )
                     if mural.get('email_aluno'):
-                        disparar_email(mural['email_aluno'], "Item Encontrado! ETEC Achados", f"<div style='font-family:Arial;'><h2 style='color:#dc2626;'>Possível Match!</h2><p>Olá {mural['nome_aluno']}, a secretaria registrou um item que bate com o seu relato: <strong>{nome}</strong>. Acesse o site para conferir.</p></div>")
-        except: pass
-        conn.commit(); cursor.close(); conn.close()
-        return jsonify({"success": True, "id": novo_id})
+                        disparar_email(
+                            mural['email_aluno'], 
+                            "Item Encontrado! ETEC Achados", 
+                            f"<div style='font-family:Arial;'><h2 style='color:#dc2626;'>Possível Match!</h2><p>Olá {mural['nome_aluno']}, a secretaria registrou um item parecido: <strong>{nome or descricao}</strong>.</p></div>"
+                        )
+            conn.commit()
+        except Exception as e_mural:
+            print(f"Aviso no mural match: {e_mural}")
+            if conn: conn.rollback()
+
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "id": novo_id, "message": "Item salvo com sucesso!"})
+
     except Exception as e: 
+        print(f"Erro ao cadastrar item: {e}")
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['PUT', 'DELETE'])
@@ -418,7 +503,13 @@ def gerenciar_item(item_id):
         cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
     else:
         data = request.json or {}
-        nome, descricao, categoria, data_enc, local, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
+        nome = (data.get('nome') or '').strip()
+        descricao = (data.get('descricao') or '').strip()
+        categoria = (data.get('categoria') or 'OUTROS').strip()
+        data_enc = (data.get('data') or '').strip()
+        local = (data.get('local') or '').strip()
+        status = (data.get('status') or 'DISPONÍVEL').strip()
+
         if descricao and data_enc and local:
             fotos_rec = data.get('fotos')
             if fotos_rec:
@@ -481,7 +572,6 @@ def mural():
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "matches_encontrados": matches})
 
-# Rota dedicada para as publicações do próprio aluno
 @app.route('/api/mural/aluno/<string:rm>', methods=['GET'])
 def mural_aluno(rm):
     try:
