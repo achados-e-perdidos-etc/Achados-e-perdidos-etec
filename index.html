@@ -23,10 +23,9 @@
 
     <!-- TELA DE LOGIN INSTITUCIONAL COM O FUNDO DINÂMICO ETEC -->
     <div id="loginAlunoScreen" class="hidden fixed inset-0 z-[200] flex flex-col items-center justify-center p-4">
-        <!-- Fundo dinâmico otimizado via CSS puro (60 FPS) -->
         <div class="dynamic-grid-background"></div>
 
-        <div class="bg-zinc-900/90 border border-red-500/30 backdrop-blur-md w-full max-w-sm rounded-2xl p-6 shadow-[0_0_50px_-12px_rgba(220,38,38,0.3)] relative z-10 overflow-hidden">
+        <div class="bg-zinc-900/90 border border-red-500/35 backdrop-blur-md w-full max-w-sm rounded-2xl p-6 shadow-[0_0_50px_-12px_rgba(220,38,38,0.3)] relative z-10 overflow-hidden">
             <div class="text-center mb-6">
                 <div class="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-rose-900 flex items-center justify-center text-white text-3xl mx-auto shadow-lg mb-3 ring-4 ring-red-600/20">
                     <i class="fas fa-user-graduate"></i>
@@ -35,7 +34,6 @@
                 <p class="text-xs text-zinc-400 mt-1">Utilize seu e-mail @aluno.cps.sp.gov.br</p>
             </div>
 
-            <!-- FORM DE LOGIN -->
             <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="space-y-4">
                 <div>
                     <label class="block text-[11px] font-bold text-zinc-400 uppercase mb-1">E-mail Institucional</label>
@@ -52,7 +50,6 @@
                 </div>
             </form>
 
-            <!-- FORM DE CADASTRO -->
             <form id="formCadastroAluno" onsubmit="confirmarCadastro(event)" class="hidden space-y-3">
                 <div id="passo1Cadastro" class="space-y-3">
                     <input type="email" id="cadEmailAluno" required placeholder="E-mail @aluno.cps.sp.gov.br" class="w-full bg-zinc-950/80 border border-zinc-800 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
@@ -71,7 +68,6 @@
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-bold text-zinc-400 hover:text-white mt-2">Voltar para Login</button>
             </form>
 
-            <!-- FORM ESQUECI A SENHA -->
             <form id="formRecuperarAluno" onsubmit="confirmarRedefinicao(event)" class="hidden space-y-3">
                 <div id="passo1Recuperar" class="space-y-3">
                     <input type="email" id="recEmailAluno" required placeholder="E-mail Institucional" class="w-full bg-zinc-950/80 border border-zinc-800 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
@@ -99,7 +95,7 @@
 
     <div id="toastContainer" class="fixed top-5 right-5 z-[250] flex flex-col gap-3 pointer-events-none"></div>
 
-    <!-- HEADER OTIMIZADO COM MENU DE PERFIL DO ALUNO -->
+    <!-- HEADER COM MENU HAMBÚRGUER (TRÊS RISQUINHOS) E BOTÃO DE PERFIL SEPARADO -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
@@ -109,18 +105,34 @@
                     <p id="lblBemVindo" class="text-xs text-muted truncate">Olá, Aluno!</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-2 shrink-0">
-                <button onclick="mudarAba('catalogo')" id="tabBtnCatalogo" class="px-3 py-2 rounded-lg bg-header border border-red-500 text-xs font-bold text-main transition flex items-center gap-1.5"><i class="fas fa-boxes"></i><span class="hidden sm:inline">Catálogo</span></button>
-                <button onclick="mudarAba('mural')" id="tabBtnMural" class="relative px-3 py-2 rounded-lg bg-card border border-color text-xs font-bold text-muted hover:text-main transition flex items-center gap-1.5"><i class="fas fa-bullhorn text-amber-500"></i><span class="hidden sm:inline">Perdi Algo</span><span id="badgeNotificacaoMural" class="hidden absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span></button>
-                
-                <button onclick="abrirModalCadastrarAluno()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5"><i class="fas fa-hand-holding-heart"></i><span class="hidden sm:inline">Achei Algo</span></button>
 
-                <!-- BOTÃO DE PERFIL DO ALUNO -->
+            <div class="flex items-center space-x-2 shrink-0">
+                <!-- BOTÃO DO MENU HAMBÚRGUER (TRÊS RISQUINHOS) -->
+                <div class="relative">
+                    <button onclick="toggleMenuNavegacao()" class="w-9 h-9 rounded-lg bg-header border border-color text-main hover:border-red-500 transition flex items-center justify-center shadow-sm">
+                        <i class="fas fa-bars text-sm"></i>
+                    </button>
+
+                    <!-- DROPDOWN DO MENU HAMBÚRGUER -->
+                    <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-52 bg-card border border-color rounded-2xl shadow-2xl p-2 z-50 space-y-1">
+                        <button onclick="mudarAba('catalogo'); fecharMenuNavegacao();" id="menuBtnCatalogo" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-main hover:bg-header transition text-left">
+                            <i class="fas fa-boxes text-red-500 w-4"></i> Catálogo
+                        </button>
+                        <button onclick="mudarAba('mural'); fecharMenuNavegacao();" id="menuBtnMural" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
+                            <span class="flex items-center gap-2.5"><i class="fas fa-bullhorn text-amber-500 w-4"></i> Perdi Algo</span>
+                            <span id="badgeNotificacaoMural" class="hidden w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span>
+                        </button>
+                        <button onclick="abrirModalCadastrarAluno(); fecharMenuNavegacao();" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 hover:bg-header transition text-left border-t border-color pt-2 mt-1">
+                            <i class="fas fa-hand-holding-heart w-4"></i> Achei Algo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BOTÃO DE PERFIL DO ALUNO (ISOLADO E CERTO) -->
                 <div class="relative">
                     <button onclick="togglePerfilMenu()" class="w-9 h-9 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
                         <i class="fas fa-user text-xs"></i>
                     </button>
-                    <!-- DROPDOWN DE PERFIL COM INFORMAÇÕES COMPLETAS -->
                     <div id="perfilMenu" class="hidden absolute right-0 mt-2 w-64 bg-card border border-color rounded-2xl shadow-2xl p-4 z-50 space-y-3">
                         <div class="border-b border-color pb-3">
                             <p class="text-[10px] text-muted uppercase font-bold">Aluno Conectado</p>
@@ -155,7 +167,6 @@
                     <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-main p-1"><i class="fas fa-times text-xs"></i></button>
                 </div>
 
-                <!-- MENU SUSPENSO DE CATEGORIAS -->
                 <div class="relative w-full">
                     <button onclick="toggleFiltroDropdown()" class="w-full flex items-center justify-between px-4 py-3 bg-card border border-color rounded-xl text-xs font-bold text-main hover:border-red-500 transition shadow-sm">
                         <span class="flex items-center gap-2"><i class="fas fa-filter text-red-500"></i> <span id="labelFiltroSelecionado">Todas as Categorias</span></span>
