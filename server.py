@@ -93,11 +93,14 @@ def processar_fotos(fotos_array):
     urls_finais = []
     if not fotos_array: return urls_finais
     for foto in fotos_array:
+        if not foto: continue
         if foto.startswith('http'): 
             urls_finais.append(foto)
         else:
             try: 
-                urls_finais.append(cloudinary.uploader.upload(foto, folder="etec_achados")["secure_url"])
+                res_upload = cloudinary.uploader.upload(foto, folder="etec_achados")
+                if "secure_url" in res_upload:
+                    urls_finais.append(res_upload["secure_url"])
             except Exception as e: 
                 print(f"Erro Cloudinary: {e}")
     return urls_finais
@@ -121,7 +124,7 @@ def init_db():
         
         cursor.execute('CREATE TABLE IF NOT EXISTS categorias (id SERIAL PRIMARY KEY, nome VARCHAR(50) UNIQUE NOT NULL);')
         
-        # Tabela itens limpa e unificada (utilizando 'foto' para a capa principal e 'fotos_json' para a galeria de até 4 fotos)
+        # Tabela unificada limpa: usa apenas 'foto' e 'fotos_json' (sem colunas antigas ou mortas)
         cursor.execute('''CREATE TABLE IF NOT EXISTS itens (
             id SERIAL PRIMARY KEY, 
             nome_item VARCHAR(150), 
@@ -139,12 +142,12 @@ def init_db():
             cadastrado_por_aluno BOOLEAN DEFAULT FALSE
         );''')
 
-        # Garantir migração caso existam colunas antigas e adicionar 'foto' se faltar
+        # Limpeza preventiva de colunas antigas caso ainda existam no banco do Railway
         try:
-            cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS foto TEXT;")
-            cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;")
             cursor.execute("ALTER TABLE itens DROP COLUMN IF EXISTS foto_base64;")
             cursor.execute("ALTER TABLE itens DROP COLUMN IF EXISTS prova_propriedade;")
+            cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS foto TEXT;")
+            cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;")
         except Exception:
             conn.rollback()
 
@@ -184,7 +187,7 @@ def verificar_token():
 def enviar_codigo():
     email = request.json.get('email', '').strip().lower()
     if not email.endswith('@aluno.cps.sp.gov.br'): 
-        return jsonify({"success": False, "message": "Use apenas o e-mail institucional (@aluno.cps.sp.gov.br)."}), 400
+        return jsonify({"success": False, "message": "Use apenas o e-mail institucional."}), 400
     
     codigo = str(random.randint(100000, 999999))
     expiracao = datetime.now() + timedelta(minutes=15)
@@ -333,10 +336,11 @@ def cadastrar_item_aluno():
     local = (data.get('local') or 'Não informado').strip()
     rm = (data.get('rm') or '').strip()
     
-    urls_nuvem = processar_fotos(data.get('fotos', []))
-    if not urls_nuvem and data.get('foto'):
-        urls_nuvem = processar_fotos([data.get('foto')])
-        
+    lista_entrada = data.get('fotos', [])
+    if not lista_entrada and data.get('foto'):
+        lista_entrada = [data.get('foto')]
+
+    urls_nuvem = processar_fotos(lista_entrada)
     foto_capa = urls_nuvem[0] if urls_nuvem else ''
     fotos_json_str = json.dumps(urls_nuvem)
 
@@ -373,10 +377,11 @@ def cadastrar_item():
     if not descricao:
         return jsonify({"success": False, "error": "A descrição é obrigatória."}), 400
 
-    urls_nuvem = processar_fotos(data.get('fotos', []))
-    if not urls_nuvem and data.get('foto'):
-        urls_nuvem = processar_fotos([data.get('foto')])
+    lista_entrada = data.get('fotos', [])
+    if not lista_entrada and data.get('foto'):
+        lista_entrada = [data.get('foto')]
 
+    urls_nuvem = processar_fotos(lista_entrada)
     foto_capa = urls_nuvem[0] if urls_nuvem else ''
     fotos_json_str = json.dumps(urls_nuvem)
 
@@ -418,7 +423,7 @@ def gerenciar_item(item_id):
         local = (data.get('local') or '').strip()
         status = (data.get('status') or 'DISPONÍVEL').strip()
 
-        fotos_rec = data.get('fotos')
+        fotos_rec = data.get('fotos', [])
         if not fotos_rec and data.get('foto'):
             fotos_rec = [data.get('foto')]
 
