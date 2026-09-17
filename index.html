@@ -21,7 +21,7 @@
         </video>
     </div>
 
-    <!-- TELA DE LOGIN INSTITUCIONAL COM O FUNDO DINÂMICO ETEC -->
+    <!-- TELA DE LOGIN INSTITUCIONAL -->
     <div id="loginAlunoScreen" class="hidden fixed inset-0 z-[200] flex flex-col items-center justify-center p-4">
         <div class="dynamic-grid-background"></div>
 
@@ -95,7 +95,7 @@
 
     <div id="toastContainer" class="fixed top-5 right-5 z-[250] flex flex-col gap-3 pointer-events-none"></div>
 
-    <!-- HEADER COM MENU HAMBÚRGUER (TRÊS RISQUINHOS) E BOTÃO DE PERFIL SEPARADO -->
+    <!-- HEADER -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
@@ -107,14 +107,13 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
-                <!-- BOTÃO DO MENU HAMBÚRGUER (TRÊS RISQUINHOS) -->
+                <!-- MENU HAMBÚRGUER (TRÊS RISQUINHOS) -->
                 <div class="relative">
                     <button onclick="toggleMenuNavegacao()" class="w-9 h-9 rounded-lg bg-header border border-color text-main hover:border-red-500 transition flex items-center justify-center shadow-sm">
                         <i class="fas fa-bars text-sm"></i>
                     </button>
 
-                    <!-- DROPDOWN DO MENU HAMBÚRGUER -->
-                    <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-52 bg-card border border-color rounded-2xl shadow-2xl p-2 z-50 space-y-1">
+                    <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-56 bg-card border border-color rounded-2xl shadow-2xl p-2 z-50 space-y-1">
                         <button onclick="mudarAba('catalogo'); fecharMenuNavegacao();" id="menuBtnCatalogo" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-main hover:bg-header transition text-left">
                             <i class="fas fa-boxes text-red-500 w-4"></i> Catálogo
                         </button>
@@ -125,10 +124,14 @@
                         <button onclick="abrirModalCadastrarAluno(); fecharMenuNavegacao();" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 hover:bg-header transition text-left border-t border-color pt-2 mt-1">
                             <i class="fas fa-hand-holding-heart w-4"></i> Achei Algo
                         </button>
+                        <!-- NOVO ATALHO AQUI -->
+                        <button onclick="abrirPainelMeusItens(); fecharMenuNavegacao();" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 hover:bg-header transition text-left">
+                            <i class="fas fa-user-clock w-4"></i> Meus Itens e Relatos
+                        </button>
                     </div>
                 </div>
 
-                <!-- BOTÃO DE PERFIL DO ALUNO (ISOLADO E CERTO) -->
+                <!-- BOTÃO DE PERFIL DO ALUNO -->
                 <div class="relative">
                     <button onclick="togglePerfilMenu()" class="w-9 h-9 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
                         <i class="fas fa-user text-xs"></i>
@@ -143,6 +146,11 @@
                             </div>
                         </div>
                         <div class="space-y-1.5">
+                            <!-- NOVO ATALHO AQUI TAMBÉM -->
+                            <button onclick="abrirPainelMeusItens(); togglePerfilMenu();" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-header border border-color text-xs text-main hover:border-blue-500 transition">
+                                <span>Meus Itens e Relatos</span>
+                                <i class="fas fa-user-clock text-blue-400 text-xs"></i>
+                            </button>
                             <button onclick="solicitarPermissaoNotificacao()" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-header border border-color text-xs text-main hover:border-red-500 transition">
                                 <span>Notificações Push</span>
                                 <i class="fas fa-bell text-emerald-400 text-xs"></i>
@@ -201,6 +209,30 @@
                     <textarea id="muralDescricao" required rows="3" placeholder="Descreva exatamente o que perdeu..." class="w-full bg-header border border-color rounded-xl px-3 py-2.5 text-main text-sm focus:outline-none focus:border-red-500"></textarea>
                     <button type="submit" id="btnPublicarMural" class="w-full dynamic-btn font-bold py-3 rounded-xl text-xs uppercase flex justify-center gap-2"><i class="fas fa-paper-plane"></i> Publicar</button>
                 </form>
+            </div>
+        </section>
+
+        <!-- PAINEL MEUS ITENS E RELATOS (NOVA ABA) -->
+        <section id="meusItensScreen" class="hidden space-y-6">
+            <div class="bg-card border border-color rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex justify-between items-center border-b border-color pb-3">
+                    <h2 class="text-lg font-black text-main flex items-center gap-2"><i class="fas fa-user-clock text-blue-400"></i>Meus Pedidos e Relatos</h2>
+                    <button onclick="mudarAba('catalogo')" class="text-xs text-muted hover:text-main"><i class="fas fa-arrow-left mr-1"></i> Voltar</button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-xs font-bold text-muted uppercase mb-2">Itens Solicitados por Mim</h3>
+                        <div id="listaMinhasSolicitacoes" class="space-y-2">
+                            <p class="text-xs text-muted italic">Carregando solicitações...</p>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-color">
+                        <h3 class="text-xs font-bold text-muted uppercase mb-2">Meus Relatos no Mural (Perdi Algo)</h3>
+                        <div id="listaMeusRelatosMural" class="space-y-2">
+                            <p class="text-xs text-muted italic">Carregando relatos...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
