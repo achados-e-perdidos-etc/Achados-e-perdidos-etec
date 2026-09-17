@@ -37,8 +37,6 @@ SENHA_SECRETARIA_HASH = os.environ.get("ADMIN_SENHA_HASH", "pbkdf2:sha256:600000
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 SMTP_SENDER = os.environ.get("SMTP_SENDER", "secretaria@etec.sp.gov.br")
 
-TENTATIVAS_LOGIN = {}
-
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -94,13 +92,28 @@ def init_db():
             for c in ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']:
                 cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
         
-        cursor.execute('''CREATE TABLE IF NOT EXISTS itens (id SERIAL PRIMARY KEY, nome_item VARCHAR(150), descricao TEXT NOT NULL, categoria VARCHAR(50) NOT NULL, data_encontrado VARCHAR(20) NOT NULL, local_encontrado VARCHAR(100) NOT NULL, foto_base64 TEXT, fotos_json TEXT, status VARCHAR(30) DEFAULT 'DISPONÍVEL', solicitado_por VARCHAR(100), rm_aluno VARCHAR(20), email_solicitante VARCHAR(150));''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS itens (
+            id SERIAL PRIMARY KEY, nome_item VARCHAR(150), descricao TEXT NOT NULL, categoria VARCHAR(50) NOT NULL, 
+            data_encontrado VARCHAR(20) NOT NULL, local_encontrado VARCHAR(100) NOT NULL, foto_base64 TEXT, 
+            fotos_json TEXT, status VARCHAR(30) DEFAULT 'DISPONÍVEL', solicitado_por VARCHAR(100), rm_aluno VARCHAR(20), 
+            email_solicitante VARCHAR(150), aprovado BOOLEAN DEFAULT TRUE, cadastrado_por_aluno BOOLEAN DEFAULT FALSE
+        );''')
+        
+        # Garantir colunas novas se a tabela já existia
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='itens' AND column_name='aprovado';")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE itens ADD COLUMN aprovado BOOLEAN DEFAULT TRUE, ADD COLUMN cadastrado_por_aluno BOOLEAN DEFAULT FALSE;")
+
         cursor.execute('''CREATE TABLE IF NOT EXISTS entregues (id SERIAL PRIMARY KEY, item_id INT NOT NULL, nome_item TEXT NOT NULL, retirado_por VARCHAR(100) NOT NULL, rm_retirante VARCHAR(30) NOT NULL, turma_curso VARCHAR(50), data_entrega VARCHAR(30) NOT NULL, funcionario_responsavel VARCHAR(100));''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS mural_perdidos (id SERIAL PRIMARY KEY, nome_aluno VARCHAR(100) NOT NULL, rm_aluno VARCHAR(20) NOT NULL, email_aluno VARCHAR(150), categoria VARCHAR(50) NOT NULL, descricao TEXT NOT NULL, data_registro VARCHAR(30) NOT NULL, status VARCHAR(30) DEFAULT 'PROCURANDO');''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens_chat (id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) NOT NULL, nome_aluno VARCHAR(100) NOT NULL, remetente VARCHAR(20) NOT NULL, mensagem TEXT NOT NULL, data_envio VARCHAR(30) NOT NULL, lida BOOLEAN DEFAULT FALSE);''')
         
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL);''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL);''')
+        
+        # Tabela para Push Notifications
+        cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) UNIQUE NOT NULL, subscription_json TEXT NOT NULL);''')
+
         conn.commit(); cursor.close(); conn.close()
     except Exception as e: print(f"Erro DB: {e}")
 
@@ -110,7 +123,7 @@ if DATABASE_URL: init_db()
 def home(): return send_from_directory(app.static_folder, 'index.html')
 
 # ==========================================
-# ROTAS DE AUTENTICAÇÃO DO ALUNO (INSTITUCIONAL)
+# ROTAS DE AUTENTICAÇÃO DO ALUNO
 # ==========================================
 @app.route('/api/auth/enviar-codigo', methods=['POST'])
 def enviar_codigo():
@@ -182,7 +195,7 @@ def redefinir_senha():
     except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
 
 # ==========================================
-# ROTAS DO SISTEMA 
+# ROTAS DO SISTEMA
 # ==========================================
 @app.route('/api/login', methods=['POST'])
 def login_secretaria():
@@ -206,23 +219,66 @@ def categorias():
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
 
-@app.route('/api/itens', methods=['GET', 'POST'])
-def itens():
-    if request.method == 'GET':
+@app.route('/api/itens', methods=['GET'])
+def get_itens():
+    try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno FROM itens ORDER BY id DESC;")
+        # Retorna apenas itens aprovados para o catálogo geral
+        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, solicitado_por, rm_aluno, aprovado, cadastrado_por_aluno FROM itens WHERE aprovado = TRUE ORDER BY id DESC;")
         itens = cursor.fetchall()
         for item in itens:
             try: item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
             except: item['fotos'] = []
         cursor.close(); conn.close()
         return jsonify(itens)
-    else:
-        data = request.json or {}
-        nome, descricao, categoria, data_enc, local, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
-        urls_nuvem = processar_fotos(data.get('fotos', []))
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/itens/pendentes', methods=['GET'])
+@token_required
+def get_itens_pendentes():
+    try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), status))
+        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto_base64 as foto, fotos_json, status, rm_aluno FROM itens WHERE aprovado = FALSE ORDER BY id DESC;")
+        itens = cursor.fetchall()
+        for item in itens:
+            try: item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
+            except: item['fotos'] = []
+        cursor.close(); conn.close()
+        return jsonify(itens)
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/itens/cadastrar-aluno', methods=['POST'])
+def cadastrar_item_aluno():
+    data = request.json or {}
+    nome, descricao, categoria = data.get('nome'), data.get('descricao'), data.get('categoria')
+    data_enc, local, rm = data.get('data'), data.get('local'), data.get('rm')
+    urls_nuvem = processar_fotos(data.get('fotos', []))
+    try:
+        conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status, aprovado, cadastrado_por_aluno, rm_aluno) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), rm))
+        conn.commit(); cursor.close(); conn.close()
+        return jsonify({"success": True, "message": "Item enviado para moderação da secretaria!"})
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/itens/<int:item_id>/aprovar', methods=['PUT'])
+@token_required
+def aprovar_item(item_id):
+    try:
+        conn = get_db_connection(); cursor = conn.cursor()
+        cursor.execute("UPDATE itens SET aprovado = TRUE WHERE id = %s;", (item_id,))
+        conn.commit(); cursor.close(); conn.close()
+        return jsonify({"success": True})
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/itens', methods=['POST'])
+@token_required
+def cadastrar_item():
+    data = request.json or {}
+    nome, descricao, categoria, data_enc, local, status = data.get('nome'), data.get('descricao'), data.get('categoria'), data.get('data'), data.get('local'), data.get('status', 'DISPONÍVEL')
+    urls_nuvem = processar_fotos(data.get('fotos', []))
+    try:
+        conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute('''INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto_base64, fotos_json, status, aprovado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id;''', (nome, descricao, categoria, data_enc, local, urls_nuvem[0] if urls_nuvem else '', json.dumps(urls_nuvem), status))
         novo_id = cursor.fetchone()['id']
         
         try:
@@ -236,6 +292,7 @@ def itens():
         except: pass
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "id": novo_id})
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['PUT', 'DELETE'])
 @token_required
@@ -352,11 +409,11 @@ def get_entregues():
 @token_required
 def estatisticas():
     conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT COUNT(*) as total FROM itens;")
+    cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
     total = cursor.fetchone()['total']
     cursor.execute("SELECT COUNT(*) as total FROM entregues;")
     entregues = cursor.fetchone()['total']
-    cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status LIKE 'DOAÇÃO%';")
+    cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status LIKE 'DOAÇÃO%' AND aprovado = TRUE;")
     doacoes = cursor.fetchone()['total']
     cursor.close(); conn.close()
     return jsonify({"success": True, "total_itens": total, "total_entregues": entregues, "total_doacoes": doacoes})
