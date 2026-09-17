@@ -11,6 +11,7 @@ let chatAberto = false;
 let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 let alunoSessao = null;
+let fotosAlunoSelecionadas = [];
 
 // --- SISTEMA DE NOTIFICAÇÕES (PUSH) ---
 function solicitarPermissaoNotificacao() {
@@ -19,12 +20,8 @@ function solicitarPermissaoNotificacao() {
             mostrarToast("As notificações já estão ativadas!", "success");
         } else if (Notification.permission !== "denied") {
             Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    mostrarToast("Notificações ativadas com sucesso!", "success");
-                }
+                if (permission === "granted") mostrarToast("Notificações ativadas com sucesso!", "success");
             });
-        } else {
-            mostrarToast("Permissão negada. Ative nas configurações do navegador.", "error");
         }
     } else {
         mostrarToast("Seu navegador não suporta notificações nativas.", "error");
@@ -33,14 +30,8 @@ function solicitarPermissaoNotificacao() {
 
 function dispararNotificacaoNativa(titulo, corpo) {
     if ("Notification" in window && Notification.permission === "granted") {
-        const notificacao = new Notification(titulo, {
-            body: corpo,
-            icon: "logo.png"
-        });
-        notificacao.onclick = function() {
-            window.focus();
-            this.close();
-        };
+        const notificacao = new Notification(titulo, { body: corpo, icon: "logo.png" });
+        notificacao.onclick = function() { window.focus(); this.close(); };
     }
 }
 
@@ -76,9 +67,7 @@ function toggleMenuNavegacao() {
     menu.classList.toggle('hidden');
 }
 
-function fecharMenuNavegacao() {
-    document.getElementById('menuNavegacaoDropdown').classList.add('hidden');
-}
+function fecharMenuNavegacao() { document.getElementById('menuNavegacaoDropdown').classList.add('hidden'); }
 
 function togglePerfilMenu() {
     const menu = document.getElementById('perfilMenu');
@@ -90,15 +79,11 @@ function togglePerfilMenu() {
 window.addEventListener('click', (e) => {
     const navMenu = document.getElementById('menuNavegacaoDropdown');
     const navBtn = navMenu?.previousElementSibling;
-    if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) {
-        navMenu.classList.add('hidden');
-    }
+    if (navMenu && !navMenu.contains(e.target) && !navBtn?.contains(e.target)) navMenu.classList.add('hidden');
 
     const perfilMenu = document.getElementById('perfilMenu');
     const perfilBtn = perfilMenu?.previousElementSibling;
-    if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) {
-        perfilMenu.classList.add('hidden');
-    }
+    if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) perfilMenu.classList.add('hidden');
 });
 
 function fazerLogoff() {
@@ -137,7 +122,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endsWith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!email.endswith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -181,9 +166,7 @@ function mostrarToast(mensagem, tipo = 'info') {
     c.appendChild(t); setTimeout(() => t.remove(), 4000);
 }
 
-function fecharZoomImagemDirect() {
-    document.getElementById('modalZoomImagem').classList.remove('ativo'); document.body.style.overflow = '';
-}
+function fecharZoomImagemDirect() { document.getElementById('modalZoomImagem').classList.remove('ativo'); document.body.style.overflow = ''; }
 function fecharZoomImagem(e) { if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect(); }
 function abrirZoomImagem(src) { document.getElementById('imgZoomConteudo').src = src; document.getElementById('modalZoomImagem').classList.add('ativo'); document.body.style.overflow = 'hidden'; }
 
@@ -224,9 +207,7 @@ async function abrirPainelMeusItens() {
                             <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")})' class="px-3 py-1.5 rounded-lg bg-card border border-color text-xs font-bold text-main hover:border-red-500 transition">VER</button>
                         </div>`;
                 });
-            } else {
-                listaSol.innerHTML = `<p class="text-xs text-muted italic">Você ainda não solicitou nenhum item.</p>`;
-            }
+            } else listaSol.innerHTML = `<p class="text-xs text-muted italic">Você ainda não solicitou nenhum item.</p>`;
         }
 
         const resMural = await fetch(`${API_URL}/api/mural/aluno/${alunoSessao.rm}`);
@@ -244,9 +225,7 @@ async function abrirPainelMeusItens() {
                             <span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-950/40 text-amber-400 border border-amber-900">ATIVO NO MURAL</span>
                         </div>`;
                 });
-            } else {
-                listaRel.innerHTML = `<p class="text-xs text-muted italic">Nenhum relato publicado no mural.</p>`;
-            }
+            } else listaRel.innerHTML = `<p class="text-xs text-muted italic">Nenhum relato publicado no mural.</p>`;
         }
     } catch (e) {
         listaSol.innerHTML = `<p class="text-xs text-red-400">Erro ao carregar dados.</p>`;
@@ -255,17 +234,11 @@ async function abrirPainelMeusItens() {
 }
 
 // --- MENU SUSPENSO DE CATEGORIAS ---
-function toggleFiltroDropdown() {
-    const menu = document.getElementById('dropdownFiltrosMenu');
-    menu.classList.toggle('hidden');
-}
-
+function toggleFiltroDropdown() { document.getElementById('dropdownFiltrosMenu').classList.toggle('hidden'); }
 window.addEventListener('click', (e) => {
     const dropdown = document.getElementById('dropdownFiltrosMenu');
     const btn = dropdown?.previousElementSibling;
-    if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) {
-        dropdown.classList.add('hidden');
-    }
+    if (dropdown && !dropdown.contains(e.target) && !btn?.contains(e.target)) dropdown.classList.add('hidden');
 });
 
 function selecionarFiltroCategoria(catNome, catLabel) {
@@ -283,9 +256,7 @@ async function carregarCategoriasDinamicamente() {
             const containerOpcoes = document.getElementById('listaOpcoesFiltro');
             if(containerOpcoes) {
                 containerOpcoes.innerHTML = '';
-                cats.forEach(c => {
-                    containerOpcoes.innerHTML += `<button onclick="selecionarFiltroCategoria('${c.nome}', '${c.nome}')" class="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-muted hover:text-main hover:bg-header transition">• ${c.nome}</button>`;
-                });
+                cats.forEach(c => { containerOpcoes.innerHTML += `<button onclick="selecionarFiltroCategoria('${c.nome}', '${c.nome}')" class="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-muted hover:text-main hover:bg-header transition">• ${c.nome}</button>`; });
             }
             const selectMural = document.getElementById('muralCategoria');
             if(selectMural) {
@@ -315,13 +286,10 @@ function renderizarItens() {
                (statusAtual === 'TODOS' || st === statusAtual) &&
                (!termoBusca || (i.nome||'').toLowerCase().includes(termoBusca) || (i.txt_descricao||'').toLowerCase().includes(termoBusca));
     });
-    
     filtrados.forEach(item => {
-        // Unificação: lê a propriedade 'foto' vinda do backend
-        const imagemSrc = item.foto || (item.fotos && item.fotos[0]) || '';
+        const imagemSrc = (item.fotos && item.fotos.length > 0) ? item.fotos[0] : (item.foto || '');
         const st = normalizarStatus(item.status);
         let badge = st === 'SOLICITADO' ? 'text-amber-400 border-amber-700/50 bg-amber-900/40' : (st === 'ENTREGUE' ? 'text-slate-400 border-slate-700 bg-slate-800' : 'text-emerald-400 border-emerald-700/50 bg-emerald-900/40');
-        
         grid.innerHTML += `
             <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="bg-card border border-color rounded-xl p-4 cursor-pointer shadow-sm hover:border-red-500/50 transition">
                 ${imagemSrc ? `<img src="${imagemSrc}" class="w-full h-32 object-cover rounded-lg mb-3">` : `<div class="w-full h-32 bg-header border border-color rounded-lg mb-3 flex justify-center items-center text-muted"><i class="fas fa-box text-3xl"></i></div>`}
@@ -350,8 +318,7 @@ function abrirDetalhes(item) {
     
     const cont = document.getElementById('carouselContainer');
     cont.innerHTML = ''; 
-    const imagemUnica = item.foto || (item.fotos && item.fotos[0]) || '';
-    fotosAtuais = imagemUnica ? [imagemUnica] : [];
+    fotosAtuais = (item.fotos && item.fotos.length > 0) ? item.fotos : (item.foto ? [item.foto] : []);
     
     if(fotosAtuais.length > 0) {
         document.getElementById('detailPlaceholder').classList.add('hidden');
@@ -363,10 +330,11 @@ function abrirDetalhes(item) {
     if (st !== 'DISPONÍVEL') { b.disabled = true; b.innerText = `STATUS: ${st}`; b.className = "w-full bg-gray-700 text-gray-400 font-bold py-3.5 rounded-xl text-sm"; }
     else { b.disabled = false; b.innerText = "ESTE É O MEU ITEM"; b.className = "w-full dynamic-btn font-bold py-3.5 rounded-xl text-sm"; }
 }
+
 function voltarParaCatalogo() { mudarAba('catalogo'); }
 function navegarFotos(dir) { const c = document.getElementById('carouselContainer'); if(fotosAtuais.length) { fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); } }
 
-function abrirNovoModal() { if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); }
+function abrirNovoModal() { if(itemSelecionado) document.getElementById('modalNovo').classList.add('hidden'); } // Corrigido modal novo
 async function enviarNovo() {
     const btn = document.getElementById('btnNovo'); btn.disabled = true; btn.innerText = "Processando...";
     try {
@@ -389,26 +357,25 @@ async function enviarAvisoMural(e) {
             if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
                 dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
                 exibirMatchesImediatos(data.matches_encontrados); 
-            } else {
-                mostrarToast("Relato publicado! Avisaremos se acharmos.", "success"); 
-            }
+            } else mostrarToast("Relato publicado! Avisaremos se acharmos.", "success"); 
         }
     } catch { mostrarToast("Erro", "error"); }
     btn.disabled = false;
 }
+
 function exibirMatchesImediatos(itens) {
     const lst = document.getElementById('matchItensLista'); lst.innerHTML = '';
     itens.forEach(i => lst.innerHTML += `<div class="bg-header p-3 rounded-lg flex justify-between items-center gap-3"><div><p class="text-xs font-bold text-main">${i.nome || i.txt_descricao}</p></div><button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")}); document.getElementById("modalMatchImediato").classList.add("hidden");' class="dynamic-btn px-3 py-1 rounded text-[10px]">VER</button></div>`);
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
-// --- CHAT MODERNO ---
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
     document.getElementById('badgeChatWeb').classList.add('hidden');
-    if (chatAberto) { atualizarMensagensChat(); chatTimerPolling = setInterval(atualizarMensagensChat, 3000); } else { clearInterval(chatTimerPolling); }
+    if (chatAberto) { atualizarMensagensChat(); chatTimerPolling = setInterval(atualizarMensagensChat, 3000); } else clearInterval(chatTimerPolling);
 }
+
 function abrirChatComItem() { if(!chatAberto) alternarJanelaChat(); if(itemSelecionado) document.getElementById('chatInputTexto').value = `Sobre o item #${itemSelecionado.id}: `; }
 
 async function atualizarMensagensChat() {
@@ -418,15 +385,11 @@ async function atualizarMensagensChat() {
         if(!res.ok) return;
         const msgs = await res.json();
         const c = document.getElementById('chatMensagens');
-        
         if(msgs.length !== ultimaQtdMensagens) {
             if (ultimaQtdMensagens > 0) {
                 const ultimaMensagem = msgs[msgs.length - 1];
-                if (ultimaMensagem.remetente !== 'ALUNO' && (document.hidden || !chatAberto)) {
-                    dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
-                }
+                if (ultimaMensagem.remetente !== 'ALUNO' && (document.hidden || !chatAberto)) dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
             }
-
             ultimaQtdMensagens = msgs.length; c.innerHTML = '';
             msgs.forEach(m => { 
                 const eu = m.remetente === 'ALUNO'; 
@@ -434,9 +397,7 @@ async function atualizarMensagensChat() {
                     <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
                         <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
                             ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-rose-900 shadow-md"><i class="fas fa-shield-alt text-[10px] text-white"></i></div>` : ''}
-                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-md ${eu ? 'rounded-tr-md bg-gradient-to-r from-red-600 to-rose-800 text-white shadow-[0_8px_24px_-4px_rgba(220,38,38,0.4)]' : 'rounded-tl-md border border-white/10 bg-zinc-800/90 text-zinc-100 backdrop-blur-sm'}">
-                                ${m.mensagem}
-                            </div>
+                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-md ${eu ? 'rounded-tr-md bg-gradient-to-r from-red-600 to-rose-800 text-white shadow-[0_8px_24px_-4px_rgba(220,38,38,0.4)]' : 'rounded-tl-md border border-white/10 bg-zinc-800/90 text-zinc-100 backdrop-blur-sm'}">${m.mensagem}</div>
                         </div>
                     </div>`; 
             });
@@ -456,30 +417,51 @@ async function enviarMensagemChat(e) {
     } catch(e){}
 }
 
-// --- COLABORAÇÃO DO ALUNO (ACHEI ALGO) ---
+// --- GESTÃO DE ATÉ 4 FOTOS PELO ALUNO ---
 function abrirModalCadastrarAluno() {
     const sel = document.getElementById('alunoItemCat');
     sel.innerHTML = document.getElementById('muralCategoria').innerHTML;
+    fotosAlunoSelecionadas = [];
+    renderizarGridPreviewAluno();
     document.getElementById('modalCadastrarAluno').classList.remove('hidden');
+}
+
+function prepararFotosAluno(input) {
+    if (input.files) {
+        const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
+        arquivos.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                if (fotosAlunoSelecionadas.length < 4) {
+                    fotosAlunoSelecionadas.push(e.target.result);
+                    renderizarGridPreviewAluno();
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+        input.value = '';
+    }
+}
+
+function renderizarGridPreviewAluno() {
+    const container = document.getElementById('gridPreviewAluno');
+    container.innerHTML = '';
+    if (fotosAlunoSelecionadas.length > 0) {
+        container.classList.remove('hidden');
+        fotosAlunoSelecionadas.forEach((f, i) => {
+            container.innerHTML += `
+                <div class="relative w-20 h-20 shrink-0">
+                    <img src="${f}" class="w-full h-full object-cover rounded-xl border border-color">
+                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"><i class="fas fa-times"></i></button>
+                </div>`;
+        });
+    } else container.classList.add('hidden');
 }
 
 async function enviarCadastroAluno(e) {
     e.preventDefault();
     const btn = document.getElementById('btnSalvarAlunoItem');
     btn.innerText = "Enviando..."; btn.disabled = true;
-
-    const fileInput = document.getElementById('alunoItemFoto');
-    let fotoUrl = "";
-
-    if (fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        // Converte para Base64 temporário para envio ou armazena no Cloudinary via backend
-        fotoUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (event) => resolve(event.target.result);
-            reader.readAsDataURL(file);
-        });
-    }
 
     const payload = {
         nome: document.getElementById('alunoItemNome').value.trim(),
@@ -488,7 +470,8 @@ async function enviarCadastroAluno(e) {
         local: document.getElementById('alunoItemLocal').value.trim(),
         data: new Date().toLocaleDateString('pt-BR'),
         rm: alunoSessao.rm,
-        foto: fotoUrl // <--- Agora usa estritamente o campo 'foto'
+        fotos: fotosAlunoSelecionadas,
+        foto: fotosAlunoSelecionadas[0] || ""
     };
 
     try {
@@ -500,39 +483,24 @@ async function enviarCadastroAluno(e) {
         if (data.success) {
             mostrarToast("Objeto enviado para moderação da secretaria!", "success");
             document.getElementById('modalCadastrarAluno').classList.add('hidden');
+            e.target.reset();
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro de rede.", "error"); }
     btn.innerText = "Enviar para a Secretaria"; btn.disabled = false;
 }
 
-// --- INICIALIZAÇÃO DA SPLASH SCREEN ---
 window.onload = () => { 
     document.body.classList.add('dark-theme'); 
-    
     const splash = document.getElementById('splashScreenAnimacao');
     const video = document.getElementById('videoSplash');
-    
     if (splash && video) {
         video.muted = true;
         video.play().catch(() => {});
-
         const encerrarSplash = () => {
             splash.classList.add('opacity-0');
-            setTimeout(() => {
-                splash.classList.add('hidden');
-                splash.style.display = 'none';
-                checarSessao();
-            }, 1000);
+            setTimeout(() => { splash.classList.add('hidden'); splash.style.display = 'none'; checarSessao(); }, 1000);
         };
-
         video.onended = encerrarSplash;
-        
-        setTimeout(() => {
-            if (!splash.classList.contains('hidden')) {
-                encerrarSplash();
-            }
-        }, 11000); 
-    } else {
-        checarSessao();
-    }
+        setTimeout(() => { if (!splash.classList.contains('hidden')) encerrarSplash(); }, 11000); 
+    } else checarSessao();
 };
