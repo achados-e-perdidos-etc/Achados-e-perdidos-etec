@@ -65,6 +65,9 @@
                         <button onclick="mudarAbaSec('itens'); fecharMenuSec();" id="btnTabItens" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-main bg-header transition text-left">
                             <i class="fas fa-boxes text-red-500 w-4"></i> Estoque / Gerenciar
                         </button>
+                        <button onclick="mudarAbaSec('moderacao'); fecharMenuSec();" id="btnTabModeracao" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
+                            <span class="flex items-center gap-2.5"><i class="fas fa-hand-holding-heart text-emerald-400 w-4"></i> Moderação Alunos</span>
+                        </button>
                         <button onclick="mudarAbaSec('stats'); fecharMenuSec();" id="btnTabStats" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-muted hover:text-main hover:bg-header transition text-left">
                             <i class="fas fa-chart-bar text-blue-400 w-4"></i> Dashboard / Estatísticas
                         </button>
@@ -108,6 +111,15 @@
 
     <main class="max-w-4xl mx-auto w-full p-4 flex-grow space-y-4">
         
+        <!-- ABA: MODERAÇÃO DE ITENS DOS ALUNOS -->
+        <section id="secModeracaoScreen" class="hidden space-y-4">
+            <div class="flex justify-between items-center bg-card border border-color p-3 rounded-xl">
+                <h3 class="text-xs font-bold uppercase text-emerald-400"><i class="fas fa-hand-holding-heart mr-1"></i> Itens Entregues por Alunos</h3>
+                <button onclick="carregarItensPendentesAluno()" class="text-xs text-main font-bold hover:text-red-400"><i class="fas fa-sync-alt"></i> Atualizar</button>
+            </div>
+            <div id="listaModeraItens" class="space-y-3"></div>
+        </section>
+
         <section id="secMuralScreen" class="hidden space-y-4">
             <div class="flex justify-between items-center bg-card border border-color p-3 rounded-xl">
                 <h3 class="text-xs font-bold uppercase text-amber-500"><i class="fas fa-bullhorn mr-1"></i> Mural de Relatos</h3>
@@ -234,7 +246,6 @@
         </div>
     </div>
 
-    <!-- MODAL DE DETALHES -->
     <div id="modalAcoesItem" class="hidden fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
         <div class="bg-card border-t sm:border border-color w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
@@ -277,7 +288,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO / EDIÇÃO COM ATÉ 4 FOTOS -->
+    <!-- MODAL DE CADASTRO / EDIÇÃO -->
     <div id="modalCadastrar" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-card border border-color w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl my-8">
             <div class="flex justify-between items-center">
@@ -370,7 +381,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT DA SECRETARIA -->
+    <!-- SCRIPT CORRIGIDO DA SECRETARIA -->
     <script>
         const API_URL = "https://etec-achados.up.railway.app";
         let tokenSecretaria = null;
@@ -383,8 +394,15 @@
         let html5QrcodeScanner = null;
         let fotosEdicaoAtuais = [];
 
-        const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
-        const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
+        // Correção de leitura do Token JWT
+        const getAuthHeaders = () => {
+            const tokenAtual = tokenSecretaria || localStorage.getItem('secretaria_token');
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAtual}` };
+        };
+        const getAuthHeadersGet = () => {
+            const tokenAtual = tokenSecretaria || localStorage.getItem('secretaria_token');
+            return { 'Authorization': `Bearer ${tokenAtual}` };
+        };
 
         window.onload = () => {
             const tokenSalvo = localStorage.getItem('secretaria_token');
@@ -507,17 +525,60 @@
             document.getElementById('modalGerarEtiqueta').classList.remove('hidden');
         }
 
+        // Navegação de abas com suporte a Moderação de Alunos
         function mudarAbaSec(aba) {
-            ['itens', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
-                document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`).classList.add('hidden');
+            ['itens', 'stats', 'cats', 'entregues', 'chat', 'mural', 'moderacao'].forEach(a => {
+                const el = document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`);
+                if(el) el.classList.add('hidden');
             });
-            document.getElementById(`sec${aba.charAt(0).toUpperCase() + aba.slice(1)}Screen`).classList.remove('hidden');
+            const alvo = document.getElementById(`sec${aba.charAt(0).toUpperCase() + aba.slice(1)}Screen`);
+            if(alvo) alvo.classList.remove('hidden');
 
             if (aba === 'stats') carregarEstatisticas();
             if (aba === 'cats') carregarCategorias();
             if (aba === 'entregues') carregarEntregues();
             if (aba === 'mural') carregarMuralSec();
+            if (aba === 'moderacao') carregarItensPendentesAluno();
             if (aba === 'chat') { carregarConversasChat(); iniciarPollingChatSec(); } else pararPollingChatSec();
+        }
+
+        // --- MODERAÇÃO DE ITENS ENVIADOS POR ALUNOS ---
+        async function carregarItensPendentesAluno() {
+            if(!tokenSecretaria) return;
+            try {
+                const res = await fetch(`${API_URL}/api/itens/pendentes-aluno`, { headers: getAuthHeadersGet() });
+                if (res.ok) {
+                    const pendentes = await res.json();
+                    const container = document.getElementById('listaModeraItens');
+                    container.innerHTML = pendentes.length === 0 ? `<div class="text-center py-8 text-muted text-xs">Nenhum item aguardando moderação.</div>` : pendentes.map(i => `
+                        <div class="bg-card border border-color rounded-2xl p-4 space-y-3 text-xs">
+                            <div class="flex gap-3 items-center">
+                                ${i.foto ? `<img src="${i.foto}" class="w-16 h-16 object-cover rounded-xl shrink-0">` : `<div class="w-16 h-16 bg-header border border-color rounded-xl flex items-center justify-center text-muted shrink-0"><i class="fas fa-box"></i></div>`}
+                                <div class="min-w-0 flex-grow">
+                                    <h4 class="font-bold text-sm text-main truncate">${i.nome || i.txt_descricao}</h4>
+                                    <p class="text-[10px] text-muted">Cadastrado por: <strong class="text-main">${i.aluno_nome || 'Aluno'}</strong> (RM: ${i.rm})</p>
+                                    <p class="text-[10px] text-muted"><i class="fas fa-map-marker-alt"></i> ${i.txt_local}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 pt-2 border-t border-color">
+                                <button onclick="aprovarItemAluno(${i.id})" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs uppercase transition">Aprovar e Publicar</button>
+                                <button onclick="rejeitarItemAluno(${i.id})" class="w-1/2 bg-red-950/40 text-red-400 border border-red-900 font-bold py-2.5 rounded-xl text-xs uppercase transition">Rejeitar</button>
+                            </div>
+                        </div>`).join('');
+                }
+            } catch(e) {}
+        }
+
+        async function aprovarItemAluno(id) {
+            try {
+                const res = await fetch(`${API_URL}/api/itens/aprovar-aluno/${id}`, { method: 'PUT', headers: getAuthHeaders() });
+                if (res.ok) { mostrarToast("Item aprovado e adicionado ao catálogo!", "success"); carregarItensPendentesAluno(); carregarItensSecretaria(); }
+                else mostrarToast("Erro ao aprovar item.", "error");
+            } catch(e) { mostrarToast("Erro de rede", "error"); }
+        }
+
+        async function rejeitarItemAluno(id) {
+            confirmarAcaoJWT("Rejeitar Item", `Deseja rejeitar e remover este cadastro?`, `${API_URL}/api/itens/${id}`, 'DELETE', null, carregarItensPendentesAluno);
         }
 
         async function carregarMuralSec() {
@@ -642,7 +703,6 @@
         function fecharModalConfirmacao() { document.getElementById('modalConfirmacao').classList.add('hidden'); }
         document.getElementById('btnConfirmarAcao').addEventListener('click', () => { if (acaoConfirmacaoCallback) acaoConfirmacaoCallback(); });
 
-        // --- GERENCIAMENTO DE ATÉ 4 FOTOS NO PAINEL DA SECRETARIA ---
         function adicionarFotosEdicao(input) {
             if (input.files) {
                 const arquivos = Array.from(input.files).slice(0, 4 - fotosEdicaoAtuais.length);
@@ -707,11 +767,13 @@
             document.getElementById('modalCadastrar').classList.remove('hidden');
         }
 
+        // Função de salvamento corrigida com token injetado corretamente
         async function salvarItemSecretaria(e) {
             e.preventDefault();
             const id = document.getElementById('editItemId').value;
             const btn = document.getElementById('btnSalvarItem');
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`; btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando...`; 
+            btn.disabled = true;
             
             const payload = { 
                 nome: document.getElementById('cadNome').value.trim(), 
@@ -725,10 +787,29 @@
             };
             
             try {
-                const res = await fetch(id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`, { method: id ? 'PUT' : 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
-                if (res.ok) { mostrarToast("Salvo com sucesso!", "success"); fecharModalCadastrar(); carregarItensSecretaria(); carregarEstatisticas(); } else mostrarToast("Sem permissão (Token).", "error");
-            } catch (err) { mostrarToast("Erro ao conectar", "error"); }
-            btn.innerHTML = `Salvar Objeto`; btn.disabled = false;
+                const urlDestino = id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`;
+                const metodo = id ? 'PUT' : 'POST';
+                
+                const res = await fetch(urlDestino, { 
+                    method: metodo, 
+                    headers: getAuthHeaders(), 
+                    body: JSON.stringify(payload) 
+                });
+
+                if (res.ok) { 
+                    mostrarToast("Salvo com sucesso!", "success"); 
+                    fecharModalCadastrar(); 
+                    carregarItensSecretaria(); 
+                    carregarEstatisticas(); 
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    mostrarToast(errData.message || "Erro de permissão (Token inválido). Faça login novamente.", "error");
+                }
+            } catch (err) { 
+                mostrarToast("Erro ao conectar com o servidor", "error"); 
+            }
+            btn.innerHTML = `Salvar Objeto`; 
+            btn.disabled = false;
         }
 
         function abrirModalBaixa(id, nomeAluno, rmAluno) {
