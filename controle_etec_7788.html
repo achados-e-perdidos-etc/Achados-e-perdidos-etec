@@ -731,8 +731,9 @@
                             <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-white/5 border border-white/10 text-slate-300">${item.categoria}</span>
                             <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border ${stBadge}">${item.status}</span>
                         </div>
-                        <h4 class="font-extrabold text-sm text-white truncate">#${item.id} -${item.nome || item.txt_descricao}</h4>
-                        <p class="text-[10px] text-slate-400 truncate mt-0.5"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${item.txt_local}</p>${item.solicitado_por ? `<p class="text-[10px] text-amber-400 mt-1 font-bold"><i class="fas fa-user mr-1"></i>Reivindicado por: ${item.solicitado_por} (RM: ${item.rm_aluno || '-'})</p>` : ''}
+                        <h4 class="font-extrabold text-sm text-white truncate">#${item.id} - ${item.nome || item.txt_descricao}</h4>
+                        <p class="text-[10px] text-slate-400 truncate mt-0.5"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${item.txt_local}</p>
+                        ${item.solicitado_por ? `<p class="text-[10px] text-amber-400 mt-1 font-bold"><i class="fas fa-user mr-1"></i>Reivindicado por: ${item.solicitado_por} (RM:${item.rm_aluno || '-'})</p>` : ''}
                     </div>
                 `;
                 container.appendChild(card);
@@ -985,4 +986,168 @@
                     const sel = document.getElementById('cadCategoria'); 
                     if(sel) { 
                         sel.innerHTML = ''; 
-                        categoriasSec.forEach(c => sel.innerHTML += `<option value="${c.nome}">${c.
+                        categoriasSec.forEach(c => sel.innerHTML += `<option value="${c.nome}">${c.nome}</option>`); 
+                    } 
+                    document.getElementById('listaCategoriasSec').innerHTML = categoriasSec.map(c => `<div class="glass-panel border border-white/10 rounded-xl p-3 text-xs font-bold text-white">${c.nome}</div>`).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        async function adicionarCategoriaSec() { 
+            const nome = document.getElementById('novaCatInput').value.trim().toUpperCase(); 
+            if(!nome) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/categorias`, {method:'POST', headers: getAuthHeaders(), body: JSON.stringify({nome})}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(res.ok){ 
+                    document.getElementById('novaCatInput').value=''; 
+                    carregarCategorias(); 
+                    mostrarToast("Categoria adicionada!", "success");
+                } 
+            } catch(e){} 
+        }
+
+        async function carregarEntregues() { 
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/entregues`, {headers: getAuthHeadersGet()}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(res.ok){ 
+                    const entregues = await res.json(); 
+                    document.getElementById('listaEntreguesSec').innerHTML = entregues.length === 0 ? `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum item entregue registrado.</div>` : entregues.map(e => `
+                        <div class="glass-panel rounded-2xl p-4 space-y-1 text-xs border border-white/5">
+                            <div class="flex justify-between items-center font-bold text-white">
+                                <span>${e.nome_item}</span>
+                                <span class="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-800 px-2 py-0.5 rounded uppercase">Entregue</span>
+                            </div>
+                            <p class="text-slate-400">Retirado por: <strong class="text-white">${e.retirado_por}</strong> (RM: ${e.rm_retirante}) em ${e.data_entrega}</p>
+                        </div>
+                    `).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        async function carregarMuralSec() {
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/mural`); 
+                if(res.ok){ 
+                    const mural = await res.json(); 
+                    document.getElementById('listaMuralSec').innerHTML = mural.length === 0 ? `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum relato no mural.</div>` : mural.map(m => `
+                        <div class="glass-panel rounded-2xl p-4 space-y-2 text-xs border border-white/10">
+                            <div class="flex justify-between items-start">
+                                <div class="font-bold text-white">
+                                    <span>${m.nome_aluno}</span>
+                                    <span class="text-[10px] text-slate-400 block mt-0.5"><i class="fas fa-id-badge"></i> RM: ${m.rm_aluno} | <i class="fas fa-clock"></i> ${m.data_registro}</span>
+                                </div>
+                                <button onclick="excluirMuralSec(${m.id})" class="text-red-400 hover:text-white p-2 bg-red-950/40 border border-red-900 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="p-3 rounded-xl bg-[#0d1117] border border-white/5">
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase bg-white/5 text-amber-400 border border-amber-500/20 mb-1.5 inline-block">${m.categoria}</span>
+                                <p class="text-slate-300 italic">"${m.descricao}"</p>
+                            </div>
+                        </div>`).join(''); 
+                } 
+            } catch(e){} 
+        }
+
+        function excluirMuralSec(id) {
+            confirmarAcaoJWT("Excluir Relato", `Deseja apagar definitivamente o relato #${id} do mural?`, `${API_URL}/api/mural/${id}`, 'DELETE', null, carregarMuralSec);
+        }
+
+        // --- CHAT COM ALUNOS ---
+        async function carregarConversasChat() { 
+            if(!tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/chat/conversas`, {headers: getAuthHeadersGet()}); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(!res.ok) return; 
+                const conversas = await res.json(); 
+                let total = 0; 
+                document.getElementById('listaConversasChat').innerHTML = conversas.map(c => { 
+                    if(c.nao_lidas > 0) total += c.nao_lidas; 
+                    return `
+                        <div onclick="abrirConversaAluno('${c.rm_aluno}', '${c.nome_aluno}')" class="glass-panel rounded-2xl p-3.5 flex justify-between items-center cursor-pointer border border-white/10 hover:border-red-500/50 transition">
+                            <div>
+                                <h4 class="font-extrabold text-xs text-white">${c.nome_aluno} (RM: ${c.rm_aluno})</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Última mensagem: ${c.ultima_msg_data}</p>
+                            </div>
+                            ${c.nao_lidas > 0 ? `<span class="bg-red-600 text-white font-bold text-[10px] px-2.5 py-0.5 rounded-full">${c.nao_lidas}</span>` : `<i class="fas fa-chevron-right text-xs text-slate-500"></i>`}
+                        </div>`; 
+                }).join(''); 
+                const badge = document.getElementById('badgeChatSec'); 
+                if(total > 0){ badge.classList.remove('hidden'); badge.innerText = total; } else badge.classList.add('hidden'); 
+            } catch(e){} 
+        }
+
+        async function abrirConversaAluno(rm, nome) { 
+            chatRmAtivo = rm; 
+            document.getElementById('listaConversasChat').classList.add('hidden'); 
+            document.getElementById('painelConversaAtiva').classList.remove('hidden'); 
+            document.getElementById('chatAlunoNomeTitulo').innerText = nome; 
+            document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; 
+            atualizarMensagensSec(); 
+        }
+
+        function fecharConversaAtiva() { 
+            chatRmAtivo = null; 
+            document.getElementById('painelConversaAtiva').classList.add('hidden'); 
+            document.getElementById('listaConversasChat').classList.remove('hidden'); 
+            carregarConversasChat(); 
+        }
+
+        async function atualizarMensagensSec() { 
+            if (!chatRmAtivo || !tokenSecretaria) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); 
+                if (res.status === 401) return sairSecretaria(false);
+                if(!res.ok) return; 
+                const container = document.getElementById('chatSecMensagens'); 
+                container.innerHTML = (await res.json()).map(m => { 
+                    const eu = m.remetente === 'SECRETARIA'; 
+                    return `
+                        <div class="flex flex-col ${eu ? 'items-end' : 'items-start'}">
+                            <span class="text-[9px] text-slate-500 mb-1">${eu ? 'Secretaria' : m.nome_aluno}</span>
+                            <div class="max-w-[85%] px-3.5 py-2.5 rounded-2xl ${eu ? 'bg-red-600 text-white rounded-tr-sm' : 'bg-[#161c28] border border-white/10 text-slate-200 rounded-tl-sm'} shadow-sm break-words">
+                                ${m.mensagem}
+                            </div>
+                        </div>`; 
+                }).join(''); 
+                container.scrollTop = container.scrollHeight; 
+            } catch(e){} 
+        }
+
+        async function enviarMensagemSecretaria(e) { 
+            e.preventDefault(); 
+            const input = document.getElementById('inputMsgSec');
+            if (!chatRmAtivo || !input.value.trim()) return; 
+            try { 
+                const res = await fetch(`${API_URL}/api/chat/enviar`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ rm: chatRmAtivo, nome: 'Secretaria', remetente: 'SECRETARIA', mensagem: input.value.trim() }) 
+                });
+                if (res.ok) { 
+                    input.value = ''; 
+                    atualizarMensagensSec(); 
+                } 
+            } catch(e){} 
+        }
+
+        function iniciarPollingChatSec() { 
+            pararPollingChatSec(); 
+            chatPollTimer = setInterval(() => { 
+                carregar
+            pararPollingChatSec(); 
+            chatPollTimer = setInterval(() => { 
+                carregarConversasChat(); 
+                if (chatRmAtivo) atualizarMensagensSec(); 
+            }, 3000); 
+        }
+
+        function pararPollingChatSec() { 
+            if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } 
+        }
+    </script>
+</body>
+</html>
