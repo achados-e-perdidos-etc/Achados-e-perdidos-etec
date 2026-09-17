@@ -349,4 +349,35 @@ async function enviarCadastroAluno(e) {
     btn.innerText = "Enviar para a Secretaria"; btn.disabled = false;
 }
 
-window.onload = () => { checarSessao(); document.body.classList.add('dark-theme'); };
+// --- INICIALIZAÇÃO E GESTÃO DA SPLASH SCREEN ---
+window.onload = () => { 
+    document.body.classList.add('dark-theme'); 
+    
+    const splash = document.getElementById('splashScreenAnimacao');
+    const video = document.getElementById('videoSplash');
+    
+    if (splash && video) {
+        // Quando o vídeo acabar, esconde a tela de loading suavemente e checa a sessão
+        video.onended = () => {
+            splash.classList.add('opacity-0');
+            setTimeout(() => {
+                splash.classList.add('hidden');
+                checarSessao();
+            }, 1000);
+        };
+
+        // Fallback de segurança: se por algum motivo o navegador bloquear o autoplay, 
+        // a tela some em 9 segundos (tempo aproximado do seu vídeo)
+        setTimeout(() => {
+            if (!splash.classList.contains('hidden')) {
+                splash.classList.add('opacity-0');
+                setTimeout(() => {
+                    splash.classList.add('hidden');
+                    checarSessao();
+                }, 1000);
+            }
+        }, 9000); 
+    } else {
+        checarSessao();
+    }
+};
