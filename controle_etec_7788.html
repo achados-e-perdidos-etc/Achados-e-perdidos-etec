@@ -44,7 +44,7 @@
         </div>
     </div>
 
-    <!-- CABEÇALHO -->
+    <!-- CABEÇALHO COM MENU HAMBÚRGUER E PERFIL/SAIR -->
     <header class="bg-header border-b border-color p-4 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
@@ -56,6 +56,7 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
+                <!-- MENU HAMBÚRGUER -->
                 <div class="relative">
                     <button onclick="toggleMenuSec()" class="w-9 h-9 rounded-lg bg-header border border-color text-main hover:border-red-500 transition flex items-center justify-center shadow-sm">
                         <i class="fas fa-bars text-sm"></i>
@@ -87,6 +88,7 @@
                     </div>
                 </div>
 
+                <!-- BOTÃO DE PERFIL / SAIR DA SECRETARIA -->
                 <div class="relative">
                     <button onclick="togglePerfilSec()" class="w-9 h-9 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
                         <i class="fas fa-user-shield text-xs"></i>
@@ -381,7 +383,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT CORRIGIDO DA SECRETARIA -->
+    <!-- SCRIPT CORRIGIDO DA SECRETARIA COM TOKEN E MODERAÇÃO -->
     <script>
         const API_URL = "https://etec-achados.up.railway.app";
         let tokenSecretaria = null;
@@ -394,7 +396,7 @@
         let html5QrcodeScanner = null;
         let fotosEdicaoAtuais = [];
 
-        // Correção de leitura do Token JWT
+        // Correção definitiva de leitura do Token JWT
         const getAuthHeaders = () => {
             const tokenAtual = tokenSecretaria || localStorage.getItem('secretaria_token');
             return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenAtual}` };
@@ -473,7 +475,7 @@
                 }
             } catch (e) {
                 erroEl.innerText = "Erro ao conectar com o servidor.";
-                erroEl.classList.remove('hidden');
+                erroEl.classList.add('hidden');
             }
             btnLogin.innerHTML = `<span>Entrar no Painel</span>`;
         }
@@ -767,7 +769,6 @@
             document.getElementById('modalCadastrar').classList.remove('hidden');
         }
 
-        // Função de salvamento corrigida com token injetado corretamente
         async function salvarItemSecretaria(e) {
             e.preventDefault();
             const id = document.getElementById('editItemId').value;
