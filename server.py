@@ -56,7 +56,7 @@ def token_required(f):
         if auth_header:
             parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == 'bearer':
-                token = parts[1].strip('"\'' )
+                token = parts.strip('"\'' )
             elif len(parts) == 1:
                 token = parts[0].strip('"\'' )
 
@@ -117,6 +117,43 @@ def enviar_email_api_async(destinatario, assunto, html_content):
 def disparar_email(destinatario, assunto, html_content):
     Thread(target=enviar_email_api_async, args=(destinatario, assunto, html_content)).start()
 
+# FUNÇÃO QUE CALCULA DIAS PASSADOS
+def calcular_dias_passados(data_str):
+    if not data_str: return 0
+    data_limpa = str(data_str).strip()
+    formatos = ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%d/%m/%y']
+    for fmt in formatos:
+        try:
+            dt = datetime.strptime(data_limpa, fmt)
+            return (datetime.now() - dt).days
+        except Exception:
+            continue
+    return 0
+
+# ROTINA AUTOMÁTICA: SE TIVER 90 DIAS OU MAIS PASSA PARA 'PARA DOAÇÃO'
+def verificar_e_atualizar_itens_doacao():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT id, data_encontrado FROM itens WHERE UPPER(status) = 'DISPONÍVEL';")
+        itens = cursor.fetchall()
+        ids_para_doacao = []
+        for item in itens:
+            dias = calcular_dias_passados(item.get('data_encontrado'))
+            if dias >= 90:
+                ids_para_doacao.append(item['id'])
+        
+        if ids_para_doacao:
+            cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = ANY(%s);", (ids_para_doacao,))
+            conn.commit()
+            print(f"[Doações 90 Dias] {len(ids_para_doacao)} item(ns) atualizado(s) para 'PARA DOAÇÃO'.")
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Aviso ao atualizar doações 90 dias: {e}")
+        if conn: conn.close()
+
 def init_db():
     try:
         conn = get_db_connection()
@@ -124,7 +161,6 @@ def init_db():
         
         cursor.execute('CREATE TABLE IF NOT EXISTS categorias (id SERIAL PRIMARY KEY, nome VARCHAR(50) UNIQUE NOT NULL);')
         
-        # Tabela unificada limpa: usa apenas 'foto' e 'fotos_json' (sem colunas antigas ou mortas)
         cursor.execute('''CREATE TABLE IF NOT EXISTS itens (
             id SERIAL PRIMARY KEY, 
             nome_item VARCHAR(150), 
@@ -142,14 +178,22 @@ def init_db():
             cadastrado_por_aluno BOOLEAN DEFAULT FALSE
         );''')
 
-        # Limpeza preventiva de colunas antigas caso ainda existam no banco do Railway
-        try:
-            cursor.execute("ALTER TABLE itens DROP COLUMN IF EXISTS foto_base64;")
-            cursor.execute("ALTER TABLE itens DROP COLUMN IF EXISTS prova_propriedade;")
-            cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS foto TEXT;")
-            cursor.execute("ALTER TABLE itens ADD COLUMN IF NOT EXISTS fotos_json TEXT;")
-        except Exception:
-            conn.rollback()
+        colunas_migracao = [
+            ("nome_item", "VARCHAR(150)"),
+            ("foto", "TEXT"),
+            ("fotos_json", "TEXT"),
+            ("status", "VARCHAR(30) DEFAULT 'DISPONÍVEL'"),
+            ("solicitado_por", "VARCHAR(100)"),
+            ("rm_aluno", "VARCHAR(20)"),
+            ("email_solicitante", "VARCHAR(150)"),
+            ("aprovado", "BOOLEAN DEFAULT TRUE"),
+            ("cadastrado_por_aluno", "BOOLEAN DEFAULT FALSE")
+        ]
+        for col_nome, col_tipo in colunas_migracao:
+            try:
+                cursor.execute(f"ALTER TABLE itens ADD COLUMN IF NOT EXISTS {col_nome} {col_tipo};")
+            except Exception:
+                conn.rollback()
 
         try:
             cursor.execute("SELECT setval(pg_get_serial_sequence('itens', 'id'), COALESCE((SELECT MAX(id) FROM itens), 1));")
@@ -169,8 +213,11 @@ def init_db():
                 cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
 
         conn.commit(); cursor.close(); conn.close()
+        
+        # Roda a verificação de 90 dias na inicialização
+        verificar_e_atualizar_itens_doacao()
     except Exception as e: 
-        print(f"Erro DB na inicializacao: {e}")
+        print(f"Erro DB init: {e}")
 
 if DATABASE_URL: init_db()
 
@@ -181,7 +228,7 @@ def home():
 @app.route('/api/auth/verificar', methods=['GET', 'OPTIONS'])
 @token_required
 def verificar_token():
-    return jsonify({"success": True, "user": getattr(request, 'user', {}), "message": "Token válido."})
+    return jsonify({"success": True, "user": getattr(request, 'user', {})})
 
 @app.route('/api/auth/enviar-codigo', methods=['POST'])
 def enviar_codigo():
@@ -195,7 +242,7 @@ def enviar_codigo():
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("INSERT INTO codigos_auth (email, codigo, expiracao) VALUES (%s, %s, %s) ON CONFLICT (email) DO UPDATE SET codigo = EXCLUDED.codigo, expiracao = EXCLUDED.expiracao;", (email, codigo, expiracao))
         conn.commit(); cursor.close(); conn.close()
-        html = f"<div style='font-family: Arial; padding: 20px;'><h2 style='color: #dc2626;'>Código de Acesso - ETEC</h2><p>Seu código é: <strong style='font-size: 22px;'>{codigo}</strong></p></div>"
+        html = f"<div style='font-family: Arial; padding: 20px;'><h2 style='color: #dc2626;'>Código de Acesso - ETEC</h2><p>Seu código: <strong style='font-size: 24px;'>{codigo}</strong></p></div>"
         disparar_email(email, "Seu código de acesso - ETEC", html)
         return jsonify({"success": True})
     except Exception as e: 
@@ -214,7 +261,7 @@ def cadastrar_aluno():
         
         cursor.execute("SELECT email FROM alunos WHERE email = %s;", (email,))
         if cursor.fetchone(): 
-            return jsonify({"success": False, "message": "E-mail já cadastrado."}), 400
+            return jsonify({"success": False, "message": "E-mail já cadastrado. Faça login."}), 400
         
         senha_hash = generate_password_hash(senha)
         cursor.execute("INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", (email, nome, rm, senha_hash))
@@ -237,7 +284,7 @@ def login_aluno():
         if aluno and check_password_hash(aluno['senha_hash'], senha):
             token = jwt.encode({"email": aluno['email'], "nome": aluno['nome'], "rm": aluno['rm'], "role": "aluno", "exp": datetime.now(timezone.utc) + timedelta(days=30)}, JWT_SECRET, algorithm="HS256")
             return jsonify({"success": True, "token": token, "aluno": {"nome": aluno['nome'], "rm": aluno['rm'], "email": aluno['email']}})
-        return jsonify({"success": False, "message": "Credenciais incorretas."}), 401
+        return jsonify({"success": False, "message": "Senha incorreta ou usuário não encontrado."}), 401
     except Exception as e: 
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -276,7 +323,7 @@ def login_secretaria():
     if login_valido:
         token = jwt.encode({"user": "secretaria", "role": "secretaria", "email": email, "exp": datetime.now(timezone.utc) + timedelta(days=7)}, JWT_SECRET, algorithm="HS256")
         return jsonify({"success": True, "token": token})
-    return jsonify({"success": False, "message": "Senha incorreta."}), 401
+    return jsonify({"success": False, "message": "Credenciais inválidas."}), 401
 
 @app.route('/api/categorias', methods=['GET', 'POST'])
 def categorias():
@@ -293,9 +340,13 @@ def categorias():
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
 
+# O GET EXECUTA A VERIFICAÇÃO AUTOMÁTICA DOS 90 DIAS
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
     try:
+        # Atualiza automaticamente itens para doação
+        verificar_e_atualizar_itens_doacao()
+        
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto, fotos_json, status, solicitado_por, rm_aluno, aprovado, cadastrado_por_aluno FROM itens WHERE aprovado = TRUE ORDER BY id DESC;")
         itens = cursor.fetchall()
@@ -359,7 +410,7 @@ def aprovar_item(item_id):
         conn = get_db_connection(); cursor = conn.cursor()
         cursor.execute("UPDATE itens SET aprovado = TRUE WHERE id = %s;", (item_id,))
         conn.commit(); cursor.close(); conn.close()
-        return jsonify({"success": True, "message": "Item aprovado!"})
+        return jsonify({"success": True, "message": "Item aprovado com sucesso!"})
     except Exception as e: 
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -400,6 +451,29 @@ def cadastrar_item():
         row = cursor.fetchone()
         novo_id = row['id'] if isinstance(row, dict) else row[0]
         conn.commit()
+
+        # Alerta opcional no mural
+        try:
+            termos_novo = extrair_termos(f"{nome} {descricao}")
+            cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
+            for mural in cursor.fetchall():
+                termos_mural = extrair_termos(mural.get('descricao', ''))
+                if len(termos_novo.intersection(termos_mural)) >= 1:
+                    msg_match = f"A secretaria registrou um objeto parecido: '{nome or descricao}'. Veja o catálogo!"
+                    cursor.execute(
+                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
+                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                    )
+                    if mural.get('email_aluno'):
+                        disparar_email(
+                            mural['email_aluno'], 
+                            "Item Encontrado! ETEC Achados", 
+                            f"<div style='font-family:Arial;'><h2 style='color:#dc2626;'>Possível Match!</h2><p>Olá {mural['nome_aluno']}, a secretaria registrou um item parecido: <strong>{nome or descricao}</strong>.</p></div>"
+                        )
+            conn.commit()
+        except Exception as e_mural:
+            if conn: conn.rollback()
+
         cursor.close()
         conn.close()
         return jsonify({"success": True, "id": novo_id, "message": "Item salvo com sucesso!"})
@@ -444,6 +518,14 @@ def gerenciar_item(item_id):
 def recusar_solicitacao(item_id):
     conn = get_db_connection(); cursor = conn.cursor()
     cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL WHERE id = %s;", (item_id,))
+    conn.commit(); cursor.close(); conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
+@token_required
+def concluir_doacoes():
+    conn = get_db_connection(); cursor = conn.cursor()
+    cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
@@ -549,6 +631,8 @@ def get_entregues():
 @app.route('/api/estatisticas', methods=['GET'])
 @token_required
 def estatisticas():
+    # Atualiza itens antigos na consulta das estatísticas
+    verificar_e_atualizar_itens_doacao()
     conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
     total = cursor.fetchone()['total']
