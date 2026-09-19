@@ -13,7 +13,7 @@ let ultimaQtdMensagens = 0;
 let alunoSessao = null;
 let fotosAlunoSelecionadas = [];
 
-// --- SISTEMA DE NOTIFICAÇÕES (PUSH) ---
+// --- SISTEMA DE NOTIFICAÇÕES ---
 function solicitarPermissaoNotificacao() {
     if ("Notification" in window) {
         if (Notification.permission === "granted") {
@@ -35,6 +35,42 @@ function dispararNotificacaoNativa(titulo, corpo) {
     }
 }
 
+// --- CALCULA SE JÁ FAZ 90 DIAS DO CADASTRO ---
+function calcularDiasPassados(dataStr) {
+    if (!dataStr) return 0;
+    const partes = dataStr.trim().split(/[\/\-]/);
+    if (partes.length === 3) {
+        let dia, mes, ano;
+        if (partes[0].length === 4) { // Formato YYYY-MM-DD
+            ano = parseInt(partes[0]); mes = parseInt(partes) - 1; dia = parseInt(partes);
+        } else { // Formato DD/MM/YYYY
+            dia = parseInt(partes[0]); mes = parseInt(partes) - 1; ano = parseInt(partes);
+            if (ano < 100) ano += 2000;
+        }
+        const dataItem = new Date(ano, mes, dia);
+        const diffTempo = new Date().getTime() - dataItem.getTime();
+        return Math.floor(diffTempo / (1000 * 60 * 60 * 24));
+    }
+    return 0;
+}
+
+// Se tiver 90 dias ou mais e estiver disponível, muda para PARA DOAÇÃO
+function normalizarStatus(itemOuStatus, dataItem = null) {
+    let st = '';
+    let dataStr = dataItem;
+    if (typeof itemOuStatus === 'object' && itemOuStatus !== null) {
+        st = (itemOuStatus.status || 'DISPONÍVEL').toUpperCase();
+        dataStr = itemOuStatus.data_encontrado || itemOuStatus.txt_data;
+    } else {
+        st = (itemOuStatus || 'DISPONÍVEL').toUpperCase();
+    }
+
+    if (st === 'DISPONÍVEL' && dataStr && calcularDiasPassados(dataStr) >= 90) {
+        return 'PARA DOAÇÃO';
+    }
+    return st;
+}
+
 // --- SISTEMA DE AUTENTICAÇÃO E SESSÃO SEGURA (JWT) ---
 async function checarSessao() {
     const token = localStorage.getItem('aluno_token');
@@ -42,19 +78,15 @@ async function checarSessao() {
     
     if (token && dados) {
         try {
-            // Verificar no backend se o token ainda é válido
             const res = await fetch(`${API_URL}/api/auth/verificar`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.status === 401) {
-                // Token expirado ou inválido
                 fazerLogoff(false);
                 mostrarToast("Sua sessão expirou. Faça login novamente.", "info");
                 return;
             }
-        } catch (e) {
-            // Sem conexão momentânea, permite continuar offline
-        }
+        } catch (e) {}
 
         alunoSessao = JSON.parse(dados);
         document.getElementById('loginAlunoScreen').classList.add('hidden');
@@ -85,11 +117,13 @@ function fazerLogoff(recarregar = true) {
     }
 }
 
-// --- MENUS FLUTUANTES ---
+// --- CONTROLES DOS MENUS FLUTUANTES ---
 function toggleMenuNavegacao() {
     const menu = document.getElementById('menuNavegacaoDropdown');
     const perfilMenu = document.getElementById('perfilMenu');
+    const statusMenu = document.getElementById('dropdownStatusMenu');
     if(perfilMenu) perfilMenu.classList.add('hidden');
+    if(statusMenu) statusMenu.classList.add('hidden');
     menu.classList.toggle('hidden');
 }
 
@@ -100,8 +134,32 @@ function fecharMenuNavegacao() {
 function togglePerfilMenu() {
     const menu = document.getElementById('perfilMenu');
     const navMenu = document.getElementById('menuNavegacaoDropdown');
+    const statusMenu = document.getElementById('dropdownStatusMenu');
     if(navMenu) navMenu.classList.add('hidden');
+    if(statusMenu) statusMenu.classList.add('hidden');
     menu.classList.toggle('hidden');
+}
+
+// MENU COMPACTO DE STATUS
+function toggleDropdownStatus() {
+    const menu = document.getElementById('dropdownStatusMenu');
+    const seta = document.getElementById('setaStatusDropdown');
+    const perfilMenu = document.getElementById('perfilMenu');
+    const navMenu = document.getElementById('menuNavegacaoDropdown');
+    if(navMenu) navMenu.classList.add('hidden');
+    if(perfilMenu) perfilMenu.classList.add('hidden');
+    
+    menu.classList.toggle('hidden');
+    if(seta) seta.classList.toggle('rotate-180', !menu.classList.contains('hidden'));
+}
+
+function selecionarFiltroStatus(statusValor, statusLabel) {
+    statusAtual = statusValor;
+    document.getElementById('labelStatusSelecionado').innerText = statusLabel;
+    document.getElementById('dropdownStatusMenu').classList.add('hidden');
+    const seta = document.getElementById('setaStatusDropdown');
+    if(seta) seta.classList.remove('rotate-180');
+    renderizarItens();
 }
 
 window.addEventListener('click', (e) => {
@@ -112,6 +170,14 @@ window.addEventListener('click', (e) => {
     const perfilMenu = document.getElementById('perfilMenu');
     const perfilBtn = perfilMenu?.previousElementSibling;
     if (perfilMenu && !perfilMenu.contains(e.target) && !perfilBtn?.contains(e.target)) perfilMenu.classList.add('hidden');
+
+    const statusMenu = document.getElementById('dropdownStatusMenu');
+    const btnStatus = document.getElementById('btnDropdownStatus');
+    if (statusMenu && !statusMenu.contains(e.target) && !btnStatus?.contains(e.target)) {
+        statusMenu.classList.add('hidden');
+        const seta = document.getElementById('setaStatusDropdown');
+        if(seta) seta.classList.remove('rotate-180');
+    }
 });
 
 function alternarTelaAuth(tela) {
@@ -211,13 +277,12 @@ async function confirmarRedefinicao(e) {
         });
         const data = await res.json();
         if (data.success) { 
-            mostrarToast("Senha alterada! Faça login com a nova senha.", "success"); 
+            mostrarToast("Senha alterada com sucesso!", "success"); 
             alternarTelaAuth('login'); 
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro ao redefinir senha.", "error"); }
 }
 
-// --- TOASTS VISUAIS ---
 function mostrarToast(mensagem, tipo = 'info') {
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
@@ -234,7 +299,6 @@ function mostrarToast(mensagem, tipo = 'info') {
     setTimeout(() => t.remove(), 4200);
 }
 
-// --- LIGHTBOX ZOOM ---
 function fecharZoomImagemDirect() { 
     document.getElementById('modalZoomImagem').classList.remove('ativo'); 
     document.body.style.overflow = ''; 
@@ -248,7 +312,6 @@ function abrirZoomImagem(src) {
     document.body.style.overflow = 'hidden'; 
 }
 
-// --- CONTROLE DE TELAS ---
 function mudarAba(aba) {
     abaAtiva = aba;
     document.getElementById('catalogScreen').classList.toggle('hidden', aba !== 'catalogo');
@@ -258,7 +321,6 @@ function mudarAba(aba) {
     if (aba === 'mural') carregarMuralPublico();
 }
 
-// --- MEUS ITENS E RELATOS ---
 async function abrirPainelMeusItens() {
     mudarAba('meusItens');
     if (!alunoSessao) return;
@@ -278,7 +340,7 @@ async function abrirPainelMeusItens() {
             if (meus.length > 0) {
                 listaSol.innerHTML = '';
                 meus.forEach(i => {
-                    const st = normalizarStatus(i.status);
+                    const st = normalizarStatus(i);
                     listaSol.innerHTML += `
                         <div class="glass-panel rounded-2xl p-4 flex justify-between items-center gap-3 border border-white/5">
                             <div>
@@ -314,11 +376,8 @@ async function abrirPainelMeusItens() {
     }
 }
 
-// --- CATEGORIAS DINÂMICAS E CHIPS ---
 function selecionarFiltroCategoria(catNome, catLabel) {
     categoriaAtual = catNome;
-    
-    // Atualizar visual dos chips
     document.querySelectorAll('.category-chip').forEach(btn => {
         btn.className = "category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white/5 text-slate-300 border-white/10 hover:bg-white/10";
     });
@@ -373,17 +432,14 @@ async function carregarItensDaAPI() {
     }, 400);
 }
 
-function normalizarStatus(status) { 
-    return (status || 'DISPONÍVEL').toUpperCase(); 
-}
-
+// RENDERIZAÇÃO DOS PERTENCES SEM BOLINHAS COLORIDAS
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     const contador = document.getElementById('itensContador');
     grid.innerHTML = '';
     
     const filtrados = todosItens.filter(i => {
-        const st = normalizarStatus(i.status);
+        const st = normalizarStatus(i);
         return (categoriaAtual === 'TODOS' || (i.categoria && i.categoria.toUpperCase() === categoriaAtual)) &&
                (statusAtual === 'TODOS' || st === statusAtual) &&
                (!termoBusca || (i.nome||'').toLowerCase().includes(termoBusca) || (i.txt_descricao||'').toLowerCase().includes(termoBusca) || (i.txt_local||'').toLowerCase().includes(termoBusca));
@@ -405,16 +461,15 @@ function renderizarItens() {
     filtrados.forEach(item => {
         const fotosArray = (item.fotos && item.fotos.length > 0) ? item.fotos : (item.foto ? [item.foto] : []);
         const imagemSrc = fotosArray[0] || '';
-        const st = normalizarStatus(item.status);
+        const st = normalizarStatus(item);
         
         let badgeCor = 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
-        let dotCor = 'bg-emerald-400';
         if (st === 'SOLICITADO') {
             badgeCor = 'text-amber-400 border-amber-500/30 bg-amber-500/10';
-            dotCor = 'bg-amber-400 animate-pulse';
         } else if (st === 'ENTREGUE') {
             badgeCor = 'text-slate-400 border-slate-700 bg-slate-800';
-            dotCor = 'bg-slate-500';
+        } else if (st === 'PARA DOAÇÃO' || st.includes('DOAÇÃO') || st.includes('DOACAO')) {
+            badgeCor = 'text-purple-400 border-purple-500/30 bg-purple-500/10';
         }
 
         grid.innerHTML += `
@@ -426,8 +481,7 @@ function renderizarItens() {
                             <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/10 shadow-sm">${item.categoria}</span>
                         </div>
                         <div class="absolute top-2.5 right-2.5">
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1.5 border shadow-sm ${badgeCor}">
-                                <span class="w-1.5 h-1.5 rounded-full ${dotCor}"></span>
+                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border shadow-sm ${badgeCor}">
                                 ${st}
                             </span>
                         </div>
@@ -460,12 +514,6 @@ function limparBusca() {
     renderizarItens(); 
 }
 
-function filtrarStatus(st) { 
-    statusAtual = st; 
-    renderizarItens(); 
-}
-
-// --- DETALHES DO ITEM ---
 function abrirDetalhes(item) {
     itemSelecionado = item;
     document.getElementById('catalogScreen').classList.add('hidden');
@@ -479,11 +527,12 @@ function abrirDetalhes(item) {
     document.getElementById('detailDate').innerText = item.txt_data;
     document.getElementById('detailCategoryBadge').innerText = item.categoria;
 
-    const st = normalizarStatus(item.status);
+    const st = normalizarStatus(item);
     const badgeEl = document.getElementById('detailStatusBadge');
     badgeEl.innerText = st;
     if (st === 'DISPONÍVEL') badgeEl.className = "text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
     else if (st === 'SOLICITADO') badgeEl.className = "text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30";
+    else if (st === 'PARA DOAÇÃO') badgeEl.className = "text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30";
     else badgeEl.className = "text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
 
     const cont = document.getElementById('carouselContainer');
@@ -573,7 +622,6 @@ async function enviarNovo() {
     btn.disabled = false; btn.innerText = "Sim, é meu!";
 }
 
-// --- MURAL DE PERDIDOS ---
 async function enviarAvisoMural(e) {
     e.preventDefault();
     const btn = document.getElementById('btnPublicarMural'); 
@@ -650,7 +698,6 @@ function exibirMatchesImediatos(itens) {
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
-// --- CHAT FLUTUANTE COM SECRETARIA ---
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
@@ -719,7 +766,6 @@ async function enviarMensagemChat(e) {
     } catch(e){}
 }
 
-// --- CADASTRO DE ITEM PELO ALUNO (ACHEI ALGO) ---
 function abrirModalCadastrarAluno() {
     fotosAlunoSelecionadas = [];
     renderizarGridPreviewAluno();
