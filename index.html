@@ -9,7 +9,6 @@
     <meta name="theme-color" content="#dc2626">
     <link rel="apple-touch-icon" href="/icon-192.png">
     
-    <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -18,7 +17,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased">
+<body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
     <!-- SPLASH SCREEN COM VÍDEO -->
     <div id="splashScreenAnimacao" class="fixed inset-0 z-[300] bg-black flex items-center justify-center transition-opacity duration-700">
@@ -40,7 +39,6 @@
                 <p class="text-xs text-slate-400 mt-1 font-medium">Use seu e-mail institucional @aluno.cps.sp.gov.br</p>
             </div>
 
-            <!-- LOGIN -->
             <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="space-y-4">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Institucional</label>
@@ -63,7 +61,6 @@
                 </div>
             </form>
 
-            <!-- CADASTRO -->
             <form id="formCadastroAluno" onsubmit="confirmarCadastro(event)" class="hidden space-y-3.5">
                 <div id="passo1Cadastro" class="space-y-3">
                     <div class="relative">
@@ -87,7 +84,6 @@
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-semibold text-slate-400 hover:text-white pt-1">Voltar ao Login</button>
             </form>
 
-            <!-- RECUPERAÇÃO -->
             <form id="formRecuperarAluno" onsubmit="confirmarRedefinicao(event)" class="hidden space-y-3.5">
                 <div id="passo1Recuperar" class="space-y-3">
                     <input type="email" id="recEmailAluno" required placeholder="E-mail Institucional" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
@@ -103,7 +99,7 @@
         </div>
     </div>
 
-    <!-- TELA DE CARREGAMENTO SUAVE -->
+    <!-- TELA DE CARREGAMENTO -->
     <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-[#090d13] flex flex-col items-center justify-center">
         <div class="relative flex items-center justify-center mb-5">
             <div class="w-16 h-16 rounded-full border-4 border-red-500/20 border-t-red-500 animate-spin"></div>
@@ -119,10 +115,9 @@
         <img id="imgZoomConteudo" src="" class="max-h-[88vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl cursor-default" onclick="event.stopPropagation()">
     </div>
 
-    <!-- CONTAINER DE TOASTS -->
     <div id="toastContainer" class="fixed top-5 right-5 z-[250] flex flex-col gap-3 pointer-events-none"></div>
 
-    <!-- CABEÇALHO MODERNO -->
+    <!-- CABEÇALHO -->
     <header class="glass-header sticky top-0 z-50 px-4 py-3.5 border-b border-white/10">
         <div class="max-w-5xl mx-auto flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
@@ -140,40 +135,39 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
-                <!-- BOTÃO RÁPIDO: ACHEI ALGO -->
                 <button onclick="abrirModalCadastrarAluno()" class="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-wider transition">
                     <i class="fas fa-hand-holding-heart text-xs"></i> Achei Algo
                 </button>
 
-                <!-- MENU HAMBÚRGUER -->
+                <!-- MENU HAMBÚRGUER COM OPACIDADE TOTAL -->
                 <div class="relative">
                     <button onclick="toggleMenuNavegacao()" class="w-10 h-10 rounded-xl bg-[#161c28] border border-white/10 text-slate-200 hover:border-red-500/50 hover:text-white transition flex items-center justify-center shadow-sm">
                         <i class="fas fa-bars text-sm"></i>
                     </button>
 
-                    <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-60 glass-panel rounded-2xl shadow-2xl p-2 z-50 space-y-1 border border-white/10">
-                        <button onclick="mudarAba('catalogo'); fecharMenuNavegacao();" id="menuBtnCatalogo" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition text-left">
+                    <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-64 bg-[#121722] border border-white/15 rounded-2xl shadow-2xl p-2.5 z-50 space-y-1">
+                        <button onclick="mudarAba('catalogo'); fecharMenuNavegacao();" id="menuBtnCatalogo" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition text-left">
                             <i class="fas fa-boxes text-red-500 w-4"></i> Catálogo Geral
                         </button>
-                        <button onclick="mudarAba('mural'); fecharMenuNavegacao();" id="menuBtnMural" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition text-left">
+                        <button onclick="mudarAba('mural'); fecharMenuNavegacao();" id="menuBtnMural" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition text-left">
                             <span class="flex items-center gap-3"><i class="fas fa-bullhorn text-amber-500 w-4"></i> Mural (Perdi Algo)</span>
                             <span id="badgeNotificacaoMural" class="hidden w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">!</span>
                         </button>
-                        <button onclick="abrirModalCadastrarAluno(); fecharMenuNavegacao();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 hover:bg-white/5 transition text-left border-t border-white/10 pt-2 mt-1">
+                        <button onclick="abrirModalCadastrarAluno(); fecharMenuNavegacao();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-400 hover:bg-white/10 transition text-left border-t border-white/10 pt-2 mt-1">
                             <i class="fas fa-hand-holding-heart w-4"></i> Entregar Objeto Achado
                         </button>
-                        <button onclick="abrirPainelMeusItens(); fecharMenuNavegacao();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 hover:bg-white/5 transition text-left">
+                        <button onclick="abrirPainelMeusItens(); fecharMenuNavegacao();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 hover:bg-white/10 transition text-left">
                             <i class="fas fa-user-clock w-4"></i> Meus Pedidos & Relatos
                         </button>
                     </div>
                 </div>
 
-                <!-- PERFIL DO ALUNO -->
+                <!-- PERFIL DO ALUNO COM OPACIDADE TOTAL -->
                 <div class="relative">
                     <button onclick="togglePerfilMenu()" class="w-10 h-10 rounded-xl bg-red-600/15 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white transition flex items-center justify-center shadow-md">
                         <i class="fas fa-user text-xs"></i>
                     </button>
-                    <div id="perfilMenu" class="hidden absolute right-0 mt-2 w-72 glass-panel rounded-2xl shadow-2xl p-4 z-50 space-y-3 border border-white/10">
+                    <div id="perfilMenu" class="hidden absolute right-0 mt-2 w-72 bg-[#121722] border border-white/15 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
                         <div class="border-b border-white/10 pb-3">
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -186,11 +180,11 @@
                             </div>
                         </div>
                         <div class="space-y-1.5">
-                            <button onclick="abrirPainelMeusItens(); togglePerfilMenu();" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-200 transition">
+                            <button onclick="abrirPainelMeusItens(); togglePerfilMenu();" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-200 transition">
                                 <span>Meus Itens e Relatos</span>
                                 <i class="fas fa-user-clock text-blue-400 text-xs"></i>
                             </button>
-                            <button onclick="solicitarPermissaoNotificacao()" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-200 transition">
+                            <button onclick="solicitarPermissaoNotificacao()" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-200 transition">
                                 <span>Ativar Notificações</span>
                                 <i class="fas fa-bell text-emerald-400 text-xs"></i>
                             </button>
@@ -206,7 +200,7 @@
 
     <main class="max-w-5xl mx-auto w-full p-4 flex-grow space-y-6">
 
-        <!-- DASHBOARD HERO BANNER (BOAS-VINDAS E KPIS) -->
+        <!-- DASHBOARD HERO BANNER -->
         <section class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10 glow-red relative overflow-hidden">
             <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div class="space-y-1">
@@ -226,7 +220,6 @@
 
         <!-- ABA 1: CATÁLOGO DE OBJETOS -->
         <section id="catalogScreen" class="space-y-5">
-            <!-- BARRA DE PESQUISA E FILTROS -->
             <div class="glass-panel rounded-2xl p-4 border border-white/10 space-y-3.5">
                 <div class="relative w-full">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
@@ -242,18 +235,37 @@
                     <div id="dynamicChipsList" class="flex gap-2"></div>
                 </div>
 
-                <!-- FILTRO DE STATUS -->
-                <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                    <div class="flex items-center gap-2">
-                        <span class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider">Status:</span>
-                        <select id="statusFilter" onchange="filtrarStatus(this.value)" class="bg-[#0d1117] border border-white/10 text-slate-200 text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-red-500 transition">
-                            <option value="TODOS">TODOS OS STATUS</option>
-                            <option value="DISPONÍVEL">🟢 DISPONÍVEL</option>
-                            <option value="SOLICITADO">🟡 SOLICITADO</option>
-                            <option value="ENTREGUE">⚪ ENTREGUE</option>
-                        </select>
+                <!-- SELETOR DE STATUS COMPACTO E SEM BOLINHAS COLORIDAS -->
+                <div class="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs">
+                    <div class="relative inline-block">
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-400 font-bold text-[11px] uppercase tracking-wider">Status:</span>
+                            <button type="button" onclick="toggleDropdownStatus()" id="btnDropdownStatus" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141a26] border border-white/15 hover:border-red-500/50 text-white font-bold text-xs shadow-md transition">
+                                <span id="labelStatusSelecionado">TODOS OS STATUS</span>
+                                <i class="fas fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" id="setaStatusDropdown"></i>
+                            </button>
+                        </div>
+
+                        <!-- MENU SUSPENSO COMPACTO E OPACIDADE TOTAL (SEM BOLINHAS) -->
+                        <div id="dropdownStatusMenu" class="hidden absolute left-0 mt-2 w-48 bg-[#121722] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-50 space-y-0.5">
+                            <button type="button" onclick="selecionarFiltroStatus('TODOS', 'TODOS OS STATUS')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
+                                TODOS OS STATUS
+                            </button>
+                            <button type="button" onclick="selecionarFiltroStatus('DISPONÍVEL', 'DISPONÍVEL')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
+                                DISPONÍVEL
+                            </button>
+                            <button type="button" onclick="selecionarFiltroStatus('SOLICITADO', 'SOLICITADO')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
+                                SOLICITADO
+                            </button>
+                            <button type="button" onclick="selecionarFiltroStatus('PARA DOAÇÃO', 'PARA DOAÇÃO')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
+                                PARA DOAÇÃO
+                            </button>
+                            <button type="button" onclick="selecionarFiltroStatus('ENTREGUE', 'ENTREGUE')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
+                                ENTREGUE
+                            </button>
+                        </div>
                     </div>
-                    <span id="itensContador" class="text-slate-500 text-[11px] font-medium">Carregando itens...</span>
+                    <span id="itensContador" class="text-slate-400 text-[11px] font-semibold">Carregando itens...</span>
                 </div>
             </div>
 
@@ -289,7 +301,6 @@
                 </form>
             </div>
 
-            <!-- RELATOS RECENTES DA COMUNIDADE -->
             <div class="space-y-3">
                 <div class="flex justify-between items-center px-1">
                     <h3 class="text-xs font-black uppercase tracking-wider text-slate-400"><i class="fas fa-history mr-1"></i> Relatos Recentes de Alunos</h3>
@@ -348,7 +359,6 @@
                 <span id="detailStatusBadge" class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border"></span>
             </div>
 
-            <!-- CARROSSEL DE FOTOS COM LIGHTBOX -->
             <div class="relative bg-black/40 rounded-2xl overflow-hidden border border-white/10 h-72 group">
                 <div id="photoCounter" class="hidden absolute top-3 right-3 z-20 bg-black/70 backdrop-blur-sm text-white text-[11px] font-black px-3 py-1 rounded-full border border-white/10">
                     <span id="photoCurrentIdx">1</span>/<span id="photoTotalCount">1</span>
@@ -368,7 +378,6 @@
                 </div>
             </div>
 
-            <!-- INFORMAÇÕES DO ITEM -->
             <div class="space-y-3.5">
                 <div>
                     <span id="detailCategoryBadge" class="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-white/5 border border-white/10 text-slate-400"></span>
@@ -402,15 +411,14 @@
         </section>
     </main>
 
-    <!-- CHAT FLUTUANTE MODERNO -->
+    <!-- CHAT FLUTUANTE -->
     <div class="fixed bottom-5 right-5 z-50">
         <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shadow-2xl shadow-red-600/50 hover:scale-105 transition transform active:scale-95 ring-4 ring-red-500/20">
             <i class="fas fa-comment-dots text-xl"></i>
             <span id="badgeChatWeb" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-black text-[11px] font-black rounded-full flex items-center justify-center ring-2 ring-[#090d13]">0</span>
         </button>
         
-        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 border border-white/10 bg-[#111620]/95 rounded-3xl shadow-2xl flex flex-col h-[520px] overflow-hidden backdrop-blur-xl">
-            <!-- HEADER DO CHAT -->
+        <div id="janelaChat" class="hidden absolute bottom-16 right-0 w-[90vw] sm:w-96 border border-white/15 bg-[#121722] rounded-3xl shadow-2xl flex flex-col h-[520px] overflow-hidden">
             <div class="flex items-center justify-between border-b border-white/10 px-4 py-3.5 bg-white/5">
                 <div class="flex items-center gap-3">
                     <div class="relative">
@@ -429,7 +437,6 @@
 
             <div id="chatMensagens" class="flex-1 space-y-3 overflow-y-auto p-4 scrollbar-thin"></div>
 
-            <!-- ENTRADA DO CHAT -->
             <div class="border-t border-white/10 p-3 bg-black/20">
                 <form id="formChat" onsubmit="enviarMensagemChat(event)" class="flex items-center gap-2 rounded-xl border border-white/10 bg-[#0d1117] px-3.5 py-2 focus-within:border-red-500/50 transition">
                     <input type="text" id="chatInputTexto" placeholder="Escreva sua mensagem..." class="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-slate-500">
@@ -456,7 +463,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO DE ITEM PELO ALUNO (ACHEI ALGO) -->
+    <!-- MODAL DE CADASTRO DE ITEM PELO ALUNO -->
     <div id="modalCadastrarAluno" class="hidden fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-white/10 pb-3">
