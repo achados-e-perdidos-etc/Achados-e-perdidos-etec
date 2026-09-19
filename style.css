@@ -2,12 +2,12 @@
 :root {
     --bg-main: #090d13;
     --bg-header: #111620;
-    --bg-card: #161c28;
-    --bg-card-hover: #1c2433;
+    --bg-card: #141a26;
+    --bg-card-hover: #1a2233;
     --text-main: #f1f5f9;
     --text-muted: #94a3b8;
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-highlight: rgba(220, 38, 38, 0.35);
+    --border-color: rgba(255, 255, 255, 0.10);
+    --border-highlight: rgba(220, 38, 38, 0.45);
     --primary-color: #dc2626;
     --primary-hover: #b91c1c;
     --primary-glow: rgba(220, 38, 38, 0.35);
@@ -16,10 +16,10 @@
 body.dark-theme {
     --bg-main: #090d13;
     --bg-header: #111620;
-    --bg-card: #161c28;
+    --bg-card: #141a26;
     --text-main: #f1f5f9;
     --text-muted: #94a3b8;
-    --border-color: rgba(255, 255, 255, 0.08);
+    --border-color: rgba(255, 255, 255, 0.10);
 }
 
 body.light-theme {
@@ -39,22 +39,34 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Glassmorphism Utilities */
+/* Painéis e Modais com alta opacidade (não deixa transparecer o conteúdo do fundo) */
 .glass-panel {
-    background: rgba(22, 28, 40, 0.75) !important;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: #141a26 !important;
+    background-color: #141a26 !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
 }
 
 .glass-header {
-    background: rgba(17, 22, 32, 0.85) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(17, 22, 32, 0.95) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Glow Effects */
+/* Menus Suspensos e Dropdowns com Fundo Escuro Sólido (Legibilidade Máxima) */
+#menuNavegacaoDropdown,
+#perfilMenu,
+#dropdownStatusMenu {
+    background: #121722 !important;
+    background-color: #121722 !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.85), 0 0 20px -5px rgba(220, 38, 38, 0.20) !important;
+    opacity: 1 !important;
+}
+
+/* Efeitos de Brilho */
 .glow-red {
     box-shadow: 0 0 35px -5px rgba(220, 38, 38, 0.25);
 }
@@ -67,7 +79,7 @@ body {
     box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.2);
 }
 
-/* Microinterações e Transições de Botões */
+/* Microinterações nos Cards */
 .interactive-card {
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -77,7 +89,7 @@ body {
     box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6), 0 0 20px -3px rgba(220, 38, 38, 0.15);
 }
 
-/* Telas de Transição e Overlays */
+/* Overlays e Carregamento */
 #loadingOverlay {
     transition: opacity 0.5s ease, visibility 0.5s ease !important;
     opacity: 1;
@@ -115,7 +127,7 @@ body {
     opacity: 1;
 }
 
-/* Toasts Refinados */
+/* Animação dos Toasts */
 .toast-enter {
     animation: toastSlideIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
@@ -125,7 +137,7 @@ body {
     to { transform: translateX(0) scale(1); opacity: 1; }
 }
 
-/* Barra de Rolagem Moderna */
+/* Barra de Rolagem */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -149,7 +161,7 @@ body {
     scrollbar-width: none;
 }
 
-/* Fundo Grid Cyber Animado Otimizado */
+/* Fundo Animado */
 .dynamic-grid-background {
   position: absolute;
   inset: 0;
