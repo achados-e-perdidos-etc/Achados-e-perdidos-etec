@@ -140,8 +140,26 @@ function togglePerfilMenu() {
     menu.classList.toggle('hidden');
 }
 
-// MENU COMPACTO DE STATUS
-function toggleDropdownStatus() {
+// NOVO: ALTERNAR PAINEL DE CATEGORIAS PELO BOTÃO DE FILTROS (CIRCULADO EM AZUL E VERMELHO)
+function togglePainelCategorias() {
+    const painel = document.getElementById('categoryChipsContainer');
+    const btn = document.getElementById('btnToggleFiltros');
+    if (!painel) return;
+    
+    const estaOculto = painel.classList.contains('hidden');
+    painel.classList.toggle('hidden');
+    if (btn) {
+        if (estaOculto) {
+            btn.classList.add('border-red-500/80', 'text-red-400', 'bg-red-500/10');
+        } else if (categoriaAtual === 'TODOS') {
+            btn.classList.remove('border-red-500/80', 'text-red-400', 'bg-red-500/10');
+        }
+    }
+}
+
+// MENU COMPACTO DE STATUS (CIRCULADO EM BRANCO)
+function toggleDropdownStatus(event) {
+    if (event) event.stopPropagation();
     const menu = document.getElementById('dropdownStatusMenu');
     const seta = document.getElementById('setaStatusDropdown');
     const perfilMenu = document.getElementById('perfilMenu');
@@ -149,8 +167,9 @@ function toggleDropdownStatus() {
     if(navMenu) navMenu.classList.add('hidden');
     if(perfilMenu) perfilMenu.classList.add('hidden');
     
+    const estaOculto = menu.classList.contains('hidden');
     menu.classList.toggle('hidden');
-    if(seta) seta.classList.toggle('rotate-180', !menu.classList.contains('hidden'));
+    if(seta) seta.classList.toggle('rotate-180', estaOculto);
 }
 
 function selecionarFiltroStatus(statusValor, statusLabel) {
@@ -376,6 +395,7 @@ async function abrirPainelMeusItens() {
     }
 }
 
+// ATUALIZADO: DESTACA A CATEGORIA E SINALIZA O BOTÃO DE FILTRO
 function selecionarFiltroCategoria(catNome, catLabel) {
     categoriaAtual = catNome;
     document.querySelectorAll('.category-chip').forEach(btn => {
@@ -385,6 +405,19 @@ function selecionarFiltroCategoria(catNome, catLabel) {
     if (chipAtivo) {
         chipAtivo.className = "category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-red-600 text-white border-red-500 shadow-md";
     }
+
+    const ind = document.getElementById('categoriaAtivaIndicador');
+    if (ind) ind.innerText = catNome === 'TODOS' ? 'Todas' : catNome;
+
+    const btnFiltro = document.getElementById('btnToggleFiltros');
+    if (btnFiltro) {
+        if (catNome !== 'TODOS') {
+            btnFiltro.classList.add('border-red-500', 'text-red-400', 'bg-red-500/10');
+        } else {
+            btnFiltro.classList.remove('border-red-500', 'text-red-400', 'bg-red-500/10');
+        }
+    }
+
     renderizarItens();
 }
 
@@ -432,7 +465,7 @@ async function carregarItensDaAPI() {
     }, 400);
 }
 
-// RENDERIZAÇÃO DOS PERTENCES SEM BOLINHAS COLORIDAS
+// RENDERIZAÇÃO DOS PERTENCES COM COMPATIBILIDADE E SEM SOBREPOSIÇÃO
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     const contador = document.getElementById('itensContador');
