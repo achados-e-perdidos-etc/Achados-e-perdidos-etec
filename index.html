@@ -220,48 +220,69 @@
 
         <!-- ABA 1: CATÁLOGO DE OBJETOS -->
         <section id="catalogScreen" class="space-y-5">
-            <div class="glass-panel rounded-2xl p-4 border border-white/10 space-y-3.5">
-                <div class="relative w-full">
-                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                    <input type="text" id="searchInput" oninput="filtrarPorPalavraChave()" placeholder="Buscar por nome, descrição ou local..." class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-inner">
-                    <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition"><i class="fas fa-times text-xs"></i></button>
-                </div>
+            <!-- Container de Busca com z-30 para manter o menu de status sempre acima do grid de itens -->
+            <div class="glass-panel rounded-2xl p-4 border border-white/10 space-y-3.5 relative z-30">
+                <!-- LINHA DE BUSCA + BOTÃO DE FILTRO (ONDE CIRCULADO EM AZUL) -->
+                <div class="flex items-center gap-2.5 w-full">
+                    <div class="relative flex-1">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                        <input type="text" id="searchInput" oninput="filtrarPorPalavraChave()" placeholder="Buscar por nome, descrição ou local..." class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-inner">
+                        <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition"><i class="fas fa-times text-xs"></i></button>
+                    </div>
 
-                <!-- CHIPS DE CATEGORIAS ROLÁVEIS -->
-                <div class="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1" id="categoryChipsContainer">
-                    <button onclick="selecionarFiltroCategoria('TODOS', 'Todas as Categorias')" id="chipCatTodos" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-red-600 text-white border-red-500">
-                        <i class="fas fa-th-large mr-1.5 text-[10px]"></i> Todos
+                    <!-- BOTÃO DE FILTRO DE CATEGORIAS (CIRCULADO EM AZUL) -->
+                    <button 
+                        type="button" 
+                        id="btnToggleFiltros" 
+                        onclick="togglePainelCategorias()" 
+                        title="Filtrar por Categorias" 
+                        class="w-12 h-12 rounded-xl bg-[#141a26] border border-white/15 text-slate-300 hover:text-white hover:border-red-500/50 flex items-center justify-center transition shrink-0 shadow-md active:scale-95"
+                    >
+                        <i class="fas fa-sliders-h text-sm"></i>
                     </button>
-                    <div id="dynamicChipsList" class="flex gap-2"></div>
                 </div>
 
-                <!-- SELETOR DE STATUS COMPACTO E SEM BOLINHAS COLORIDAS -->
-                <div class="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs">
-                    <div class="relative inline-block">
+                <!-- PAINEL RETRÁTIL DE CATEGORIAS (CIRCULADO EM VERMELHO - ABRE E FECHA PELO BOTÃO DE FILTRO) -->
+                <div id="categoryChipsContainer" class="hidden pt-3 border-t border-white/10 transition-all duration-200">
+                    <div class="flex items-center justify-between mb-2 px-0.5">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtrar por Categoria:</span>
+                        <span id="categoriaAtivaIndicador" class="text-[10px] text-red-400 font-bold">Todas</span>
+                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
+                        <button onclick="selecionarFiltroCategoria('TODOS', 'Todas as Categorias')" id="chipCatTodos" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-red-600 text-white border-red-500 shadow-md">
+                            <i class="fas fa-th-large mr-1.5 text-[10px]"></i> Todos
+                        </button>
+                        <div id="dynamicChipsList" class="flex gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- SELETOR DE STATUS COMPACTO (CIRCULADO EM BRANCO - CORRIGIDO SEM ENTRAR NOS CARDS) -->
+                <div class="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs relative z-20">
+                    <div class="relative inline-block" id="containerDropdownStatus">
                         <div class="flex items-center gap-2">
                             <span class="text-slate-400 font-bold text-[11px] uppercase tracking-wider">Status:</span>
-                            <button type="button" onclick="toggleDropdownStatus()" id="btnDropdownStatus" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141a26] border border-white/15 hover:border-red-500/50 text-white font-bold text-xs shadow-md transition">
+                            <button type="button" onclick="toggleDropdownStatus(event)" id="btnDropdownStatus" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141a26] border border-white/15 hover:border-red-500/50 text-white font-bold text-xs shadow-md transition active:scale-95">
                                 <span id="labelStatusSelecionado">TODOS OS STATUS</span>
                                 <i class="fas fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" id="setaStatusDropdown"></i>
                             </button>
                         </div>
 
-                        <!-- MENU SUSPENSO COMPACTO E OPACIDADE TOTAL (SEM BOLINHAS) -->
-                        <div id="dropdownStatusMenu" class="hidden absolute left-0 mt-2 w-48 bg-[#121722] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-50 space-y-0.5">
-                            <button type="button" onclick="selecionarFiltroStatus('TODOS', 'TODOS OS STATUS')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
-                                TODOS OS STATUS
+                        <!-- MENU SUSPENSO FLUTUANTE (COM Z-50, FUNDO SÓLIDO E SOMBRA) -->
+                        <div id="dropdownStatusMenu" class="hidden absolute left-0 top-full mt-2 w-52 bg-[#121722] border border-white/20 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.85)] p-1.5 z-50 space-y-0.5 backdrop-blur-md">
+                            <button type="button" onclick="selecionarFiltroStatus('TODOS', 'TODOS OS STATUS')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition flex items-center justify-between">
+                                <span>TODOS OS STATUS</span>
                             </button>
-                            <button type="button" onclick="selecionarFiltroStatus('DISPONÍVEL', 'DISPONÍVEL')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
-                                DISPONÍVEL
+                            <button type="button" onclick="selecionarFiltroStatus('DISPONÍVEL', 'DISPONÍVEL')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition flex items-center justify-between">
+                                <span>DISPONÍVEL</span>
                             </button>
-                            <button type="button" onclick="selecionarFiltroStatus('SOLICITADO', 'SOLICITADO')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
-                                SOLICITADO
+                            <button type="button" onclick="selecionarFiltroStatus('SOLICITADO', 'SOLICITADO')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition flex items-center justify-between">
+                                <span>SOLICITADO</span>
                             </button>
-                            <button type="button" onclick="selecionarFiltroStatus('PARA DOAÇÃO', 'PARA DOAÇÃO')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
-                                PARA DOAÇÃO
+                            <button type="button" onclick="selecionarFiltroStatus('PARA DOAÇÃO', 'PARA DOAÇÃO')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition flex items-center justify-between">
+                                <span>PARA DOAÇÃO</span>
                             </button>
-                            <button type="button" onclick="selecionarFiltroStatus('ENTREGUE', 'ENTREGUE')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition">
-                                ENTREGUE
+                            <button type="button" onclick="selecionarFiltroStatus('ENTREGUE', 'ENTREGUE')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition flex items-center justify-between">
+                                <span>ENTREGUE</span>
                             </button>
                         </div>
                     </div>
@@ -270,7 +291,7 @@
             </div>
 
             <!-- GRID DOS PERTENCES -->
-            <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10"></div>
         </section>
 
         <!-- ABA 2: MURAL DE RELATOS -->
