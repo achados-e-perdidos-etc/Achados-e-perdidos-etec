@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ETEC - Painel de Controle Secretaria</title>
   
+  <!-- Favicon Oficial da Secretaria -->
+  <link rel="icon" type="image/png" href="logo_secretaria.png">
+  <link rel="shortcut icon" type="image/png" href="logo_secretaria.png">
+  <link rel="apple-touch-icon" href="logo_secretaria.png">
+  
   <!-- Ícones Font Awesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
@@ -70,6 +75,7 @@
       background: rgba(220, 38, 38, 0.15);
       color: #dc2626;
       border-radius: 50%;
+      overflow: hidden;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -144,6 +150,7 @@
       border-radius: 50%;
       background: #21262d;
       border: 2px solid #dc2626;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -534,7 +541,10 @@
   <!-- TELA DE LOGIN -->
   <div id="loginScreen">
     <div class="login-card">
-      <div class="login-badge-lock"><i class="fas fa-lock"></i></div>
+      <div class="login-badge-lock">
+        <img src="logo_secretaria.png" alt="Logo Secretaria" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+        <i class="fas fa-lock" style="display: none;"></i>
+      </div>
       <h2>Secretaria ETEC</h2>
       <p>Acesso Restrito - controle_etec_7788</p>
       
@@ -564,7 +574,10 @@
   <!-- CABEÇALHO COM BOTÃO HAMBÚRGUER E BOTÃO DE SAIR RÁPIDO (FOTO 2) -->
   <header class="header-secretaria">
     <div class="logo-area">
-      <div class="avatar-etec"><i class="fas fa-user-shield"></i></div>
+      <div class="avatar-etec">
+        <img src="logo_secretaria.png" alt="Secretaria ETEC" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+        <i class="fas fa-user-shield" style="display: none;"></i>
+      </div>
       <div>
         <h1 class="header-titulo">SECRETARIA ETEC</h1>
         <span class="status-sessao"><span class="bolinha-verde">●</span> Sessão Administrativa Ativa</span>
