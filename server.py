@@ -726,13 +726,35 @@ def gerenciar_item(item_id):
         return jsonify({"success": False, "error": str(e), "message": f"Erro interno ao atualizar item: {str(e)}"}), 500
 
 
-@app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT'])
+@app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
 @token_required
 def recusar_solicitacao(item_id):
-    conn = get_db_connection(); cursor = conn.cursor()
-    cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL WHERE id = %s;", (item_id,))
-    conn.commit(); cursor.close(); conn.close()
-    return jsonify({"success": True})
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT aprovado, cadastrado_por_aluno FROM itens WHERE id = %s;", (item_id,))
+        item = cursor.fetchone()
+        
+        if item and item.get('aprovado') is False:
+            # É um item cadastrado por aluno que foi recusado pela secretaria: exclui permanentemente do banco
+            cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
+            msg = "Item pendente recusado e excluído do sistema."
+        else:
+            # É uma solicitação de retirada recusada: cancela a solicitação e reverte para DISPONÍVEL
+            cursor.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL WHERE id = %s;", (item_id,))
+            msg = "Solicitação cancelada. Item retornado para DISPONÍVEL."
+            
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": msg})
+    except Exception as e:
+        if conn: conn.close()
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Erro em recusar_solicitacao #{item_id}: {tb}")
+        return jsonify({"success": False, "error": str(e), "traceback": tb}), 500
 
 @app.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
 @token_required
@@ -828,10 +850,34 @@ def buscar_mensagens(rm):
 @app.route('/api/chat/conversas', methods=['OPTIONS', 'GET'])
 @token_required
 def listar_conversas():
-    conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT rm_aluno, MAX(nome_aluno) as nome_aluno, MAX(data_envio) as ultima_msg_data, COUNT(CASE WHEN remetente = 'ALUNO' AND lida = FALSE THEN 1 END) as nao_lidas FROM mensagens_chat GROUP BY rm_aluno ORDER BY MAX(id) DESC;")
-    res = cursor.fetchall(); cursor.close(); conn.close()
-    return jsonify(res)
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT m.rm_aluno,
+                   COALESCE(
+                       (SELECT nome FROM alunos WHERE rm = m.rm_aluno LIMIT 1),
+                       (SELECT nome_aluno FROM mensagens_chat WHERE rm_aluno = m.rm_aluno AND remetente = 'ALUNO' ORDER BY id DESC LIMIT 1),
+                       'Aluno RM ' || m.rm_aluno
+                   ) as nome_aluno,
+                   (SELECT mensagem FROM mensagens_chat WHERE rm_aluno = m.rm_aluno ORDER BY id DESC LIMIT 1) as ultima_mensagem,
+                   (SELECT data_envio FROM mensagens_chat WHERE rm_aluno = m.rm_aluno ORDER BY id DESC LIMIT 1) as ultima_msg_data,
+                   COUNT(CASE WHEN m.remetente = 'ALUNO' AND m.lida = FALSE THEN 1 END) as nao_lidas
+            FROM mensagens_chat m
+            GROUP BY m.rm_aluno
+            ORDER BY MAX(m.id) DESC;
+        """)
+        res = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(res)
+    except Exception as e:
+        if conn: conn.close()
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Erro em listar_conversas: {tb}")
+        return jsonify({"success": False, "error": str(e), "traceback": tb}), 500
 
 @app.route('/api/entregues', methods=['OPTIONS', 'GET'])
 @token_required
