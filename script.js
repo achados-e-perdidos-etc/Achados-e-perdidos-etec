@@ -13,7 +13,29 @@ let ultimaQtdMensagens = 0;
 let alunoSessao = null;
 let fotosAlunoSelecionadas = [];
 
-// --- SISTEMA DE NOTIFICAÇÕES ---
+// ============================================================
+// NOVO: SOM SUTIL DE NOTIFICAÇÃO VIA WEB AUDIO API
+// ============================================================
+function tocarSomNotificacao() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // Tom Ré
+        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1); // Tom Lá
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.35);
+    } catch(e) {}
+}
+
+// --- SISTEMA DE NOTIFICAÇÕES NATIVAS ---
 function solicitarPermissaoNotificacao() {
     if ("Notification" in window) {
         if (Notification.permission === "granted") {
@@ -35,15 +57,15 @@ function dispararNotificacaoNativa(titulo, corpo) {
     }
 }
 
-// --- CALCULA SE JÁ FAZ 90 DIAS DO CADASTRO ---
+// --- CÁLCULO DE 90 DIAS ---
 function calcularDiasPassados(dataStr) {
     if (!dataStr) return 0;
     const partes = dataStr.trim().split(/[\/\-]/);
     if (partes.length === 3) {
         let dia, mes, ano;
-        if (partes[0].length === 4) { // Formato YYYY-MM-DD
+        if (partes[0].length === 4) {
             ano = parseInt(partes[0]); mes = parseInt(partes) - 1; dia = parseInt(partes);
-        } else { // Formato DD/MM/YYYY
+        } else {
             dia = parseInt(partes[0]); mes = parseInt(partes) - 1; ano = parseInt(partes);
             if (ano < 100) ano += 2000;
         }
@@ -54,7 +76,6 @@ function calcularDiasPassados(dataStr) {
     return 0;
 }
 
-// Se tiver 90 dias ou mais e estiver disponível, muda para PARA DOAÇÃO
 function normalizarStatus(itemOuStatus, dataItem = null) {
     let st = '';
     let dataStr = dataItem;
@@ -140,7 +161,6 @@ function togglePerfilMenu() {
     menu.classList.toggle('hidden');
 }
 
-// NOVO: ALTERNAR PAINEL DE CATEGORIAS PELO BOTÃO DE FILTROS (CIRCULADO EM AZUL E VERMELHO)
 function togglePainelCategorias() {
     const painel = document.getElementById('categoryChipsContainer');
     const btn = document.getElementById('btnToggleFiltros');
@@ -157,7 +177,6 @@ function togglePainelCategorias() {
     }
 }
 
-// MENU COMPACTO DE STATUS (CIRCULADO EM BRANCO)
 function toggleDropdownStatus(event) {
     if (event) event.stopPropagation();
     const menu = document.getElementById('dropdownStatusMenu');
@@ -395,7 +414,6 @@ async function abrirPainelMeusItens() {
     }
 }
 
-// ATUALIZADO: DESTACA A CATEGORIA E SINALIZA O BOTÃO DE FILTRO
 function selecionarFiltroCategoria(catNome, catLabel) {
     categoriaAtual = catNome;
     document.querySelectorAll('.category-chip').forEach(btn => {
@@ -451,21 +469,37 @@ async function carregarCategoriasDinamicamente() {
     } catch (e) {}
 }
 
+// ============================================================
+// NOVO: CARREGAMENTO COM CACHE OFFLINE (LOCALSTORAGE)
+// ============================================================
 async function carregarItensDaAPI() {
+    // 1. Tenta carregar do cache para renderização imediata
+    const cacheSalvo = localStorage.getItem('cache_itens_etec');
+    if (cacheSalvo) {
+        try {
+            todosItens = JSON.parse(cacheSalvo);
+            renderizarItens();
+        } catch(e) {}
+    }
+
     try {
         const response = await fetch(`${API_URL}/api/itens`);
         if (response.ok) { 
             todosItens = await response.json(); 
+            localStorage.setItem('cache_itens_etec', JSON.stringify(todosItens));
             renderizarItens(); 
         }
-    } catch(e){}
+    } catch(e){
+        if (todosItens.length > 0) {
+            mostrarToast("Exibindo itens em cache offline.", "info");
+        }
+    }
     setTimeout(() => {
         const loader = document.getElementById('loadingOverlay');
         if (loader) loader.classList.add('fade-out');
     }, 400);
 }
 
-// RENDERIZAÇÃO DOS PERTENCES COM COMPATIBILIDADE E SEM SOBREPOSIÇÃO
 function renderizarItens() {
     const grid = document.getElementById('itemsGrid');
     const contador = document.getElementById('itensContador');
@@ -731,15 +765,42 @@ function exibirMatchesImediatos(itens) {
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
+// ============================================================
+// NOVO: POLLING INTELIGENTE DO CHAT (PAUSA QUANDO ABA MINIMIZADA)
+// ============================================================
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
     document.getElementById('badgeChatWeb').classList.add('hidden');
     if (chatAberto) { 
         atualizarMensagensChat(); 
-        chatTimerPolling = setInterval(atualizarMensagensChat, 3000); 
-    } else clearInterval(chatTimerPolling);
+        iniciarPollingChatAluno();
+    } else {
+        pararPollingChatAluno();
+    }
 }
+
+function iniciarPollingChatAluno() {
+    pararPollingChatAluno();
+    chatTimerPolling = setInterval(() => {
+        if (!document.hidden && chatAberto) {
+            atualizarMensagensChat();
+        }
+    }, 3000);
+}
+
+function pararPollingChatAluno() {
+    if (chatTimerPolling) {
+        clearInterval(chatTimerPolling);
+        chatTimerPolling = null;
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && chatAberto) {
+        atualizarMensagensChat();
+    }
+});
 
 function abrirChatComItem() { 
     if(!chatAberto) alternarJanelaChat(); 
@@ -759,8 +820,11 @@ async function atualizarMensagensChat() {
         if(msgs.length !== ultimaQtdMensagens) {
             if (ultimaQtdMensagens > 0) {
                 const ultimaMensagem = msgs[msgs.length - 1];
-                if (ultimaMensagem.remetente !== 'ALUNO' && (document.hidden || !chatAberto)) {
-                    dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
+                if (ultimaMensagem.remetente !== 'ALUNO') {
+                    tocarSomNotificacao();
+                    if (document.hidden || !chatAberto) {
+                        dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
+                    }
                 }
             }
             ultimaQtdMensagens = msgs.length; 
