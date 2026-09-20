@@ -41,6 +41,22 @@ def after_request(response):
         response.headers['Expires'] = '0'
     return response
 
+import traceback
+
+@app.errorhandler(Exception)
+def handle_global_exception(e):
+    tb = traceback.format_exc()
+    print(f"🔥 [ERRO FLASK GLOBAL] {request.method} {request.path}:\n{tb}")
+    return jsonify({
+        "success": False,
+        "error": str(e),
+        "tipo": type(e).__name__,
+        "metodo": request.method,
+        "rota": request.path,
+        "traceback": tb,
+        "message": f"Erro interno no servidor ao processar {request.method} {request.path}: {str(e)}"
+    }), 500
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 cloudinary.config( 
