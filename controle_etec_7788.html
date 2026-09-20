@@ -19,13 +19,136 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Chart.js para Dashboard e Gráficos de Inteligência (BI) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">
+    async function analisarFotoSecretariaComIA() {
+      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
+        return alert("Selecione uma foto primeiro.");
+      }
+      const btn = document.getElementById('btnAutoTagIA');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch("/api/ia/analisar-imagem", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto: fotosBase64Upload[0] })
+        });
+        const data = await res.json();
+        if (data.success && data.resultado) {
+          const r = data.resultado;
+          if (r.nome) document.getElementById('formItemNome').value = r.nome;
+          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
+          if (r.categoria) {
+            const sel = document.getElementById('formItemCategoria');
+            for (let opt of sel.options) {
+              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
+                sel.value = opt.value;
+                break;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Erro ao chamar IA:", err);
+      } finally {
+        if (btn) {
+          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
+          btn.disabled = false;
+        }
+      }
+    }
+
+</script>
   
   <!-- QRCode.js para Base64 instantâneo -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+    async function analisarFotoSecretariaComIA() {
+      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
+        return alert("Selecione uma foto primeiro.");
+      }
+      const btn = document.getElementById('btnAutoTagIA');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch("/api/ia/analisar-imagem", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto: fotosBase64Upload[0] })
+        });
+        const data = await res.json();
+        if (data.success && data.resultado) {
+          const r = data.resultado;
+          if (r.nome) document.getElementById('formItemNome').value = r.nome;
+          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
+          if (r.categoria) {
+            const sel = document.getElementById('formItemCategoria');
+            for (let opt of sel.options) {
+              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
+                sel.value = opt.value;
+                break;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Erro ao chamar IA:", err);
+      } finally {
+        if (btn) {
+          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
+          btn.disabled = false;
+        }
+      }
+    }
+
+</script>
   
   <!-- Leitor Html5-QRCode para Câmera -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/html5-qrcode">
+    async function analisarFotoSecretariaComIA() {
+      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
+        return alert("Selecione uma foto primeiro.");
+      }
+      const btn = document.getElementById('btnAutoTagIA');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch("/api/ia/analisar-imagem", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto: fotosBase64Upload[0] })
+        });
+        const data = await res.json();
+        if (data.success && data.resultado) {
+          const r = data.resultado;
+          if (r.nome) document.getElementById('formItemNome').value = r.nome;
+          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
+          if (r.categoria) {
+            const sel = document.getElementById('formItemCategoria');
+            for (let opt of sel.options) {
+              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
+                sel.value = opt.value;
+                break;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Erro ao chamar IA:", err);
+      } finally {
+        if (btn) {
+          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
+          btn.disabled = false;
+        }
+      }
+    }
+
+</script>
 
   <style>
     /* ==========================================================================
@@ -1198,6 +1321,9 @@
         <div class="campo-grupo">
           <label>Fotos (Até 4)</label>
           <input type="file" id="formItemFotosInput" class="campo-input" accept="image/*" multiple onchange="processarFotosInput(this)">
+          <button type="button" id="btnAutoTagIA" onclick="analisarFotoSecretariaComIA()" style="display: none; margin-top: 6px; width: 100%; background: linear-gradient(135deg, #7c3aed, #db2777); color: white; font-weight: 700; font-size: 12px; padding: 10px; border-radius: 8px; border: none; cursor: pointer; transition: opacity 0.2s;">
+            <i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial
+          </button>
           <div id="formFotosStatus" style="font-size: 11px; color: #8b949e; margin-top: 4px;">Nenhuma foto selecionada</div>
         </div>
         <button type="submit" id="btnSalvarItem" class="btn-novo-item" style="background: #059669; margin-top: 10px;">Gravar no Banco</button>
@@ -3164,6 +3290,48 @@
       }
     }
 
-  </script>
+  
+    async function analisarFotoSecretariaComIA() {
+      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
+        return alert("Selecione uma foto primeiro.");
+      }
+      const btn = document.getElementById('btnAutoTagIA');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
+        btn.disabled = true;
+      }
+      try {
+        const res = await fetch("/api/ia/analisar-imagem", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto: fotosBase64Upload[0] })
+        });
+        const data = await res.json();
+        if (data.success && data.resultado) {
+          const r = data.resultado;
+          if (r.nome) document.getElementById('formItemNome').value = r.nome;
+          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
+          if (r.categoria) {
+            const sel = document.getElementById('formItemCategoria');
+            for (let opt of sel.options) {
+              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
+                sel.value = opt.value;
+                break;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Erro ao chamar IA:", err);
+      } finally {
+        if (btn) {
+          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
+          btn.disabled = false;
+        }
+      }
+    }
+
+</script>
 </body>
 </html>
+
