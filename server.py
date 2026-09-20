@@ -127,6 +127,50 @@ def extrair_termos(texto):
         if len(p) >= 3 and p not in STOPWORDS: termos.add(p)
     return termos
 
+
+CORES_LISTA = {'preto', 'preta', 'azul', 'vermelho', 'vermelha', 'rosa', 'verde', 'amarelo', 'amarela', 'cinza', 'branco', 'branca', 'prata', 'dourado', 'marrom', 'roxo', 'roxa'}
+
+def calcular_smart_match(relato, item):
+    score = 0
+    detalhes = []
+    
+    # 1. Categoria (30 pts)
+    cat_relato = (relato.get('categoria') or '').strip().upper()
+    cat_item = (item.get('categoria') or '').strip().upper()
+    if cat_relato and cat_item and cat_relato == cat_item:
+        score += 30
+        detalhes.append(f"Mesma categoria ({cat_relato})")
+    
+    # 2. Termos do texto (até 40 pts)
+    txt_relato = (relato.get('descricao') or '')
+    txt_item = f"{item.get('nome') or ''} {item.get('txt_descricao') or ''}"
+    termos_relato = extrair_termos(txt_relato)
+    termos_item = extrair_termos(txt_item)
+    intersecao = termos_relato.intersection(termos_item)
+    if termos_relato and intersecao:
+        pct_termos = len(intersecao) / max(1, len(termos_relato))
+        pts_termos = min(40, round(pct_termos * 40))
+        score += pts_termos
+        detalhes.append(f"Termos coincidentes: {', '.join(list(intersecao)[:3])}")
+    
+    # 3. Cores (15 pts)
+    palavras_relato = set(re.findall(r'[a-zA-Záéíóúãõâêîôûç]+', txt_relato.lower()))
+    palavras_item = set(re.findall(r'[a-zA-Záéíóúãõâêîôûç]+', txt_item.lower()))
+    cores_relato = palavras_relato.intersection(CORES_LISTA)
+    cores_item = palavras_item.intersection(CORES_LISTA)
+    cores_comuns = cores_relato.intersection(cores_item)
+    if cores_comuns:
+        score += 15
+        detalhes.append(f"Cor compatível: {', '.join(cores_comuns)}")
+        
+    # 4. Local (15 pts)
+    local_item = (item.get('txt_local') or item.get('local_encontrado') or '').lower().strip()
+    if local_item and len(local_item) > 2 and local_item in txt_relato.lower():
+        score += 15
+        detalhes.append(f"Local compatível ({local_item})")
+        
+    return min(100, score), detalhes
+
 def processar_fotos(fotos_array):
     urls_finais = []
     if not fotos_array: return urls_finais
@@ -785,15 +829,127 @@ def get_entregues():
 @token_required
 def estatisticas():
     verificar_e_atualizar_itens_doacao()
-    conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
-    total = cursor.fetchone()['total']
-    cursor.execute("SELECT COUNT(*) as total FROM entregues;")
-    entregues = cursor.fetchone()['total']
-    cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status LIKE 'DOAÇÃO%' AND aprovado = TRUE;")
-    doacoes = cursor.fetchone()['total']
-    cursor.close(); conn.close()
-    return jsonify({"success": True, "total_itens": total, "total_entregues": entregues, "total_doacoes": doacoes})
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Totais gerais
+        cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
+        total_cadastrados = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM entregues;")
+        total_entregues = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM itens WHERE (status LIKE 'DOAÇÃO%' OR status LIKE 'DOACAO%') AND aprovado = TRUE;")
+        total_doacoes = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status = 'DISPONÍVEL' AND aprovado = TRUE;")
+        total_disponiveis = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status = 'SOLICITADO' AND aprovado = TRUE;")
+        total_solicitados = cursor.fetchone()['total']
+
+        # Agregação por categoria (para gráfico de rosca)
+        cursor.execute("""
+            SELECT COALESCE(categoria, 'OUTROS') as categoria, COUNT(*) as qtd
+            FROM itens
+            WHERE aprovado = TRUE
+            GROUP BY categoria
+            ORDER BY qtd DESC;
+        """)
+        categorias = cursor.fetchall()
+        
+        # Agregação por local encontrado (para gráfico de barras horizontais)
+        cursor.execute("""
+            SELECT COALESCE(local_encontrado, 'Indefinido') as local, COUNT(*) as qtd
+            FROM itens
+            WHERE aprovado = TRUE AND local_encontrado IS NOT NULL AND local_encontrado != '' AND local_encontrado != 'Indefinido'
+            GROUP BY local_encontrado
+            ORDER BY qtd DESC
+            LIMIT 6;
+        """)
+        locais = cursor.fetchall()
+        
+        # Taxa de devolução / resgate
+        total_movimentado = total_cadastrados + total_entregues
+        taxa_devolucao = round((total_entregues / total_movimentado * 100), 1) if total_movimentado > 0 else 0.0
+
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "total_itens": total_cadastrados,
+            "total_entregues": total_entregues,
+            "total_doacoes": total_doacoes,
+            "total_disponiveis": total_disponiveis,
+            "total_solicitados": total_solicitados,
+            "taxa_devolucao": taxa_devolucao,
+            "por_categoria": categorias,
+            "por_local": locais
+        })
+    except Exception as e:
+        if conn: conn.close()
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Erro em estatísticas: {tb}")
+        return jsonify({"success": False, "error": str(e), "traceback": tb}), 500
+
+@app.route('/api/smart-match', methods=['OPTIONS', 'GET'])
+@token_required
+def smart_match_api():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Busca todos os relatos do mural com status 'PROCURANDO'
+        cursor.execute("SELECT id, nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro FROM mural_perdidos WHERE status = 'PROCURANDO' OR status IS NULL ORDER BY id DESC;")
+        relatos = cursor.fetchall()
+        
+        # Busca todos os itens disponíveis no catálogo
+        cursor.execute("""
+            SELECT id, COALESCE(nome_item, descricao) as nome, descricao as txt_descricao, categoria, 
+                   data_encontrado as txt_data, local_encontrado as txt_local, foto, fotos_json, status
+            FROM itens 
+            WHERE aprovado = TRUE AND status = 'DISPONÍVEL';
+        """)
+        itens = cursor.fetchall()
+        for item in itens:
+            try:
+                item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
+            except:
+                item['fotos'] = [item['foto']] if item.get('foto') else []
+
+        resultados = []
+        for r in relatos:
+            matches_deste_relato = []
+            for item in itens:
+                score, motivos = calcular_smart_match(r, item)
+                if score >= 45: # Pelo menos 45% de afinidade
+                    matches_deste_relato.append({
+                        "item": item,
+                        "score": score,
+                        "motivos": motivos
+                    })
+            matches_deste_relato.sort(key=lambda x: x['score'], reverse=True)
+            resultados.append({
+                "relato": r,
+                "total_matches": len(matches_deste_relato),
+                "top_score": matches_deste_relato[0]['score'] if matches_deste_relato else 0,
+                "matches": matches_deste_relato[:5]
+            })
+            
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "resultados": resultados})
+    except Exception as e:
+        if conn: conn.close()
+        import traceback
+        tb = traceback.format_exc()
+        print(f"Erro em smart_match_api: {tb}")
+        return jsonify({"success": False, "error": str(e), "traceback": tb}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
