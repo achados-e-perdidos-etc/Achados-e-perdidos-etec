@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Biblioteca QRCode.js para Base64 instantâneo -->
+  <!-- QRCode.js para Base64 instantâneo -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <!-- Leitor Html5-QRCode para Câmera -->
@@ -125,7 +125,7 @@
       text-align: left;
     }
 
-    /* --- CABEÇALHO & MENU HAMBÚRGUER --- */
+    /* --- CABEÇALHO & MENU HAMBÚRGUER COM SAIR RÁPIDO NO TOPO --- */
     .header-secretaria {
       display: flex;
       align-items: center;
@@ -155,7 +155,7 @@
     .status-sessao { font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 5px; font-weight: 500; }
     .bolinha-verde { font-size: 8px; color: #10b981; }
 
-    /* Área direita do cabeçalho com botão de Sair rápido */
+    /* Área direita: Botão Sair no Topo + Hambúrguer ☰ */
     .header-direita-botoes {
       display: flex;
       align-items: center;
@@ -165,7 +165,7 @@
       background: rgba(220, 38, 38, 0.15);
       color: #f87171;
       border: 1px solid rgba(220, 38, 38, 0.35);
-      padding: 8px 12px;
+      padding: 7px 11px;
       border-radius: 8px;
       font-size: 12px;
       font-weight: 700;
@@ -174,6 +174,8 @@
       align-items: center;
       gap: 6px;
     }
+    .btn-sair-rapido:active { background: #dc2626; color: #ffffff; }
+
     .btn-hamburger {
       background: #21262d;
       color: #ffffff;
@@ -186,11 +188,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s;
     }
     .btn-hamburger:active { background: #30363d; }
 
-    /* Gaveta do Menu Lateral */
+    /* Menu Lateral (Drawer) */
     .menu-backdrop {
       position: fixed;
       inset: 0;
@@ -330,11 +331,11 @@
       transition: transform 0.1s;
     }
     .btn-acao:active { transform: scale(0.97); }
-    .btn-etiquetas { background: #7c3aed; } /* Roxo */
-    .btn-relatorio { background: #059669; } /* Verde */
-    .btn-scanner   { background: #2563eb; } /* Azul */
+    .btn-etiquetas { background: #7c3aed; }
+    .btn-relatorio { background: #059669; }
+    .btn-scanner   { background: #2563eb; }
 
-    /* Linha de Busca integrada com Filtro de Categoria */
+    /* Barra de Busca com Filtro de Categoria Embutido */
     .linha-busca-filtro {
       display: flex;
       gap: 8px;
@@ -364,7 +365,6 @@
     }
     .input-busca-geral:focus { border-color: #dc2626; }
 
-    /* Dropdown de Categorias em frente à Busca */
     .select-categoria-busca {
       background: #161b22;
       border: 1px solid #30363d;
@@ -409,7 +409,7 @@
       border-color: #dc2626;
     }
 
-    /* Lista de Cards de Itens */
+    /* Lista de Itens */
     .grid-itens { display: flex; flex-direction: column; gap: 9px; }
     .item-card {
       background: #161b22;
@@ -693,7 +693,7 @@
         <button class="pilula-filtro" onclick="aplicarFiltroStatus('DISPONÍVEL', this)">
           <span style="color: #10b981;">●</span> Disponíveis
         </button>
-        <button class="pilula-filtro" onclick="aplicarFiltroStatus('PARA DOAÇÃO', this)">
+        <button class="pilula-filtro" onclick="aplicarFiltroStatus('DOACOES', this)">
           <span style="color: #a855f7;">●</span> Doações
         </button>
       </div>
@@ -762,7 +762,7 @@
       </div>
       <div class="tabela-container">
         <table>
-          <thead><tr><th>ID</th><th>Item</th><th>Categoria</th><th>Status</th></tr></thead>
+          <thead><tr><th>ID</th><th>Item</th><th>Categoria</th><th>Status</th><th>Data</th></tr></thead>
           <tbody id="tabelaDoacoesBody"></tbody>
         </table>
       </div>
@@ -883,6 +883,8 @@
   </div>
 
   <div id="toast" class="hidden"></div>
+
+  <!-- JAVASCRIPT DO SISTEMA -->
   <script>
     const API_URL = "https://etec-achados.up.railway.app";
     let tokenSecretaria = null;
@@ -894,10 +896,17 @@
     let html5QrScannerInstance = null;
     let fotosBase64Upload = [];
     let filtroStatusAtual = 'TODOS';
-    let comprovanteDadosTexto = "";
+          comprovanteDadosTexto = `ETEC - TERMO DE RETIRADA\nAluno: ${nome} (RM: ${rm})\nTurma: ${turma}\nItem #${id}: ${nomeObj}\nData: ${dataHora}`;
 
     const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
     const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
+
+    /* NORMALIZADOR ROBUSTO PARA ITENS EM DOAÇÃO */
+    function isStatusDoacao(status) {
+      if (!status) return false;
+      const s = String(status).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return s.includes("DOAC");
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
       const salvo = localStorage.getItem('secretaria_token');
@@ -1014,13 +1023,11 @@
         if (res.ok) {
           categoriasSec = await res.json();
           
-          // Popula o select do modal de cadastro
           const sel = document.getElementById('formItemCategoria');
           if (sel) {
             sel.innerHTML = categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
           }
           
-          // Popula o select de filtro em frente à busca
           const filtroCat = document.getElementById('filtroCategoria');
           if (filtroCat) {
             filtroCat.innerHTML = `<option value="TODAS">Todas Categorias</option>` + 
@@ -1036,11 +1043,12 @@
         if (res.ok) {
           itensSec = await res.json();
           filtrarItensNaTela();
+          renderizarDoacoes(); // Atualiza a aba de doações sempre que itens carregarem
         }
       } catch (e) {}
     }
 
-    /* FILTRO DE BUSCA E CATEGORIA */
+    /* FILTROS E RENDERIZAÇÃO NA TELA */
     function aplicarFiltroStatus(status, el) {
       filtroStatusAtual = status;
       document.querySelectorAll('.pilula-filtro').forEach(b => b.classList.remove('active'));
@@ -1051,21 +1059,31 @@
     function filtrarItensNaTela() {
       const container = document.getElementById('gridItensContainer');
       const termo = (document.getElementById('inputBusca').value || '').trim().toLowerCase();
-      const catFiltro = document.getElementById('filtroCategoria') ? document.getElementById('filtroCategoria').value : 'TODAS';
+      
+      const selCat = document.getElementById('filtroCategoria');
+      const catFiltro = (selCat && selCat.value) ? selCat.value.trim().toUpperCase() : 'TODAS';
       
       const filtrados = itensSec.filter(item => {
         const st = (item.status || 'DISPONÍVEL').toUpperCase();
         
-        // Filtro por Pílula
-        if (filtroStatusAtual !== 'TODOS' && st !== filtroStatusAtual) return false;
-        if (filtroStatusAtual === 'TODOS' && (st === 'ENTREGUE' || st === 'DOAÇÃO FEITA')) return false;
-
-        // Filtro pelo Dropdown de Categorias
-        if (catFiltro !== 'TODAS' && (item.categoria || 'OUTROS').toUpperCase() !== catFiltro.toUpperCase()) {
-          return false;
+        // 1. Filtro por Pílula de Status
+        if (filtroStatusAtual === 'DOACOES' || filtroStatusAtual === 'PARA DOAÇÃO' || filtroStatusAtual === 'DOAÇÃO') {
+          if (!isStatusDoacao(st)) return false;
+        } else if (filtroStatusAtual !== 'TODOS') {
+          if (st !== filtroStatusAtual) return false;
+        } else {
+          // No modo TODOS: omite apenas os que já foram completamente entregues ou doação finalizada
+          const stNorm = st.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (st === 'ENTREGUE' || stNorm === 'DOACAO FEITA') return false;
         }
 
-        // Filtro pelo Texto de Busca
+        // 2. Filtro pelo Dropdown de Categorias
+        if (catFiltro && catFiltro !== 'TODAS') {
+          const itemCat = (item.categoria || 'OUTROS').toUpperCase();
+          if (itemCat !== catFiltro) return false;
+        }
+
+        // 3. Filtro pelo Texto de Busca (ID, Nome, Descrição, Local)
         if (termo) {
           const matchId = String(item.id).includes(termo);
           const matchNome = (item.nome || '').toLowerCase().includes(termo);
@@ -1085,7 +1103,7 @@
         const st = (item.status || 'DISPONÍVEL').toUpperCase();
         let statusCls = 'status-disponivel';
         if (st === 'SOLICITADO') statusCls = 'status-solicitado';
-        if (st === 'PARA DOAÇÃO') statusCls = 'status-doacao';
+        if (isStatusDoacao(st)) statusCls = 'status-doacao';
         if (st === 'ENTREGUE') statusCls = 'status-entregue';
 
         const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
@@ -1111,7 +1129,54 @@
       }).join('');
     }
 
-    /* ITENS PENDENTES DE APROVAÇÃO (CADASTRADOS POR ALUNOS) */
+    /* RENDERIZAR TABELA DE DOAÇÕES (ABA ESPECÍFICA) */
+    function renderizarDoacoes() {
+      const doacoes = itensSec.filter(i => isStatusDoacao(i.status));
+      const tbody = document.getElementById('tabelaDoacoesBody');
+      if (!tbody) return;
+
+      if (!doacoes.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #8b949e; padding: 24px;">Nenhum item em doação cadastrado no momento.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = doacoes.map(d => {
+        const nome = d.nome || d.txt_descricao || 'Sem Título';
+        const st = (d.status || 'PARA DOAÇÃO').toUpperCase();
+        return `
+          <tr>
+            <td>#${d.id}</td>
+            <td><strong>${nome}</strong></td>
+            <td>${d.categoria || 'OUTROS'}</td>
+            <td><span class="badge-status status-doacao">${st}</span></td>
+            <td>${d.txt_data || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function concluirTodasDoacoes() {
+      const doacoes = itensSec.filter(i => isStatusDoacao(i.status));
+      if (!doacoes.length) return alert("Não há itens marcados para doação.");
+      if (!confirm(`Deseja concluir a doação e arquivar os ${doacoes.length} item(ns)?`)) return;
+
+      try {
+        for (const d of doacoes) {
+          await fetch(`${API_URL}/api/itens/${d.id}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: 'DOAÇÃO FEITA' })
+          });
+        }
+        const res = await fetch(`${API_URL}/api/itens/doacoes/concluir`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) {
+          mostrarToast("Doações concluídas com sucesso!");
+          await carregarItensSecretaria();
+        }
+      } catch (e) {}
+    }
+
+    /* ITENS PENDENTES DE ALUNOS */
     async function carregarItensPendentes() {
       const container = document.getElementById('gridItensPendentesContainer');
       container.innerHTML = `<div class="text-center py-6" style="color: #8b949e;">Carregando pendências...</div>`;
@@ -1120,7 +1185,7 @@
         if (res.ok) {
           itensPendentesSec = await res.json();
           if (!itensPendentesSec.length) {
-            container.innerHTML = `<div class="text-center py-8" style="color: #10b981; font-weight: 600;">Nenhum item pendente de aprovação no momento!</div>`;
+            container.innerHTML = `<div class="text-center py-8" style="color: #10b981; font-weight: 600;">Nenhum item pendente de aprovação!</div>`;
             return;
           }
           container.innerHTML = itensPendentesSec.map(item => {
@@ -1138,7 +1203,7 @@
                     <span class="badge-status status-pendente">PENDENTE</span>
                   </div>
                   <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Objeto'}</div>
-                  <div class="item-local-data">Aluno RM: ${item.rm_aluno || 'Não informado'} | Local: ${item.txt_local || '-'}</div>
+                  <div class="item-local-data">Aluno RM: ${item.rm_aluno || '-'} | Local: ${item.txt_local || '-'}</div>
                   <div style="display: flex; gap: 8px; margin-top: 8px;">
                     <button onclick="aprovarItemAluno(${item.id})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
                       <i class="fas fa-check"></i> Aprovar
@@ -1161,14 +1226,14 @@
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
         if (res.ok) {
-          mostrarToast("Item aprovado e inserido no catálogo!");
+          mostrarToast("Item aprovado no catálogo!");
           carregarItensPendentes();
           carregarItensSecretaria();
         }
       } catch (e) {}
     }
 
-    /* GERAÇÃO DE ETIQUETAS A4 COM QR CODE CORRIGIDO (FOTO 3) */
+    /* GERAÇÃO DE ETIQUETAS A4 COM QR CODE (FOTO 3) */
     async function gerarFolhaEtiquetasA4() {
       const disponiveis = (itensSec || []).filter(i => (i.status || 'DISPONÍVEL').toUpperCase() === 'DISPONÍVEL');
       if (!disponiveis.length) return alert("Nenhum item com status DISPONÍVEL para gerar etiquetas.");
@@ -1372,8 +1437,12 @@
 
       let btns = `<button onclick="editarItemForm(${item.id})" class="btn-acao" style="background: #d97706;"><i class="fas fa-edit"></i> Editar</button>`;
       if (st === 'SOLICITADO') btns += `<button onclick="recusarSolicitacao(${item.id})" class="btn-acao" style="background: #b45309;"><i class="fas fa-ban"></i> Recusar</button>`;
-      if (st !== 'ENTREGUE' && st !== 'DOAÇÃO FEITA') btns += `<button onclick="abrirModalBaixa(${item.id})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
-      if (st !== 'PARA DOAÇÃO' && st !== 'DOAÇÃO FEITA' && st !== 'ENTREGUE') btns += `<button onclick="marcarItemDoacao(${item.id})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
+      if (st !== 'ENTREGUE' && !st.includes('DOAÇÃO FEITA') && !st.includes('DOACAO FEITA')) {
+        btns += `<button onclick="abrirModalBaixa(${item.id})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
+      }
+      if (!isStatusDoacao(st) && st !== 'ENTREGUE') {
+        btns += `<button onclick="marcarItemDoacao(${item.id})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
+      }
       btns += `<button onclick="excluirItem(${item.id})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
 
       document.getElementById('detalhesBotoesAcao').innerHTML = btns;
@@ -1554,14 +1623,18 @@
     }
 
     async function marcarItemDoacao(id) {
-      if (!confirm("Marcar para Doação?")) return;
+      if (!confirm("Deseja marcar este item para Doação?")) return;
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
           body: JSON.stringify({ status: 'PARA DOAÇÃO' })
         });
-        if (res.ok) { fecharModal('modalDetalhesItem'); mostrarToast("Marcado para doação!"); carregarItensSecretaria(); }
+        if (res.ok) {
+          fecharModal('modalDetalhesItem');
+          mostrarToast("Item marcado para doação!");
+          await carregarItensSecretaria();
+        }
       } catch (e) {}
     }
 
@@ -1573,7 +1646,7 @@
       } catch (e) {}
     }
 
-    /* CATEGORIAS / DASHBOARD / ENTREGUES / DOAÇÕES / MURAL / CHAT */
+    /* CATEGORIAS / DASHBOARD / ENTREGUES / MURAL / CHAT */
     function renderizarCategorias() {
       document.getElementById('tabelaCategoriasBody').innerHTML = categoriasSec.map(c => `
         <tr><td><strong>${c.nome}</strong></td><td style="text-align: center;"><button onclick="removerCategoria('${c.nome}')" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
@@ -1608,8 +1681,8 @@
           
           const mapa = {};
           itensSec.forEach(i => { const c = i.categoria || 'OUTROS'; mapa[c] = (mapa[c] || 0) + 1; });
-          const ord = Object.entries(mapa).sort((a,b) => b - a).slice(0, 4);
-          document.getElementById('dashDestaqueCategorias').innerText = "Categorias: " + ord.map(x => `${x[0]}: ${x}`).join(' | ');
+          const ord = Object.entries(mapa).sort((a,b) => b[1] - a[1]).slice(0, 4);
+          document.getElementById('dashDestaqueCategorias').innerText = "Categorias: " + ord.map(x => `${x[0]}: ${x[1]}`).join(' | ');
         }
       } catch (e) {}
     }
@@ -1631,21 +1704,6 @@
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
         if (res.ok) { mostrarToast("Entrega revertida!"); carregarEntregues(); carregarItensSecretaria(); }
-      } catch (e) {}
-    }
-
-    function renderizarDoacoes() {
-      const doacoes = itensSec.filter(i => (i.status || '').toUpperCase().includes('DOAÇÃO'));
-      document.getElementById('tabelaDoacoesBody').innerHTML = doacoes.map(d => `
-        <tr><td>#${d.id}</td><td><strong>${d.nome || d.txt_descricao}</strong></td><td>${d.categoria || 'OUTROS'}</td><td><span class="badge-status status-doacao">${d.status}</span></td></tr>
-      `).join('');
-    }
-
-    async function concluirTodasDoacoes() {
-      if (!confirm("Concluir todas as doações e arquivar?")) return;
-      try {
-        const res = await fetch(`${API_URL}/api/itens/doacoes/concluir`, { method: 'DELETE', headers: getAuthHeaders() });
-        if (res.ok) { mostrarToast("Doações concluídas!"); await carregarItensSecretaria(); renderizarDoacoes(); }
       } catch (e) {}
     }
 
