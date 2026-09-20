@@ -435,20 +435,36 @@ def login_secretaria():
         return jsonify({"success": True, "token": token})
     return jsonify({"success": False, "message": "Credenciais inválidas."}), 401
 
-@app.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST'])
-def categorias():
+@app.route('/api/categorias/<string:nome>', methods=['OPTIONS', 'DELETE'])
+@app.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST', 'DELETE'])
+def categorias(nome=None):
+    if request.method == 'OPTIONS':
+        return jsonify({"success": True}), 200
     if request.method == 'GET':
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM categorias ORDER BY id ASC;")
         res = cursor.fetchall(); cursor.close(); conn.close()
         return jsonify(res)
-    else:
-        nome = (request.json.get('nome') or '').strip().upper()
-        if not nome: return jsonify({"success": False}), 400
+    elif request.method == 'POST':
+        nome_cat = (request.json.get('nome') or '').strip().upper()
+        if not nome_cat: return jsonify({"success": False, "message": "Nome da categoria é obrigatório."}), 400
         conn = get_db_connection(); cursor = conn.cursor()
-        cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (nome,))
+        cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (nome_cat,))
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
+    elif request.method == 'DELETE':
+        cat_nome = nome
+        if not cat_nome and request.is_json and request.json:
+            cat_nome = request.json.get('nome')
+        if not cat_nome:
+            cat_nome = request.args.get('nome')
+        cat_nome = (cat_nome or '').strip().upper()
+        if not cat_nome:
+            return jsonify({"success": False, "message": "Nome da categoria não informado."}), 400
+        conn = get_db_connection(); cursor = conn.cursor()
+        cursor.execute("DELETE FROM categorias WHERE UPPER(nome) = %s;", (cat_nome,))
+        conn.commit(); cursor.close(); conn.close()
+        return jsonify({"success": True, "message": f"Categoria '{cat_nome}' removida com sucesso."})
 
 @app.route('/api/itens', methods=['OPTIONS', 'GET'])
 def get_itens():
