@@ -26,6 +26,12 @@
         </video>
     </div>
 
+    <!-- BANNER DE STATUS DE REDE (ONLINE / OFFLINE) -->
+    <div id="bannerStatusRede" class="hidden sticky top-0 z-[60] bg-amber-500/90 text-black text-xs font-bold py-1.5 px-4 text-center backdrop-blur-md shadow-md flex items-center justify-center gap-2">
+        <i class="fas fa-wifi-slash"></i>
+        <span>Sem conexão com a internet. Exibindo dados em cache offline.</span>
+    </div>
+
     <!-- TELA DE LOGIN INSTITUCIONAL -->
     <div id="loginAlunoScreen" class="hidden fixed inset-0 z-[200] flex flex-col items-center justify-center p-4">
         <div class="dynamic-grid-background"></div>
@@ -220,9 +226,8 @@
 
         <!-- ABA 1: CATÁLOGO DE OBJETOS -->
         <section id="catalogScreen" class="space-y-5">
-            <!-- Container de Busca com z-30 para manter o menu de status sempre acima do grid de itens -->
             <div class="glass-panel rounded-2xl p-4 border border-white/10 space-y-3.5 relative z-30">
-                <!-- LINHA DE BUSCA + BOTÃO DE FILTRO (ONDE CIRCULADO EM AZUL) -->
+                <!-- LINHA DE BUSCA + BOTÃO DE FILTRO -->
                 <div class="flex items-center gap-2.5 w-full">
                     <div class="relative flex-1">
                         <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
@@ -230,7 +235,7 @@
                         <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition"><i class="fas fa-times text-xs"></i></button>
                     </div>
 
-                    <!-- BOTÃO DE FILTRO DE CATEGORIAS (CIRCULADO EM AZUL) -->
+                    <!-- BOTÃO DE FILTRO DE CATEGORIAS -->
                     <button 
                         type="button" 
                         id="btnToggleFiltros" 
@@ -242,7 +247,7 @@
                     </button>
                 </div>
 
-                <!-- PAINEL RETRÁTIL DE CATEGORIAS (CIRCULADO EM VERMELHO - ABRE E FECHA PELO BOTÃO DE FILTRO) -->
+                <!-- PAINEL RETRÁTIL DE CATEGORIAS -->
                 <div id="categoryChipsContainer" class="hidden pt-3 border-t border-white/10 transition-all duration-200">
                     <div class="flex items-center justify-between mb-2 px-0.5">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtrar por Categoria:</span>
@@ -256,7 +261,7 @@
                     </div>
                 </div>
 
-                <!-- SELETOR DE STATUS COMPACTO (CIRCULADO EM BRANCO - CORRIGIDO SEM ENTRAR NOS CARDS) -->
+                <!-- SELETOR DE STATUS COMPACTO -->
                 <div class="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs relative z-20">
                     <div class="relative inline-block" id="containerDropdownStatus">
                         <div class="flex items-center gap-2">
@@ -267,7 +272,7 @@
                             </button>
                         </div>
 
-                        <!-- MENU SUSPENSO FLUTUANTE (COM Z-50, FUNDO SÓLIDO E SOMBRA) -->
+                        <!-- MENU SUSPENSO FLUTUANTE -->
                         <div id="dropdownStatusMenu" class="hidden absolute left-0 top-full mt-2 w-52 bg-[#121722] border border-white/20 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.85)] p-1.5 z-50 space-y-0.5 backdrop-blur-md">
                             <button type="button" onclick="selecionarFiltroStatus('TODOS', 'TODOS OS STATUS')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition flex items-center justify-between">
                                 <span>TODOS OS STATUS</span>
@@ -516,7 +521,10 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fotos do Objeto (Até 4 fotos):</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fotos do Objeto (Até 4 fotos):</label>
+                        <span id="statusCompressaoFotos" class="text-[10px] text-emerald-400 font-bold hidden"><i class="fas fa-check"></i> Fotos otimizadas</span>
+                    </div>
                     <input type="file" id="alunoItemFoto" accept="image/*" multiple onchange="prepararFotosAluno(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
                     <div id="gridPreviewAluno" class="mt-2.5 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
                 </div>
