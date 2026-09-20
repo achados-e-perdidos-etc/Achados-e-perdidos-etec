@@ -215,6 +215,7 @@ async function checarSessao() {
         } catch (e) {}
 
         alunoSessao = JSON.parse(dados);
+        ativarWebPush(alunoSessao.rm);
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Olá, ${alunoSessao.nome.split(' ')[0]}!`;
         
@@ -1087,7 +1088,18 @@ window.onload = () => {
     document.body.classList.add('dark-theme'); 
     const splash = document.getElementById('splashScreenAnimacao');
     const video = document.getElementById('videoSplash');
+
+    // EVITAR SPLASH NO REFRESH DA PÁGINA (sessionStorage)
+    const splashJaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
+    if (splashJaExibido && splash) {
+        splash.classList.add('hidden');
+        splash.style.display = 'none';
+        checarSessao();
+        return;
+    }
+
     if (splash && video) {
+        sessionStorage.setItem('splash_ja_exibido', 'true');
         video.muted = true;
         video.play().catch(() => {});
         const encerrarSplash = () => {
@@ -1100,5 +1112,170 @@ window.onload = () => {
         };
         video.onended = encerrarSplash;
         setTimeout(() => { if (!splash.classList.contains('hidden')) encerrarSplash(); }, 9000); 
-    } else checarSessao();
+    } else {
+        checarSessao();
+    }
 };
+
+
+// ==============================================================================
+// FASE 2: AUTENTICAÇÃO INSTITUCIONAL GOOGLE (OAUTH 2.0 / SSO)
+// ==============================================================================
+function iniciarLoginGoogle() {
+    if (window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({
+            client_id: "782012920232-example.apps.googleusercontent.com",
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true
+        });
+        
+        google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                mostrarToast("Selecione sua conta institucional @aluno.cps.sp.gov.br no Google", "info");
+            }
+        });
+    } else {
+        mostrarToast("Carregando serviço Google... Clique novamente em instantes.", "info");
+    }
+}
+
+async function handleGoogleCredentialResponse(response) {
+    if (!response || !response.credential) return;
+    mostrarToast("Autenticando conta institucional no sistema...", "info");
+    try {
+        const res = await fetch(API_URL + "/api/auth/google", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (data.success && data.token) {
+            localStorage.setItem('aluno_token', data.token.trim());
+            localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
+            
+            if (data.aluno.precisa_rm) {
+                const modalRM = document.getElementById('modalConfirmarRM');
+                if (modalRM) modalRM.classList.remove('hidden');
+            } else {
+                checarSessao();
+                mostrarToast("Bem-vindo, " + data.aluno.nome + "!", "success");
+            }
+        } else {
+            mostrarToast(data.message || "Acesso restrito ao e-mail institucional.", "error");
+        }
+    } catch (err) {
+        mostrarToast("Erro ao comunicar com o servidor de autenticação.", "error");
+    }
+}
+
+async function salvarRMGoogle() {
+    const rmInput = document.getElementById('inputNovoRMGoogle');
+    const rm = rmInput ? rmInput.value.trim() : '';
+    if (!rm || rm.length < 3) return mostrarToast("Digite um RM válido de estudante.", "error");
+    
+    const token = localStorage.getItem('aluno_token');
+    try {
+        const res = await fetch(API_URL + "/api/auth/atualizar-rm", {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ rm: rm })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const alunoDados = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
+            alunoDados.rm = rm;
+            alunoDados.precisa_rm = false;
+            localStorage.setItem('aluno_dados', JSON.stringify(alunoDados));
+            if (data.token) localStorage.setItem('aluno_token', data.token);
+            
+            const modalRM = document.getElementById('modalConfirmarRM');
+            if (modalRM) modalRM.classList.add('hidden');
+            checarSessao();
+            mostrarToast("RM vinculado com sucesso! Acesso liberado.", "success");
+        } else {
+            mostrarToast(data.message || "Erro ao salvar RM.", "error");
+        }
+    } catch (err) {
+        mostrarToast("Erro ao conectar com o servidor.", "error");
+    }
+}
+
+// ==============================================================================
+// FASE 2: WEB PUSH NOTIFICATIONS NATIVAS (SERVICE WORKER & VAPID)
+// ==============================================================================
+async function ativarWebPush(rmAluno) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !rmAluno || rmAluno === 'PENDENTE') return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const subExistente = await reg.pushManager.getSubscription();
+        if (subExistente) {
+            enviarSubscricaoAoBackend(rmAluno, subExistente);
+            return;
+        }
+
+        const keyRes = await fetch(API_URL + "/api/push/public-key");
+        const keyData = await keyRes.json();
+        if (!keyData.success || !keyData.publicKey) return;
+
+        const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+        });
+        enviarSubscricaoAoBackend(rmAluno, sub);
+    } catch (e) {
+        console.warn("[Web Push] Aviso na subscrição push:", e);
+    }
+}
+
+async function enviarSubscricaoAoBackend(rm, sub) {
+    try {
+        await fetch(API_URL + "/api/push/subscribe", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rm: rm, subscription: sub })
+        });
+    } catch (e) {}
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+
+// ==============================================================================
+// REFRESH INTELIGENTE DO PORTAL DO ALUNO (SEM RECARREGAR PÁGINA E SEM SPLASH)
+// ==============================================================================
+async function atualizarPortalAluno() {
+    const icone = document.getElementById('iconeRefreshPortal');
+    const btn = document.getElementById('btnRefreshPortal');
+    if (icone) icone.classList.add('fa-spin');
+    if (btn) btn.disabled = true;
+
+    try {
+        await Promise.all([
+            typeof carregarItensDaAPI === 'function' ? carregarItensDaAPI() : Promise.resolve(),
+            typeof carregarCategoriasDinamicamente === 'function' ? carregarCategoriasDinamicamente() : Promise.resolve(),
+            typeof carregarMuralPublico === 'function' ? carregarMuralPublico() : Promise.resolve(),
+            typeof atualizarMensagensChat === 'function' && chatAberto ? atualizarMensagensChat() : Promise.resolve()
+        ]);
+        mostrarToast("Catálogo e pertences atualizados!", "success");
+    } catch (err) {
+        mostrarToast("Erro ao sincronizar dados com o servidor.", "error");
+    } finally {
+        setTimeout(() => {
+            if (icone) icone.classList.remove('fa-spin');
+            if (btn) btn.disabled = false;
+        }, 500);
+    }
+}
