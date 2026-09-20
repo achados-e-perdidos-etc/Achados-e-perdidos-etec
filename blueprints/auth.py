@@ -1,14 +1,15 @@
 """
 Blueprint de Autenticação e Gestão de Usuários
-Rotas de verificação, cadastro, login e redefinição de senha para alunos e secretaria.
+Rotas de verificação, cadastro, login convencional, login Google OAuth institucional e redefinição de senha.
 """
 import random
+import requests
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from psycopg2.extras import RealDictCursor
 
-from config import JWT_SECRET, EMAIL_SECRETARIA, ADMIN_SENHA, ADMIN_SENHA_HASH
+from config import JWT_SECRET, EMAIL_SECRETARIA, ADMIN_SENHA, ADMIN_SENHA_HASH, GOOGLE_CLIENT_ID
 from database import get_db_connection
 from utils.security import token_required, gerar_token_aluno, gerar_token_secretaria
 from utils.helpers import validar_email_institucional
@@ -22,12 +23,121 @@ def verificar_token():
     """Valida a sessão ativa retornando os dados do usuário autenticado."""
     return jsonify({"success": True, "user": getattr(request, 'user', {})})
 
+@auth_bp.route('/api/auth/google', methods=['OPTIONS', 'POST'])
+def login_google_institucional():
+    """
+    Autenticação Single Sign-On (SSO) com Google Identity Services.
+    Valida o token JWT emitido pelo Google e assegura que o e-mail pertence
+    ao domínio oficial do Centro Paula Souza (@aluno.cps.sp.gov.br).
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({"success": True}), 200
+
+    dados = request.json or {}
+    credential = dados.get('credential', '').strip()
+    
+    if not credential:
+        return jsonify({"success": False, "message": "Credencial do Google não informada."}), 400
+
+    try:
+        # Validação do ID Token na API oficial do Google OAuth2
+        resp = requests.get(
+            f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}",
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return jsonify({"success": False, "message": "Token do Google inválido ou expirado."}), 401
+            
+        payload = resp.json()
+        email = (payload.get('email') or '').strip().lower()
+        nome = (payload.get('name') or 'Aluno ETEC').strip()
+        picture = payload.get('picture', '')
+        email_verified = payload.get('email_verified') in (True, 'true', 'True')
+        
+        if not email or not email_verified:
+            return jsonify({"success": False, "message": "O e-mail da conta Google não foi verificado."}), 400
+
+        # Validação restrita do domínio @aluno.cps.sp.gov.br
+        valido, msg_ou_email = validar_email_institucional(email)
+        if not valido:
+            return jsonify({
+                "success": False, 
+                "message": f"Acesso exclusivo para alunos e servidores da ETEC. O e-mail '{email}' não pertence ao domínio @aluno.cps.sp.gov.br."
+            }), 403
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM alunos WHERE email = %s;", (email,))
+        aluno_existente = cursor.fetchone()
+
+        rm = 'PENDENTE'
+        if aluno_existente:
+            rm = aluno_existente.get('rm') or 'PENDENTE'
+            # Atualiza o nome do aluno caso tenha mudado no Google
+            cursor.execute("UPDATE alunos SET nome = %s WHERE email = %s;", (nome, email))
+            conn.commit()
+        else:
+            # Cadastra o aluno pela primeira vez automaticamente com hash de segurança aleatório
+            senha_aleatoria = f"google_sso_{random.randint(10000000, 99999999)}"
+            senha_hash = generate_password_hash(senha_aleatoria)
+            cursor.execute(
+                "INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s) ON CONFLICT (email) DO NOTHING;",
+                (email, nome, rm, senha_hash)
+            )
+            conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        token = gerar_token_aluno(email, nome, rm)
+        return jsonify({
+            "success": True,
+            "token": token,
+            "aluno": {
+                "nome": nome,
+                "email": email,
+                "rm": rm,
+                "picture": picture,
+                "precisa_rm": (rm == 'PENDENTE' or not rm)
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Falha na autenticação Google: {str(e)}"}), 500
+
+@auth_bp.route('/api/auth/atualizar-rm', methods=['OPTIONS', 'POST'])
+@token_required
+def atualizar_rm():
+    """Permite ao estudante registrar ou atualizar o seu número de matrícula (RM)."""
+    if request.method == 'OPTIONS':
+        return jsonify({"success": True}), 200
+
+    dados = request.json or {}
+    novo_rm = str(dados.get('rm', '')).strip()
+    user = getattr(request, 'user', {})
+    email = user.get('email')
+
+    if not novo_rm or len(novo_rm) < 3:
+        return jsonify({"success": False, "message": "RM inválido."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE alunos SET rm = %s WHERE email = %s;", (novo_rm, email))
+        cursor.execute("UPDATE mural_perdidos SET rm_aluno = %s WHERE email_aluno = %s;", (novo_rm, email))
+        cursor.execute("UPDATE mensagens_chat SET rm_aluno = %s WHERE rm_aluno = 'PENDENTE' AND nome_aluno = %s;", (novo_rm, user.get('nome', '')))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Gera novo token com RM atualizado
+        novo_token = gerar_token_aluno(email, user.get('nome', ''), novo_rm)
+        return jsonify({"success": True, "token": novo_token, "rm": novo_rm})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
 @auth_bp.route('/api/auth/enviar-codigo', methods=['OPTIONS', 'POST'])
 def enviar_codigo():
-    """
-    Envia código de verificação numérico de 6 dígitos para o e-mail institucional.
-    Valida domínios oficiais (@aluno.cps.sp.gov.br e institucionais associados).
-    """
+    """Envia código de verificação numérico de 6 dígitos para o e-mail institucional."""
     email_bruto = request.json.get('email', '')
     valido, res = validar_email_institucional(email_bruto)
     if not valido:
