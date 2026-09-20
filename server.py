@@ -20,12 +20,23 @@ app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
 
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        res = jsonify({"success": True})
+        res.headers['Access-Control-Allow-Origin'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        res.headers['Access-Control-Max-Age'] = '86400'
+        return res, 200
+
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     return response
+
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -247,7 +258,7 @@ def home():
 def verificar_token():
     return jsonify({"success": True, "user": getattr(request, 'user', {})})
 
-@app.route('/api/auth/enviar-codigo', methods=['POST'])
+@app.route('/api/auth/enviar-codigo', methods=['OPTIONS', 'POST'])
 def enviar_codigo():
     email = request.json.get('email', '').strip().lower()
     if not email.endswith('@aluno.cps.sp.gov.br'): 
@@ -265,7 +276,7 @@ def enviar_codigo():
     except Exception as e: 
         return jsonify({"success": False, "message": str(e)}), 500
 
-@app.route('/api/auth/cadastrar', methods=['POST'])
+@app.route('/api/auth/cadastrar', methods=['OPTIONS', 'POST'])
 def cadastrar_aluno():
     data = request.json or {}
     email, codigo, nome, rm, senha = data.get('email', '').lower().strip(), data.get('codigo', '').strip(), data.get('nome', '').strip(), data.get('rm', '').strip(), data.get('senha', '').strip()
@@ -290,7 +301,7 @@ def cadastrar_aluno():
     except Exception as e: 
         return jsonify({"success": False, "message": str(e)}), 500
 
-@app.route('/api/auth/login-aluno', methods=['POST'])
+@app.route('/api/auth/login-aluno', methods=['OPTIONS', 'POST'])
 def login_aluno():
     email, senha = request.json.get('email', '').lower().strip(), request.json.get('senha', '').strip()
     try:
@@ -305,7 +316,7 @@ def login_aluno():
     except Exception as e: 
         return jsonify({"success": False, "message": str(e)}), 500
 
-@app.route('/api/auth/redefinir', methods=['POST'])
+@app.route('/api/auth/redefinir', methods=['OPTIONS', 'POST'])
 def redefinir_senha():
     email, codigo, nova_senha = request.json.get('email', '').lower().strip(), request.json.get('codigo', '').strip(), request.json.get('senha', '').strip()
     try:
@@ -323,7 +334,7 @@ def redefinir_senha():
     except Exception as e: 
         return jsonify({"success": False, "message": str(e)}), 500
 
-@app.route('/api/login', methods=['POST'])
+@app.route('/api/login', methods=['OPTIONS', 'POST'])
 def login_secretaria():
     dados = request.json or {}
     email = (dados.get('email') or '').strip().lower()
@@ -345,7 +356,7 @@ def login_secretaria():
         return jsonify({"success": True, "token": token})
     return jsonify({"success": False, "message": "Credenciais inválidas."}), 401
 
-@app.route('/api/categorias', methods=['GET', 'POST'])
+@app.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST'])
 def categorias():
     if request.method == 'GET':
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -360,7 +371,7 @@ def categorias():
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
 
-@app.route('/api/itens', methods=['GET'])
+@app.route('/api/itens', methods=['OPTIONS', 'GET'])
 def get_itens():
     conn = None
     try:
@@ -416,7 +427,7 @@ def get_itens():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/itens/pendentes', methods=['GET'])
+@app.route('/api/itens/pendentes', methods=['OPTIONS', 'GET'])
 @token_required
 def get_itens_pendentes():
     try:
@@ -433,7 +444,7 @@ def get_itens_pendentes():
     except Exception as e: 
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/itens/cadastrar-aluno', methods=['POST'])
+@app.route('/api/itens/cadastrar-aluno', methods=['OPTIONS', 'POST'])
 def cadastrar_item_aluno():
     data = request.json or {}
     nome = (data.get('nome') or '').strip()
@@ -459,7 +470,7 @@ def cadastrar_item_aluno():
     except Exception as e: 
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/itens/<int:item_id>/aprovar', methods=['PUT'])
+@app.route('/api/itens/<int:item_id>/aprovar', methods=['OPTIONS', 'PUT'])
 @token_required
 def aprovar_item(item_id):
     try:
@@ -470,7 +481,7 @@ def aprovar_item(item_id):
     except Exception as e: 
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/itens', methods=['POST'])
+@app.route('/api/itens', methods=['OPTIONS', 'POST'])
 @token_required
 def cadastrar_item():
     data = request.json or {}
@@ -536,7 +547,7 @@ def cadastrar_item():
         if conn: conn.rollback(); conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/itens/<int:item_id>', methods=['PUT', 'DELETE'])
+@app.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'DELETE'])
 @token_required
 def gerenciar_item(item_id):
     conn = None
@@ -620,7 +631,7 @@ def gerenciar_item(item_id):
         return jsonify({"success": False, "error": str(e), "message": f"Erro interno ao atualizar item: {str(e)}"}), 500
 
 
-@app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
+@app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT'])
 @token_required
 def recusar_solicitacao(item_id):
     conn = get_db_connection(); cursor = conn.cursor()
@@ -628,7 +639,7 @@ def recusar_solicitacao(item_id):
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
-@app.route('/api/itens/doacoes/concluir', methods=['DELETE'])
+@app.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
 @token_required
 def concluir_doacoes():
     conn = get_db_connection(); cursor = conn.cursor()
@@ -636,7 +647,7 @@ def concluir_doacoes():
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
-@app.route('/api/mural', methods=['GET', 'POST'])
+@app.route('/api/mural', methods=['OPTIONS', 'GET', 'POST'])
 def mural():
     if request.method == 'GET':
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -667,7 +678,7 @@ def mural():
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True, "matches_encontrados": matches})
 
-@app.route('/api/mural/aluno/<string:rm>', methods=['GET'])
+@app.route('/api/mural/aluno/<string:rm>', methods=['OPTIONS', 'GET'])
 def mural_aluno(rm):
     try:
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -677,7 +688,7 @@ def mural_aluno(rm):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/mural/<int:id>', methods=['DELETE'])
+@app.route('/api/mural/<int:id>', methods=['OPTIONS', 'DELETE'])
 @token_required
 def deletar_mural(id):
     conn = get_db_connection(); cursor = conn.cursor()
@@ -685,7 +696,7 @@ def deletar_mural(id):
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
-@app.route('/api/solicitar', methods=['POST'])
+@app.route('/api/solicitar', methods=['OPTIONS', 'POST'])
 def solicitar_item():
     data = request.json or {}
     item_id, nome, rm, email_aluno = data.get('id'), data.get('nome'), data.get('rm'), data.get('email')
@@ -697,7 +708,7 @@ def solicitar_item():
         return jsonify({"success": True, "message": "Solicitação enviada com sucesso!"})
     return jsonify({"success": False, "message": "Este item não está mais disponível."}), 400
 
-@app.route('/api/chat/enviar', methods=['POST'])
+@app.route('/api/chat/enviar', methods=['OPTIONS', 'POST'])
 def enviar_chat():
     data = request.json or {}
     rm, nome, remetente, mensagem = str(data.get('rm', '')).strip(), data.get('nome', 'Anônimo').strip(), data.get('remetente', 'ALUNO').upper().strip(), data.get('mensagem', '').strip()
@@ -707,7 +718,7 @@ def enviar_chat():
     conn.commit(); cursor.close(); conn.close()
     return jsonify({"success": True})
 
-@app.route('/api/chat/mensagens/<string:rm>', methods=['GET'])
+@app.route('/api/chat/mensagens/<string:rm>', methods=['OPTIONS', 'GET'])
 def buscar_mensagens(rm):
     conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("SELECT * FROM mensagens_chat WHERE rm_aluno = %s ORDER BY id ASC;", (rm,))
@@ -719,7 +730,7 @@ def buscar_mensagens(rm):
     cursor.close(); conn.close()
     return jsonify(msgs)
 
-@app.route('/api/chat/conversas', methods=['GET'])
+@app.route('/api/chat/conversas', methods=['OPTIONS', 'GET'])
 @token_required
 def listar_conversas():
     conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -727,7 +738,7 @@ def listar_conversas():
     res = cursor.fetchall(); cursor.close(); conn.close()
     return jsonify(res)
 
-@app.route('/api/entregues', methods=['GET'])
+@app.route('/api/entregues', methods=['OPTIONS', 'GET'])
 @token_required
 def get_entregues():
     conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -735,7 +746,7 @@ def get_entregues():
     res = cursor.fetchall(); cursor.close(); conn.close()
     return jsonify(res)
 
-@app.route('/api/estatisticas', methods=['GET'])
+@app.route('/api/estatisticas', methods=['OPTIONS', 'GET'])
 @token_required
 def estatisticas():
     verificar_e_atualizar_itens_doacao()
