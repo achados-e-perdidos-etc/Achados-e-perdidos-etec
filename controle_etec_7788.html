@@ -886,6 +886,44 @@
   <!-- Modal Cadastrar / Editar -->
   
   <!-- MODAL DE EMISSÃO DE RELATÓRIO OFICIAL ETEC EM PDF -->
+  
+  <!-- MODAL DE CONFIRMAÇÃO VISUAL BONITO (SUBSTITUI O CONFIRM NATIVO) -->
+  <div id="modalConfirmacao" class="modal-overlay hidden" style="z-index: 99990;">
+    <div class="modal-box" style="max-width: 420px; text-align: center; padding: 26px 20px;">
+      <div id="confirmIconeBox" style="width: 56px; height: 56px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+        <i id="confirmIcone" class="fas fa-exclamation-triangle" style="font-size: 24px; color: #ef4444;"></i>
+      </div>
+      <h3 id="confirmTitulo" style="color: #ffffff; font-size: 16px; font-weight: 800; margin-bottom: 8px;">Confirmação</h3>
+      <div id="confirmMensagem" style="font-size: 13px; color: #8b949e; line-height: 1.5; margin-bottom: 20px;">
+        Deseja realmente prosseguir com esta ação?
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="btnConfirmModalCancelar" class="btn-novo-item" style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; flex: 1; margin-top: 0; font-size: 13px; cursor: pointer;">
+          Cancelar
+        </button>
+        <button id="btnConfirmModalAcao" class="btn-novo-item" style="background: #dc2626; border: none; color: #ffffff; flex: 1; margin-top: 0; font-size: 13px; font-weight: 700; cursor: pointer;">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE ALERTA VISUAL BONITO (SUBSTITUI O ALERT NATIVO) -->
+  <div id="modalAlertaBonito" class="modal-overlay hidden" style="z-index: 99990;">
+    <div class="modal-box" style="max-width: 400px; text-align: center; padding: 26px 20px;">
+      <div id="alertaIconeBox" style="width: 52px; height: 52px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.35); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+        <i id="alertaIcone" class="fas fa-info-circle" style="font-size: 24px; color: #3b82f6;"></i>
+      </div>
+      <h3 id="alertaTitulo" style="color: #ffffff; font-size: 16px; font-weight: 800; margin-bottom: 8px;">Aviso do Sistema</h3>
+      <div id="alertaMensagem" style="font-size: 13px; color: #8b949e; line-height: 1.5; margin-bottom: 20px;">
+        Informação do sistema.
+      </div>
+      <button id="btnAlertaOk" class="btn-novo-item" style="background: #3b82f6; border: none; color: #ffffff; width: 100%; margin-top: 0; font-size: 13px; font-weight: 700; cursor: pointer;">
+        Entendido
+      </button>
+    </div>
+  </div>
+
   <div id="modalRelatorioPDF" class="modal-overlay hidden">
     <div class="modal-box" style="max-width: 480px; text-align: left;">
       <button onclick="fecharModal('modalRelatorioPDF')" class="modal-fechar">&times;</button>
@@ -1098,6 +1136,77 @@
   <!-- JAVASCRIPT DO SISTEMA -->
   <script>
     /* ==========================================================================
+       SISTEMA DE MODAIS VISUAIS CUSTOMIZADOS (SUBSTITUINDO ALERT/CONFIRM NATIVOS)
+       ========================================================================== */
+    function abrirConfirmacaoModal({ titulo = "Confirmação", mensagem = "Deseja continuar?", icone = "fa-exclamation-triangle", corIcone = "#ef4444", textoConfirmar = "Confirmar", corConfirmar = "#dc2626" }) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('modalConfirmacao');
+        document.getElementById('confirmTitulo').innerText = titulo;
+        document.getElementById('confirmMensagem').innerHTML = mensagem;
+
+        const iconeEl = document.getElementById('confirmIcone');
+        iconeEl.className = `fas ${icone}`;
+        iconeEl.style.color = corIcone;
+        
+        const box = document.getElementById('confirmIconeBox');
+        box.style.background = `${corIcone}25`;
+        box.style.borderColor = `${corIcone}45`;
+
+        const btnAcao = document.getElementById('btnConfirmModalAcao');
+        btnAcao.innerText = textoConfirmar;
+        btnAcao.style.background = corConfirmar;
+
+        const fecharEProsseguir = (val) => {
+          modal.classList.add('hidden');
+          resolve(val);
+        };
+
+        btnAcao.onclick = () => fecharEProsseguir(true);
+        document.getElementById('btnConfirmModalCancelar').onclick = () => fecharEProsseguir(false);
+
+        modal.classList.remove('hidden');
+      });
+    }
+
+    function abrirAlertaModal({ titulo = "Aviso do Sistema", mensagem = "", tipo = "info", textoBotao = "Entendido" }) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('modalAlertaBonito');
+        document.getElementById('alertaTitulo').innerText = titulo;
+        document.getElementById('alertaMensagem').innerHTML = mensagem;
+
+        let icone = 'fa-info-circle';
+        let cor = '#3b82f6';
+        if (tipo === 'aviso' || tipo === 'warning') { icone = 'fa-exclamation-triangle'; cor = '#f59e0b'; }
+        else if (tipo === 'sucesso' || tipo === 'success') { icone = 'fa-check-circle'; cor = '#10b981'; }
+        else if (tipo === 'erro' || tipo === 'error') { icone = 'fa-times-circle'; cor = '#ef4444'; }
+
+        const iconeEl = document.getElementById('alertaIcone');
+        iconeEl.className = `fas ${icone}`;
+        iconeEl.style.color = cor;
+
+        const box = document.getElementById('alertaIconeBox');
+        box.style.background = `${cor}25`;
+        box.style.borderColor = `${cor}45`;
+
+        const btn = document.getElementById('btnAlertaOk');
+        btn.innerText = textoBotao;
+        btn.style.background = cor;
+
+        btn.onclick = () => {
+          modal.classList.add('hidden');
+          resolve();
+        };
+
+        modal.classList.remove('hidden');
+      });
+    }
+
+    // Interceptor global para que NENHUM alert() nativo cinza apareça
+    window.alert = function(msg) {
+      abrirAlertaModal({ titulo: "Aviso do Sistema", mensagem: String(msg), tipo: "aviso" });
+    };
+
+    /* ==========================================================================
        SISTEMA AVANÇADO DE DIAGNÓSTICO E TRATAMENTO DE ERRO (V1.6)
        ========================================================================== */
     let ultimoRelatorioErro = null;
@@ -1144,7 +1253,7 @@
           setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i> Copiar Relatório'; }, 2500);
         }
       }).catch(() => {
-        alert("Copie o texto:\n\n" + texto);
+        abrirAlertaModal({ titulo: "Relatório de Erro", mensagem: "<pre style='text-align:left; font-size:11px; max-height:200px; overflow:auto; background:#0d1117; padding:10px; border-radius:6px;'>" + texto + "</pre>", tipo: "info" });
       });
     }
 
@@ -1462,8 +1571,18 @@
 
     async function concluirTodasDoacoes() {
       const doacoes = itensSec.filter(i => isStatusDoacao(i.status));
-      if (!doacoes.length) return alert("Não há itens marcados para doação.");
-      if (!confirm(`Deseja concluir a doação e arquivar os ${doacoes.length} item(ns)?`)) return;
+      if (!doacoes.length) {
+        return abrirAlertaModal({ titulo: "Sem Doações", mensagem: "Não há pertences com mais de 90 dias marcados para doação no momento.", tipo: "aviso" });
+      }
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Concluir Doações",
+        mensagem: `Deseja concluir a doação e arquivar os <strong>${doacoes.length} item(ns)</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens passarão para o status DOAÇÃO FEITA e sairão do catálogo ativo.</span>`,
+        icone: "fa-gift",
+        corIcone: "#a855f7",
+        textoConfirmar: "Sim, Concluir",
+        corConfirmar: "#a855f7"
+      });
+      if (!ok) return;
 
       try {
         for (const d of doacoes) {
@@ -1541,7 +1660,7 @@
     /* GERAÇÃO DE ETIQUETAS A4 COM QR CODE (FOTO 3) */
     async function gerarFolhaEtiquetasA4() {
       const disponiveis = (itensSec || []).filter(i => (i.status || 'DISPONÍVEL').toUpperCase() === 'DISPONÍVEL');
-      if (!disponiveis.length) return alert("Nenhum item com status DISPONÍVEL para gerar etiquetas.");
+      if (!disponiveis.length) return abrirAlertaModal({ titulo: "Sem Itens Disponíveis", mensagem: "Não há pertences com status DISPONÍVEL no momento para gerar etiquetas.", tipo: "aviso" });
 
       const btn = document.querySelector('.btn-etiquetas');
       const txtAntigo = btn ? btn.innerHTML : '';
@@ -1678,7 +1797,7 @@
 
     /* EXPORTAR RELATÓRIO CSV */
     function exportarRelatorioCSV() {
-      if (!itensSec.length) return alert("Nenhum item para exportar.");
+      if (!itensSec.length) return abrirAlertaModal({ titulo: "Sem Dados", mensagem: "Não há registros no inventário para exportar a planilha.", tipo: "aviso" });
       let csv = "\uFEFFID;Nome;Descrição;Categoria;Data;Local;Status;Solicitante;RM\n";
       itensSec.forEach(i => {
         csv += `${i.id || ''};${(i.nome || '').replace(/;/g, ',')};${(i.txt_descricao || '').replace(/;/g, ',')};${(i.categoria || '').replace(/;/g, ',')};${(i.txt_data || '').replace(/;/g, ',')};${(i.txt_local || '').replace(/;/g, ',')};${(i.status || 'DISPONÍVEL').toUpperCase()};${(i.solicitado_por || '').replace(/;/g, ',')};${(i.rm_aluno || '').replace(/;/g, ',')}\n`;
@@ -1705,7 +1824,7 @@
         fecharModal('modalScanner');
         const match = msg.match(/\d+/);
         if (match) abrirDetalhesItem(parseInt(match[0]));
-        else alert("QR Code não reconhecido: " + msg);
+        else abrirAlertaModal({ titulo: "QR Code Inválido", mensagem: "O código lido não corresponde a uma etiqueta válida: " + msg, tipo: "aviso" });
       }, () => {});
     }
 
@@ -1717,7 +1836,7 @@
     /* DETALHES DO ITEM */
     function abrirDetalhesItem(id) {
       const item = itensSec.find(i => String(i.id) === String(id));
-      if (!item) return alert("Item não encontrado.");
+      if (!item) return abrirAlertaModal({ titulo: "Item Não Encontrado", mensagem: "O item selecionado não consta no inventário atual.", tipo: "erro" });
 
       document.getElementById('detalheItemTitulo').innerText = `#${item.id} - ${item.nome || item.txt_descricao || 'Sem Título'}`;
       const st = (item.status || 'DISPONÍVEL').toUpperCase();
@@ -1950,8 +2069,8 @@
           `;
           comprovanteDadosTexto = `ETEC - TERMO DE RETIRADA\nAluno: ${nome} (RM: ${rm})\nTurma: ${turma}\nItem #${id}: ${nomeObj}\nData: ${dataHora}`;
           document.getElementById('modalComprovante').classList.remove('hidden');
-        } else { alert("Erro ao dar baixa."); }
-      } catch (err) { alert("Erro de conexão."); }
+        } else { abrirAlertaModal({ titulo: "Falha na Baixa", mensagem: "Não foi possível registrar a retirada do item.", tipo: "erro" }); }
+      } catch (err) { abrirAlertaModal({ titulo: "Erro de Conexão", mensagem: "Falha ao se comunicar com o servidor.", tipo: "erro" }); }
     }
 
     function baixarComprovanteTexto() {
@@ -1967,7 +2086,15 @@
     }
 
     async function recusarSolicitacao(id) {
-      if (!confirm("Recusar solicitação deste item?")) return;
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Recusar Solicitação",
+        mensagem: `Deseja recusar a solicitação do item <strong>#${id}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL para outros alunos.</span>`,
+        icone: "fa-times-circle",
+        corIcone: "#ef4444",
+        textoConfirmar: "Sim, Recusar",
+        corConfirmar: "#ef4444"
+      });
+      if (!ok) return;
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
         if (res.ok) { fecharModal('modalDetalhesItem'); mostrarToast("Recusado!"); carregarItensSecretaria(); }
@@ -1975,7 +2102,15 @@
     }
 
     async function marcarItemDoacao(id) {
-      if (!confirm("Deseja marcar este item para Doação?")) return;
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Destinar para Doação",
+        mensagem: `Deseja marcar o pertence <strong>#${id}</strong> para DOAÇÃO?`,
+        icone: "fa-gift",
+        corIcone: "#a855f7",
+        textoConfirmar: "Sim, Destinar",
+        corConfirmar: "#a855f7"
+      });
+      if (!ok) return;
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}`, {
           method: 'PUT',
@@ -1991,7 +2126,15 @@
     }
 
     async function excluirItem(id) {
-      if (!confirm("Excluir este item permanentemente?")) return;
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Excluir Objeto Permanentemente",
+        mensagem: `Tem certeza que deseja apagar o item <strong>#${id}</strong> do banco de dados?<br><span style="font-size: 11px; color: #ef4444;">Esta ação é irreversível.</span>`,
+        icone: "fa-trash-alt",
+        corIcone: "#ef4444",
+        textoConfirmar: "Sim, Excluir",
+        corConfirmar: "#ef4444"
+      });
+      if (!ok) return;
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
         if (res.ok) { fecharModal('modalDetalhesItem'); mostrarToast("Item excluído!"); carregarItensSecretaria(); }
@@ -2003,6 +2146,54 @@
       document.getElementById('tabelaCategoriasBody').innerHTML = categoriasSec.map(c => `
         <tr><td><strong>${c.nome}</strong></td><td style="text-align: center;"><button onclick="removerCategoria('${c.nome}')" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
       `).join('');
+    }
+
+    
+    /* EXCLUIR CATEGORIA */
+    async function removerCategoria(nome) {
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Excluir Categoria",
+        mensagem: `Deseja realmente excluir a categoria <strong>${nome}</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens já cadastrados continuarão seguros no sistema.</span>`,
+        icone: "fa-trash-alt",
+        corIcone: "#ef4444",
+        textoConfirmar: "Sim, Excluir",
+        corConfirmar: "#ef4444"
+      });
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${API_URL}/api/categorias/${encodeURIComponent(nome)}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        if (res.ok) {
+          mostrarToast(`Categoria ${nome} excluída com sucesso!`);
+          await carregarCategorias();
+          renderizarCategorias();
+        } else {
+          let errData = {};
+          try { errData = await res.json(); } catch(e) {}
+          exibirErroDetalhado({
+            operacao: `Excluir Categoria ${nome}`,
+            onde: "removerCategoria() -> Resposta da API",
+            comunicacao: `DELETE ${API_URL}/api/categorias/${nome} (HTTP ${res.status})`,
+            mensagem: errData.message || errData.error || `Servidor retornou HTTP ${res.status}`,
+            detalhes: errData.traceback || JSON.stringify(errData),
+            causa: "O servidor rejeitou a exclusão da categoria.",
+            solucao: "Verifique se a sessão administrativa está ativa."
+          });
+        }
+      } catch (err) {
+        exibirErroDetalhado({
+          operacao: `Erro de Conexão ao Excluir Categoria ${nome}`,
+          onde: "removerCategoria() -> Bloco catch",
+          comunicacao: `DELETE ${API_URL}/api/categorias/${nome}`,
+          mensagem: err.message || "Falha de rede",
+          detalhes: err.stack || "",
+          causa: "Não foi possível se comunicar com o servidor Railway.",
+          solucao: "Verifique sua conexão ou se o Railway está online."
+        });
+      }
     }
 
     async function adicionarCategoriaWeb() {
@@ -2052,7 +2243,15 @@
     }
 
     async function desfazerEntrega(id) {
-      if (!confirm(`Reverter entrega do item #${id}?`)) return;
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Reverter Entrega",
+        mensagem: `Deseja reverter a entrega do pertence <strong>#${id}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL no catálogo.</span>`,
+        icone: "fa-undo",
+        corIcone: "#f59e0b",
+        textoConfirmar: "Sim, Reverter",
+        corConfirmar: "#f59e0b"
+      });
+      if (!ok) return;
       try {
         const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
         if (res.ok) { mostrarToast("Entrega revertida!"); carregarEntregues(); carregarItensSecretaria(); }
@@ -2072,7 +2271,15 @@
     }
 
     async function excluirRelatoMural(id) {
-      if (!confirm(`Apagar relato #${id}?`)) return;
+      const ok = await abrirConfirmacaoModal({
+        titulo: "Apagar Relato do Mural",
+        mensagem: `Deseja remover o relato <strong>#${id}</strong> do mural de perdidos?`,
+        icone: "fa-trash-alt",
+        corIcone: "#ef4444",
+        textoConfirmar: "Sim, Remover",
+        corConfirmar: "#ef4444"
+      });
+      if (!ok) return;
       try {
         const res = await fetch(`${API_URL}/api/mural/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
         if (res.ok) carregarMural();
@@ -2613,7 +2820,7 @@
         janelaPrint.document.write(htmlRelatorio);
         janelaPrint.document.close();
       } else {
-        alert("O navegador bloqueou a abertura da janela de impressão. Por favor, permita pop-ups para gerar o relatório PDF.");
+        abrirAlertaModal({ titulo: "Pop-up Bloqueado", mensagem: "O navegador bloqueou a janela de impressão. Por favor, permita pop-ups neste site para visualizar e salvar o PDF.", tipo: "aviso" });
       }
     }
 
