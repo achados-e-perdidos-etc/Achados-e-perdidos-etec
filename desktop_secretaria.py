@@ -26,6 +26,30 @@ COR_VERDE = "#10b981"
 COR_AZUL = "#1f6feb"
 COR_BORDA = "#30363d"
 
+# ==========================================
+# FUNÇÃO DE COMPRESSÃO DE FOTOS NO DESKTOP
+# ==========================================
+def comprimir_foto_desktop(caminho_arquivo, max_dim=1200, qualidade=75):
+    try:
+        with Image.open(caminho_arquivo) as img:
+            img = img.convert("RGB")
+            w, h = img.size
+            if w > max_dim or h > max_dim:
+                if w > h:
+                    novo_h = int((h * max_dim) / w)
+                    novo_w = max_dim
+                else:
+                    novo_w = int((w * max_dim) / h)
+                    novo_h = max_dim
+                img = img.resize((novo_w, novo_h), Image.Resampling.LANCZOS)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=qualidade, optimize=True)
+            enc = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return f"data:image/jpeg;base64,{enc}"
+    except Exception as e:
+        print(f"Erro ao comprimir imagem desktop: {e}")
+        return None
+
 class SecretariaApp:
     def __init__(self, root):
         self.root = root
@@ -38,16 +62,13 @@ class SecretariaApp:
         self.chat_timer = None
         self.rm_chat_ativo = None
 
-        # Estilização Moderna para o Tkinter/TTK
         self.estilo = ttk.Style()
         self.estilo.theme_use("clam")
         
-        # Notebook (Abas) com visual moderno e espaçado
         self.estilo.configure("TNotebook", background=COR_BG_GERAL, borderwidth=0)
-        self.estilo.configure("TNotebook.Tab", background=COR_BG_HEADER, foreground=COR_TEXTO_PRINCIPAL, padding=[16, 8], font=("Segoe UI", 10, "bold"), relief="flat")
+        self.estilo.configure("TNotebook.Tab", background=COR_BG_HEADER, foreground=COR_TEXTO_PRINCIPAL, padding=, font=("Segoe UI", 10, "bold"), relief="flat")
         self.estilo.map("TNotebook.Tab", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
         
-        # Tabelas (Treeview) refinadas e limpas
         self.estilo.configure("Treeview", background=COR_BG_CARD, foreground=COR_TEXTO_PRINCIPAL, fieldbackground=COR_BG_CARD, borderwidth=0, rowheight=34, font=("Segoe UI", 10))
         self.estilo.map("Treeview", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
         self.estilo.configure("Treeview.Heading", background=COR_BG_HEADER, foreground="#ffffff", font=("Segoe UI", 10, "bold"), relief="flat")
@@ -65,19 +86,14 @@ class SecretariaApp:
             "Authorization": f"Bearer {TOKEN_SECRETARIA}"
         }
 
-    # ==========================================
-    # TELA DE LOGIN REFORMULADA (MODERNA)
-    # ==========================================
     def tela_login(self):
         self.frame_login = tk.Frame(self.root, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
         self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=380)
 
-        # Ícone ou Cabeçalho Visual do Card
         tk.Label(self.frame_login, text="🔐", font=("Segoe UI", 24), bg=COR_BG_CARD).pack(pady=(25, 0))
         tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Segoe UI", 16, "bold"), bg=COR_BG_CARD, fg=COR_DESTAQUE).pack(pady=(5, 2))
         tk.Label(self.frame_login, text="Painel Administrativo Seguro", font=("Segoe UI", 9, "italic"), bg=COR_BG_CARD, fg=COR_VERDE).pack(pady=(0, 20))
 
-        # Campos de Entrada com Padding e Cores Harmonizadas
         frame_inputs = tk.Frame(self.frame_login, bg=COR_BG_CARD)
         frame_inputs.pack(fill="x", padx=40)
 
@@ -94,7 +110,6 @@ class SecretariaApp:
 
         self.btn_entrar = tk.Button(self.frame_login, text="ENTRAR NO SISTEMA", font=("Segoe UI", 10, "bold"), bg=COR_DESTAQUE, fg="white", activebackground="#b91c1c", activeforeground="white", relief="flat", cursor="hand2", command=self.verificar_login)
         self.btn_entrar.pack(fill="x", padx=40, ipady=10)
-        
         self.entry_email.focus()
 
     def verificar_login(self):
@@ -161,19 +176,18 @@ class SecretariaApp:
         self.carregar_conversas()
         self.carregar_mural()
         
-    # --- DASHBOARD E RELATÓRIOS ---
     def construir_tab_dash(self):
-        tk.Label(self.tab_dash, text="Visão Geral do Sistema", font=("Segoe UI", 18, "bold"), bg=COR_BG_GERAL, fg="#f87171").pack(pady=25)
+        tk.Label(self.tab_dash, text="Visão Geral do Sistema", font=("Segoe UI", 18, "bold"), bg=COR_BG_GERAL, fg="#f87171").pack(pady=(20, 10))
         
         frame_cards = tk.Frame(self.tab_dash, bg=COR_BG_GERAL)
         frame_cards.pack(pady=10)
         
         def criar_card(parent, titulo, cor):
-            f = tk.Frame(parent, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1, width=220, height=130)
+            f = tk.Frame(parent, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1, width=220, height=120)
             f.pack_propagate(False)
-            f.pack(side="left", padx=15)
-            tk.Label(f, text=titulo, font=("Segoe UI", 10, "bold"), bg=COR_BG_CARD, fg="#8b949e").pack(pady=(20, 5))
-            lbl_valor = tk.Label(f, text="0", font=("Segoe UI", 28, "bold"), bg=COR_BG_CARD, fg=cor)
+            f.pack(side="left", padx=12)
+            tk.Label(f, text=titulo, font=("Segoe UI", 9, "bold"), bg=COR_BG_CARD, fg="#8b949e").pack(pady=(16, 4))
+            lbl_valor = tk.Label(f, text="0", font=("Segoe UI", 26, "bold"), bg=COR_BG_CARD, fg=cor)
             lbl_valor.pack()
             return lbl_valor
 
@@ -181,8 +195,17 @@ class SecretariaApp:
         self.lbl_stat_entregues = criar_card(frame_cards, "ITENS ENTREGUES", COR_VERDE)
         self.lbl_stat_doacoes = criar_card(frame_cards, "DOAÇÕES", "#f59e0b")
 
+        frame_indicadores = tk.Frame(self.tab_dash, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
+        frame_indicadores.pack(fill="x", padx=30, pady=15)
+
+        self.lbl_taxa_devolucao = tk.Label(frame_indicadores, text="Taxa de Devolução aos Alunos: 0%", font=("Segoe UI", 12, "bold"), bg=COR_BG_CARD, fg=COR_VERDE)
+        self.lbl_taxa_devolucao.pack(pady=(12, 6))
+
+        self.lbl_distribuicao_cats = tk.Label(frame_indicadores, text="Categorias mais frequentes: Carregando...", font=("Segoe UI", 10), bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL)
+        self.lbl_distribuicao_cats.pack(pady=(0, 12))
+
         frame_botoes = tk.Frame(self.tab_dash, bg=COR_BG_GERAL)
-        frame_botoes.pack(pady=40)
+        frame_botoes.pack(pady=15)
         
         tk.Button(frame_botoes, text="🔄 Atualizar Dados", bg=COR_BG_HEADER, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=8, cursor="hand2", command=self.carregar_dashboard).pack(side="left", padx=10)
         tk.Button(frame_botoes, text="📊 Exportar Relatório (CSV)", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=8, cursor="hand2", command=self.exportar_relatorio).pack(side="left", padx=10)
@@ -192,9 +215,26 @@ class SecretariaApp:
             res = requests.get(f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 data = res.json()
-                self.lbl_stat_itens.config(text=str(data.get('total_itens', 0)))
-                self.lbl_stat_entregues.config(text=str(data.get('total_entregues', 0)))
-                self.lbl_stat_doacoes.config(text=str(data.get('total_doacoes', 0)))
+                total = data.get('total_itens', 0)
+                entregues = data.get('total_entregues', 0)
+                doacoes = data.get('total_doacoes', 0)
+
+                self.lbl_stat_itens.config(text=str(total))
+                self.lbl_stat_entregues.config(text=str(entregues))
+                self.lbl_stat_doacoes.config(text=str(doacoes))
+
+                soma = total + entregues
+                taxa = int((entregues / soma * 100)) if soma > 0 else 0
+                self.lbl_taxa_devolucao.config(text=f"Taxa de Devolução aos Alunos: {taxa}% ({entregues} recuperados)")
+
+                mapa_cat = {}
+                for i in self.itens_atuais:
+                    c = i.get('categoria', 'OUTROS')
+                    mapa_cat[c] = mapa_cat.get(c, 0) + 1
+                
+                ordenadas = sorted(mapa_cat.items(), key=lambda x: x, reverse=True)[:4]
+                texto_cats = " | ".join([f"{k}: {v}" for k, v in ordenadas]) if ordenadas else "Sem dados de categorias"
+                self.lbl_distribuicao_cats.config(text=f"Categorias em destaque: {texto_cats}")
         except: pass
 
     def exportar_relatorio(self):
@@ -220,7 +260,6 @@ class SecretariaApp:
             messagebox.showinfo("Sucesso", f"Planilha salva em:\n{file_path}")
         except Exception as e: messagebox.showerror("Erro", str(e))
 
-    # --- ABA: MURAL DE RELATOS ---
     def construir_tab_mural(self):
         frame_top = tk.Frame(self.tab_mural, bg=COR_BG_GERAL)
         frame_top.pack(fill="x", pady=12, padx=12)
@@ -253,12 +292,13 @@ class SecretariaApp:
                 if res.status_code == 200: self.carregar_mural()
             except: pass
 
-    # --- ESTOQUE ---
     def construir_tab_itens(self):
         frame_top = tk.Frame(self.tab_itens, bg=COR_BG_GERAL)
         frame_top.pack(fill="x", pady=12, padx=12)
 
-        tk.Button(frame_top, text="➕ CADASTRAR NOVO ITEM", bg="#059669", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=lambda: self.abrir_modal_form()).pack(side="left")
+        tk.Button(frame_top, text="➕ CADASTRAR ITEM", bg="#059669", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=lambda: self.abrir_modal_form()).pack(side="left")
+        
+        tk.Button(frame_top, text="📄 ETIQUETAS A4 EM LOTE", bg="#7c3aed", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=self.gerar_folha_etiquetas_a4).pack(side="left", padx=8)
 
         frame_busca = tk.Frame(frame_top, bg=COR_BG_GERAL)
         frame_busca.pack(side="right")
@@ -327,7 +367,63 @@ class SecretariaApp:
             solicitante_str = f"{solicitante} (RM: {i.get('rm_aluno', '-')})" if solicitante else "-"
             self.tree_itens.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, i.get('txt_local', ''), solicitante_str))
 
-    # --- MODAL CADASTRO / EDIÇÃO ---
+    def gerar_folha_etiquetas_a4(self):
+        disponiveis = [i for i in self.itens_atuais if (i.get('status') or 'DISPONÍVEL').upper() == 'DISPONÍVEL']
+        if not disponiveis:
+            return messagebox.showinfo("Aviso", "Não há itens disponíveis no catálogo para gerar etiquetas.")
+
+        a4_w, a4_h = 1240, 1754
+        folha = Image.new('RGB', (a4_w, a4_h), color='white')
+        draw = ImageDraw.Draw(folha)
+
+        try:
+            fonte_tit = ImageFont.truetype("arial.ttf", 26)
+            fonte_sub = ImageFont.truetype("arial.ttf", 16)
+            fonte_tag = ImageFont.truetype("arial.ttf", 14)
+        except:
+            fonte_tit = ImageFont.load_default()
+            fonte_sub = ImageFont.load_default()
+            fonte_tag = ImageFont.load_default()
+
+        draw.text((60, 40), "ETEC ACHADOS E PERDIDOS - FOLHA DE ETIQUETAS QR", fill='black', font=fonte_tit)
+        draw.text((60, 75), f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')} | Total: {len(disponiveis)} itens", fill='#4b5563', font=fonte_sub)
+
+        cols, rows = 3, 5
+        margem_x, margem_y = 60, 110
+        cell_w = (a4_w - (margem_x * 2)) // cols
+        cell_h = (a4_h - margem_y - 60) // rows
+
+        for idx, item in enumerate(disponiveis[:cols * rows]):
+            c = idx % cols
+            r = idx // cols
+            x = margem_x + (c * cell_w)
+            y = margem_y + (r * cell_h)
+
+            draw.rectangle([x, y, x + cell_w - 12, y + cell_h - 12], outline='#9ca3af', width=2)
+
+            qr = qrcode.QRCode(version=1, box_size=3, border=1)
+            qr.add_data(f"ETEC-ITEM-{item['id']}")
+            qr.make(fit=True)
+            img_qr = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+
+            folha.paste(img_qr, (x + 15, y + 15))
+
+            nome_curto = (item.get('nome') or item.get('txt_descricao') or '')[:20]
+            cat_nome = item.get('categoria', 'OUTROS')
+
+            draw.text((x + 150, y + 25), f"ITEM #{item['id']}", fill='#dc2626', font=fonte_tit)
+            draw.text((x + 150, y + 60), f"[{cat_nome}]", fill='#1e293b', font=fonte_tag)
+            draw.text((x + 150, y + 85), nome_curto, fill='black', font=fonte_sub)
+            draw.text((x + 15, y + cell_h - 35), f"Local: {item.get('txt_local', '')[:30]}", fill='#64748b', font=fonte_tag)
+
+        caminho_salvar = os.path.abspath(f"folha_etiquetas_etec_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+        folha.save(caminho_salvar)
+
+        if messagebox.askyesno("Etiquetas Prontas", f"Folha A4 gerada com {min(len(disponiveis), 15)} etiquetas!\n\nArquivo salvo em:\n{caminho_salvar}\n\nDeseja abrir a imagem para imprimir agora?"):
+            try:
+                os.startfile(caminho_salvar)
+            except: pass
+
     def abrir_modal_form(self, item_edit=None):
         modal = tk.Toplevel(self.root)
         modal.title("Novo Item" if not item_edit else f"Editar Item #{item_edit['id']}")
@@ -336,7 +432,6 @@ class SecretariaApp:
         modal.transient(self.root)
         modal.grab_set()
 
-        # TÍTULO CORRIGIDO: Vermelho ETEC para edição ou Azul para cadastro novo
         cor_titulo = COR_DESTAQUE if item_edit else "#38bdf8"
         tk.Label(modal, text="CADASTRAR NOVO OBJETO" if not item_edit else "EDITAR OBJETO", font=("Segoe UI", 15, "bold"), bg=COR_BG_CARD, fg=cor_titulo).pack(pady=20)
 
@@ -378,13 +473,12 @@ class SecretariaApp:
             filenames = filedialog.askopenfilenames(title="Selecione até 4 fotos", filetypes=[("Imagens", "*.png;*.jpg;*.jpeg")])
             if filenames:
                 fotos_upload_base64.clear()
+                lbl_foto_status.config(text="Comprimindo fotos...", fg="#f59e0b")
+                modal.update()
                 for f in filenames[:4]:
-                    try:
-                        with open(f, "rb") as image_file:
-                            enc = base64.b64encode(image_file.read()).decode('utf-8')
-                            fotos_upload_base64.append(f"data:image/jpeg;base64,{enc}")
-                    except: pass
-                lbl_foto_status.config(text=f"Fotos prontas: {len(fotos_upload_base64)}", fg=COR_VERDE)
+                    enc = comprimir_foto_desktop(f, max_dim=1200, qualidade=75)
+                    if enc: fotos_upload_base64.append(enc)
+                lbl_foto_status.config(text=f"Fotos otimizadas: {len(fotos_upload_base64)}", fg=COR_VERDE)
 
         tk.Button(frame_fotos, text="📷 Selecionar Fotos", bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5, cursor="hand2", command=selecionar_fotos).pack(side="left")
 
@@ -411,7 +505,6 @@ class SecretariaApp:
 
         tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg=COR_VERDE, fg="white", font=("Segoe UI", 11, "bold"), pady=12, relief="flat", cursor="hand2", command=salvar).pack(fill="x", padx=40, pady=25)
 
-    # --- MODAL DETALHES DO ITEM ---
     def abrir_modal_detalhes_item(self, event=None, item_direto=None):
         if item_direto: item = item_direto
         else:
@@ -476,7 +569,6 @@ class SecretariaApp:
         if st not in ['PARA DOAÇÃO', 'DOAÇÃO FEITA', 'ENTREGUE']: btn("🎁 Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
         btn("🗑️ Excluir", COR_DESTAQUE, lambda: self.acao_rapida(item['id'], 'excluir', modal))
 
-    # --- GERADOR DE QR CODE ETIQUETA ---
     def abrir_modal_etiqueta_qr(self, item):
         modal = tk.Toplevel(self.root)
         modal.title("Impressão de Etiqueta QR")
@@ -503,7 +595,7 @@ class SecretariaApp:
         except: fonte = ImageFont.load_default()
             
         bbox = draw.textbbox((0, 0), texto, font=fonte)
-        w_texto = bbox[2] - bbox[0]
+        w_texto = bbox - bbox[0]
         x_texto = (largura - w_texto) / 2
         draw.text((x_texto, altura), texto, fill="black", font=fonte)
 
@@ -529,7 +621,6 @@ class SecretariaApp:
         tk.Button(modal, text="💾 SALVAR COMO PNG", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=salvar_png).pack(fill="x", padx=30, pady=5)
         tk.Button(modal, text="🖨️ IMPRIMIR DIRETO", bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=imprimir_direto).pack(fill="x", padx=30, pady=5)
 
-    # --- AÇÕES RÁPIDAS COM JWT ---
     def acao_rapida(self, item_id, acao, modal=None):
         try:
             if acao == 'excluir' and messagebox.askyesno("Excluir", "Deseja excluir este item permanentemente?"):
@@ -548,7 +639,6 @@ class SecretariaApp:
                 messagebox.showerror("Erro", "Acesso Negado.")
         except Exception as e: messagebox.showerror("Erro", str(e))
 
-    # --- DAR BAIXA COM JWT ---
     def abrir_dar_baixa(self, item):
         modal_baixa = tk.Toplevel(self.root)
         modal_baixa.title(f"Dar Baixa - Item #{item['id']}")
@@ -625,7 +715,6 @@ class SecretariaApp:
         tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(0, 5))
         tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(5, 0))
 
-    # --- DOAÇÕES E CATEGORIAS ---
     def construir_tab_doacoes(self):
         frame_top = tk.Frame(self.tab_doacoes, bg=COR_BG_GERAL)
         frame_top.pack(fill="x", pady=12, padx=12)
@@ -708,7 +797,7 @@ class SecretariaApp:
     def abrir_detalhes_do_historico(self, event):
         selecionado = self.tree_entregues.selection()
         if selecionado:
-            item_id = self.tree_entregues.item(selecionado[0])['values'][1]
+            item_id = self.tree_entregues.item(selecionado[0])['values']
             item = next((i for i in self.itens_atuais if str(i['id']) == str(item_id)), None)
             if item: self.abrir_modal_detalhes_item(item_direto=item)
 
@@ -716,9 +805,9 @@ class SecretariaApp:
         selecionado = self.tree_entregues.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
         vals = self.tree_entregues.item(selecionado[0], "values")
-        if messagebox.askyesno("Desfazer", f"Reverter entrega do item #{vals[1]}?"):
+        if messagebox.askyesno("Desfazer", f"Reverter entrega do item #{vals}?"):
             try:
-                res = requests.put(f"{API_URL}/api/itens/{vals[1]}/recusar", headers=self.get_auth_headers())
+                res = requests.put(f"{API_URL}/api/itens/{vals}/recusar", headers=self.get_auth_headers())
                 if res.status_code == 200: self.carregar_dados()
             except: pass
 
@@ -726,13 +815,12 @@ class SecretariaApp:
         selecionado = self.tree_entregues.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
         vals = self.tree_entregues.item(selecionado[0], "values")
-        if messagebox.askyesno("Excluir", f"Excluir histórico do item #{vals[1]}?"):
+        if messagebox.askyesno("Excluir", f"Excluir histórico do item #{vals}?"):
             try:
-                res = requests.delete(f"{API_URL}/api/itens/{vals[1]}", headers=self.get_auth_headers())
+                res = requests.delete(f"{API_URL}/api/itens/{vals}", headers=self.get_auth_headers())
                 if res.status_code == 200: self.carregar_dados()
             except: pass
 
-    # --- CHAT ---
     def construir_tab_chat(self):
         frame_esq = tk.Frame(self.tab_chat, bg=COR_BG_GERAL, width=280)
         frame_esq.pack(side="left", fill="y", padx=12, pady=12)
