@@ -1,1601 +1,1586 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secretaria - Painel Administrativo</title>
-    <link rel="icon" type="image/png" href="logo_secretaria.png">
-    <link rel="manifest" href="/manifest_secretaria.json">
-    <meta name="theme-color" content="#dc2626">
-    <link rel="apple-touch-icon" href="/logo_secretaria.png">
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- Chart.js para Gráficos Interativos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETEC - Painel de Controle Secretaria</title>
+  
+  <!-- Ícones Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Fonte Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Gerador de QR Code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <!-- Leitor Html5-QRCode para Câmera -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
 
-    <style>
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-        @media print {
-            body * { visibility: hidden; }
-            #comprovantePrintArea, #comprovantePrintArea *, #folhaA4Impressao, #folhaA4Impressao * { visibility: visible; }
-            #comprovantePrintArea { position: absolute; left: 0; top: 0; width: 100%; background: white !important; color: black !important; }
-            #folhaA4Impressao {
-                position: absolute; left: 0; top: 0; width: 100%; background: white !important; color: black !important;
-                display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; padding: 10mm !important;
-            }
-        }
-    </style>
+  <style>
+    /* ==========================================================================
+       TEMA ESCURO ETEC - INTERFACE MODERNA E TOTALMENTE RESPONSIVA
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .hidden { display: none !important; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* --- TELA DE LOGIN --- */
+    #loginScreen {
+      position: fixed;
+      inset: 0;
+      background: #0d1117;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .login-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }
+    .login-badge-lock {
+      width: 56px;
+      height: 56px;
+      background: rgba(220, 38, 38, 0.15);
+      color: #dc2626;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(220, 38, 38, 0.3);
+    }
+    .login-card h2 { color: #f87171; font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .login-card p { color: #10b981; font-size: 12px; margin-bottom: 22px; }
+    .campo-grupo { text-align: left; margin-bottom: 14px; position: relative; }
+    .campo-grupo label { display: block; font-size: 12px; font-weight: 600; color: #8b949e; margin-bottom: 5px; }
+    .campo-input {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #ffffff;
+      padding: 11px 13px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      outline: none;
+    }
+    .campo-input:focus { border-color: #dc2626; }
+    .btn-toggle-senha {
+      position: absolute;
+      right: 12px;
+      bottom: 11px;
+      background: none;
+      border: none;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .btn-entrar-login {
+      width: 100%;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .alerta-erro {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 9px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 14px;
+      text-align: left;
+    }
+
+    /* --- CABEÇALHO & MENU HAMBÚRGUER (FOTO 2) --- */
+    .header-secretaria {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .avatar-etec {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #21262d;
+      border: 2px solid #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f87171;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .header-titulo { font-size: 15px; font-weight: 800; color: #ffffff; line-height: 1.1; }
+    .status-sessao { font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+    .bolinha-verde { font-size: 8px; color: #10b981; }
+
+    /* Botão com Três Risquinhos */
+    .btn-hamburger {
+      background: #21262d;
+      color: #ffffff;
+      border: 1px solid #30363d;
+      font-size: 18px;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-hamburger:active { transform: scale(0.94); background: #30363d; }
+
+    /* Fundo Escurecido e Gaveta Lateral */
+    .menu-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 2000;
+      backdrop-filter: blur(2px);
+    }
+    .menu-lateral {
+      position: fixed;
+      top: 0;
+      right: -310px;
+      width: 290px;
+      height: 100vh;
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      z-index: 2001;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -8px 0 25px rgba(0, 0, 0, 0.7);
+    }
+    .menu-lateral.aberto { right: 0; }
+    .menu-topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid #30363d;
+      background: #21262d;
+    }
+    .btn-fechar-menu {
+      background: none;
+      border: none;
+      color: #8b949e;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .menu-itens-lista {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+    }
+    .item-menu {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: transparent;
+      color: #c9d1d9;
+      border: none;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .item-menu i { font-size: 16px; width: 22px; text-align: center; }
+    .item-menu:active, .item-menu.active {
+      background: #21262d;
+      color: #ffffff;
+      border-left: 4px solid #dc2626;
+    }
+    .menu-rodape { padding: 14px; border-top: 1px solid #30363d; }
+    .btn-desconectar {
+      width: 100%;
+      background: rgba(220, 38, 38, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    /* --- CONTEÚDO PRINCIPAL & BOTÕES DE AÇÃO (FOTO 1) --- */
+    .conteudo-pagina {
+      flex: 1;
+      padding: 14px 12px;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .acoes-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .btn-novo-item {
+      width: 100%;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    .btn-novo-item:active { opacity: 0.9; }
+
+    .botoes-secundarios-grid {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .btn-acao {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 9px 4px;
+      border-radius: 8px;
+      border: none;
+      color: #ffffff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.1s;
+    }
+    .btn-acao:active { transform: scale(0.97); }
+    .btn-etiquetas { background: #7c3aed; } /* Roxo (Folha A4) */
+    .btn-relatorio { background: #059669; } /* Verde (Planilha CSV) */
+    .btn-scanner   { background: #2563eb; } /* Azul (Leitor QR) */
+
+    /* Barra de Busca e Filtros */
+    .busca-container { position: relative; margin-bottom: 10px; }
+    .busca-container i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #8b949e; }
+    .input-busca-geral {
+      width: 100%;
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #ffffff;
+      padding: 10px 14px 10px 38px;
+      border-radius: 9px;
+      font-size: 13.5px;
+      outline: none;
+    }
+    .input-busca-geral:focus { border-color: #dc2626; }
+
+    .filtros-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .filtros-scroll::-webkit-scrollbar { display: none; }
+    .pilula-filtro {
+      background: #161b22;
+      color: #8b949e;
+      border: 1px solid #30363d;
+      border-radius: 18px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pilula-filtro.active {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+    }
+
+    /* Lista de Itens (Cards da Foto 1) */
+    .grid-itens { display: flex; flex-direction: column; gap: 9px; }
+    .item-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 11px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .item-card:active { background: #21262d; }
+    .item-foto-thumb {
+      width: 66px;
+      height: 66px;
+      border-radius: 9px;
+      background: #21262d;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b949e;
+      font-size: 18px;
+      overflow: hidden;
+    }
+    .item-foto-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .item-info { flex: 1; min-width: 0; }
+    .item-badges { display: flex; gap: 6px; margin-bottom: 4px; }
+    .badge-cat {
+      background: #21262d;
+      color: #8b949e;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      border: 1px solid #30363d;
+    }
+    .badge-status {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .status-disponivel { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-solicitado { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-doacao     { background: rgba(124, 58, 237, 0.15); color: #a78bfa; border: 1px solid rgba(124, 58, 237, 0.3); }
+    .status-entregue   { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+    .item-titulo { font-size: 13.5px; font-weight: 700; color: #ffffff; margin-bottom: 3px; }
+    .item-local-data { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
+    .item-local-data i { color: #dc2626; font-size: 10px; }
+
+    /* Outras Seções / Tabelas / Dashboard */
+    .secao-titulo { font-size: 17px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .grid-dashboard-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .card-dash { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; text-align: center; }
+    .card-dash-titulo { font-size: 10.5px; font-weight: 700; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+    .card-dash-valor { font-size: 24px; font-weight: 800; }
+    .tabela-container { background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th { background: #21262d; color: #ffffff; padding: 10px; font-weight: 700; border-bottom: 1px solid #30363d; }
+    td { padding: 10px; border-bottom: 1px solid #30363d; color: #c9d1d9; }
+
+    /* Chat */
+    .chat-layout { display: flex; flex-direction: column; height: 68vh; background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+    .chat-header { padding: 10px 14px; background: #21262d; border-bottom: 1px solid #30363d; font-weight: 700; color: #ffffff; font-size: 13px; }
+    .chat-mensagens-box { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .msg-balao { max-width: 82%; padding: 8px 12px; border-radius: 9px; font-size: 12.5px; line-height: 1.35; }
+    .msg-aluno { background: #21262d; color: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; }
+    .msg-secretaria { background: #dc2626; color: #ffffff; align-self: flex-end; border-bottom-right-radius: 2px; }
+    .chat-input-bar { display: flex; padding: 8px; background: #161b22; border-top: 1px solid #30363d; gap: 6px; }
+
+    /* Modais */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 5000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      backdrop-filter: blur(3px);
+    }
+    .modal-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+      position: relative;
+    }
+    .modal-fechar { position: absolute; top: 14px; right: 16px; background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; }
+    .modal-titulo { font-size: 16px; font-weight: 800; color: #f87171; margin-bottom: 14px; }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #161b22;
+      color: #ffffff;
+      border: 1px solid #30363d;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 100000;
+    }
+  </style>
 </head>
-<body class="dark-theme min-h-screen flex flex-col justify-between bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
+<body>
 
-    <!-- CONTAINER DE TOASTS COM Z-INDEX SUPERIOR -->
-    <div id="toastContainer" class="fixed top-5 right-5 z-[500] flex flex-col gap-3 pointer-events-none"></div>
+  <!-- TELA DE LOGIN -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="login-badge-lock"><i class="fas fa-lock"></i></div>
+      <h2>Secretaria ETEC</h2>
+      <p>Acesso Restrito - controle_etec_7788</p>
+      
+      <div id="loginErroMsg" class="alerta-erro hidden"></div>
 
-    <!-- TELA DE LOGIN DA SECRETARIA -->
-    <div id="loginScreen" class="fixed inset-0 z-[200] bg-[#090d13]/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
-        <div class="glass-panel border border-red-500/30 w-full max-w-sm rounded-3xl p-7 space-y-4 shadow-2xl text-center glow-red">
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-2 ring-4 ring-red-500/20">
-                <i class="fas fa-shield-alt"></i>
-            </div>
-            <h2 class="text-xl font-black text-white tracking-tight">Painel da Secretaria</h2>
-            <p class="text-xs text-slate-400 font-medium">Acesso Administrativo - Achados e Perdidos ETEC</p>
-            
-            <form id="formLoginSec" onsubmit="fazerLoginSec(event)" class="space-y-3.5 text-left">
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">E-mail da Secretaria</label>
-                    <div class="relative">
-                        <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="email" id="loginEmailInput" required autocomplete="username" value="achadoseperdidosetec@gmail.com" placeholder="achadoseperdidosetec@gmail.com" class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Senha de Acesso</label>
-                    <div class="relative">
-                        <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="password" id="loginSenhaInput" required autocomplete="current-password" placeholder="Digite sua senha" class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-10 pr-10 py-3 focus:outline-none focus:border-red-500 transition">
-                        <button type="button" onclick="toggleSenhaVisivel()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white p-1">
-                            <i id="iconToggleSenha" class="fas fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="loginErroContainer" class="hidden p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center">
-                    <p id="loginErroMsg" class="text-xs text-rose-400 font-semibold"></p>
-                </div>
-
-                <button type="submit" id="btnLoginSec" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-95 flex items-center justify-center gap-2 mt-2">
-                    <span>Entrar no Painel</span>
-                </button>
-            </form>
+      <form onsubmit="fazerLoginSec(event)">
+        <div class="campo-grupo">
+          <label>E-mail Institucional</label>
+          <input type="email" id="loginEmailInput" class="campo-input" placeholder="secretaria@etec.sp.gov.br" required>
         </div>
+
+        <div class="campo-grupo">
+          <label>Senha de Acesso</label>
+          <input type="password" id="loginSenhaInput" class="campo-input" placeholder="••••••••" required>
+          <button type="button" class="btn-toggle-senha" onclick="toggleSenhaVisivel()">
+            <i id="iconToggleSenha" class="fas fa-eye"></i>
+          </button>
+        </div>
+
+        <button type="submit" id="btnLoginSec" class="btn-entrar-login">
+          <span>Entrar no Painel</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CABEÇALHO COM BOTÃO HAMBÚRGUER (FOTO 2) -->
+  <header class="header-secretaria">
+    <div class="logo-area">
+      <div class="avatar-etec"><i class="fas fa-user-shield"></i></div>
+      <div>
+        <h1 class="header-titulo">SECRETARIA ETEC</h1>
+        <span class="status-sessao"><span class="bolinha-verde">●</span> Sessão Administrativa Ativa</span>
+      </div>
     </div>
 
-    <!-- CABEÇALHO -->
-    <header class="glass-header p-4 sticky top-0 z-50 border-b border-white/10">
-        <div class="max-w-5xl mx-auto flex justify-between items-center gap-3">
-            <div class="flex items-center space-x-3">
-                <img src="logo_secretaria.png" alt="Logo" class="w-10 h-10 shrink-0 object-cover rounded-full ring-2 ring-red-500/40 shadow-md">
-                <div>
-                    <h1 class="font-extrabold text-base text-white leading-tight">SECRETARIA ETEC</h1>
-                    <p id="statusSessaoHeader" class="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        Sessão Administrativa Ativa
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-1.5 overflow-x-auto scrollbar-none">
-                <button onclick="mudarAbaSec('itens')" id="btnTabItens" class="px-3 py-2 rounded-xl bg-red-600 text-white text-xs font-bold transition shadow-sm" title="Itens Cadastrados"><i class="fas fa-boxes"></i></button>
-                <button onclick="mudarAbaSec('pendentes')" id="btnTabPendentes" class="relative px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition" title="Moderação de Itens Pendentes">
-                    <i class="fas fa-inbox text-amber-400"></i>
-                    <span id="badgePendentesSec" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-black rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
-                </button>
-                <button onclick="mudarAbaSec('stats')" id="btnTabStats" class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition" title="Estatísticas e Gráficos"><i class="fas fa-chart-pie"></i></button>
-                <button onclick="mudarAbaSec('cats')" id="btnTabCats" class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition" title="Categorias"><i class="fas fa-tags"></i></button>
-                <button onclick="mudarAbaSec('entregues')" id="btnTabEntregues" class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition" title="Histórico de Entregas"><i class="fas fa-history"></i></button>
-                <button onclick="mudarAbaSec('mural')" id="btnTabMural" class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition" title="Mural de Relatos"><i class="fas fa-bullhorn text-amber-500"></i></button>
-                <button onclick="mudarAbaSec('chat')" id="btnTabChat" class="relative px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition" title="Chat com Alunos">
-                    <i class="fas fa-comments text-blue-400"></i>
-                    <span id="badgeChatSec" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] flex items-center justify-center font-bold">0</span>
-                </button>
-                <button onclick="sairSecretaria()" class="px-3 py-2 rounded-xl bg-red-950/40 border border-red-900 text-xs font-bold text-red-400 hover:text-white transition" title="Sair do Painel">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </div>
-        </div>
-    </header>
+    <!-- Botão com Três Risquinhos -->
+    <button id="btnHamburger" onclick="toggleMenuHamburger()" class="btn-hamburger" title="Menu de Abas">
+      <i class="fas fa-bars"></i>
+    </button>
+  </header>
 
-    <main class="max-w-5xl mx-auto w-full p-4 flex-grow space-y-5">
-        <!-- MODERAÇÃO DE ITENS PENDENTES -->
-        <section id="secPendentesScreen" class="hidden space-y-4">
-            <div class="flex justify-between items-center glass-panel p-4 rounded-2xl border border-white/10">
-                <div>
-                    <h3 class="text-xs font-black uppercase text-amber-400 tracking-wider"><i class="fas fa-inbox mr-1"></i> Moderação de Itens Enviados por Alunos</h3>
-                    <p class="text-[11px] text-slate-400">Pertences achados aguardando validação da secretaria para aparecer no catálogo público.</p>
-                </div>
-                <button onclick="carregarItensPendentes()" class="text-xs text-white font-bold hover:text-red-400"><i class="fas fa-sync-alt"></i> Atualizar</button>
-            </div>
-            <div id="listaPendentesSec" class="space-y-3"></div>
-        </section>
+  <!-- Fundo Escuro do Menu Hambúrguer -->
+  <div id="menuBackdrop" onclick="toggleMenuHamburger()" class="menu-backdrop hidden"></div>
 
-        <!-- ITENS CADASTRADOS -->
-        <section id="secItensScreen" class="space-y-4">
-            <div class="flex flex-wrap gap-2">
-                <button onclick="abrirModalCadastrar()" class="flex-grow bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 transition">
-                    <i class="fas fa-plus-circle"></i> Cadastrar Item
-                </button>
-                <!-- BOTÃO ETIQUETAS EM LOTE A4 -->
-                <button onclick="abrirModalImpressaoLote()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2" title="Imprimir Folha A4 com Etiquetas QR">
-                    <i class="fas fa-print"></i> <span class="hidden sm:inline">Etiquetas A4</span>
-                </button>
-                <!-- BOTÃO EXPORTAR CSV -->
-                <button onclick="exportarRelatorioCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2" title="Exportar Catálogo para Excel/CSV">
-                    <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">CSV</span>
-                </button>
-                <button onclick="abrirLeitorQR()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-5 rounded-xl text-xs shadow-lg transition flex items-center justify-center" title="Escanear QR Code">
-                    <i class="fas fa-qrcode text-lg"></i>
-                </button>
-            </div>
-
-            <!-- BUSCA E FILTROS RÁPIDOS POR STATUS -->
-            <div class="space-y-2.5">
-                <div class="relative w-full">
-                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                    <input type="text" id="searchSecInput" oninput="filtrarItensSec()" placeholder="Buscar item por ID, nome ou descrição..." class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-red-500">
-                </div>
-
-                <!-- FILTROS POR STATUS (CHIPS) -->
-                <div class="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1" id="filtroStatusSecContainer">
-                    <button type="button" onclick="selecionarFiltroStatusSec('TODOS', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-red-600 text-white border-red-500 shrink-0">
-                        Todos
-                    </button>
-                    <button type="button" onclick="selecionarFiltroStatusSec('SOLICITADO', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-amber-400 border-white/10 hover:bg-white/10 shrink-0 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-amber-400"></span> Reivindicados
-                    </button>
-                    <button type="button" onclick="selecionarFiltroStatusSec('DISPONÍVEL', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-emerald-400 border-white/10 hover:bg-white/10 shrink-0 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Disponíveis
-                    </button>
-                    <button type="button" onclick="selecionarFiltroStatusSec('PARA DOAÇÃO', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-purple-400 border-white/10 hover:bg-white/10 shrink-0 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-purple-400"></span> Doações
-                    </button>
-                    <button type="button" onclick="selecionarFiltroStatusSec('ENTREGUE', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 shrink-0">
-                        Entregues
-                    </button>
-                </div>
-            </div>
-
-            <div id="listaItensSec" class="space-y-3"></div>
-        </section>
-
-        <!-- ESTATÍSTICAS COM GRÁFICOS INTERATIVOS CHART.JS -->
-        <section id="secStatsScreen" class="hidden space-y-5">
-            <div class="flex justify-between items-center">
-                <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Visão Geral e Indicadores:</h3>
-                <button onclick="exportarRelatorioCSV()" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
-                    <i class="fas fa-file-excel"></i> Exportar Relatório
-                </button>
-            </div>
-
-            <div class="grid grid-cols-3 gap-3">
-                <div class="glass-panel p-5 rounded-2xl text-center border border-white/10">
-                    <i class="fas fa-boxes text-blue-400 text-2xl mb-1.5"></i>
-                    <h4 id="statTotalItens" class="text-2xl font-black text-white">0</h4>
-                    <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Cadastrados</p>
-                </div>
-                <div class="glass-panel p-5 rounded-2xl text-center border border-white/10">
-                    <i class="fas fa-check-circle text-emerald-400 text-2xl mb-1.5"></i>
-                    <h4 id="statTotalEntregues" class="text-2xl font-black text-white">0</h4>
-                    <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Entregues</p>
-                </div>
-                <div class="glass-panel p-5 rounded-2xl text-center border border-white/10">
-                    <i class="fas fa-gift text-amber-400 text-2xl mb-1.5"></i>
-                    <h4 id="statTotalDoacoes" class="text-2xl font-black text-white">0</h4>
-                    <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Doações</p>
-                </div>
-            </div>
-
-            <!-- GRÁFICOS DO DASHBOARD -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="glass-panel rounded-3xl p-5 border border-white/10 space-y-3">
-                    <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <i class="fas fa-chart-pie text-red-500"></i> Distribuição por Categorias
-                    </h4>
-                    <div class="relative h-56 flex items-center justify-center">
-                        <canvas id="graficoCategorias"></canvas>
-                    </div>
-                </div>
-
-                <div class="glass-panel rounded-3xl p-5 border border-white/10 space-y-3">
-                    <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <i class="fas fa-chart-bar text-blue-500"></i> Comparativo de Situação
-                    </h4>
-                    <div class="relative h-56 flex items-center justify-center">
-                        <canvas id="graficoStatus"></canvas>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- CATEGORIAS -->
-        <section id="secCatsScreen" class="hidden space-y-4">
-            <div class="glass-panel rounded-2xl p-5 space-y-3 border border-white/10">
-                <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Adicionar Nova Categoria:</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="novaCatInput" placeholder="Nome da categoria..." class="flex-grow bg-[#0d1117] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-red-500 uppercase">
-                    <button onclick="adicionarCategoriaSec()" class="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase transition">Adicionar</button>
-                </div>
-            </div>
-            <div class="space-y-2">
-                <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Categorias Existentes:</h3>
-                <div id="listaCategoriasSec" class="space-y-2"></div>
-            </div>
-        </section>
-
-        <!-- HISTÓRICO DE ENTREGUES -->
-        <section id="secEntreguesScreen" class="hidden space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Histórico de Devoluções:</h3>
-                <button onclick="carregarEntregues()" class="text-xs text-blue-400 font-bold"><i class="fas fa-sync-alt"></i> Atualizar</button>
-            </div>
-            <div id="listaEntreguesSec" class="space-y-3"></div>
-        </section>
-
-        <!-- MURAL -->
-        <section id="secMuralScreen" class="hidden space-y-4">
-            <div class="flex justify-between items-center glass-panel p-4 rounded-2xl border border-white/10">
-                <h3 class="text-xs font-black uppercase text-amber-400"><i class="fas fa-bullhorn mr-1"></i> Relatos de Pertences Perdidos</h3>
-                <button onclick="carregarMuralSec()" class="text-xs text-white font-bold hover:text-red-400"><i class="fas fa-sync-alt"></i> Atualizar</button>
-            </div>
-            <div id="listaMuralSec" class="space-y-3"></div>
-        </section>
-
-        <!-- CHAT COM ALUNOS -->
-        <section id="secChatScreen" class="hidden space-y-4">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Conversas com Alunos:</h3>
-            <div id="listaConversasChat" class="space-y-2"></div>
-
-            <div id="painelConversaAtiva" class="hidden glass-panel rounded-2xl p-5 space-y-3 border border-white/10">
-                <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                    <div>
-                        <h4 id="chatAlunoNomeTitulo" class="font-bold text-sm text-white"></h4>
-                        <p id="chatAlunoRmSub" class="text-[10px] text-slate-400"></p>
-                    </div>
-                    <button onclick="fecharConversaAtiva()" class="text-xs text-slate-400 hover:text-white"><i class="fas fa-arrow-left"></i> Voltar</button>
-                </div>
-                <div id="chatSecMensagens" class="h-64 overflow-y-auto space-y-2.5 bg-black/20 p-3.5 rounded-xl text-xs scrollbar-thin"></div>
-                <form onsubmit="enviarMensagemSecretaria(event)" class="flex gap-2">
-                    <input type="text" id="inputMsgSec" placeholder="Responder aluno..." class="flex-grow bg-[#0d1117] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-red-500">
-                    <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition">Enviar</button>
-                </form>
-            </div>
-        </section>
-    </main>
-
-    <!-- MODAL DE IMPRESSÃO EM LOTE (FOLHA A4 COM ETIQUETAS QR) -->
-    <div id="modalImpressaoLote" class="hidden fixed inset-0 z-[350] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-[#161c28] border border-white/15 w-full max-w-4xl rounded-3xl p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                <div>
-                    <h3 class="font-black text-white text-base flex items-center gap-2">
-                        <i class="fas fa-print text-purple-400"></i> Folha A4 com Etiquetas QR Code
-                    </h3>
-                    <p class="text-xs text-slate-400">Pronta para impressão em impressora padrão, recorte e etiquetagem dos objetos.</p>
-                </div>
-                <button onclick="fecharModalImpressaoLote()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-
-            <!-- CONTROLES -->
-            <div class="flex flex-wrap items-center justify-between gap-3 bg-[#0d1117] p-3 rounded-2xl border border-white/5 text-xs">
-                <div class="flex items-center gap-2">
-                    <span class="text-slate-400 font-bold">Filtrar:</span>
-                    <select id="filtroStatusLote" onchange="renderizarGradeEtiquetasLote()" class="bg-[#161c28] text-white border border-white/10 rounded-xl px-3 py-1.5">
-                        <option value="DISPONÍVEL">Itens Disponíveis</option>
-                        <option value="TODOS">Todos os Itens do Catálogo</option>
-                    </select>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="window.print()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-md transition">
-                        <i class="fas fa-print"></i> Imprimir Folha A4
-                    </button>
-                </div>
-            </div>
-
-            <!-- ÁREA DA FOLHA DE ETIQUETAS -->
-            <div class="bg-white p-4 sm:p-6 rounded-2xl text-black" id="folhaA4Impressao">
-                <!-- Etiquetas geradas dinamicamente aqui -->
-            </div>
-        </div>
+  <!-- Drawer Lateral com todas as abas -->
+  <aside id="menuLateral" class="menu-lateral">
+    <div class="menu-topo">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-shield-alt" style="color: #dc2626;"></i>
+        <span style="font-weight: 700; color: #ffffff; font-size: 13.5px;">Painel Secretaria</span>
+      </div>
+      <button onclick="toggleMenuHamburger()" class="btn-fechar-menu">&times;</button>
     </div>
 
-    <!-- MODAL DO SCANNER QR CODE -->
-    <div id="modalScannerQR" class="hidden fixed inset-0 z-[500] bg-black/95 flex flex-col items-center justify-center p-4">
-        <div class="w-full max-w-sm glass-panel rounded-3xl overflow-hidden shadow-2xl relative border border-white/10">
-            <div class="p-4 flex justify-between items-center border-b border-white/10">
-                <h3 class="font-bold text-white text-sm"><i class="fas fa-camera text-blue-400 mr-2"></i>Escaneie a Etiqueta</h3>
-                <button onclick="fecharLeitorQR()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="readerBox" class="w-full bg-black min-h-[300px]"></div>
-            <div class="p-4 text-center">
-                <p class="text-xs text-slate-400">Aponte a câmera para o QR code da etiqueta física (ETEC-ITEM-XX).</p>
-            </div>
-        </div>
+    <nav class="menu-itens-lista">
+      <button onclick="trocarAba('itens')" class="item-menu active" id="menuAba-itens">
+        <i class="fas fa-boxes" style="color: #ef4444;"></i>
+        <span>Estoque / Itens</span>
+      </button>
+
+      <button onclick="trocarAba('categorias')" class="item-menu" id="menuAba-categorias">
+        <i class="fas fa-folder-open" style="color: #f59e0b;"></i>
+        <span>Categorias</span>
+      </button>
+
+      <button onclick="trocarAba('dashboard')" class="item-menu" id="menuAba-dashboard">
+        <i class="fas fa-chart-pie" style="color: #3b82f6;"></i>
+        <span>Dashboard & Métricas</span>
+      </button>
+
+      <button onclick="trocarAba('entregues')" class="item-menu" id="menuAba-entregues">
+        <i class="fas fa-history" style="color: #06b6d4;"></i>
+        <span>Histórico de Entregas</span>
+      </button>
+
+      <button onclick="trocarAba('doacoes')" class="item-menu" id="menuAba-doacoes">
+        <i class="fas fa-gift" style="color: #a855f7;"></i>
+        <span>Doações</span>
+      </button>
+
+      <button onclick="trocarAba('mural')" class="item-menu" id="menuAba-mural">
+        <i class="fas fa-bullhorn" style="color: #f97316;"></i>
+        <span>Mural de Relatos</span>
+      </button>
+
+      <button onclick="trocarAba('chat')" class="item-menu" id="menuAba-chat">
+        <i class="fas fa-comments" style="color: #10b981;"></i>
+        <span>Chat com Alunos</span>
+      </button>
+    </nav>
+
+    <div class="menu-rodape">
+      <button onclick="sairSecretaria()" class="btn-desconectar">
+        <i class="fas fa-sign-out-alt"></i> Sair da Secretaria
+      </button>
     </div>
+  </aside>
 
-    <!-- MODAL DE ETIQUETA QR INDIVIDUAL -->
-    <div id="modalGerarEtiqueta" class="hidden fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl w-full max-w-xs p-6 shadow-2xl text-center space-y-4 border border-slate-200">
-            <div class="flex justify-between items-center text-black mb-2">
-                <h3 class="font-black text-sm uppercase">Etiqueta do Item</h3>
-                <button onclick="document.getElementById('modalGerarEtiqueta').classList.add('hidden')" class="text-slate-500 hover:text-black"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex justify-center items-center">
-                <img id="imgEtiquetaPreview" src="" class="w-48 h-auto">
-            </div>
-            <div class="space-y-2 pt-2">
-                <button id="btnBaixarPNG" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-md flex items-center justify-center gap-2">
-                    <i class="fas fa-download"></i> Baixar Imagem (PNG)
-                </button>
-                <button id="btnImprimirWeb" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl text-xs uppercase shadow-md flex items-center justify-center gap-2">
-                    <i class="fas fa-print"></i> Imprimir Etiqueta
-                </button>
-            </div>
+  <!-- CONTEÚDO PRINCIPAL DAS ABAS -->
+  <main class="conteudo-pagina">
+
+    <!-- 1. ABA ESTOQUE / ITENS (FOTO 1) -->
+    <section id="secao-itens">
+      <!-- Bloco de Ações Rápidas Ajustado -->
+      <div class="acoes-container">
+        <!-- Linha 1: Cadastrar Item -->
+        <button onclick="abrirModalCadastrar()" class="btn-novo-item">
+          <i class="fas fa-plus-circle"></i> CADASTRAR ITEM
+        </button>
+
+        <!-- Linha 2: Três botões com nome e ícone (Foto 1) -->
+        <div class="botoes-secundarios-grid">
+          <button onclick="gerarFolhaEtiquetasA4()" class="btn-acao btn-etiquetas" title="Gerar Folha A4 com QR Codes">
+            <i class="fas fa-print"></i>
+            <span>Etiquetas</span>
+          </button>
+          <button onclick="exportarRelatorioCSV()" class="btn-acao btn-relatorio" title="Exportar Planilha CSV">
+            <i class="fas fa-file-excel"></i>
+            <span>Relatório</span>
+          </button>
+          <button onclick="abrirLeitorQR()" class="btn-acao btn-scanner" title="Escanear com Câmera">
+            <i class="fas fa-qrcode"></i>
+            <span>Ler QR</span>
+          </button>
         </div>
-    </div>
+      </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO DE AÇÃO -->
-    <div id="modalConfirmacao" class="hidden fixed inset-0 z-[400] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel border border-white/10 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl text-center">
-            <div class="w-14 h-14 rounded-2xl bg-red-600/20 text-red-400 flex items-center justify-center text-2xl mx-auto border border-red-500/30">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <h3 id="modalConfirmTitulo" class="font-black text-lg text-white">Atenção</h3>
-            <p id="modalConfirmMsg" class="text-xs text-slate-300"></p>
-            <div class="flex gap-2 pt-2">
-                <button onclick="fecharModalConfirmacao()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase transition">Cancelar</button>
-                <button id="btnConfirmarAcao" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs uppercase transition">Confirmar</button>
-            </div>
+      <!-- Barra de Busca -->
+      <div class="busca-container">
+        <i class="fas fa-search"></i>
+        <input type="text" id="inputBusca" class="input-busca-geral" placeholder="Buscar item por ID, nome ou descrição..." oninput="filtrarItensNaTela()">
+      </div>
+
+      <!-- Filtros em Pílulas -->
+      <div class="filtros-scroll">
+        <button class="pilula-filtro active" onclick="aplicarFiltroStatus('TODOS', this)">Todos</button>
+        <button class="pilula-filtro" onclick="aplicarFiltroStatus('SOLICITADO', this)">
+          <span style="color: #f59e0b;">●</span> Reivindicados
+        </button>
+        <button class="pilula-filtro" onclick="aplicarFiltroStatus('DISPONÍVEL', this)">
+          <span style="color: #10b981;">●</span> Disponíveis
+        </button>
+        <button class="pilula-filtro" onclick="aplicarFiltroStatus('PARA DOAÇÃO', this)">
+          <span style="color: #a855f7;">●</span> Doações
+        </button>
+      </div>
+
+      <!-- Lista de Itens Renderizada -->
+      <div id="gridItensContainer" class="grid-itens">
+        <div class="text-center py-8" style="color: #8b949e; font-size: 13px;">Carregando itens...</div>
+      </div>
+    </section>
+
+    <!-- 2. ABA CATEGORIAS -->
+    <section id="secao-categorias" class="hidden">
+      <h2 class="secao-titulo"><i class="fas fa-folder-open" style="color: #f59e0b;"></i> Gerenciar Categorias</h2>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" id="inputNovaCat" class="campo-input" placeholder="Nome da categoria (ex: LIVROS)">
+        <button onclick="adicionarCategoriaWeb()" class="btn-novo-item" style="width: auto; padding: 9px 16px;">Adicionar</button>
+      </div>
+      <div class="tabela-container">
+        <table>
+          <thead><tr><th>Nome</th><th style="text-align: center; width: 60px;">Ação</th></tr></thead>
+          <tbody id="tabelaCategoriasBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. ABA DASHBOARD -->
+    <section id="secao-dashboard" class="hidden">
+      <h2 class="secao-titulo"><i class="fas fa-chart-pie" style="color: #3b82f6;"></i> Visão Geral</h2>
+      <div class="grid-dashboard-cards">
+        <div class="card-dash"><div class="card-dash-titulo">TOTAL DE ITENS</div><div class="card-dash-valor" style="color: #3b82f6;" id="dashTotalItens">0</div></div>
+        <div class="card-dash"><div class="card-dash-titulo">ITENS ENTREGUES</div><div class="card-dash-valor" style="color: #10b981;" id="dashTotalEntregues">0</div></div>
+        <div class="card-dash"><div class="card-dash-titulo">DOAÇÕES</div><div class="card-dash-valor" style="color: #f59e0b;" id="dashTotalDoacoes">0</div></div>
+      </div>
+      <div class="card-dash mb-4" style="text-align: left; margin-bottom: 14px;">
+        <h3 id="dashTaxaDevolucao" style="font-size: 14px; color: #10b981; font-weight: 700; margin-bottom: 4px;">Taxa de Devolução: 0%</h3>
+        <p id="dashDestaqueCategorias" style="font-size: 11.5px; color: #8b949e;">Categorias mais frequentes: Carregando...</p>
+      </div>
+      <button onclick="carregarDashboard()" class="btn-novo-item" style="background: #21262d; border: 1px solid #30363d;">
+        <i class="fas fa-sync-alt"></i> Atualizar Dados
+      </button>
+    </section>
+
+    <!-- 4. ABA HISTÓRICO DE ENTREGAS -->
+    <section id="secao-entregues" class="hidden">
+      <h2 class="secao-titulo"><i class="fas fa-history" style="color: #06b6d4;"></i> Histórico de Entregas</h2>
+      <div class="tabela-container">
+        <table>
+          <thead><tr><th>ID</th><th>Item</th><th>Retirado Por</th><th>RM</th><th>Data</th><th>Ação</th></tr></thead>
+          <tbody id="tabelaEntreguesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 5. ABA DOAÇÕES -->
+    <section id="secao-doacoes" class="hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 class="secao-titulo" style="margin-bottom: 0;"><i class="fas fa-gift" style="color: #a855f7;"></i> Itens para Doação</h2>
+        <button onclick="concluirTodasDoacoes()" class="btn-acao btn-relatorio" style="background: #f59e0b; color: #0d1117;">Concluir Doações</button>
+      </div>
+      <div class="tabela-container">
+        <table>
+          <thead><tr><th>ID</th><th>Item</th><th>Categoria</th><th>Status</th></tr></thead>
+          <tbody id="tabelaDoacoesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. ABA MURAL DE RELATOS -->
+    <section id="secao-mural" class="hidden">
+      <h2 class="secao-titulo"><i class="fas fa-bullhorn" style="color: #f97316;"></i> Mural de Relatos</h2>
+      <div class="tabela-container">
+        <table>
+          <thead><tr><th>Aluno</th><th>RM</th><th>Descrição</th><th>Data</th><th>Ação</th></tr></thead>
+          <tbody id="tabelaMuralBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7. ABA CHAT -->
+    <section id="secao-chat" class="hidden">
+      <h2 class="secao-titulo"><i class="fas fa-comments" style="color: #10b981;"></i> Chat Alunos</h2>
+      <div class="chat-layout">
+        <div id="chatTituloAluno" class="chat-header">Selecione uma conversa</div>
+        <div id="chatMensagensContainer" class="chat-mensagens-box">
+          <div style="color: #8b949e; margin: auto;">Nenhuma conversa ativa</div>
         </div>
-    </div>
+        <form onsubmit="enviarMensagemSecretaria(event)" class="chat-input-bar">
+          <input type="text" id="inputChatMsg" class="campo-input" placeholder="Digite uma resposta..." style="margin-bottom: 0;">
+          <button type="submit" class="btn-novo-item" style="width: auto; padding: 0 16px;"><i class="fas fa-paper-plane"></i></button>
+        </form>
+      </div>
+    </section>
 
-    <!-- MODAL DE DETALHES DO ITEM -->
-    <div id="modalAcoesItem" class="hidden fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <div class="glass-panel border border-white/10 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-                <h3 class="font-bold text-white text-base"><i class="fas fa-clipboard-list text-red-500 mr-2"></i>Detalhes do Item</h3>
-                <button onclick="fecharModalAcoesItem()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-            
-            <div class="p-3.5 rounded-2xl bg-[#0d1117] border border-white/5 space-y-3">
-                <div id="acaoItemGaleria" class="flex gap-2 overflow-x-auto scrollbar-none pb-1"></div>
-                <div>
-                    <div class="flex gap-2 mb-1.5">
-                        <span id="acaoItemCat" class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-white/5 text-slate-300 border border-white/10"></span>
-                        <span id="acaoItemStatus" class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border"></span>
-                    </div>
-                    <h4 id="acaoItemTitulo" class="font-extrabold text-base text-white"></h4>
-                    <p id="acaoItemLocal" class="text-xs text-slate-400 mt-1"></p>
-                </div>
-            </div>
+  </main>
 
-            <div class="space-y-1.5 text-xs text-slate-300">
-                <p><span class="text-slate-500 font-bold uppercase">ID no Sistema:</span> <span id="acaoItemId" class="font-black text-blue-400"></span></p>
-                <p><span class="text-slate-500 font-bold uppercase">Descrição:</span> <span id="acaoItemDesc"></span></p>
-                <p><span class="text-slate-500 font-bold uppercase">Data:</span> <span id="acaoItemData"></span></p>
-            </div>
+  <!-- MODAIS (CADASTRO, DETALHES, BAIXA, SCANNER) -->
 
-            <div id="acaoItemSolicitanteBox" class="hidden bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl">
-                <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-0.5">Solicitado por Aluno:</p>
-                <p id="acaoItemSolicitanteNome" class="text-xs text-white font-bold"></p>
-                <p id="acaoItemSolicitanteRm" class="text-[11px] text-slate-400"></p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-white/10">
-                <button id="btnAcaoGerarQR" class="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-2 col-span-2"><i class="fas fa-qrcode"></i> Gerar Etiqueta QR</button>
-                <button id="btnAcaoEditar" class="bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-2"><i class="fas fa-edit"></i> Editar</button>
-                <button id="btnAcaoBaixa" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-2"><i class="fas fa-check"></i> Dar Baixa</button>
-                <button id="btnAcaoRecusar" class="hidden bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-2 col-span-2"><i class="fas fa-ban"></i> Recusar Solicitação</button>
-                <button id="btnAcaoDoacao" class="bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-2 col-span-2"><i class="fas fa-gift"></i> Marcar como Doação</button>
-                <button id="btnAcaoExcluir" class="col-span-2 bg-red-950/40 border border-red-800 text-red-400 py-3 rounded-xl hover:bg-red-900/40 transition text-xs font-bold flex items-center justify-center gap-2"><i class="fas fa-trash"></i> Excluir Item</button>
-            </div>
+  <!-- Modal Cadastrar / Editar -->
+  <div id="modalFormItem" class="modal-overlay hidden">
+    <div class="modal-box">
+      <button onclick="fecharModal('modalFormItem')" class="modal-fechar">&times;</button>
+      <h3 id="modalFormTitulo" class="modal-titulo">Cadastrar Objeto</h3>
+      <form onsubmit="salvarItemForm(event)">
+        <input type="hidden" id="formItemId">
+        <div class="campo-grupo"><label>Nome / Título Curto</label><input type="text" id="formItemNome" class="campo-input" required></div>
+        <div class="campo-grupo"><label>Descrição Detalhada</label><input type="text" id="formItemDescricao" class="campo-input" required></div>
+        <div class="campo-grupo"><label>Categoria</label><select id="formItemCategoria" class="campo-input"></select></div>
+        <div class="campo-grupo"><label>Local Encontrado</label><input type="text" id="formItemLocal" class="campo-input"></div>
+        <div class="campo-grupo"><label>Data Encontrado</label><input type="text" id="formItemData" class="campo-input"></div>
+        <div class="campo-grupo">
+          <label>Status</label>
+          <select id="formItemStatus" class="campo-input">
+            <option value="DISPONÍVEL">DISPONÍVEL</option>
+            <option value="SOLICITADO">SOLICITADO</option>
+            <option value="ENTREGUE">ENTREGUE</option>
+            <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
+          </select>
         </div>
-    </div>
-
-    <!-- MODAL DE CADASTRO / EDIÇÃO -->
-    <div id="modalCadastrar" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-        <div class="glass-panel border border-white/10 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl my-8">
-            <div class="flex justify-between items-center">
-                <h3 id="modalTituloForm" class="font-bold text-white text-base"><i class="fas fa-box text-red-500 mr-2"></i>Cadastrar Objeto</h3>
-                <button onclick="fecharModalCadastrar()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-            <form id="formCadastrarItem" onsubmit="salvarItemSecretaria(event)" class="space-y-3">
-                <input type="hidden" id="editItemId">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Título:</label>
-                    <input type="text" id="cadNome" required class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descrição Detalhada:</label>
-                    <textarea id="cadDescricao" required rows="2" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Categoria:</label>
-                        <select id="cadCategoria" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Data:</label>
-                        <input type="text" id="cadData" required class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Local:</label>
-                        <input type="text" id="cadLocal" required class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Status:</label>
-                        <select id="cadStatus" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500">
-                            <option value="DISPONÍVEL">DISPONÍVEL</option>
-                            <option value="SOLICITADO">SOLICITADO</option>
-                            <option value="ENTREGUE">ENTREGUE</option>
-                            <option value="PARA DOAÇÃO">PARA DOAÇÃO</option>
-                            <option value="DOAÇÃO FEITA">DOAÇÃO FEITA</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Fotos do Item (Até 4):</label>
-                    <input type="file" id="cadFotoFile" accept="image/*" multiple onchange="adicionarFotosEdicao(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
-                    <div id="gridFotosEdicao" class="mt-2 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
-                </div>
-                <div class="flex gap-2 pt-3">
-                    <button type="button" onclick="fecharModalCadastrar()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
-                    <button type="submit" id="btnSalvarItem" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs uppercase">Salvar Objeto</button>
-                </div>
-            </form>
+        <div class="campo-grupo">
+          <label>Fotos (Até 4)</label>
+          <input type="file" id="formItemFotosInput" class="campo-input" accept="image/*" multiple onchange="processarFotosInput(this)">
+          <div id="formFotosStatus" style="font-size: 11px; color: #8b949e; margin-top: 4px;">Nenhuma foto selecionada</div>
         </div>
+        <button type="submit" id="btnSalvarItem" class="btn-novo-item" style="background: #059669; margin-top: 10px;">Gravar no Banco</button>
+      </form>
     </div>
+  </div>
 
-    <!-- MODAL DE BAIXA E COMPROVANTE COM ASSINATURA TOUCH -->
-    <div id="modalBaixa" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel border border-white/10 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl max-h-[95vh] overflow-y-auto">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-base"><i class="fas fa-check-circle text-emerald-400 mr-2"></i>Registrar Entrega</h3>
-                <button onclick="fecharModalBaixa()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-            <input type="hidden" id="baixaItemId">
-            <div class="space-y-3">
-                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nome Completo do Retirante:</label><input type="text" id="baixaNome" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
-                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">RM do Aluno:</label><input type="text" id="baixaRm" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
-                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Turma / Curso:</label><input type="text" id="baixaTurma" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
-
-                <!-- ASSINATURA DIGITAL DO ALUNO (TOUCH/CANETA/MOUSE) -->
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="block text-xs font-bold text-slate-400 uppercase">Assinatura do Aluno na Tela:</label>
-                        <button type="button" onclick="limparCanvasAssinatura()" class="text-[11px] text-rose-400 hover:text-white font-semibold">Limpar</button>
-                    </div>
-                    <div class="border border-white/15 rounded-xl bg-white overflow-hidden touch-none relative">
-                        <canvas id="canvasAssinatura" width="380" height="120" class="w-full h-28 cursor-crosshair bg-white"></canvas>
-                    </div>
-                    <p class="text-[10px] text-slate-500 mt-1">O aluno pode assinar com o dedo ou caneta diretamente na tela.</p>
-                </div>
-            </div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="fecharModalBaixa()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
-                <button onclick="confirmarBaixaEntrega()" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs uppercase transition">Concluir Entrega</button>
-            </div>
-        </div>
+  <!-- Modal Detalhes -->
+  <div id="modalDetalhesItem" class="modal-overlay hidden">
+    <div class="modal-box">
+      <button onclick="fecharModal('modalDetalhesItem')" class="modal-fechar">&times;</button>
+      <h3 id="detalheItemTitulo" class="modal-titulo">Detalhes do Objeto</h3>
+      <div id="detalhesInfoCard" class="card-dash" style="text-align: left; font-size: 13px; line-height: 1.5; margin-bottom: 12px;"></div>
+      <div style="font-weight: 700; color: #ffffff; font-size: 12.5px; margin-bottom: 6px;">Galeria de Fotos:</div>
+      <div id="detalhesGaleriaFotos" style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px;"></div>
+      <div id="detalhesBotoesAcao" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
     </div>
+  </div>
 
-    <!-- COMPROVANTE PARA IMPRESSÃO -->
-    <div id="modalComprovante" class="hidden fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white text-black w-full max-w-xl rounded-3xl p-8 space-y-6 shadow-2xl my-6" id="comprovantePrintArea">
-            <div class="text-center border-b pb-4 space-y-1">
-                <h2 class="font-black text-lg uppercase">ETEC Profº José Ignácio Azevedo Filho</h2>
-                <p class="text-xs font-semibold text-gray-600">Termo de Retirada de Objeto - Achados e Perdidos</p>
-            </div>
-            <div class="space-y-3 text-xs">
-                <div class="bg-gray-100 p-3.5 rounded-xl space-y-1">
-                    <p class="font-bold uppercase text-gray-700 mb-1">Dados do Aluno Retirante:</p>
-                    <p><strong>Nome:</strong> <span id="compNomeAluno"></span></p>
-                    <p><strong>RM:</strong> <span id="compRmAluno"></span></p>
-                    <p><strong>Turma/Curso:</strong> <span id="compTurmaAluno"></span></p>
-                </div>
-                <div class="bg-gray-100 p-3.5 rounded-xl space-y-1">
-                    <p class="font-bold uppercase text-gray-700 mb-1">Informações do Item Devolvido:</p>
-                    <p><strong>Item:</strong> <span id="compNomeItem"></span></p>
-                    <p><strong>Descrição:</strong> <span id="compDescItem"></span></p>
-                    <p><strong>Local Encontrado:</strong> <span id="compLocalItem"></span></p>
-                    <p><strong>Data da Entrega:</strong> <span id="compDataEntrega"></span></p>
-                </div>
-                <p class="text-[11px] text-gray-700 italic pt-2">
-                    Declaro para os devidos fins que retirei o objeto acima nas dependências da secretaria da ETEC, atestando seu recebimento e perfeito estado.
-                </p>
-            </div>
-            <div class="grid grid-cols-2 gap-8 pt-6 text-center text-xs">
-                <div class="space-y-2 flex flex-col justify-end">
-                    <div id="areaImgAssinatura" class="min-h-[50px] flex items-center justify-center">
-                        <img id="compAssinaturaImg" class="h-14 max-w-full object-contain hidden" />
-                    </div>
-                    <div class="border-b border-black pb-1"></div>
-                    <p class="font-bold">Assinatura do Aluno</p>
-                </div>
-                <div class="space-y-2 flex flex-col justify-end">
-                    <div class="min-h-[50px]"></div>
-                    <div class="border-b border-black pb-1"></div>
-                    <p class="font-bold">Responsável (Secretaria)</p>
-                </div>
-            </div>
-            <div class="flex gap-3 pt-4 no-print">
-                <button onclick="window.print()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase transition flex items-center justify-center gap-2">
-                    <i class="fas fa-print"></i> Imprimir Termo
-                </button>
-                <button onclick="fecharComprovante()" class="w-1/2 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl text-xs uppercase transition">Fechar</button>
-            </div>
-        </div>
+  <!-- Modal Dar Baixa -->
+  <div id="modalDarBaixa" class="modal-overlay hidden">
+    <div class="modal-box">
+      <button onclick="fecharModal('modalDarBaixa')" class="modal-fechar">&times;</button>
+      <h3 class="modal-titulo" style="color: #10b981;">Registrar Entrega</h3>
+      <form onsubmit="confirmarBaixaEntrega(event)">
+        <input type="hidden" id="baixaItemId">
+        <div class="campo-grupo"><label>Nome do Aluno</label><input type="text" id="baixaNomeAluno" class="campo-input" required></div>
+        <div class="campo-grupo"><label>RM</label><input type="text" id="baixaRmAluno" class="campo-input" required></div>
+        <div class="campo-grupo"><label>Turma / Curso</label><input type="text" id="baixaTurmaAluno" class="campo-input"></div>
+        <button type="submit" class="btn-novo-item" style="background: #10b981; margin-top: 10px;">Confirmar Entrega</button>
+      </form>
     </div>
+  </div>
 
-    <!-- SCRIPT DA SECRETARIA -->
-    <script>
-        const API_URL = "https://etec-achados.up.railway.app";
-        let tokenSecretaria = null;
-        let itensSec = [];
-        let itensPendentesSec = [];
-        let categoriasSec = [];
-        let statusFiltroSec = 'TODOS';
-        let chatRmAtivo = null;
-        let chatPollTimer = null;
-        let acaoConfirmacaoCallback = null;
-        let html5QrcodeScanner = null;
-        let fotosEdicaoAtuais = [];
+  <!-- Modal Comprovante -->
+  <div id="modalComprovante" class="modal-overlay hidden">
+    <div class="modal-box" style="background: #ffffff; color: #000000;">
+      <button onclick="fecharModal('modalComprovante')" class="modal-fechar" style="color: #000000;">&times;</button>
+      <div style="text-align: center; padding: 6px 0;">
+        <h3 style="font-size: 14px; font-weight: 800;">ETEC PROFº JOSÉ IGNÁCIO AZEVEDO FILHO</h3>
+        <p style="font-size: 11px; color: #4b5563; margin-bottom: 12px;">Termo Oficial de Retirada</p>
+        <div id="comprovanteDadosBox" style="background: #f3f4f6; border-radius: 6px; padding: 12px; text-align: left; font-size: 12.5px; line-height: 1.5; border: 1px solid #e5e7eb;"></div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button onclick="baixarComprovanteTexto()" class="btn-acao btn-scanner" style="flex: 1;"><i class="fas fa-download"></i> Baixar TXT</button>
+        <button onclick="window.print()" class="btn-acao btn-etiquetas" style="flex: 1;"><i class="fas fa-print"></i> Imprimir</button>
+      </div>
+    </div>
+  </div>
 
-        // Gráficos Chart.js
-        let chartCategorias = null;
-        let chartStatus = null;
+  <!-- Modal Scanner Câmera QR -->
+  <div id="modalScanner" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 380px; text-align: center;">
+      <button onclick="fecharLeitorQR()" class="modal-fechar">&times;</button>
+      <h3 class="modal-titulo" style="color: #3b82f6;">Leitor de Etiqueta QR</h3>
+      <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div>
+      <p style="font-size: 11px; color: #8b949e; margin-top: 8px;">Aponte para o QR Code da etiqueta</p>
+    </div>
+  </div>
 
-        // Canvas de Assinatura
-        let canvasAssinatura, ctxAssinatura;
-        let desenhando = false;
-        let assinou = false;
+  <div id="toast" class="hidden"></div>
 
-        const getAuthHeaders = () => {
-            const tokenAtual = (tokenSecretaria || localStorage.getItem('secretaria_token') || '').trim();
-            return { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${tokenAtual}` 
-            };
-        };
+  <!-- JAVASCRIPT DO SISTEMA -->
+  <script>
+    const API_URL = "https://etec-achados.up.railway.app";
+    let tokenSecretaria = null;
+    let itensSec = [];
+    let categoriasSec = [];
+    let chatRmAtivo = null;
+    let chatPollTimer = null;
+    let html5QrScannerInstance = null;
+    let fotosBase64Upload = [];
+    let filtroStatusAtual = 'TODOS';
+    let comprovanteDadosTexto = "";
 
-        const getAuthHeadersGet = () => {
-            const tokenAtual = (tokenSecretaria || localStorage.getItem('secretaria_token') || '').trim();
-            return { 
-                'Authorization': `Bearer ${tokenAtual}` 
-            };
-        };
+    const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
+    const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
 
-        // COMPRESSÃO DE FOTOS NO PAINEL WEB DA SECRETARIA
-        function comprimirImagem(arquivo, maxDim = 1200, qualidade = 0.75) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        let w = img.width;
-                        let h = img.height;
-                        if (w > maxDim || h > maxDim) {
-                            if (w > h) {
-                                h = Math.round((h * maxDim) / w);
-                                w = maxDim;
-                            } else {
-                                w = Math.round((w * maxDim) / h);
-                                h = maxDim;
-                            }
-                        }
-                        const canvas = document.createElement('canvas');
-                        canvas.width = w;
-                        canvas.height = h;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, w, h);
-                        resolve(canvas.toDataURL('image/jpeg', qualidade));
-                    };
-                    img.onerror = reject;
-                    img.src = e.target.result;
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(arquivo);
-            });
-        }
+    window.addEventListener('DOMContentLoaded', () => {
+      const salvo = localStorage.getItem('secretaria_token');
+      if (salvo) {
+        tokenSecretaria = salvo;
+        document.getElementById('loginScreen').classList.add('hidden');
+        carregarTudo();
+      }
+    });
 
-        // DETECÇÃO DE STATUS DE REDE NA SECRETARIA
-        window.addEventListener('offline', () => {
-            const el = document.getElementById('statusSessaoHeader');
-            if (el) el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Sem Internet (Offline)`;
-            mostrarToast("Sem conexão com a internet.", "error");
+    function mostrarToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    function toggleSenhaVisivel() {
+      const inp = document.getElementById('loginSenhaInput');
+      const ico = document.getElementById('iconToggleSenha');
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        ico.classList.replace('fa-eye', 'fa-eye-slash');
+      } else {
+        inp.type = 'password';
+        ico.classList.replace('fa-eye-slash', 'fa-eye');
+      }
+    }
+
+    /* LOGIN / LOGOUT */
+    async function fazerLoginSec(e) {
+      if (e) e.preventDefault();
+      const erro = document.getElementById('loginErroMsg');
+      const email = document.getElementById('loginEmailInput').value.trim();
+      const senha = document.getElementById('loginSenhaInput').value.trim();
+      const btn = document.getElementById('btnLoginSec');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Conectando...`;
+      erro.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API_URL}/api/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
         });
-
-        window.addEventListener('online', () => {
-            const el = document.getElementById('statusSessaoHeader');
-            if (el) el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Sessão Administrativa Ativa`;
-            mostrarToast("Conexão restabelecida!", "success");
-            carregarItensSecretaria();
-        });
-
-        function toggleSenhaVisivel() {
-            const input = document.getElementById('loginSenhaInput');
-            const icon = document.getElementById('iconToggleSenha');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
+        const data = await res.json();
+        if (res.ok && data.success && data.token) {
+          tokenSecretaria = data.token;
+          localStorage.setItem('secretaria_token', tokenSecretaria);
+          document.getElementById('loginScreen').classList.add('hidden');
+          mostrarToast("Acesso Liberado!");
+          carregarTudo();
+        } else {
+          erro.innerText = data.message || "E-mail ou senha incorretos.";
+          erro.classList.remove('hidden');
         }
+      } catch (err) {
+        erro.innerText = "Erro ao conectar com o servidor.";
+        erro.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Entrar no Painel</span>`;
+      }
+    }
 
-        window.onload = async () => {
-            inicializarCanvasAssinatura();
-            const tokenSalvo = localStorage.getItem('secretaria_token');
-            if (tokenSalvo) {
-                tokenSecretaria = tokenSalvo.trim();
-                try {
-                    const res = await fetch(`${API_URL}/api/auth/verificar`, { headers: getAuthHeadersGet() });
-                    if (res.status === 401) {
-                        sairSecretaria(false);
-                        mostrarToast("Sua sessão expirou. Faça login novamente.", "info");
-                        return;
-                    }
-                } catch(e) {}
+    function sairSecretaria() {
+      localStorage.removeItem('secretaria_token');
+      window.location.reload();
+    }
 
-                const loginScreen = document.getElementById('loginScreen');
-                if (loginScreen) {
-                    loginScreen.style.display = 'none';
-                    loginScreen.classList.add('hidden');
-                }
-                
-                carregarItensSecretaria();
-                carregarItensPendentes();
-                carregarCategorias();
-            }
-        };
+    /* MENU HAMBÚRGUER (FOTO 2) */
+    function toggleMenuHamburger() {
+      const menu = document.getElementById('menuLateral');
+      const backdrop = document.getElementById('menuBackdrop');
+      menu.classList.toggle('aberto');
+      backdrop.classList.toggle('hidden');
+    }
 
-        function sairSecretaria(recarregar = true) {
-            localStorage.removeItem('secretaria_token');
-            tokenSecretaria = null;
-            if (recarregar) window.location.reload();
-            else {
-                const loginScreen = document.getElementById('loginScreen');
-                if (loginScreen) {
-                    loginScreen.style.display = 'flex';
-                    loginScreen.classList.remove('hidden');
-                }
-            }
+    function trocarAba(abaId) {
+      toggleMenuHamburger();
+      ['itens', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat'].forEach(id => {
+        const el = document.getElementById(`secao-${id}`);
+        if (el) el.classList.add('hidden');
+        const btn = document.getElementById(`menuAba-${id}`);
+        if (btn) btn.classList.remove('active');
+      });
+
+      const sec = document.getElementById(`secao-${abaId}`);
+      if (sec) sec.classList.remove('hidden');
+      const btnMenu = document.getElementById(`menuAba-${abaId}`);
+      if (btnMenu) btnMenu.classList.add('active');
+
+      if (abaId === 'categorias') renderizarCategorias();
+      if (abaId === 'dashboard') carregarDashboard();
+      if (abaId === 'entregues') carregarEntregues();
+      if (abaId === 'doacoes') renderizarDoacoes();
+      if (abaId === 'mural') carregarMural();
+      if (abaId === 'chat') carregarConversasChat();
+    }
+
+    /* CARREGAMENTO DE DADOS */
+    async function carregarTudo() {
+      await carregarCategorias();
+      await carregarItensSecretaria();
+      iniciarPollingChat();
+    }
+
+    async function carregarCategorias() {
+      try {
+        const res = await fetch(`${API_URL}/api/categorias`);
+        if (res.ok) {
+          categoriasSec = await res.json();
+          const sel = document.getElementById('formItemCategoria');
+          if (sel) {
+            sel.innerHTML = categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+          }
         }
+      } catch (e) {}
+    }
 
-        async function fazerLoginSec(e) {
-            if (e && e.preventDefault) e.preventDefault();
+    async function carregarItensSecretaria() {
+      try {
+        const res = await fetch(`${API_URL}/api/itens`, { headers: getAuthHeadersGet() });
+        if (res.ok) {
+          itensSec = await res.json();
+          filtrarItensNaTela();
+        }
+      } catch (e) {}
+    }
 
-            const erroContainer = document.getElementById('loginErroContainer');
-            const erroEl = document.getElementById('loginErroMsg');
-            const emailInput = document.getElementById('loginEmailInput');
-            const senhaInput = document.getElementById('loginSenhaInput');
-            const btnLogin = document.getElementById('btnLoginSec');
+    /* FILTROS E CARDS (FOTO 1) */
+    function aplicarFiltroStatus(status, el) {
+      filtroStatusAtual = status;
+      document.querySelectorAll('.pilula-filtro').forEach(b => b.classList.remove('active'));
+      if (el) el.classList.add('active');
+      filtrarItensNaTela();
+    }
 
-            const email = (emailInput.value || '').trim();
-            const senha = (senhaInput.value || '').trim();
+    function filtrarItensNaTela() {
+      const container = document.getElementById('gridItensContainer');
+      const termo = (document.getElementById('inputBusca').value || '').trim().toLowerCase();
+      
+      const filtrados = itensSec.filter(item => {
+        const st = (item.status || 'DISPONÍVEL').toUpperCase();
+        if (filtroStatusAtual !== 'TODOS' && st !== filtroStatusAtual) return false;
+        if (filtroStatusAtual === 'TODOS' && (st === 'ENTREGUE' || st === 'DOAÇÃO FEITA')) return false;
 
-            if (!email || !senha) {
-                erroEl.innerText = "Preencha o e-mail e a senha!";
-                erroContainer.classList.remove('hidden');
-                return;
-            }
+        if (termo) {
+          const matchId = String(item.id).includes(termo);
+          const matchNome = (item.nome || '').toLowerCase().includes(termo);
+          const matchDesc = (item.txt_descricao || '').toLowerCase().includes(termo);
+          const matchLocal = (item.txt_local || '').toLowerCase().includes(termo);
+          if (!matchId && !matchNome && !matchDesc && !matchLocal) return false;
+        }
+        return true;
+      });
 
-            erroContainer.classList.add('hidden');
-            btnLogin.disabled = true;
-            btnLogin.innerHTML = `<i class="fas fa-circle-notch fa-spin text-sm"></i> Conectando...`;
+      if (!filtrados.length) {
+        container.innerHTML = `<div class="text-center py-8" style="color: #8b949e; font-size: 13px;">Nenhum item localizado.</div>`;
+        return;
+      }
 
+      container.innerHTML = filtrados.map(item => {
+        const st = (item.status || 'DISPONÍVEL').toUpperCase();
+        let statusCls = 'status-disponivel';
+        if (st === 'SOLICITADO') statusCls = 'status-solicitado';
+        if (st === 'PARA DOAÇÃO') statusCls = 'status-doacao';
+        if (st === 'ENTREGUE') statusCls = 'status-entregue';
+
+        const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
+        const fotoHtml = fotoUrl 
+          ? `<div class="item-foto-thumb"><img src="${fotoUrl}" alt="Foto" loading="lazy"></div>`
+          : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
+
+        return `
+          <div class="item-card" onclick="abrirDetalhesItem(${item.id})">
+            ${fotoHtml}
+            <div class="item-info">
+              <div class="item-badges">
+                <span class="badge-cat">${item.categoria || 'OUTROS'}</span>
+                <span class="badge-status ${statusCls}">${st}</span>
+              </div>
+              <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Sem Título'}</div>
+              <div class="item-local-data truncate">
+                <i class="fas fa-map-marker-alt"></i> ${item.txt_local || 'Local não informado'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* GERAÇÃO DE ETIQUETAS A4 COM QR CODE CORRIGIDO (FOTO 3) */
+    async function gerarFolhaEtiquetasA4() {
+      const disponiveis = (itensSec || []).filter(i => (i.status || 'DISPONÍVEL').toUpperCase() === 'DISPONÍVEL');
+      if (!disponiveis.length) return alert("Nenhum item com status DISPONÍVEL para gerar etiquetas.");
+
+      const btn = document.querySelector('.btn-etiquetas');
+      const txtAntigo = btn ? btn.innerHTML : '';
+      if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Gerando...</span>`;
+
+      function gerarQrBase64(texto) {
+        return new Promise(resolve => {
+          const tempDiv = document.createElement('div');
+          tempDiv.style.display = 'none';
+          document.body.appendChild(tempDiv);
+
+          if (typeof QRCode !== 'undefined') {
             try {
-                const res = await fetch(`${API_URL}/api/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ email: email, senha: senha })
-                });
+              new QRCode(tempDiv, {
+                text: texto,
+                width: 130,
+                height: 130,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+              });
 
-                const data = await res.json().catch(() => ({}));
-                
-                if (res.ok && data.success && data.token) {
-                    tokenSecretaria = data.token.trim();
-                    localStorage.setItem('secretaria_token', tokenSecretaria);
-                    
-                    const loginScreen = document.getElementById('loginScreen');
-                    if (loginScreen) {
-                        loginScreen.style.display = 'none';
-                        loginScreen.classList.add('hidden');
-                    }
-                    
-                    mostrarToast("Acesso administrativo autorizado!", "success");
-                    carregarItensSecretaria();
-                    carregarItensPendentes();
-                    carregarCategorias();
-                } else {
-                    const msg = data.message || "Acesso negado. Credenciais inválidas.";
-                    erroEl.innerText = msg;
-                    erroContainer.classList.remove('hidden');
-                    mostrarToast(msg, "error");
-                    senhaInput.value = '';
-                    senhaInput.focus();
+              setTimeout(() => {
+                const canvas = tempDiv.querySelector('canvas');
+                const img = tempDiv.querySelector('img');
+                let dataUrl = '';
+                if (canvas) dataUrl = canvas.toDataURL("image/png");
+                else if (img && img.src) dataUrl = img.src;
+
+                document.body.removeChild(tempDiv);
+                if (dataUrl && dataUrl.startsWith('data:image')) {
+                  return resolve(dataUrl);
                 }
-            } catch (err) {
-                const msgErro = "Erro ao conectar com o servidor Railway.";
-                erroEl.innerText = msgErro;
-                erroContainer.classList.remove('hidden');
-                mostrarToast(msgErro, "error");
-            } finally {
-                btnLogin.disabled = false;
-                btnLogin.innerHTML = `<span>Entrar no Painel</span>`;
-            }
-        }
-
-        function mostrarToast(mensagem, tipo = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            let icone = tipo === 'success' ? 'fa-check-circle text-emerald-400' : 'fa-exclamation-circle text-rose-400';
-            toast.className = `glass-panel text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 toast-enter border border-white/10 min-w-[280px] max-w-sm pointer-events-auto`;
-            toast.innerHTML = `<i class="fas ${icone} text-lg shrink-0"></i><p class="text-xs font-semibold flex-grow">${mensagem}</p>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
-        }
-
-        function exportarRelatorioCSV() {
-            if (!itensSec || itensSec.length === 0) {
-                return mostrarToast("Nenhum item carregado para exportar.", "error");
-            }
-            const colunas = ["ID", "Nome do Item", "Descrição", "Categoria", "Local", "Data Registro", "Status", "Solicitante / Retirado Por", "RM"];
-            let csvContent = "\uFEFF";
-            csvContent += colunas.join(";") + "\r\n";
-
-            itensSec.forEach(i => {
-                const id = i.id || "";
-                const nome = (i.nome || i.txt_descricao || "").replace(/;/g, ",");
-                const desc = (i.txt_descricao || "").replace(/;/g, ",").replace(/[\r\n]+/g, " ");
-                const cat = (i.categoria || "").replace(/;/g, ",");
-                const local = (i.txt_local || "").replace(/;/g, ",");
-                const data = (i.txt_data || "").replace(/;/g, ",");
-                const status = (i.status || "DISPONÍVEL").replace(/;/g, ",");
-                const solicitante = (i.solicitado_por || i.retirado_por || "").replace(/;/g, ",");
-                const rm = (i.rm_aluno || i.rm_retirante || "").replace(/;/g, ",");
-
-                csvContent += `"${id}";"${nome}";"${desc}";"${cat}";"${local}";"${data}";"${status}";"${solicitante}";"${rm}"\r\n`;
-            });
-
-            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `relatorio_etec_achados_${new Date().toISOString().slice(0, 10)}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            mostrarToast("Planilha CSV baixada com sucesso!", "success");
-        }
-
-        // ============================================================
-        // NOVO: IMPRESSÃO EM LOTE DE ETIQUETAS QR CODE (FOLHA A4)
-        // ============================================================
-        function abrirModalImpressaoLote() {
-            renderizarGradeEtiquetasLote();
-            document.getElementById('modalImpressaoLote').classList.remove('hidden');
-        }
-
-        function fecharModalImpressaoLote() {
-            document.getElementById('modalImpressaoLote').classList.add('hidden');
-        }
-
-        function renderizarGradeEtiquetasLote() {
-            const container = document.getElementById('folhaA4Impressao');
-            const filtro = document.getElementById('filtroStatusLote').value;
-            container.innerHTML = '';
-
-            const itensFiltrados = itensSec.filter(i => {
-                if (filtro === 'TODOS') return true;
-                return (i.status || 'DISPONÍVEL').toUpperCase() === filtro;
-            });
-
-            if (itensFiltrados.length === 0) {
-                container.innerHTML = `<p class="col-span-3 text-center text-slate-500 py-10 text-xs">Nenhum item com status ${filtro} para gerar etiquetas.</p>`;
-                return;
-            }
-
-            container.className = "grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white p-4 rounded-xl text-black";
-
-            itensFiltrados.forEach(item => {
-                const card = document.createElement('div');
-                card.className = "border-2 border-dashed border-gray-400 p-3 rounded-xl flex flex-col items-center justify-between text-center bg-white space-y-1 page-break-inside-avoid";
-                
-                const canvas = document.createElement('canvas');
-                new QRious({ element: canvas, value: `ETEC-ITEM-${item.id}`, size: 110, level: 'H' });
-
-                card.appendChild(canvas);
-                card.innerHTML += `
-                    <div class="mt-1 w-full">
-                        <span class="text-[10px] font-black uppercase bg-gray-200 px-2 py-0.5 rounded text-gray-800">${item.categoria}</span>
-                        <h5 class="font-black text-xs text-black mt-1 leading-tight line-clamp-1">#${item.id} - ${item.nome || item.txt_descricao}</h5>
-                        <p class="text-[9px] text-gray-500 mt-0.5">${item.txt_data || ''} | ${item.txt_local || ''}</p>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function abrirLeitorQR() {
-            document.getElementById('modalScannerQR').classList.remove('hidden');
-            html5QrcodeScanner = new Html5QrcodeScanner("readerBox", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-        }
-        function fecharLeitorQR() {
-            if (html5QrcodeScanner) { html5QrcodeScanner.clear().catch(() => {}); html5QrcodeScanner = null; }
-            document.getElementById('modalScannerQR').classList.add('hidden');
-            document.getElementById('readerBox').innerHTML = '';
-        }
-        function onScanSuccess(decodedText) {
-            if (decodedText.startsWith("ETEC-ITEM-")) {
-                fecharLeitorQR();
-                const itemId = parseInt(decodedText.replace("ETEC-ITEM-", ""));
-                if (itensSec.find(i => String(i.id) === String(itemId))) { 
-                    mostrarToast("Etiqueta validada!", "success"); 
-                    abrirModalAcoesItem(itemId); 
-                } else mostrarToast(`Item #${itemId} não encontrado no catálogo.`, "error");
-            } else mostrarToast("QR Code inválido.", "error");
-        }
-        function onScanFailure(error) { }
-
-        function gerarEtiquetaVisual(id) {
-            fecharModalAcoesItem();
-            const canvas = document.createElement('canvas');
-            canvas.width = 400; canvas.height = 460;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 400, 460);
-            const qr = new QRious({ value: `ETEC-ITEM-${id}`, size: 360, level: 'H' });
-            ctx.drawImage(qr.canvas, 20, 20);
-            ctx.fillStyle = "#000000"; ctx.font = "bold 40px Arial"; ctx.textAlign = "center";
-            ctx.fillText(`ID: ${id}`, 200, 430);
-            const dataUrl = canvas.toDataURL("image/png");
-            document.getElementById('imgEtiquetaPreview').src = dataUrl;
-            document.getElementById('btnBaixarPNG').onclick = () => { 
-                const link = document.createElement('a'); 
-                link.download = `etiqueta_qr_${id}.png`; 
-                link.href = dataUrl; 
-                link.click(); 
-            };
-            document.getElementById('btnImprimirWeb').onclick = () => { 
-                const win = window.open(''); 
-                win.document.write(`<html><head><title>Imprimir</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;}</style></head><body><img src="${dataUrl}"></body></html>`); 
-                win.document.close(); 
-                win.focus(); 
-                setTimeout(() => { win.print(); win.close(); }, 500); 
-            };
-            document.getElementById('modalGerarEtiqueta').classList.remove('hidden');
-        }
-
-        function mudarAbaSec(aba) {
-            ['itens', 'pendentes', 'stats', 'cats', 'entregues', 'chat', 'mural'].forEach(a => {
-                const el = document.getElementById(`sec${a.charAt(0).toUpperCase() + a.slice(1)}Screen`);
-                const btn = document.getElementById(`btnTab${a.charAt(0).toUpperCase() + a.slice(1)}`);
-                if (el) el.classList.add('hidden');
-                if (btn) btn.className = "px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition";
-            });
-            const telaAtiva = document.getElementById(`sec${aba.charAt(0).toUpperCase() + aba.slice(1)}Screen`);
-            const btnAtivo = document.getElementById(`btnTab${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
-            if (telaAtiva) telaAtiva.classList.remove('hidden');
-            if (btnAtivo) btnAtivo.className = "px-3 py-2 rounded-xl bg-red-600 text-white text-xs font-bold transition shadow-sm";
-
-            if (aba === 'pendentes') carregarItensPendentes();
-            if (aba === 'stats') { carregarEstatisticas(); carregarGraficosEstatisticas(); }
-            if (aba === 'cats') carregarCategorias();
-            if (aba === 'entregues') carregarEntregues();
-            if (aba === 'mural') carregarMuralSec();
-            if (aba === 'chat') { carregarConversasChat(); iniciarPollingChatSec(); } else pararPollingChatSec();
-        }
-
-        async function carregarItensPendentes() {
-            if (!tokenSecretaria) return;
-            try {
-                const res = await fetch(`${API_URL}/api/itens/pendentes`, { headers: getAuthHeadersGet() });
-                if (res.status === 401) return sairSecretaria(false);
-                if (res.ok) {
-                    itensPendentesSec = await res.json();
-                    const badge = document.getElementById('badgePendentesSec');
-                    if (badge) {
-                        badge.innerText = itensPendentesSec.length;
-                        badge.classList.toggle('hidden', itensPendentesSec.length === 0);
-                    }
-                    const container = document.getElementById('listaPendentesSec');
-                    if (container) {
-                        if (itensPendentesSec.length === 0) {
-                            container.innerHTML = `<div class="glass-panel p-8 text-center text-xs text-slate-400 rounded-2xl">Nenhum item aguardando moderação.</div>`;
-                            return;
-                        }
-                        container.innerHTML = itensPendentesSec.map(i => {
-                            const foto = i.fotos && i.fotos.length > 0 ? i.fotos[0] : '';
-                            return `
-                                <div class="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-amber-500/30">
-                                    <div class="flex items-center gap-3 min-w-0">
-                                        ${foto ? `<img src="${foto}" class="w-14 h-14 object-cover rounded-xl shrink-0">` : `<div class="w-14 h-14 rounded-xl bg-black/30 flex items-center justify-center text-slate-500 shrink-0"><i class="fas fa-box"></i></div>`}
-                                        <div class="min-w-0">
-                                            <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">${i.categoria}</span>
-                                            <h4 class="text-sm font-extrabold text-white truncate mt-1">${i.nome || i.txt_descricao}</h4>
-                                            <p class="text-[11px] text-slate-400">Local: ${i.txt_local} | Enviado por RM: <strong class="text-white">${i.rm_aluno || '-'}</strong></p>
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-2 w-full sm:w-auto">
-                                        <button onclick="aprovarItemDireto(${i.id})" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">Aprovar</button>
-                                        <button onclick="recusarItemPendente(${i.id})" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 text-red-400 border border-red-900 text-xs font-bold transition">Recusar</button>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                    }
-                }
+                fallbackApiQr(texto, resolve);
+              }, 50);
+              return;
             } catch(e) {}
-        }
+          }
+          fallbackApiQr(texto, resolve);
+        });
+      }
 
-        async function aprovarItemDireto(id) {
-            try {
-                const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
-                if (res.status === 401) return sairSecretaria(false);
-                if (res.ok) {
-                    mostrarToast("Item aprovado para o catálogo público!", "success");
-                    carregarItensPendentes();
-                    carregarItensSecretaria();
-                } else mostrarToast("Erro ao aprovar item.", "error");
-            } catch(e) { mostrarToast("Erro de conexão.", "error"); }
-        }
+      function fallbackApiQr(texto, resolve) {
+        const url = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(texto)}`;
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = img.naturalWidth || 140;
+            c.height = img.naturalHeight || 140;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(c.toDataURL("image/png"));
+          } catch(e) { resolve(url); }
+        };
+        img.onerror = () => resolve(url);
+        img.src = url;
+      }
 
-        function recusarItemPendente(id) {
-            confirmarAcaoJWT("Recusar Objeto", `Deseja recusar e excluir o envio do item #${id}?`, `${API_URL}/api/itens/${id}`, 'DELETE', null, carregarItensPendentes);
-        }
+      const htmlCards = [];
+      for (const item of disponiveis) {
+        const qrBase64 = await gerarQrBase64(`ETEC-ITEM-${item.id}`);
+        const nome = (item.nome || item.txt_descricao || 'Sem Título').substring(0, 24);
+        const cat = (item.categoria || 'OUTROS').toUpperCase();
+        const local = (item.txt_local || '-').substring(0, 26);
+        const data = item.txt_data || '';
 
-        async function carregarItensSecretaria() {
-            if (!tokenSecretaria) return;
-            try {
-                const res = await fetch(`${API_URL}/api/itens`);
-                if (res.status === 401) return sairSecretaria(false);
-                if (res.ok) { 
-                    itensSec = await res.json(); 
-                    filtrarItensSec(); 
-                }
-            } catch (e) { mostrarToast("Erro ao carregar itens.", "error"); }
-        }
+        htmlCards.push(`
+          <div class="etiqueta-box">
+            <div class="tag-cat">${cat}</div>
+            <div class="qr-container">
+              <img src="${qrBase64}" alt="QR #${item.id}" />
+            </div>
+            <div class="titulo-item">#${item.id} - ${nome}</div>
+            <div class="local-item">${data} | ${local}</div>
+          </div>
+        `);
+      }
 
-        function selecionarFiltroStatusSec(status, botao) {
-            statusFiltroSec = status;
-            document.querySelectorAll('.status-sec-chip').forEach(b => {
-                b.className = "status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 shrink-0";
-            });
-            if (botao) {
-                botao.className = "status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-red-600 text-white border-red-500 shrink-0";
+      if (btn) btn.innerHTML = txtAntigo;
+
+      const printWin = window.open('', '_blank');
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8">
+          <title>Folha de Etiquetas QR - ETEC Achados</title>
+          <style>
+            @page { size: A4 portrait; margin: 8mm 6mm; }
+            * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: Arial, sans-serif; background: #ffffff; color: #000000; }
+            .grid-a4 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; width: 100%; }
+            .etiqueta-box {
+              border: 1.5px dashed #4b5563;
+              border-radius: 8px;
+              padding: 7px;
+              text-align: center;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: space-between;
+              height: 53mm;
+              page-break-inside: avoid;
+              break-inside: avoid;
+              background: #ffffff;
             }
-            filtrarItensSec();
-        }
-
-        function renderizarListaSec(lista) {
-            const container = document.getElementById('listaItensSec');
-            container.innerHTML = '';
-            if (lista.length === 0) return container.innerHTML = `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum objeto corresponde aos filtros atuais.</div>`;
-            
-            lista.forEach(item => {
-                const card = document.createElement('div');
-                card.className = "interactive-card glass-panel rounded-2xl p-4 flex items-center gap-4 cursor-pointer border border-white/10";
-                card.onclick = () => abrirModalAcoesItem(item.id);
-                const foto = item.fotos && item.fotos.length > 0 ? item.fotos[0] : '';
-                const imgTag = foto ? `<img src="${foto}" class="w-16 h-16 object-cover rounded-xl shrink-0">` : `<div class="w-16 h-16 bg-[#0d1117] rounded-xl flex items-center justify-center text-slate-600 shrink-0"><i class="fas fa-box text-xl"></i></div>`;
-                
-                let stBadge = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
-                if (item.status === 'SOLICITADO') stBadge = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
-                if (item.status === 'ENTREGUE' || item.status.includes('DOAÇÃO')) stBadge = 'bg-slate-800 text-slate-400 border-slate-700';
-
-                card.innerHTML = `
-                    ${imgTag}
-                    <div class="min-w-0 flex-grow">
-                        <div class="flex gap-2 mb-1">
-                            <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-white/5 border border-white/10 text-slate-300">${item.categoria}</span>
-                            <span class="text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border ${stBadge}">${item.status}</span>
-                        </div>
-                        <h4 class="font-extrabold text-sm text-white truncate">#${item.id} - ${item.nome || item.txt_descricao}</h4>
-                        <p class="text-[10px] text-slate-400 truncate mt-0.5"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${item.txt_local}</p>
-                        ${item.solicitado_por ? `<p class="text-[10px] text-amber-400 mt-1 font-bold"><i class="fas fa-user mr-1"></i>Reivindicado por: ${item.solicitado_por} (RM:${item.rm_aluno || '-'})</p>` : ''}
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function filtrarItensSec() {
-            const termo = document.getElementById('searchSecInput').value.toLowerCase().trim();
-            const filtrados = itensSec.filter(i => {
-                const bateTexto = !termo || (i.nome || '').toLowerCase().includes(termo) || (i.txt_descricao || '').toLowerCase().includes(termo) || String(i.id) === termo;
-                const st = (i.status || 'DISPONÍVEL').toUpperCase();
-                let bateStatus = true;
-                if (statusFiltroSec !== 'TODOS') {
-                    bateStatus = st === statusFiltroSec;
-                }
-                return bateTexto && bateStatus;
-            });
-            renderizarListaSec(filtrados);
-        }
-
-        function abrirModalAcoesItem(id) {
-            const item = itensSec.find(i => String(i.id) === String(id));
-            if (!item) return;
-            const galeria = document.getElementById('acaoItemGaleria'); 
-            galeria.innerHTML = '';
-            if (item.fotos && item.fotos.length > 0) {
-                item.fotos.forEach(f => { galeria.innerHTML += `<img src="${f}" class="w-16 h-16 object-cover rounded-xl shrink-0 border border-white/10">`; });
-            } else galeria.innerHTML = `<div class="w-16 h-16 bg-black/20 rounded-xl flex items-center justify-center text-slate-600"><i class="fas fa-box"></i></div>`;
-            
-            document.getElementById('acaoItemCat').innerText = item.categoria; 
-            document.getElementById('acaoItemStatus').innerText = item.status;
-            document.getElementById('acaoItemId').innerText = item.id; 
-            document.getElementById('acaoItemTitulo').innerText = item.nome || item.txt_descricao;
-            document.getElementById('acaoItemLocal').innerHTML = `<i class="fas fa-map-marker-alt text-red-500 mr-1"></i> ${item.txt_local}`;
-            document.getElementById('acaoItemDesc').innerText = item.txt_descricao; 
-            document.getElementById('acaoItemData').innerText = item.txt_data;
-            
-            if (item.solicitado_por) { 
-                document.getElementById('acaoItemSolicitanteNome').innerText = item.solicitado_por; 
-                document.getElementById('acaoItemSolicitanteRm').innerText = `RM: ${item.rm_aluno || '-'}`; 
-                document.getElementById('acaoItemSolicitanteBox').classList.remove('hidden'); 
-            } else document.getElementById('acaoItemSolicitanteBox').classList.add('hidden');
-            
-            const st = item.status.toUpperCase();
-            document.getElementById('btnAcaoBaixa').classList.toggle('hidden', st === 'ENTREGUE' || st.includes('DOAÇÃO'));
-            document.getElementById('btnAcaoRecusar').classList.toggle('hidden', st !== 'SOLICITADO');
-            document.getElementById('btnAcaoDoacao').classList.toggle('hidden', st === 'ENTREGUE' || st.includes('DOAÇÃO'));
-
-            document.getElementById('btnAcaoGerarQR').onclick = () => gerarEtiquetaVisual(item.id);
-            document.getElementById('btnAcaoEditar').onclick = () => { fecharModalAcoesItem(); abrirModalEditar(item.id); };
-            document.getElementById('btnAcaoBaixa').onclick = () => { fecharModalAcoesItem(); abrirModalBaixa(item.id, item.solicitado_por || '', item.rm_aluno || ''); };
-            document.getElementById('btnAcaoRecusar').onclick = () => confirmarAcaoJWT("Recusar", `Deseja recusar a solicitação do item #${item.id}?`, `${API_URL}/api/itens/${item.id}/recusar`, 'PUT');
-            document.getElementById('btnAcaoDoacao').onclick = () => confirmarAcaoJWT("Marcar Doação", `Enviar item #${item.id} para doação?`, `${API_URL}/api/itens/${item.id}`, 'PUT', {status: 'PARA DOAÇÃO'});
-            document.getElementById('btnAcaoExcluir').onclick = () => confirmarAcaoJWT("Excluir", `Excluir permanentemente o item #${item.id}?`, `${API_URL}/api/itens/${item.id}`, 'DELETE');
-            
-            document.getElementById('modalAcoesItem').classList.remove('hidden');
-        }
-        function fecharModalAcoesItem() { document.getElementById('modalAcoesItem').classList.add('hidden'); }
-
-        function confirmarAcaoJWT(titulo, mensagem, url, metodo, bodyData = null, callback = null) {
-            fecharModalAcoesItem();
-            document.getElementById('modalConfirmTitulo').innerText = titulo;
-            document.getElementById('modalConfirmMsg').innerText = mensagem;
-            acaoConfirmacaoCallback = async () => {
-                document.getElementById('modalConfirmacao').classList.add('hidden');
-                try {
-                    const options = { method: metodo, headers: getAuthHeaders() };
-                    if (bodyData) options.body = JSON.stringify(bodyData);
-                    const res = await fetch(url, options);
-                    if (res.status === 401) {
-                        sairSecretaria(false);
-                        return mostrarToast("Sua sessão expirou. Faça login novamente.", "error");
-                    }
-                    if (res.ok) { 
-                        mostrarToast("Operação realizada com sucesso!", "success"); 
-                        if (callback) { callback(); } else { carregarItensSecretaria(); carregarEstatisticas(); }
-                    } else mostrarToast("Acesso Negado ou erro na requisição.", "error");
-                } catch(e) { mostrarToast("Erro de conexão.", "error"); }
+            .tag-cat { font-size: 9.5px; font-weight: 800; color: #374151; text-transform: uppercase; }
+            .qr-container { width: 29mm; height: 29mm; display: flex; align-items: center; justify-content: center; margin: 2px 0; }
+            .qr-container img { width: 100%; height: 100%; object-fit: contain; display: block; image-rendering: pixelated; }
+            .titulo-item { font-size: 11px; font-weight: 700; color: #000000; line-height: 1.2; max-height: 26px; overflow: hidden; }
+            .local-item { font-size: 9px; color: #4b5563; margin-top: 1px; }
+          </style>
+        </head>
+        <body>
+          <div class="grid-a4">${htmlCards.join('')}</div>
+          <script>
+            window.onload = function() {
+              const fotos = Array.from(document.images);
+              Promise.all(fotos.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(res => { img.onload = res; img.onerror = res; });
+              })).then(() => {
+                setTimeout(() => { window.focus(); window.print(); }, 300);
+              });
             };
-            document.getElementById('modalConfirmacao').classList.remove('hidden');
-        }
-        function fecharModalConfirmacao() { document.getElementById('modalConfirmacao').classList.add('hidden'); }
-        document.getElementById('btnConfirmarAcao').addEventListener('click', () => { if (acaoConfirmacaoCallback) acaoConfirmacaoCallback(); });
+          ` + '<' + `/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
 
-        async function adicionarFotosEdicao(input) {
-            if (input.files) {
-                for (const file of Array.from(input.files)) {
-                    try {
-                        const fotoComp = await comprimirImagem(file, 1200, 0.75);
-                        fotosEdicaoAtuais.push(fotoComp);
-                    } catch(e) {
-                        const reader = new FileReader();
-                        reader.onload = ev => fotosEdicaoAtuais.push(ev.target.result);
-                        reader.readAsDataURL(file);
-                    }
-                }
-                renderizarGridFotosEdicao();
-                input.value = '';
+    /* EXPORTAR RELATÓRIO CSV */
+    function exportarRelatorioCSV() {
+      if (!itensSec.length) return alert("Nenhum item para exportar.");
+      let csv = "\uFEFFID;Nome;Descrição;Categoria;Data;Local;Status;Solicitante;RM\n";
+      itensSec.forEach(i => {
+        csv += `${i.id || ''};${(i.nome || '').replace(/;/g, ',')};${(i.txt_descricao || '').replace(/;/g, ',')};${(i.categoria || '').replace(/;/g, ',')};${(i.txt_data || '').replace(/;/g, ',')};${(i.txt_local || '').replace(/;/g, ',')};${(i.status || 'DISPONÍVEL').toUpperCase()};${(i.solicitado_por || '').replace(/;/g, ',')};${(i.rm_aluno || '').replace(/;/g, ',')}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio_achados_etec_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      mostrarToast("Planilha CSV baixada!");
+    }
+
+    /* SCANNER DE QR CODE */
+    function abrirLeitorQR() {
+      document.getElementById('modalScanner').classList.remove('hidden');
+      if (html5QrScannerInstance) html5QrScannerInstance.clear();
+      html5QrScannerInstance = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+      html5QrScannerInstance.render(msg => {
+        html5QrScannerInstance.clear();
+        fecharModal('modalScanner');
+        const match = msg.match(/\d+/);
+        if (match) abrirDetalhesItem(parseInt(match[0]));
+        else alert("QR Code não reconhecido: " + msg);
+      }, () => {});
+    }
+
+    function fecharLeitorQR() {
+      if (html5QrScannerInstance) html5QrScannerInstance.clear();
+      fecharModal('modalScanner');
+    }
+
+    /* DETALHES DO ITEM */
+    function abrirDetalhesItem(id) {
+      const item = itensSec.find(i => String(i.id) === String(id));
+      if (!item) return alert("Item não encontrado.");
+
+      document.getElementById('detalheItemTitulo').innerText = `#${item.id} - ${item.nome || item.txt_descricao || 'Sem Título'}`;
+      const st = (item.status || 'DISPONÍVEL').toUpperCase();
+      
+      let info = `
+        <div><strong>Categoria:</strong> ${item.categoria || 'OUTROS'}</div>
+        <div><strong>Status:</strong> ${st}</div>
+        <div><strong>Local:</strong> ${item.txt_local || '-'}</div>
+        <div><strong>Data:</strong> ${item.txt_data || '-'}</div>
+        <div><strong>Descrição:</strong> ${item.txt_descricao || '-'}</div>
+      `;
+      if (item.solicitado_por) {
+        info += `<div style="color: #f59e0b; margin-top: 4px;"><strong>Solicitado por:</strong> ${item.solicitado_por} (RM: ${item.rm_aluno || '-'})</div>`;
+      }
+      document.getElementById('detalhesInfoCard').innerHTML = info;
+
+      const galeria = document.getElementById('detalhesGaleriaFotos');
+      const fotos = (item.fotos && item.fotos.length) ? item.fotos : (item.foto ? [item.foto] : []);
+      galeria.innerHTML = fotos.length
+        ? fotos.map(f => `<img src="${f}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #30363d; cursor: pointer;" onclick="window.open('${f}', '_blank')">`).join('')
+        : `<span style="font-size: 11px; color: #8b949e;">Sem fotos.</span>`;
+
+      let btns = `<button onclick="editarItemForm(${item.id})" class="btn-acao" style="background: #d97706;"><i class="fas fa-edit"></i> Editar</button>`;
+      if (st === 'SOLICITADO') btns += `<button onclick="recusarSolicitacao(${item.id})" class="btn-acao" style="background: #b45309;"><i class="fas fa-ban"></i> Recusar</button>`;
+      if (st !== 'ENTREGUE' && st !== 'DOAÇÃO FEITA') btns += `<button onclick="abrirModalBaixa(${item.id})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
+      if (st !== 'PARA DOAÇÃO' && st !== 'DOAÇÃO FEITA' && st !== 'ENTREGUE') btns += `<button onclick="marcarItemDoacao(${item.id})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
+      btns += `<button onclick="excluirItem(${item.id})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
+
+      document.getElementById('detalhesBotoesAcao').innerHTML = btns;
+      document.getElementById('modalDetalhesItem').classList.remove('hidden');
+    }
+
+    /* CADASTRO E EDIÇÃO */
+    function abrirModalCadastrar() {
+      document.getElementById('formItemId').value = '';
+      document.getElementById('modalFormTitulo').innerText = "Cadastrar Novo Objeto";
+      document.getElementById('formItemNome').value = '';
+      document.getElementById('formItemDescricao').value = '';
+      document.getElementById('formItemLocal').value = '';
+      document.getElementById('formItemData').value = new Date().toLocaleDateString('pt-BR');
+      document.getElementById('formItemStatus').value = 'DISPONÍVEL';
+      document.getElementById('formFotosStatus').innerText = "Nenhuma foto selecionada";
+      fotosBase64Upload = [];
+      document.getElementById('modalFormItem').classList.remove('hidden');
+    }
+
+    function editarItemForm(id) {
+      fecharModal('modalDetalhesItem');
+      const item = itensSec.find(i => i.id === id);
+      if (!item) return;
+
+      document.getElementById('formItemId').value = item.id;
+      document.getElementById('modalFormTitulo').innerText = `Editar Objeto #${item.id}`;
+      document.getElementById('formItemNome').value = item.nome || '';
+      document.getElementById('formItemDescricao').value = item.txt_descricao || '';
+      document.getElementById('formItemCategoria').value = item.categoria || 'OUTROS';
+      document.getElementById('formItemLocal').value = item.txt_local || '';
+      document.getElementById('formItemData').value = item.txt_data || '';
+      document.getElementById('formItemStatus').value = item.status || 'DISPONÍVEL';
+      fotosBase64Upload = (item.fotos && item.fotos.length) ? item.fotos.slice() : (item.foto ? [item.foto] : []);
+      document.getElementById('formFotosStatus').innerText = `${fotosBase64Upload.length} foto(s) carregada(s)`;
+      document.getElementById('modalFormItem').classList.remove('hidden');
+    }
+
+    function processarFotosInput(input) {
+      const files = Array.from(input.files).slice(0, 4);
+      if (!files.length) return;
+      fotosBase64Upload = [];
+      const statusEl = document.getElementById('formFotosStatus');
+      statusEl.innerText = "Comprimindo fotos...";
+      let count = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            const maxDim = 1200;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+              else { w = Math.round((w * maxDim) / h); h = maxDim; }
             }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            fotosBase64Upload.push(canvas.toDataURL('image/jpeg', 0.75));
+            count++;
+            if (count === files.length) statusEl.innerText = `${fotosBase64Upload.length} foto(s) otimizada(s)`;
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function salvarItemForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('formItemId').value;
+      const payload = {
+        nome: document.getElementById('formItemNome').value.trim(),
+        descricao: document.getElementById('formItemDescricao').value.trim(),
+        categoria: document.getElementById('formItemCategoria').value,
+        local: document.getElementById('formItemLocal').value.trim(),
+        data: document.getElementById('formItemData').value.trim(),
+        status: document.getElementById('formItemStatus').value,
+        fotos: fotosBase64Upload
+      };
+
+      const btn = document.getElementById('btnSalvarItem');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Gravando...`;
+
+      try {
+        const url = id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`;
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          mostrarToast(id ? "Objeto atualizado!" : "Objeto cadastrado!");
+          fecharModal('modalFormItem');
+          carregarItensSecretaria();
+        } else { alert("Erro ao salvar objeto."); }
+      } catch (err) { alert("Erro de conexão."); }
+      finally {
+        btn.disabled = false;
+        btn.innerHTML = "Gravar no Banco";
+      }
+    }
+
+    /* DAR BAIXA E COMPROVANTE */
+    function abrirModalBaixa(id) {
+      fecharModal('modalDetalhesItem');
+      const item = itensSec.find(i => i.id === id);
+      if (!item) return;
+      document.getElementById('baixaItemId').value = item.id;
+      document.getElementById('baixaNomeAluno').value = item.solicitado_por || '';
+      document.getElementById('baixaRmAluno').value = item.rm_aluno || '';
+      document.getElementById('baixaTurmaAluno').value = '';
+      document.getElementById('modalDarBaixa').classList.remove('hidden');
+    }
+
+    async function confirmarBaixaEntrega(e) {
+      e.preventDefault();
+      const id = document.getElementById('baixaItemId').value;
+      const nome = document.getElementById('baixaNomeAluno').value.trim();
+      const rm = document.getElementById('baixaRmAluno').value.trim();
+      const turma = document.getElementById('baixaTurmaAluno').value.trim() || '-';
+      const item = itensSec.find(i => String(i.id) === String(id));
+
+      try {
+        const res = await fetch(`${API_URL}/api/itens/${id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            status: 'ENTREGUE',
+            retirado_por: nome,
+            rm_retirante: rm,
+            turma_curso: turma,
+            funcionario_responsavel: 'Secretaria'
+          })
+        });
+
+        if (res.ok) {
+          fecharModal('modalDarBaixa');
+          carregarItensSecretaria();
+          const dataHora = new Date().toLocaleString('pt-BR');
+          const nomeObj = item ? (item.nome || item.txt_descricao || 'Objeto') : 'Objeto';
+          
+          document.getElementById('comprovanteDadosBox').innerHTML = `
+            <div><strong>Aluno(a):</strong> ${nome}</div>
+            <div><strong>RM:</strong> ${rm} | <strong>Turma:</strong> ${turma}</div>
+            <hr style="margin: 6px 0; border: none; border-top: 1px dashed #d1d5db;">
+            <div><strong>Objeto #${id}:</strong> ${nomeObj}</div>
+            <div><strong>Data da Entrega:</strong> ${dataHora}</div>
+          `;
+          comprovanteDadosTexto = `ETEC - TERMO DE RETIRADA\nAluno: ${nome} (RM: ${rm})\nTurma: ${turma}\nItem #${id}: ${nomeObj}\nData: ${dataHora}`;
+          document.getElementById('modalComprovante').classList.remove('hidden');
+        } else { alert("Erro ao dar baixa."); }
+      } catch (err) { alert("Erro de conexão."); }
+    }
+
+    function baixarComprovanteTexto() {
+      const blob = new Blob([comprovanteDadosTexto], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comprovante_${new Date().getTime()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function recusarSolicitacao(id) {
+      if (!confirm("Recusar solicitação deste item?")) return;
+      try {
+        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
+        if (res.ok) { fecharModal('modalDetalhesItem'); mostrarToast("Recusado!"); carregarItensSecretaria(); }
+      } catch (e) {}
+    }
+
+    async function marcarItemDoacao(id) {
+      if (!confirm("Marcar para Doação?")) return;
+      try {
+        const res = await fetch(`${API_URL}/api/itens/${id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ status: 'PARA DOAÇÃO' })
+        });
+        if (res.ok) { fecharModal('modalDetalhesItem'); mostrarToast("Marcado para doação!"); carregarItensSecretaria(); }
+      } catch (e) {}
+    }
+
+    async function excluirItem(id) {
+      if (!confirm("Excluir este item permanentemente?")) return;
+      try {
+        const res = await fetch(`${API_URL}/api/itens/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) { fecharModal('modalDetalhesItem'); mostrarToast("Item excluído!"); carregarItensSecretaria(); }
+      } catch (e) {}
+    }
+
+    /* CATEGORIAS / DASHBOARD / ENTREGUES / DOAÇÕES / MURAL / CHAT */
+    function renderizarCategorias() {
+      document.getElementById('tabelaCategoriasBody').innerHTML = categoriasSec.map(c => `
+        <tr><td><strong>${c.nome}</strong></td><td style="text-align: center;"><button onclick="removerCategoria('${c.nome}')" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
+      `).join('');
+    }
+
+    async function adicionarCategoriaWeb() {
+      const inp = document.getElementById('inputNovaCat');
+      const nome = inp.value.trim().toUpperCase();
+      if (!nome) return;
+      try {
+        const res = await fetch(`${API_URL}/api/categorias`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ nome })
+        });
+        if (res.ok) { inp.value = ''; await carregarCategorias(); renderizarCategorias(); }
+      } catch (e) {}
+    }
+
+    async function carregarDashboard() {
+      try {
+        const res = await fetch(`${API_URL}/api/estatisticas`, { headers: getAuthHeadersGet() });
+        if (res.ok) {
+          const d = await res.json();
+          document.getElementById('dashTotalItens').innerText = d.total_itens || 0;
+          document.getElementById('dashTotalEntregues').innerText = d.total_entregues || 0;
+          document.getElementById('dashTotalDoacoes').innerText = d.total_doacoes || 0;
+          const soma = (d.total_itens || 0) + (d.total_entregues || 0);
+          const taxa = soma > 0 ? Math.round(((d.total_entregues || 0) / soma) * 100) : 0;
+          document.getElementById('dashTaxaDevolucao').innerText = `Taxa de Devolução: ${taxa}% (${d.total_entregues || 0} recuperados)`;
+          
+          const mapa = {};
+          itensSec.forEach(i => { const c = i.categoria || 'OUTROS'; mapa[c] = (mapa[c] || 0) + 1; });
+          const ord = Object.entries(mapa).sort((a,b) => b - a).slice(0, 4);
+          document.getElementById('dashDestaqueCategorias').innerText = "Categorias: " + ord.map(x => `${x[0]}: ${x}`).join(' | ');
         }
+      } catch (e) {}
+    }
 
-        function renderizarGridFotosEdicao() {
-            const container = document.getElementById('gridFotosEdicao'); 
-            container.innerHTML = '';
-            if (fotosEdicaoAtuais.length > 0) {
-                container.classList.remove('hidden');
-                fotosEdicaoAtuais.forEach((foto, i) => { 
-                    container.innerHTML += `<div class="relative w-16 h-16 shrink-0"><img src="${foto}" class="w-full h-full object-cover rounded-xl border border-white/10"><button type="button" onclick="fotosEdicaoAtuais.splice(${i}, 1); renderizarGridFotosEdicao();" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button></div>`; 
-                });
-            } else container.classList.add('hidden');
+    async function carregarEntregues() {
+      try {
+        const res = await fetch(`${API_URL}/api/entregues`, { headers: getAuthHeadersGet() });
+        if (res.ok) {
+          const l = await res.json();
+          document.getElementById('tabelaEntreguesBody').innerHTML = l.map(e => `
+            <tr><td>#${e.item_id}</td><td><strong>${e.nome_item}</strong></td><td>${e.retirado_por}</td><td>${e.rm_retirante}</td><td>${e.data_entrega}</td><td><button onclick="desfazerEntrega(${e.item_id})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button></td></tr>
+          `).join('');
         }
+      } catch (e) {}
+    }
 
-        async function abrirModalCadastrar() {
-            await carregarCategorias();
-            document.getElementById('editItemId').value = ''; 
-            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-box text-red-500 mr-2"></i>Cadastrar Objeto`;
-            document.getElementById('cadNome').value = ''; 
-            document.getElementById('cadDescricao').value = ''; 
-            document.getElementById('cadData').value = new Date().toLocaleDateString('pt-BR'); 
-            document.getElementById('cadLocal').value = '';
-            document.getElementById('cadStatus').value = 'DISPONÍVEL'; 
-            fotosEdicaoAtuais = []; 
-            renderizarGridFotosEdicao(); 
-            document.getElementById('modalCadastrar').classList.remove('hidden');
+    async function desfazerEntrega(id) {
+      if (!confirm(`Reverter entrega do item #${id}?`)) return;
+      try {
+        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
+        if (res.ok) { mostrarToast("Entrega revertida!"); carregarEntregues(); carregarItensSecretaria(); }
+      } catch (e) {}
+    }
+
+    function renderizarDoacoes() {
+      const doacoes = itensSec.filter(i => (i.status || '').toUpperCase().includes('DOAÇÃO'));
+      document.getElementById('tabelaDoacoesBody').innerHTML = doacoes.map(d => `
+        <tr><td>#${d.id}</td><td><strong>${d.nome || d.txt_descricao}</strong></td><td>${d.categoria || 'OUTROS'}</td><td><span class="badge-status status-doacao">${d.status}</span></td></tr>
+      `).join('');
+    }
+
+    async function concluirTodasDoacoes() {
+      if (!confirm("Concluir todas as doações e arquivar?")) return;
+      try {
+        const res = await fetch(`${API_URL}/api/itens/doacoes/concluir`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) { mostrarToast("Doações concluídas!"); await carregarItensSecretaria(); renderizarDoacoes(); }
+      } catch (e) {}
+    }
+
+    async function carregarMural() {
+      try {
+        const res = await fetch(`${API_URL}/api/mural`, { headers: getAuthHeadersGet() });
+        if (res.ok) {
+          const mural = await res.json();
+          document.getElementById('tabelaMuralBody').innerHTML = mural.map(m => `
+            <tr><td><strong>${m.nome_aluno}</strong></td><td>${m.rm_aluno}</td><td>${m.descricao}</td><td>${m.data_registro}</td><td><button onclick="excluirRelatoMural(${m.id})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
+          `).join('');
         }
-        function fecharModalCadastrar() { document.getElementById('modalCadastrar').classList.add('hidden'); }
+      } catch (e) {}
+    }
 
-        async function abrirModalEditar(id) {
-            const item = itensSec.find(i => String(i.id) === String(id)); 
-            if (!item) return;
-            await carregarCategorias();
-            document.getElementById('editItemId').value = item.id; 
-            document.getElementById('modalTituloForm').innerHTML = `<i class="fas fa-edit text-red-500 mr-2"></i>Editar Item #${id}`;
-            document.getElementById('cadNome').value = item.nome || ''; 
-            document.getElementById('cadDescricao').value = item.txt_descricao || ''; 
-            document.getElementById('cadCategoria').value = item.categoria || ''; 
-            document.getElementById('cadData').value = item.txt_data || ''; 
-            document.getElementById('cadLocal').value = item.txt_local || ''; 
-            document.getElementById('cadStatus').value = item.status || 'DISPONÍVEL';
-            fotosEdicaoAtuais = [...(item.fotos || [])]; 
-            renderizarGridFotosEdicao(); 
-            document.getElementById('modalCadastrar').classList.remove('hidden');
+    async function excluirRelatoMural(id) {
+      if (!confirm(`Apagar relato #${id}?`)) return;
+      try {
+        const res = await fetch(`${API_URL}/api/mural/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (res.ok) carregarMural();
+      } catch (e) {}
+    }
+
+    function iniciarPollingChat() {
+      if (chatPollTimer) clearInterval(chatPollTimer);
+      chatPollTimer = setInterval(() => {
+        if (tokenSecretaria && chatRmAtivo) carregarMensagensConversa(chatRmAtivo, false);
+      }, 3500);
+    }
+
+    async function carregarConversasChat() {
+      try {
+        const res = await fetch(`${API_URL}/api/chat/conversas`, { headers: getAuthHeadersGet() });
+        if (res.ok) {
+          const c = await res.json();
+          if (c.length && !chatRmAtivo) selecionarConversaAluno(c[0].rm_aluno, c[0].nome_aluno);
         }
+      } catch (e) {}
+    }
 
-        async function salvarItemSecretaria(e) {
-            e.preventDefault();
-            const id = document.getElementById('editItemId').value;
-            const btn = document.getElementById('btnSalvarItem');
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Salvando...`; 
-            btn.disabled = true;
+    async function selecionarConversaAluno(rm, nome) {
+      chatRmAtivo = rm;
+      document.getElementById('chatTituloAluno').innerText = `Chat: ${nome} (RM: ${rm})`;
+      carregarMensagensConversa(rm, true);
+    }
 
-            const payload = { 
-                nome: document.getElementById('cadNome').value.trim(), 
-                descricao: document.getElementById('cadDescricao').value.trim(), 
-                categoria: document.getElementById('cadCategoria').value, 
-                data: document.getElementById('cadData').value.trim(), 
-                local: document.getElementById('cadLocal').value.trim(), 
-                status: document.getElementById('cadStatus').value, 
-                fotos: fotosEdicaoAtuais 
-            };
-
-            try {
-                const res = await fetch(id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`, { 
-                    method: id ? 'PUT' : 'POST', 
-                    headers: getAuthHeaders(), 
-                    body: JSON.stringify(payload) 
-                });
-
-                const data = await res.json().catch(() => ({}));
-
-                if (res.status === 401) {
-                    sairSecretaria(false);
-                    return mostrarToast("Sua sessão expirou. Faça login novamente.", "error");
-                }
-
-                if (res.ok && data.success) { 
-                    mostrarToast("Objeto salvo com sucesso!", "success"); 
-                    fecharModalCadastrar(); 
-                    carregarItensSecretaria(); 
-                    carregarEstatisticas(); 
-                } else {
-                    const erroMsg = data.error || data.message || "Erro ao gravar item no banco de dados.";
-                    mostrarToast(erroMsg, "error");
-                }
-            } catch (err) { 
-                mostrarToast("Erro de conexão com o servidor Railway.", "error"); 
-            } finally {
-                btn.innerHTML = `Salvar Objeto`; 
-                btn.disabled = false;
-            }
+    async function carregarMensagensConversa(rm, scrollFim = true) {
+      try {
+        const res = await fetch(`${API_URL}/api/chat/mensagens/${rm}?marcar_lida=true&origem=SECRETARIA`);
+        if (res.ok) {
+          const msgs = await res.json();
+          const box = document.getElementById('chatMensagensContainer');
+          box.innerHTML = msgs.map(m => `
+            <div class="msg-balao ${m.remetente === 'SECRETARIA' ? 'msg-secretaria' : 'msg-aluno'}">
+              <div style="font-size: 9.5px; opacity: 0.8;">${m.remetente === 'SECRETARIA' ? 'Secretaria' : m.nome_aluno} • ${m.data_envio || ''}</div>
+              <div>${m.mensagem}</div>
+            </div>
+          `).join('');
+          if (scrollFim) box.scrollTop = box.scrollHeight;
         }
+      } catch (e) {}
+    }
 
-        function inicializarCanvasAssinatura() {
-            canvasAssinatura = document.getElementById('canvasAssinatura');
-            if (!canvasAssinatura) return;
-            ctxAssinatura = canvasAssinatura.getContext('2d');
-            ctxAssinatura.strokeStyle = '#000000';
-            ctxAssinatura.lineWidth = 2.5;
-            ctxAssinatura.lineCap = 'round';
-            ctxAssinatura.lineJoin = 'round';
+    async function enviarMensagemSecretaria(e) {
+      e.preventDefault();
+      const inp = document.getElementById('inputChatMsg');
+      const msg = inp.value.trim();
+      if (!msg || !chatRmAtivo) return;
+      try {
+        const res = await fetch(`${API_URL}/api/chat/enviar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rm: chatRmAtivo, nome: 'Secretaria', remetente: 'SECRETARIA', mensagem: msg })
+        });
+        if (res.ok) { inp.value = ''; carregarMensagensConversa(chatRmAtivo, true); }
+      } catch (e) {}
+    }
 
-            const getPos = (e) => {
-                const rect = canvasAssinatura.getBoundingClientRect();
-                const scaleX = canvasAssinatura.width / rect.width;
-                const scaleY = canvasAssinatura.height / rect.height;
-                if (e.touches && e.touches.length > 0) {
-                    return {
-                        x: (e.touches[0].clientX - rect.left) * scaleX,
-                        y: (e.touches[0].clientY - rect.top) * scaleY
-                    };
-                }
-                return {
-                    x: (e.clientX - rect.left) * scaleX,
-                    y: (e.clientY - rect.top) * scaleY
-                };
-            };
-
-            const iniciar = (e) => {
-                e.preventDefault();
-                desenhando = true;
-                assinou = true;
-                const pos = getPos(e);
-                ctxAssinatura.beginPath();
-                ctxAssinatura.moveTo(pos.x, pos.y);
-            };
-
-            const desenhar = (e) => {
-                if (!desenhando) return;
-                e.preventDefault();
-                const pos = getPos(e);
-                ctxAssinatura.lineTo(pos.x, pos.y);
-                ctxAssinatura.stroke();
-            };
-
-            const parar = () => { desenhando = false; };
-
-            canvasAssinatura.addEventListener('mousedown', iniciar);
-            canvasAssinatura.addEventListener('mousemove', desenhar);
-            window.addEventListener('mouseup', parar);
-
-            canvasAssinatura.addEventListener('touchstart', iniciar, { passive: false });
-            canvasAssinatura.addEventListener('touchmove', desenhar, { passive: false });
-            window.addEventListener('touchend', parar);
-        }
-
-        function limparCanvasAssinatura() {
-            if (canvasAssinatura && ctxAssinatura) {
-                ctxAssinatura.clearRect(0, 0, canvasAssinatura.width, canvasAssinatura.height);
-                assinou = false;
-            }
-        }
-
-        function abrirModalBaixa(id, nomeAluno, rmAluno) {
-            document.getElementById('baixaItemId').value = id;
-            document.getElementById('baixaNome').value = nomeAluno || ''; 
-            document.getElementById('baixaRm').value = rmAluno || ''; 
-            document.getElementById('baixaTurma').value = '';
-            limparCanvasAssinatura();
-            document.getElementById('modalBaixa').classList.remove('hidden');
-        }
-        function fecharModalBaixa() { document.getElementById('modalBaixa').classList.add('hidden'); }
-
-        async function confirmarBaixaEntrega() {
-            const id = document.getElementById('baixaItemId').value;
-            const payload = { 
-                status: 'ENTREGUE', 
-                retirado_por: document.getElementById('baixaNome').value.trim(), 
-                rm_retirante: document.getElementById('baixaRm').value.trim(), 
-                turma_curso: document.getElementById('baixaTurma').value.trim(), 
-                funcionario_responsavel: 'Secretaria' 
-            };
-            if (!payload.retirado_por || !payload.rm_retirante) return mostrarToast("Preencha Nome e RM do aluno.", "error");
-            try {
-                const res = await fetch(`${API_URL}/api/itens/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload) });
-                if (res.status === 401) return sairSecretaria(false);
-                if (res.ok) {
-                    mostrarToast("Entrega concluída!", "success"); 
-                    fecharModalBaixa(); 
-                    carregarItensSecretaria(); 
-                    carregarEstatisticas();
-                    const itemObj = itensSec.find(i => String(i.id) === String(id));
-                    
-                    let assinaturaDataUrl = null;
-                    if (assinou && canvasAssinatura) {
-                        assinaturaDataUrl = canvasAssinatura.toDataURL('image/png');
-                    }
-
-                    exibirComprovante({ 
-                        aluno: payload.retirado_por, 
-                        rm: payload.rm_retirante, 
-                        turma: payload.turma_curso || '-', 
-                        nomeItem: itemObj ? (itemObj.nome || itemObj.txt_descricao) : `Item #${id}`, 
-                        descItem: itemObj ? itemObj.txt_descricao : '', 
-                        localItem: itemObj ? itemObj.txt_local : '', 
-                        dataEntrega: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR'),
-                        assinatura: assinaturaDataUrl
-                    });
-                } else mostrarToast("Erro ao registrar entrega.", "error");
-            } catch (e) { mostrarToast("Erro de conexão.", "error"); }
-        }
-
-        function exibirComprovante(dados) {
-            document.getElementById('compNomeAluno').innerText = dados.aluno; 
-            document.getElementById('compRmAluno').innerText = dados.rm; 
-            document.getElementById('compTurmaAluno').innerText = dados.turma;
-            document.getElementById('compNomeItem').innerText = dados.nomeItem; 
-            document.getElementById('compDescItem').innerText = dados.descItem; 
-            document.getElementById('compLocalItem').innerText = dados.localItem; 
-            document.getElementById('compDataEntrega').innerText = dados.dataEntrega;
-
-            const imgAss = document.getElementById('compAssinaturaImg');
-            if (dados.assinatura) {
-                imgAss.src = dados.assinatura;
-                imgAss.classList.remove('hidden');
-            } else {
-                imgAss.src = '';
-                imgAss.classList.add('hidden');
-            }
-
-            document.getElementById('modalComprovante').classList.remove('hidden');
-        }
-        function fecharComprovante() { document.getElementById('modalComprovante').classList.add('hidden'); }
-
-        async function carregarEstatisticas() { 
-            if(!tokenSecretaria) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/estatisticas`, {headers: getAuthHeadersGet()}); 
-                if (res.status === 401) return sairSecretaria(false);
-                if(res.ok){ 
-                    const data = await res.json(); 
-                    document.getElementById('statTotalItens').innerText = data.total_itens || 0; 
-                    document.getElementById('statTotalEntregues').innerText = data.total_entregues || 0; 
-                    document.getElementById('statTotalDoacoes').innerText = data.total_doacoes || 0; 
-                } 
-            } catch(e){} 
-        }
-
-        // ============================================================
-        // NOVO: GRÁFICOS INTERATIVOS DO DASHBOARD (CHART.JS)
-        // ============================================================
-        function carregarGraficosEstatisticas() {
-            if (!itensSec || itensSec.length === 0) return;
-
-            // 1. Agrupar itens por categoria
-            const mapaCategorias = {};
-            itensSec.forEach(i => {
-                const cat = (i.categoria || 'OUTROS').toUpperCase();
-                mapaCategorias[cat] = (mapaCategorias[cat] || 0) + 1;
-            });
-
-            const labelsCat = Object.keys(mapaCategorias);
-            const dadosCat = Object.values(mapaCategorias);
-            const coresCat = ['#dc2626', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
-
-            const ctxCat = document.getElementById('graficoCategorias');
-            if (ctxCat) {
-                if (chartCategorias) chartCategorias.destroy();
-                chartCategorias = new Chart(ctxCat, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labelsCat,
-                        datasets: [{
-                            data: dadosCat,
-                            backgroundColor: coresCat.slice(0, labelsCat.length),
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } }
-                        }
-                    }
-                });
-            }
-
-            // 2. Gráfico de Comparativo de Status
-            const mapaStatus = { 'DISPONÍVEL': 0, 'SOLICITADO': 0, 'ENTREGUE': 0, 'DOAÇÃO': 0 };
-            itensSec.forEach(i => {
-                const st = (i.status || 'DISPONÍVEL').toUpperCase();
-                if (st === 'SOLICITADO') mapaStatus['SOLICITADO']++;
-                else if (st === 'ENTREGUE') mapaStatus['ENTREGUE']++;
-                else if (st.includes('DOAÇÃO')) mapaStatus['DOAÇÃO']++;
-                else mapaStatus['DISPONÍVEL']++;
-            });
-
-            const ctxStatus = document.getElementById('graficoStatus');
-            if (ctxStatus) {
-                if (chartStatus) chartStatus.destroy();
-                chartStatus = new Chart(ctxStatus, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Disponível', 'Reivindicado', 'Entregue', 'Doação'],
-                        datasets: [{
-                            label: 'Qtd de Itens',
-                            data: [mapaStatus['DISPONÍVEL'], mapaStatus['SOLICITADO'], mapaStatus['ENTREGUE'], mapaStatus['DOAÇÃO']],
-                            backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'],
-                            borderRadius: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
-                            y: { ticks: { color: '#94a3b8', precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                        },
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            }
-        }
-
-        async function carregarCategorias() { 
-            try { 
-                const res = await fetch(`${API_URL}/api/categorias`); 
-                if(res.ok){ 
-                    categoriasSec = await res.json(); 
-                    const sel = document.getElementById('cadCategoria'); 
-                    if(sel) { 
-                        sel.innerHTML = ''; 
-                        categoriasSec.forEach(c => sel.innerHTML += `<option value="${c.nome}">${c.nome}</option>`); 
-                    } 
-                    document.getElementById('listaCategoriasSec').innerHTML = categoriasSec.map(c => `<div class="glass-panel border border-white/10 rounded-xl p-3 text-xs font-bold text-white">${c.nome}</div>`).join(''); 
-                } 
-            } catch(e){} 
-        }
-
-        async function adicionarCategoriaSec() { 
-            const nome = document.getElementById('novaCatInput').value.trim().toUpperCase(); 
-            if(!nome) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/categorias`, {method:'POST', headers: getAuthHeaders(), body: JSON.stringify({nome})}); 
-                if (res.status === 401) return sairSecretaria(false);
-                if(res.ok){ 
-                    document.getElementById('novaCatInput').value=''; 
-                    carregarCategorias(); 
-                    mostrarToast("Categoria adicionada!", "success");
-                } 
-            } catch(e){} 
-        }
-
-        async function carregarEntregues() { 
-            if(!tokenSecretaria) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/entregues`, {headers: getAuthHeadersGet()}); 
-                if (res.status === 401) return sairSecretaria(false);
-                if(res.ok){ 
-                    const entregues = await res.json(); 
-                    document.getElementById('listaEntreguesSec').innerHTML = entregues.length === 0 ? `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum item entregue registrado.</div>` : entregues.map(e => `
-                        <div class="glass-panel rounded-2xl p-4 space-y-1 text-xs border border-white/5">
-                            <div class="flex justify-between items-center font-bold text-white">
-                                <span>${e.nome_item}</span>
-                                <span class="text-[10px] text-emerald-400 bg-emerald-950/40 border border-emerald-800 px-2 py-0.5 rounded uppercase">Entregue</span>
-                            </div>
-                            <p class="text-slate-400">Retirado por: <strong class="text-white">${e.retirado_por}</strong> (RM: ${e.rm_retirante}) em ${e.data_entrega}</p>
-                        </div>
-                    `).join(''); 
-                } 
-            } catch(e){} 
-        }
-
-        async function carregarMuralSec() {
-            if(!tokenSecretaria) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/mural`); 
-                if(res.ok){ 
-                    const mural = await res.json(); 
-                    document.getElementById('listaMuralSec').innerHTML = mural.length === 0 ? `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum relato no mural.</div>` : mural.map(m => `
-                        <div class="glass-panel rounded-2xl p-4 space-y-2 text-xs border border-white/10">
-                            <div class="flex justify-between items-start">
-                                <div class="font-bold text-white">
-                                    <span>${m.nome_aluno}</span>
-                                    <span class="text-[10px] text-slate-400 block mt-0.5"><i class="fas fa-id-badge"></i> RM: ${m.rm_aluno} | <i class="fas fa-clock"></i> ${m.data_registro}</span>
-                                </div>
-                                <button onclick="excluirMuralSec(${m.id})" class="text-red-400 hover:text-white p-2 bg-red-950/40 border border-red-900 rounded-lg transition"><i class="fas fa-trash"></i></button>
-                            </div>
-                            <div class="p-3 rounded-xl bg-[#0d1117] border border-white/5">
-                                <span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase bg-white/5 text-amber-400 border border-amber-500/20 mb-1.5 inline-block">${m.categoria}</span>
-                                <p class="text-slate-300 italic">"${m.descricao}"</p>
-                            </div>
-                        </div>`).join(''); 
-                } 
-            } catch(e){} 
-        }
-
-        function excluirMuralSec(id) {
-            confirmarAcaoJWT("Excluir Relato", `Deseja apagar definitivamente o relato #${id} do mural?`, `${API_URL}/api/mural/${id}`, 'DELETE', null, carregarMuralSec);
-        }
-
-        async function carregarConversasChat() { 
-            if(!tokenSecretaria) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/chat/conversas`, {headers: getAuthHeadersGet()}); 
-                if (res.status === 401) return sairSecretaria(false);
-                if(!res.ok) return; 
-                const conversas = await res.json(); 
-                let total = 0; 
-                document.getElementById('listaConversasChat').innerHTML = conversas.map(c => { 
-                    if(c.nao_lidas > 0) total += c.nao_lidas; 
-                    return `
-                        <div onclick="abrirConversaAluno('${c.rm_aluno}', '${c.nome_aluno}')" class="glass-panel rounded-2xl p-3.5 flex justify-between items-center cursor-pointer border border-white/10 hover:border-red-500/50 transition">
-                            <div>
-                                <h4 class="font-extrabold text-xs text-white">${c.nome_aluno} (RM: ${c.rm_aluno})</h4>
-                                <p class="text-[10px] text-slate-400 mt-0.5">Última mensagem: ${c.ultima_msg_data}</p>
-                            </div>
-                            ${c.nao_lidas > 0 ? `<span class="bg-red-600 text-white font-bold text-[10px] px-2.5 py-0.5 rounded-full">${c.nao_lidas}</span>` : `<i class="fas fa-chevron-right text-xs text-slate-500"></i>`}
-                        </div>`; 
-                }).join(''); 
-                const badge = document.getElementById('badgeChatSec'); 
-                if(total > 0){ badge.classList.remove('hidden'); badge.innerText = total; } else badge.classList.add('hidden'); 
-            } catch(e){} 
-        }
-
-        async function abrirConversaAluno(rm, nome) { 
-            chatRmAtivo = rm; 
-            document.getElementById('listaConversasChat').classList.add('hidden'); 
-            document.getElementById('painelConversaAtiva').classList.remove('hidden'); 
-            document.getElementById('chatAlunoNomeTitulo').innerText = nome; 
-            document.getElementById('chatAlunoRmSub').innerText = `RM: ${rm}`; 
-            atualizarMensagensSec(); 
-        }
-
-        function fecharConversaAtiva() { 
-            chatRmAtivo = null; 
-            document.getElementById('painelConversaAtiva').classList.add('hidden'); 
-            document.getElementById('listaConversasChat').classList.remove('hidden'); 
-            carregarConversasChat(); 
-        }
-
-        async function atualizarMensagensSec() { 
-            if (!chatRmAtivo || !tokenSecretaria) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/chat/mensagens/${chatRmAtivo}?marcar_lida=true&origem=SECRETARIA`); 
-                if (res.status === 401) return sairSecretaria(false);
-                if(!res.ok) return; 
-                const container = document.getElementById('chatSecMensagens'); 
-                container.innerHTML = (await res.json()).map(m => { 
-                    const eu = m.remetente === 'SECRETARIA'; 
-                    return `
-                        <div class="flex flex-col ${eu ? 'items-end' : 'items-start'}">
-                            <span class="text-[9px] text-slate-500 mb-1">${eu ? 'Secretaria' : m.nome_aluno}</span>
-                            <div class="max-w-[85%] px-3.5 py-2.5 rounded-2xl ${eu ? 'bg-red-600 text-white rounded-tr-sm' : 'bg-[#161c28] border border-white/10 text-slate-200 rounded-tl-sm'} shadow-sm break-words">
-                                ${m.mensagem}
-                            </div>
-                        </div>`; 
-                }).join(''); 
-                container.scrollTop = container.scrollHeight; 
-            } catch(e){} 
-        }
-
-        async function enviarMensagemSecretaria(e) { 
-            e.preventDefault(); 
-            const input = document.getElementById('inputMsgSec');
-            if (!chatRmAtivo || !input.value.trim()) return; 
-            try { 
-                const res = await fetch(`${API_URL}/api/chat/enviar`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ rm: chatRmAtivo, nome: 'Secretaria', remetente: 'SECRETARIA', mensagem: input.value.trim() }) 
-                });
-                if (res.ok) { 
-                    input.value = ''; 
-                    atualizarMensagensSec(); 
-                } 
-            } catch(e){} 
-        }
-
-        function iniciarPollingChatSec() { 
-            pararPollingChatSec(); 
-            chatPollTimer = setInterval(() => { 
-                carregarConversasChat(); 
-                if (chatRmAtivo) atualizarMensagensSec(); 
-            }, 3000); 
-        }
-
-        function pararPollingChatSec() { 
-            if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; } 
-        }
-    </script>
+    function fecharModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    }
+  </script>
 </body>
 </html>
