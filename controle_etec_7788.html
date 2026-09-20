@@ -896,10 +896,22 @@
     let html5QrScannerInstance = null;
     let fotosBase64Upload = [];
     let filtroStatusAtual = 'TODOS';
-          comprovanteDadosTexto = `ETEC - TERMO DE RETIRADA\nAluno: ${nome} (RM: ${rm})\nTurma: ${turma}\nItem #${id}: ${nomeObj}\nData: ${dataHora}`;
+    let comprovanteDadosTexto = '';
 
-    const getAuthHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${tokenSecretaria}` });
-    const getAuthHeadersGet = () => ({ 'Authorization': `Bearer ${tokenSecretaria}` });
+    function getAuthHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tokenSecretaria || ''}`,
+        'x-access-token': tokenSecretaria || ''
+      };
+    }
+
+    function getAuthHeadersGet() {
+      return {
+        'Authorization': `Bearer ${tokenSecretaria || ''}`,
+        'x-access-token': tokenSecretaria || ''
+      };
+    }
 
     /* NORMALIZADOR ROBUSTO PARA ITENS EM DOAÇÃO */
     function isStatusDoacao(status) {
