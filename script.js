@@ -995,6 +995,11 @@ async function enviarMensagemChat(e) {
 function abrirModalCadastrarAluno() {
     fotosAlunoSelecionadas = [];
     renderizarGridPreviewAluno();
+        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
+        if (btnIAAluno) {
+            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
+            else btnIAAluno.classList.add('hidden');
+        }
     const badge = document.getElementById('statusCompressaoFotos');
     if (badge) badge.classList.add('hidden');
     document.getElementById('modalCadastrarAluno').classList.remove('hidden');
@@ -1024,6 +1029,11 @@ async function prepararFotosAluno(input) {
         }
 
         renderizarGridPreviewAluno();
+        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
+        if (btnIAAluno) {
+            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
+            else btnIAAluno.classList.add('hidden');
+        }
         input.value = '';
 
         if (badge) {
@@ -1042,7 +1052,12 @@ function renderizarGridPreviewAluno() {
             container.innerHTML += `
                 <div class="relative w-20 h-20 shrink-0">
                     <img src="${f}" class="w-full h-full object-cover rounded-xl border border-white/10">
-                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button>
+                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();
+        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
+        if (btnIAAluno) {
+            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
+            else btnIAAluno.classList.add('hidden');
+        }" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button>
                 </div>`;
         });
     } else container.classList.add('hidden');
@@ -1277,5 +1292,56 @@ async function atualizarPortalAluno() {
             if (icone) icone.classList.remove('fa-spin');
             if (btn) btn.disabled = false;
         }, 500);
+    }
+}
+
+
+// ==============================================================================
+// FASE 3: AUTO-PREENCHIMENTO COM IA (VISÃO COMPUTACIONAL MULTIMODAL)
+// ==============================================================================
+async function analisarFotoAlunoComIA() {
+    if (!fotosAlunoSelecionadas || fotosAlunoSelecionadas.length === 0) {
+        return mostrarToast("Selecione uma foto primeiro.", "info");
+    }
+    const btn = document.getElementById('btnAutoPreencherIAAluno');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Analisando com IA...';
+        btn.disabled = true;
+    }
+
+    try {
+        const res = await fetch(API_URL + "/api/ia/analisar-imagem", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ foto: fotosAlunoSelecionadas[0] })
+        });
+        const data = await res.json();
+        if (data.success && data.resultado) {
+            const r = data.resultado;
+            const inputNome = document.getElementById('alunoItemNome');
+            const inputDesc = document.getElementById('alunoItemDesc');
+            const selectCat = document.getElementById('alunoItemCat');
+
+            if (inputNome && r.nome) inputNome.value = r.nome;
+            if (inputDesc && r.descricao) inputDesc.value = r.descricao;
+            if (selectCat && r.categoria) {
+                for (let opt of selectCat.options) {
+                    if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
+                        selectCat.value = opt.value;
+                        break;
+                    }
+                }
+            }
+            mostrarToast("Campos preenchidos com IA!", "success");
+        } else {
+            mostrarToast(data.message || "Não foi possível analisar os detalhes.", "error");
+        }
+    } catch (err) {
+        mostrarToast("Erro ao conectar ao serviço de inteligência artificial.", "error");
+    } finally {
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles mr-1"></i> ✨ Preencher com Inteligência Artificial';
+            btn.disabled = false;
+        }
     }
 }
