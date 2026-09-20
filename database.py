@@ -1,7 +1,3 @@
-"""
-Camada de Acesso a Dados (PostgreSQL)
-Conexão resiliente, inicialização de esquemas e rotinas de manutenção.
-"""
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -11,20 +7,11 @@ from utils.helpers import calcular_dias_passados
 ULTIMA_VERIFICACAO_DOACOES = None
 
 def get_db_connection():
-    """
-    Retorna uma nova conexão ativa com o banco PostgreSQL.
-    """
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL não configurada no ambiente.")
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def verificar_e_atualizar_itens_doacao(forcar=False):
-    """
-    Regra de Negócio (Art. 1.233 do Código Civil e Deliberações ETEC):
-    Itens em custódia por 90 dias ou mais sem reivindicação são alterados
-    automaticamente para o status 'PARA DOAÇÃO'.
-    Possui limitação de taxa (máximo uma execução por hora em chamadas normais).
-    """
     global ULTIMA_VERIFICACAO_DOACOES
     agora = datetime.now()
     if not forcar and ULTIMA_VERIFICACAO_DOACOES and (agora - ULTIMA_VERIFICACAO_DOACOES).total_seconds() < 3600:
@@ -50,27 +37,15 @@ def verificar_e_atualizar_itens_doacao(forcar=False):
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"[Doações 90 Dias] Aviso ao verificar itens de doação: {e}")
-        if conn:
-            conn.close()
+        print(f"[Doações 90 Dias] Aviso: {e}")
+        if conn: conn.close()
 
 def init_db():
-    """
-    Inicializa todas as tabelas e colunas necessárias no PostgreSQL,
-    incluindo migrações idempotentes e categorias padrão.
-    """
-    if not DATABASE_URL:
-        print("[DB Init] DATABASE_URL não definida. Pulando inicialização automática.")
-        return
-
+    if not DATABASE_URL: return
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
-        # Categorias de Itens
         cursor.execute('CREATE TABLE IF NOT EXISTS categorias (id SERIAL PRIMARY KEY, nome VARCHAR(50) UNIQUE NOT NULL);')
-
-        # Itens Catalogados
         cursor.execute('''CREATE TABLE IF NOT EXISTS itens (
             id SERIAL PRIMARY KEY, 
             nome_item VARCHAR(150), 
@@ -88,8 +63,7 @@ def init_db():
             cadastrado_por_aluno BOOLEAN DEFAULT FALSE
         );''')
 
-        # Migrações seguras
-        colunas_migracao = [
+        colunas = [
             ("nome_item", "VARCHAR(150)"),
             ("foto", "TEXT"),
             ("fotos_json", "TEXT"),
@@ -100,7 +74,7 @@ def init_db():
             ("aprovado", "BOOLEAN DEFAULT TRUE"),
             ("cadastrado_por_aluno", "BOOLEAN DEFAULT FALSE")
         ]
-        for col_nome, col_tipo in colunas_migracao:
+        for col_nome, col_tipo in colunas:
             try:
                 cursor.execute(f"ALTER TABLE itens ADD COLUMN IF NOT EXISTS {col_nome} {col_tipo};")
                 conn.commit()
@@ -119,64 +93,30 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        # Histórico de Entregas e Comprovantes
         cursor.execute('''CREATE TABLE IF NOT EXISTS entregues (
-            id SERIAL PRIMARY KEY, 
-            item_id INT NOT NULL, 
-            nome_item TEXT NOT NULL, 
-            retirado_por VARCHAR(100) NOT NULL, 
-            rm_retirante VARCHAR(30) NOT NULL, 
-            turma_curso VARCHAR(50), 
-            data_entrega VARCHAR(30) NOT NULL, 
-            funcionario_responsavel VARCHAR(100)
+            id SERIAL PRIMARY KEY, item_id INT NOT NULL, nome_item TEXT NOT NULL, 
+            retirado_por VARCHAR(100) NOT NULL, rm_retirante VARCHAR(30) NOT NULL, 
+            turma_curso VARCHAR(50), data_entrega VARCHAR(30) NOT NULL, funcionario_responsavel VARCHAR(100)
         );''')
-
-        # Mural de Relatos de Perda dos Alunos
         cursor.execute('''CREATE TABLE IF NOT EXISTS mural_perdidos (
-            id SERIAL PRIMARY KEY, 
-            nome_aluno VARCHAR(100) NOT NULL, 
-            rm_aluno VARCHAR(20) NOT NULL, 
-            email_aluno VARCHAR(150), 
-            categoria VARCHAR(50) NOT NULL, 
-            descricao TEXT NOT NULL, 
-            data_registro VARCHAR(30) NOT NULL, 
-            status VARCHAR(30) DEFAULT 'PROCURANDO'
+            id SERIAL PRIMARY KEY, nome_aluno VARCHAR(100) NOT NULL, rm_aluno VARCHAR(20) NOT NULL, 
+            email_aluno VARCHAR(150), categoria VARCHAR(50) NOT NULL, descricao TEXT NOT NULL, 
+            data_registro VARCHAR(30) NOT NULL, status VARCHAR(30) DEFAULT 'PROCURANDO'
         );''')
-
-        # Mensagens do Chat Multi-Aluno
         cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens_chat (
-            id SERIAL PRIMARY KEY, 
-            rm_aluno VARCHAR(20) NOT NULL, 
-            nome_aluno VARCHAR(100) NOT NULL, 
-            remetente VARCHAR(20) NOT NULL, 
-            mensagem TEXT NOT NULL, 
-            data_envio VARCHAR(30) NOT NULL, 
-            lida BOOLEAN DEFAULT FALSE
+            id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) NOT NULL, nome_aluno VARCHAR(100) NOT NULL, 
+            remetente VARCHAR(20) NOT NULL, mensagem TEXT NOT NULL, data_envio VARCHAR(30) NOT NULL, lida BOOLEAN DEFAULT FALSE
         );''')
-
-        # Contas de Alunos
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (
-            email VARCHAR(150) PRIMARY KEY, 
-            nome VARCHAR(100) NOT NULL, 
-            rm VARCHAR(20) NOT NULL, 
-            senha_hash TEXT NOT NULL
+            email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
-
-        # Códigos Temporários de Verificação (2FA / Redefinição)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
-            email VARCHAR(150) PRIMARY KEY, 
-            codigo VARCHAR(6) NOT NULL, 
-            expiracao TIMESTAMP NOT NULL
+            email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')
-
-        # Assinaturas Push
         cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (
-            id SERIAL PRIMARY KEY, 
-            rm_aluno VARCHAR(20) UNIQUE NOT NULL, 
-            subscription_json TEXT NOT NULL
+            id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) UNIQUE NOT NULL, subscription_json TEXT NOT NULL
         );''')
 
-        # Seed de Categorias Básicas
         cursor.execute("SELECT COUNT(*) FROM categorias;")
         if cursor.fetchone()[0] == 0:
             for c in ['MOCHILA', 'ROUPAS', 'ACESSÓRIOS', 'ESCOLARES', 'ELETRÔNICOS', 'OUTROS']:
@@ -186,6 +126,5 @@ def init_db():
         cursor.close()
         conn.close()
         verificar_e_atualizar_itens_doacao(forcar=True)
-        print("[DB Init] Banco de dados inicializado com sucesso.")
     except Exception as e:
-        print(f"[DB Init] Erro na inicialização: {e}")
+        print(f"Erro DB init: {e}")
