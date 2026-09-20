@@ -131,6 +131,45 @@ function calcularDiasPassados(dataStr) {
     return 0;
 }
 
+
+const CORES_MATCH_ALUNO = ['preto', 'preta', 'azul', 'vermelho', 'vermelha', 'rosa', 'verde', 'amarelo', 'amarela', 'cinza', 'branco', 'branca', 'prata', 'dourado', 'marrom', 'roxo', 'roxa'];
+
+function calcularSmartMatchAluno(relato, item) {
+    let score = 0;
+    let motivos = [];
+
+    const catRelato = (relato.categoria || '').trim().toUpperCase();
+    const catItem = (item.categoria || '').trim().toUpperCase();
+    if (catRelato && catItem && catRelato === catItem) {
+        score += 30;
+        motivos.push(`Categoria ${catRelato}`);
+    }
+
+    const stopwords = new Set(['perdi', 'minha', 'meu', 'uma', 'um', 'no', 'na', 'em', 'de', 'da', 'do', 'com', 'sem', 'favor', 'acho', 'que', 'objeto', 'achei']);
+    function extrair(str) {
+        return (str || '').toLowerCase().match(/[a-zA-Z0-9áéíóúãõâêîôûç]+/g) || [];
+    }
+    const termosRelato = extrair(relato.descricao).filter(p => p.length >= 3 && !stopwords.has(p));
+    const termosItem = new Set(extrair(`${item.nome || ''} ${item.txt_descricao || ''}`).filter(p => p.length >= 3 && !stopwords.has(p)));
+    
+    const comuns = termosRelato.filter(t => termosItem.has(t));
+    if (termosRelato.length > 0 && comuns.length > 0) {
+        const pct = comuns.length / Math.max(1, termosRelato.length);
+        score += Math.min(40, Math.round(pct * 40));
+        motivos.push(`${comuns.slice(0, 2).join(', ')}`);
+    }
+
+    const coresRelato = extrair(relato.descricao).filter(p => CORES_MATCH_ALUNO.includes(p));
+    const coresItem = new Set(extrair(`${item.nome || ''} ${item.txt_descricao || ''}`).filter(p => CORES_MATCH_ALUNO.includes(p)));
+    const coresComuns = coresRelato.filter(c => coresItem.has(c));
+    if (coresComuns.length > 0) {
+        score += 15;
+        motivos.push(`Cor ${coresComuns[0]}`);
+    }
+
+    return { score: Math.min(100, score), motivos };
+}
+
 function normalizarStatus(itemOuStatus, dataItem = null) {
     let st = '';
     let dataStr = dataItem;
@@ -462,13 +501,41 @@ async function abrirPainelMeusItens() {
             if (relatos.length > 0) {
                 listaRel.innerHTML = '';
                 relatos.forEach(r => {
-                    listaRel.innerHTML += `
-                        <div class="glass-panel rounded-2xl p-4 flex justify-between items-center gap-3 border border-white/5">
-                            <div>
-                                <p class="text-xs font-bold text-white"><span class="text-amber-400">[${r.categoria}]</span> ${r.descricao}</p>
-                                <p class="text-[10px] text-slate-400 mt-0.5">Data do registro: ${r.data || 'Recente'}</p>
+                    const matches = [];
+                    (todosItens || []).forEach(it => {
+                        const st = normalizarStatus(it);
+                        if (st === 'DISPONÍVEL') {
+                            const res = calcularSmartMatchAluno(r, it);
+                            if (res.score >= 50) matches.push({ item: it, score: res.score });
+                        }
+                    });
+                    matches.sort((a, b) => b.score - a.score);
+
+                    let htmlMatchBadge = '';
+                    if (matches.length > 0) {
+                        const top = matches[0];
+                        htmlMatchBadge = `
+                            <div class="mt-2.5 pt-2.5 border-t border-white/5 flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <i class="fas fa-magic"></i> Encontramos item compatível (${top.score}%)
+                                </span>
+                                <button onclick='abrirDetalhes(${JSON.stringify(top.item).replace(/'/g, "&apos;")})' class="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 transition">
+                                    Ver Objeto
+                                </button>
                             </div>
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">ATIVO</span>
+                        `;
+                    }
+
+                    listaRel.innerHTML += `
+                        <div class="glass-panel rounded-2xl p-4 border border-white/5">
+                            <div class="flex justify-between items-center gap-3">
+                                <div>
+                                    <p class="text-xs font-bold text-white"><span class="text-amber-400">[${r.categoria}]</span> ${r.descricao}</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Data do registro: ${r.data || 'Recente'}</p>
+                                </div>
+                                <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider shrink-0">ATIVO</span>
+                            </div>
+                            ${htmlMatchBadge}
                         </div>`;
                 });
             } else listaRel.innerHTML = `<p class="text-xs text-slate-500 italic">Nenhum relato publicado no mural.</p>`;
