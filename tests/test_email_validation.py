@@ -44,5 +44,17 @@ class TestEmailValidation(unittest.TestCase):
             valido, msg = validar_email_institucional(e)
             self.assertFalse(valido, f"Entrada '{e}' deveria falhar na validação.")
 
+    def test_email_google_sso_dominio_valido(self):
+        email_google = "aluno.etec@aluno.cps.sp.gov.br"
+        valido, res = validar_email_institucional(email_google)
+        self.assertTrue(valido)
+        self.assertEqual(res, email_google)
+
+    def test_email_google_sso_gmail_comum_bloqueado(self):
+        email_pessoal = "aluno.etec@gmail.com"
+        valido, msg = validar_email_institucional(email_pessoal)
+        self.assertFalse(valido)
+        self.assertIn("Apenas e-mails institucionais", msg)
+
 if __name__ == '__main__':
     unittest.main()
