@@ -59,7 +59,7 @@ def token_required(f):
         if auth_header:
             parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == 'bearer':
-                token = parts.strip('"\'' )
+                token = parts[1].strip('"\'')
             elif len(parts) == 1:
                 token = parts[0].strip('"\'' )
 
@@ -198,8 +198,15 @@ def init_db():
         for col_nome, col_tipo in colunas_migracao:
             try:
                 cursor.execute(f"ALTER TABLE itens ADD COLUMN IF NOT EXISTS {col_nome} {col_tipo};")
+                conn.commit()
             except Exception:
                 conn.rollback()
+
+        try:
+            cursor.execute("UPDATE itens SET aprovado = TRUE WHERE aprovado IS NULL;")
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
         try:
             cursor.execute("SELECT setval(pg_get_serial_sequence('itens', 'id'), COALESCE((SELECT MAX(id) FROM itens), 1));")
@@ -349,20 +356,51 @@ def categorias():
 
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
+    conn = None
     try:
         verificar_e_atualizar_itens_doacao()
-        conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto, fotos_json, status, solicitado_por, rm_aluno, aprovado, cadastrado_por_aluno FROM itens WHERE aprovado = TRUE ORDER BY id DESC;")
-        itens = cursor.fetchall()
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cursor.execute("""
+                SELECT id, nome_item as nome, descricao as txt_descricao, categoria, 
+                       data_encontrado as txt_data, local_encontrado as txt_local, 
+                       foto, fotos_json, status, solicitado_por, rm_aluno, 
+                       COALESCE(aprovado, TRUE) as aprovado, 
+                       COALESCE(cadastrado_por_aluno, FALSE) as cadastrado_por_aluno 
+                FROM itens 
+                WHERE (aprovado IS NULL OR aprovado = TRUE)
+                ORDER BY id DESC;
+            """)
+            itens = cursor.fetchall()
+        except Exception as q_err:
+            conn.rollback()
+            cursor.execute("""
+                SELECT id, COALESCE(nome_item, descricao) as nome, descricao as txt_descricao, 
+                       categoria, data_encontrado as txt_data, local_encontrado as txt_local, 
+                       foto, status, solicitado_por, rm_aluno 
+                FROM itens 
+                ORDER BY id DESC;
+            """)
+            itens = cursor.fetchall()
+
         for item in itens:
             try: 
                 item['fotos'] = json.loads(item['fotos_json']) if item.get('fotos_json') else ([] if not item.get('foto') else [item['foto']])
             except: 
-                item['fotos'] = []
-        cursor.close(); conn.close()
+                item['fotos'] = [item['foto']] if item.get('foto') else []
+            if 'aprovado' not in item:
+                item['aprovado'] = True
+            if 'cadastrado_por_aluno' not in item:
+                item['cadastrado_por_aluno'] = False
+        cursor.close()
+        conn.close()
         return jsonify(itens)
     except Exception as e: 
+        if conn: conn.close()
+        print(f"Erro em get_itens: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route('/api/itens/pendentes', methods=['GET'])
 @token_required
@@ -487,34 +525,83 @@ def cadastrar_item():
 @app.route('/api/itens/<int:item_id>', methods=['PUT', 'DELETE'])
 @token_required
 def gerenciar_item(item_id):
-    conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-    if request.method == 'DELETE':
-        cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-        cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-    else:
-        data = request.json or {}
-        nome = (data.get('nome') or '').strip()
-        descricao = (data.get('descricao') or '').strip()
-        categoria = (data.get('categoria') or 'OUTROS').strip()
-        data_enc = (data.get('data') or '').strip()
-        local = (data.get('local') or '').strip()
-        status = (data.get('status') or 'DISPONÍVEL').strip()
-
-        fotos_rec = data.get('fotos', [])
-        if not fotos_rec and data.get('foto'):
-            fotos_rec = [data.get('foto')]
-
-        if fotos_rec:
-            urls = processar_fotos(fotos_rec)
-            cursor.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, foto=%s, fotos_json=%s, status=%s WHERE id=%s;", (nome, descricao, categoria, data_enc, local, urls[0] if urls else '', json.dumps(urls), status, item_id))
-        else: 
-            cursor.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s WHERE id=%s;", (nome, descricao, categoria, data_enc, local, status, item_id))
-        
-        if status.upper() == 'ENTREGUE':
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        if request.method == 'DELETE':
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-            cursor.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, nome or descricao, data.get('retirado_por', ''), data.get('rm_retirante', ''), data.get('turma_curso', '-'), data.get('data_entrega', data_enc), data.get('funcionario_responsavel', 'Secretaria')))
-    conn.commit(); cursor.close(); conn.close()
-    return jsonify({"success": True})
+            cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True})
+        else:
+            data = request.json or {}
+            cursor.execute("SELECT * FROM itens WHERE id = %s;", (item_id,))
+            item_atual = cursor.fetchone()
+            if not item_atual:
+                cursor.close(); conn.close()
+                return jsonify({"success": False, "message": "Item não encontrado."}), 404
+
+            nome = data.get('nome') if ('nome' in data and data.get('nome') is not None) else item_atual.get('nome_item', '')
+            descricao = data.get('descricao') if ('descricao' in data and data.get('descricao') is not None) else item_atual.get('descricao', '')
+            categoria = data.get('categoria') if ('categoria' in data and data.get('categoria') is not None) else item_atual.get('categoria', 'OUTROS')
+            data_enc = data.get('data') if ('data' in data and data.get('data') is not None) else item_atual.get('data_encontrado', '')
+            local = data.get('local') if ('local' in data and data.get('local') is not None) else item_atual.get('local_encontrado', '')
+            status = data.get('status') if ('status' in data and data.get('status') is not None) else item_atual.get('status', 'DISPONÍVEL')
+
+            nome = (str(nome) or '').strip()
+            descricao = (str(descricao) or '').strip()
+            categoria = (str(categoria) or 'OUTROS').strip()
+            data_enc = (str(data_enc) or '').strip()
+            local = (str(local) or '').strip()
+            status = (str(status) or 'DISPONÍVEL').strip()
+
+            if 'fotos' in data and data.get('fotos') is not None:
+                fotos_rec = data.get('fotos') or []
+                urls = processar_fotos(fotos_rec)
+                foto_capa = urls[0] if urls else ''
+                fotos_json_str = json.dumps(urls)
+                cursor.execute("""
+                    UPDATE itens 
+                    SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, 
+                        local_encontrado=%s, foto=%s, fotos_json=%s, status=%s, aprovado=TRUE 
+                    WHERE id=%s;
+                """, (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, status, item_id))
+            else:
+                cursor.execute("""
+                    UPDATE itens 
+                    SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, 
+                        local_encontrado=%s, status=%s, aprovado=TRUE 
+                    WHERE id=%s;
+                """, (nome, descricao, categoria, data_enc, local, status, item_id))
+
+            if status.upper() == 'ENTREGUE':
+                cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
+                cursor.execute("""
+                    INSERT INTO entregues (
+                        item_id, nome_item, retirado_por, rm_retirante, turma_curso, 
+                        data_entrega, funcionario_responsavel
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s);
+                """, (
+                    item_id, nome or descricao, 
+                    data.get('retirado_por', item_atual.get('solicitado_por', '')), 
+                    data.get('rm_retirante', item_atual.get('rm_aluno', '')), 
+                    data.get('turma_curso', '-'), 
+                    data.get('data_entrega', datetime.now().strftime("%d/%m/%Y %H:%M")), 
+                    data.get('funcionario_responsavel', 'Secretaria')
+                ))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True, "message": "Item atualizado com sucesso!"})
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        print(f"Erro em gerenciar_item: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
 @token_required

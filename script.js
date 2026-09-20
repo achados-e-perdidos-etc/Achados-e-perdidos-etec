@@ -526,9 +526,12 @@ async function carregarItensDaAPI() {
     try {
         const response = await fetch(`${API_URL}/api/itens`);
         if (response.ok) { 
-            todosItens = await response.json(); 
-            localStorage.setItem('cache_itens_etec', JSON.stringify(todosItens));
-            renderizarItens(); 
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                todosItens = data;
+                localStorage.setItem('cache_itens_etec', JSON.stringify(todosItens));
+                renderizarItens(); 
+            }
         }
     } catch(e){
         if (todosItens.length > 0) {
