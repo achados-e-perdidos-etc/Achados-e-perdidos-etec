@@ -107,16 +107,24 @@ function dispararNotificacaoNativa(titulo, corpo) {
 
 function calcularDiasPassados(dataStr) {
     if (!dataStr) return 0;
-    const partes = dataStr.trim().split(/[\/\-]/);
+    const partes = String(dataStr).trim().split(/[\/\-]/);
     if (partes.length === 3) {
         let dia, mes, ano;
         if (partes[0].length === 4) {
-            ano = parseInt(partes[0]); mes = parseInt(partes) - 1; dia = parseInt(partes);
+            // Formato ISO: YYYY-MM-DD
+            ano = parseInt(partes[0], 10);
+            mes = parseInt(partes[1], 10) - 1;
+            dia = parseInt(partes[2], 10);
         } else {
-            dia = parseInt(partes[0]); mes = parseInt(partes) - 1; ano = parseInt(partes);
+            // Formato Brasileiro: DD/MM/YYYY
+            dia = parseInt(partes[0], 10);
+            mes = parseInt(partes[1], 10) - 1;
+            ano = parseInt(partes[2], 10);
             if (ano < 100) ano += 2000;
         }
+        if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return 0;
         const dataItem = new Date(ano, mes, dia);
+        if (isNaN(dataItem.getTime())) return 0;
         const diffTempo = new Date().getTime() - dataItem.getTime();
         return Math.floor(diffTempo / (1000 * 60 * 60 * 24));
     }
@@ -127,14 +135,26 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
     let st = '';
     let dataStr = dataItem;
     if (typeof itemOuStatus === 'object' && itemOuStatus !== null) {
-        st = (itemOuStatus.status || 'DISPONÍVEL').toUpperCase();
+        st = (itemOuStatus.status || 'DISPONÍVEL').toUpperCase().trim();
         dataStr = itemOuStatus.data_encontrado || itemOuStatus.txt_data;
     } else {
-        st = (itemOuStatus || 'DISPONÍVEL').toUpperCase();
+        st = (itemOuStatus || 'DISPONÍVEL').toUpperCase().trim();
     }
 
-    if (st === 'DISPONÍVEL' && dataStr && calcularDiasPassados(dataStr) >= 90) {
+    // Se já estiver explicitamente como doação no banco de dados
+    if (st.includes('DOAÇÃO') || st.includes('DOACAO')) {
         return 'PARA DOAÇÃO';
+    }
+    if (st === 'ENTREGUE' || st === 'SOLICITADO') {
+        return st;
+    }
+
+    // Se estiver DISPONÍVEL, só converte para DOAÇÃO se realmente tiver mais de 90 dias
+    if (st === 'DISPONÍVEL' && dataStr) {
+        const dias = calcularDiasPassados(dataStr);
+        if (dias >= 90) {
+            return 'PARA DOAÇÃO';
+        }
     }
     return st;
 }
