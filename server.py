@@ -232,6 +232,12 @@ def init_db():
 
 if DATABASE_URL: init_db()
 
+@app.route('/controle_etec_7788.html')
+@app.route('/secretaria')
+@app.route('/admin')
+def secretaria_web():
+    return send_from_directory(app.static_folder, 'controle_etec_7788.html')
+
 @app.route('/')
 def home(): 
     return send_from_directory(app.static_folder, 'index.html')
@@ -363,8 +369,12 @@ def get_itens():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         try:
             cursor.execute("""
-                SELECT id, nome_item as nome, descricao as txt_descricao, categoria, 
-                       data_encontrado as txt_data, local_encontrado as txt_local, 
+                SELECT id, 
+                       COALESCE(nome_item, descricao) as nome, 
+                       descricao as txt_descricao, 
+                       categoria, 
+                       data_encontrado as txt_data, 
+                       local_encontrado as txt_local, 
                        foto, fotos_json, status, solicitado_por, rm_aluno, 
                        COALESCE(aprovado, TRUE) as aprovado, 
                        COALESCE(cadastrado_por_aluno, FALSE) as cadastrado_por_aluno 
@@ -376,8 +386,12 @@ def get_itens():
         except Exception as q_err:
             conn.rollback()
             cursor.execute("""
-                SELECT id, COALESCE(nome_item, descricao) as nome, descricao as txt_descricao, 
-                       categoria, data_encontrado as txt_data, local_encontrado as txt_local, 
+                SELECT id, 
+                       COALESCE(nome_item, descricao) as nome, 
+                       descricao as txt_descricao, 
+                       categoria, 
+                       data_encontrado as txt_data, 
+                       local_encontrado as txt_local, 
                        foto, status, solicitado_por, rm_aluno 
                 FROM itens 
                 ORDER BY id DESC;
@@ -535,7 +549,7 @@ def gerenciar_item(item_id):
             conn.commit()
             cursor.close()
             conn.close()
-            return jsonify({"success": True})
+            return jsonify({"success": True, "message": "Item excluído com sucesso."})
         else:
             data = request.json or {}
             cursor.execute("SELECT * FROM itens WHERE id = %s;", (item_id,))
@@ -558,11 +572,14 @@ def gerenciar_item(item_id):
             local = (str(local) or '').strip()
             status = (str(status) or 'DISPONÍVEL').strip()
 
+            if not descricao:
+                descricao = nome or 'Objeto'
+
             if 'fotos' in data and data.get('fotos') is not None:
                 fotos_rec = data.get('fotos') or []
                 urls = processar_fotos(fotos_rec)
-                foto_capa = urls[0] if urls else ''
-                fotos_json_str = json.dumps(urls)
+                foto_capa = urls[0] if urls else (item_atual.get('foto') or '')
+                fotos_json_str = json.dumps(urls) if urls else (item_atual.get('fotos_json') or '[]')
                 cursor.execute("""
                     UPDATE itens 
                     SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, 
@@ -600,7 +617,7 @@ def gerenciar_item(item_id):
     except Exception as e:
         if conn: conn.rollback(); conn.close()
         print(f"Erro em gerenciar_item: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e), "message": f"Erro interno ao atualizar item: {str(e)}"}), 500
 
 
 @app.route('/api/itens/<int:item_id>/recusar', methods=['PUT'])
