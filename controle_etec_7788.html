@@ -673,15 +673,12 @@
         </div>
       </div>
 
-      <!-- Barra de Busca com o Filtro de Categorias Embutido em Frente -->
+      <!-- Barra de Busca Expandida (Filtro de Categoria Removido a Pedido) -->
       <div class="linha-busca-filtro">
-        <div class="busca-wrapper">
+        <div class="busca-wrapper" style="width: 100%;">
           <i class="fas fa-search"></i>
           <input type="text" id="inputBusca" class="input-busca-geral" placeholder="Buscar ID, nome ou descrição..." oninput="filtrarItensNaTela()">
         </div>
-        <select id="filtroCategoria" class="select-categoria-busca" onchange="filtrarItensNaTela()">
-          <option value="TODAS">Todas Categorias</option>
-        </select>
       </div>
 
       <!-- Filtros em Pílulas -->
@@ -882,10 +879,137 @@
     </div>
   </div>
 
+  
+  <!-- MODAL DE DIAGNÓSTICO VISUAL DE ERRO ETEC (V1.6) -->
+  <div id="modalErroDetalhado" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px);">
+    <div style="background: #161b22; border: 2px solid #ef4444; border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.85);">
+      <div style="background: rgba(239, 68, 68, 0.15); border-bottom: 1px solid rgba(239, 68, 68, 0.3); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 50%; background: #ef4444; color: white; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold;">✕</div>
+          <div>
+            <h3 id="erroTitulo" style="color: #f87171; font-size: 15px; font-weight: 800; margin: 0;">Diagnóstico de Erro</h3>
+            <p id="erroSubtitulo" style="color: #8b949e; font-size: 11px; margin: 2px 0 0 0;">Identificação precisa da falha no sistema</p>
+          </div>
+        </div>
+        <button onclick="fecharModalErro()" style="background: transparent; border: none; color: #8b949e; font-size: 20px; cursor: pointer; padding: 4px 8px;">&times;</button>
+      </div>
+      
+      <div style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 12.5px;">
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px;">
+          <div style="font-size: 10.5px; font-weight: 700; color: #58a6ff; text-transform: uppercase; margin-bottom: 3px;">📍 Onde no Código / Tela</div>
+          <div id="erroOnde" style="color: #ffffff; font-family: monospace; font-size: 11.5px; word-break: break-all;">-</div>
+        </div>
+
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px;">
+          <div style="font-size: 10.5px; font-weight: 700; color: #f59e0b; text-transform: uppercase; margin-bottom: 3px;">📡 Comunicação / Requisição</div>
+          <div id="erroComunicacao" style="color: #c9d1d9; font-size: 11.5px;">-</div>
+        </div>
+
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px;">
+          <div style="font-size: 10.5px; font-weight: 700; color: #f87171; text-transform: uppercase; margin-bottom: 3px;">🔍 Mensagem Técnica / Stack</div>
+          <div id="erroMensagem" style="color: #fca5a5; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-word; max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.35); padding: 8px; border-radius: 6px;">-</div>
+        </div>
+
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 10px;">
+          <div style="font-size: 10.5px; font-weight: 700; color: #34d399; text-transform: uppercase; margin-bottom: 3px;">💡 Como Resolver / Causa Provável</div>
+          <div id="erroSolucao" style="color: #a7f3d0; font-size: 12px; line-height: 1.4;">-</div>
+        </div>
+      </div>
+
+      <div style="background: #161b22; border-top: 1px solid #30363d; padding: 10px 16px; display: flex; justify-content: flex-end; gap: 8px;">
+        <button onclick="copiarRelatorioErro()" id="btnCopiarErro" style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px; padding: 7px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+          <i class="fas fa-copy"></i> Copiar Relatório
+        </button>
+        <button onclick="fecharModalErro()" style="background: #dc2626; border: none; color: #ffffff; border-radius: 6px; padding: 7px 16px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="hidden"></div>
 
   <!-- JAVASCRIPT DO SISTEMA -->
   <script>
+    /* ==========================================================================
+       SISTEMA AVANÇADO DE DIAGNÓSTICO E TRATAMENTO DE ERRO (V1.6)
+       ========================================================================== */
+    let ultimoRelatorioErro = null;
+
+    function exibirErroDetalhado({ operacao, onde, comunicacao, mensagem, statusHttp, detalhes, causa, solucao }) {
+      console.error("🚨 [DIAGNÓSTICO ETEC]", { operacao, onde, comunicacao, mensagem, statusHttp, detalhes, causa, solucao });
+      
+      ultimoRelatorioErro = {
+        dataHora: new Date().toLocaleString('pt-BR'),
+        operacao: operacao || "Operação não identificada",
+        onde: onde || "Interface da Secretaria (Web)",
+        comunicacao: comunicacao || (statusHttp ? `HTTP Status ${statusHttp}` : "Chamada local / JavaScript"),
+        mensagem: mensagem || "Nenhuma mensagem técnica retornada.",
+        detalhes: detalhes || "",
+        causa: causa || "Possível instabilidade de conexão ou erro interno no servidor.",
+        solucao: solucao || "Verifique se o Railway está ativo e se sua sessão é válida."
+      };
+
+      const modal = document.getElementById('modalErroDetalhado');
+      if (modal) {
+        document.getElementById('erroTitulo').innerText = ultimoRelatorioErro.operacao;
+        document.getElementById('erroOnde').innerText = ultimoRelatorioErro.onde;
+        document.getElementById('erroComunicacao').innerText = ultimoRelatorioErro.comunicacao;
+        document.getElementById('erroMensagem').innerText = `${ultimoRelatorioErro.mensagem}${ultimoRelatorioErro.detalhes ? '\n\n[Traceback / Detalhes]:\n' + ultimoRelatorioErro.detalhes : ''}`;
+        document.getElementById('erroSolucao').innerHTML = ultimoRelatorioErro.solucao;
+        modal.classList.remove('hidden');
+      } else {
+        alert(`❌ ERRO: ${ultimoRelatorioErro.operacao}\n\n📍 Onde: ${ultimoRelatorioErro.onde}\n📡 Info: ${ultimoRelatorioErro.comunicacao}\n🔍 Detalhes: ${ultimoRelatorioErro.mensagem}\n💡 Causa: ${ultimoRelatorioErro.causa}`);
+      }
+    }
+
+    function fecharModalErro() {
+      const modal = document.getElementById('modalErroDetalhado');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function copiarRelatorioErro() {
+      if (!ultimoRelatorioErro) return;
+      const texto = `=== RELATÓRIO DE ERRO ETEC ACHADOS ===\nData/Hora: ${ultimoRelatorioErro.dataHora}\nOperação: ${ultimoRelatorioErro.operacao}\nOnde: ${ultimoRelatorioErro.onde}\nComunicação: ${ultimoRelatorioErro.comunicacao}\nMensagem: ${ultimoRelatorioErro.mensagem}\nDetalhes: ${ultimoRelatorioErro.detalhes}\nCausa: ${ultimoRelatorioErro.causa}\nSolução: ${ultimoRelatorioErro.solucao}\n=======================================`;
+      navigator.clipboard.writeText(texto).then(() => {
+        const btn = document.getElementById('btnCopiarErro');
+        if (btn) {
+          btn.innerHTML = '<i class="fas fa-check" style="color: #10b981;"></i> Copiado!';
+          setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i> Copiar Relatório'; }, 2500);
+        }
+      }).catch(() => {
+        alert("Copie o texto:\n\n" + texto);
+      });
+    }
+
+    // Captura global de erros não tratados no navegador
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      const arquivo = url ? url.split('/').pop() : 'controle_etec_7788.html';
+      exibirErroDetalhado({
+        operacao: "Erro de Execução JavaScript",
+        onde: `${arquivo} na linha ${lineNo}, coluna ${columnNo}`,
+        comunicacao: "Execução do Script no Navegador",
+        mensagem: String(msg),
+        detalhes: error && error.stack ? error.stack : "",
+        causa: "O navegador encontrou uma instrução inválida ou variável não inicializada.",
+        solucao: "Verifique o nome do arquivo e a linha indicada acima para identificar a função com falha."
+      });
+      return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+      const reason = event.reason || {};
+      exibirErroDetalhado({
+        operacao: "Promessa Rejeitada (Async/Fetch)",
+        onde: "Operação Assíncrona no Navegador",
+        comunicacao: "Requisição Assíncrona (Promise)",
+        mensagem: reason.message || String(reason),
+        detalhes: reason.stack || "",
+        causa: "Uma chamada de rede (fetch) ou promessa falhou sem tratamento específico.",
+        solucao: "Verifique se a internet do aparelho está conectada e se o servidor Railway respondeu."
+      });
+    };
+
     const API_URL = (window.location.origin && window.location.origin.includes("railway.app")) ? window.location.origin : "https://etec-achados.up.railway.app";
     let tokenSecretaria = null;
     let itensSec = [];
@@ -1040,11 +1164,7 @@
             sel.innerHTML = categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
           }
           
-          const filtroCat = document.getElementById('filtroCategoria');
-          if (filtroCat) {
-            filtroCat.innerHTML = `<option value="TODAS">Todas Categorias</option>` + 
-              categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-          }
+          // Filtro de categorias removido da barra de busca a pedido do usuário
         }
       } catch (e) {}
     }
@@ -1086,9 +1206,6 @@
       const container = document.getElementById('gridItensContainer');
       const termo = (document.getElementById('inputBusca').value || '').trim().toLowerCase();
       
-      const selCat = document.getElementById('filtroCategoria');
-      const catFiltro = (selCat && selCat.value) ? selCat.value.trim().toUpperCase() : 'TODAS';
-      
       const filtrados = itensSec.filter(item => {
         const st = (item.status || 'DISPONÍVEL').toUpperCase();
         
@@ -1101,12 +1218,6 @@
           // No modo TODOS: omite apenas os que já foram completamente entregues ou doação finalizada
           const stNorm = st.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           if (st === 'ENTREGUE' || stNorm === 'DOACAO FEITA') return false;
-        }
-
-        // 2. Filtro pelo Dropdown de Categorias
-        if (catFiltro && catFiltro !== 'TODAS') {
-          const itemCat = (item.categoria || 'OUTROS').toUpperCase();
-          if (itemCat !== catFiltro) return false;
         }
 
         // 3. Filtro pelo Texto de Busca (ID, Nome, Descrição, Local)
@@ -1584,16 +1695,38 @@
           await carregarItensSecretaria();
         } else {
           if (res.status === 401 || data.expired) {
-            alert("Sua sessão expirou ou o token é inválido. Por favor, faça login novamente.");
-            localStorage.removeItem('secretaria_token');
-            window.location.reload();
+            exibirErroDetalhado({
+              operacao: "Sessão Administrativa Expirada",
+              onde: "salvarItemForm() -> Validação de Token JWT",
+              comunicacao: `${id ? 'PUT' : 'POST'} ${url} (HTTP 401)`,
+              mensagem: data.message || "Acesso negado: Sua sessão expirou ou o token não é válido.",
+              detalhes: JSON.stringify(data),
+              causa: "O token JWT da secretaria venceu ou foi invalidado.",
+              solucao: "Clique no botão <strong>Sair</strong> no canto superior direito e faça login novamente para renovar o token."
+            });
             return;
           }
-          alert(data.message || data.error || `Erro ${res.status} ao salvar objeto.`);
+          exibirErroDetalhado({
+            operacao: id ? `Falha ao Salvar Alterações do Item #${id}` : "Falha ao Cadastrar Novo Item",
+            onde: `salvarItemForm() -> Linha de resposta da API`,
+            comunicacao: `${id ? 'PUT/POST' : 'POST'} ${url} (HTTP ${res.status})`,
+            mensagem: data.message || data.error || `Servidor retornou status HTTP ${res.status}`,
+            detalhes: data.traceback || data.detalhes || JSON.stringify(data),
+            causa: data.tipo ? `Exceção no Backend Python: ${data.tipo}` : "O banco de dados rejeitou a alteração ou os dados enviados são inválidos.",
+            solucao: "Verifique a mensagem técnica acima ou copie o relatório para análise."
+          });
         }
       } catch (err) {
         console.error("Erro fatal ao salvar:", err);
-        alert(`Erro de conexão ao salvar: ${err.message || 'Verifique sua conexão ou tente recarregar a página.'}`);
+        exibirErroDetalhado({
+          operacao: id ? `Erro de Conexão ao Salvar Item #${id}` : "Erro de Conexão ao Cadastrar Item",
+          onde: "salvarItemForm() -> Bloco catch (Falha de Rede)",
+          comunicacao: `${id ? 'PUT/POST' : 'POST'} ${API_URL}/api/itens/${id || ''}`,
+          mensagem: err.message || "Failed to fetch / Sem resposta do servidor",
+          detalhes: err.stack || "",
+          causa: "O celular não conseguiu se comunicar com o Railway (sem internet, CORS ou servidor reiniciando).",
+          solucao: "Verifique sua conexão Wi-Fi/4G e aguarde 20 segundos se o Railway estiver fazendo deploy."
+        });
       } finally {
         btn.disabled = false;
         btn.innerHTML = "Gravar no Banco";
