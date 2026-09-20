@@ -1,6 +1,6 @@
 """
 Fábrica da Aplicação Flask (Application Factory)
-ETEC Achados e Perdidos - Versão Modularizada 2.0
+ETEC Achados e Perdidos - Versão 3.0 Completa (Fases 1, 2 e 3 com IA)
 """
 import os
 import traceback
@@ -15,6 +15,8 @@ from blueprints.mural import mural_bp
 from blueprints.chat import chat_bp
 from blueprints.relatorios import relatorios_bp
 from blueprints.frontend import frontend_bp
+from blueprints.push import push_bp
+from blueprints.ai import ai_bp
 
 def create_app():
     """
@@ -63,13 +65,15 @@ def create_app():
             "message": f"Erro interno no servidor ao processar {request.method} {request.path}: {str(e)}"
         }), 500
 
-    # Registro dos Blueprints
+    # Registro de todos os Blueprints
     app.register_blueprint(frontend_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(itens_bp)
     app.register_blueprint(mural_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(relatorios_bp)
+    app.register_blueprint(push_bp)
+    app.register_blueprint(ai_bp)
 
     # Inicialização do banco se DATABASE_URL estiver configurada
     if DATABASE_URL:
