@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Gerador de QR Code -->
+  <!-- Biblioteca QRCode.js para Base64 instantâneo -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <!-- Leitor Html5-QRCode para Câmera -->
@@ -21,7 +21,7 @@
 
   <style>
     /* ==========================================================================
-       TEMA ESCURO ETEC - INTERFACE MODERNA E TOTALMENTE RESPONSIVA
+       TEMA ESCURO ETEC - INTERFACE TOTALMENTE RESPONSIVA
        ========================================================================== */
     * {
       box-sizing: border-box;
@@ -125,7 +125,7 @@
       text-align: left;
     }
 
-    /* --- CABEÇALHO & MENU HAMBÚRGUER (FOTO 2) --- */
+    /* --- CABEÇALHO & MENU HAMBÚRGUER --- */
     .header-secretaria {
       display: flex;
       align-items: center;
@@ -155,24 +155,42 @@
     .status-sessao { font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 5px; font-weight: 500; }
     .bolinha-verde { font-size: 8px; color: #10b981; }
 
-    /* Botão com Três Risquinhos */
+    /* Área direita do cabeçalho com botão de Sair rápido */
+    .header-direita-botoes {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-sair-rapido {
+      background: rgba(220, 38, 38, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(220, 38, 38, 0.35);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
     .btn-hamburger {
       background: #21262d;
       color: #ffffff;
       border: 1px solid #30363d;
       font-size: 18px;
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s;
     }
-    .btn-hamburger:active { transform: scale(0.94); background: #30363d; }
+    .btn-hamburger:active { background: #30363d; }
 
-    /* Fundo Escurecido e Gaveta Lateral */
+    /* Gaveta do Menu Lateral */
     .menu-backdrop {
       position: fixed;
       inset: 0;
@@ -270,7 +288,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .btn-novo-item {
       width: 100%;
@@ -312,25 +330,56 @@
       transition: transform 0.1s;
     }
     .btn-acao:active { transform: scale(0.97); }
-    .btn-etiquetas { background: #7c3aed; } /* Roxo (Folha A4) */
-    .btn-relatorio { background: #059669; } /* Verde (Planilha CSV) */
-    .btn-scanner   { background: #2563eb; } /* Azul (Leitor QR) */
+    .btn-etiquetas { background: #7c3aed; } /* Roxo */
+    .btn-relatorio { background: #059669; } /* Verde */
+    .btn-scanner   { background: #2563eb; } /* Azul */
 
-    /* Barra de Busca e Filtros */
-    .busca-container { position: relative; margin-bottom: 10px; }
-    .busca-container i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #8b949e; }
+    /* Linha de Busca integrada com Filtro de Categoria */
+    .linha-busca-filtro {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .busca-wrapper {
+      position: relative;
+      flex: 1;
+    }
+    .busca-wrapper i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #8b949e;
+      font-size: 13px;
+    }
     .input-busca-geral {
       width: 100%;
       background: #161b22;
       border: 1px solid #30363d;
       color: #ffffff;
-      padding: 10px 14px 10px 38px;
+      padding: 10px 12px 10px 34px;
       border-radius: 9px;
-      font-size: 13.5px;
+      font-size: 13px;
       outline: none;
     }
     .input-busca-geral:focus { border-color: #dc2626; }
 
+    /* Dropdown de Categorias em frente à Busca */
+    .select-categoria-busca {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      border-radius: 9px;
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      max-width: 140px;
+      cursor: pointer;
+    }
+    .select-categoria-busca:focus { border-color: #dc2626; }
+
+    /* Filtros em Pílulas */
     .filtros-scroll {
       display: flex;
       gap: 8px;
@@ -360,7 +409,7 @@
       border-color: #dc2626;
     }
 
-    /* Lista de Itens (Cards da Foto 1) */
+    /* Lista de Cards de Itens */
     .grid-itens { display: flex; flex-direction: column; gap: 9px; }
     .item-card {
       background: #161b22;
@@ -412,12 +461,13 @@
     .status-solicitado { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
     .status-doacao     { background: rgba(124, 58, 237, 0.15); color: #a78bfa; border: 1px solid rgba(124, 58, 237, 0.3); }
     .status-entregue   { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .status-pendente   { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 
     .item-titulo { font-size: 13.5px; font-weight: 700; color: #ffffff; margin-bottom: 3px; }
     .item-local-data { font-size: 11px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
     .item-local-data i { color: #dc2626; font-size: 10px; }
 
-    /* Outras Seções / Tabelas / Dashboard */
+    /* Tabelas e Dashboard */
     .secao-titulo { font-size: 17px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .grid-dashboard-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
     .card-dash { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; text-align: center; }
@@ -511,7 +561,7 @@
     </div>
   </div>
 
-  <!-- CABEÇALHO COM BOTÃO HAMBÚRGUER (FOTO 2) -->
+  <!-- CABEÇALHO COM BOTÃO HAMBÚRGUER E BOTÃO DE SAIR RÁPIDO (FOTO 2) -->
   <header class="header-secretaria">
     <div class="logo-area">
       <div class="avatar-etec"><i class="fas fa-user-shield"></i></div>
@@ -521,10 +571,15 @@
       </div>
     </div>
 
-    <!-- Botão com Três Risquinhos -->
-    <button id="btnHamburger" onclick="toggleMenuHamburger()" class="btn-hamburger" title="Menu de Abas">
-      <i class="fas fa-bars"></i>
-    </button>
+    <!-- Botões da Direita: Sair Rápido + Hambúrguer ☰ -->
+    <div class="header-direita-botoes">
+      <button onclick="sairSecretaria()" class="btn-sair-rapido" title="Encerrar Sessão">
+        <i class="fas fa-sign-out-alt"></i> Sair
+      </button>
+      <button id="btnHamburger" onclick="toggleMenuHamburger()" class="btn-hamburger" title="Menu de Abas">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
   </header>
 
   <!-- Fundo Escuro do Menu Hambúrguer -->
@@ -546,8 +601,13 @@
         <span>Estoque / Itens</span>
       </button>
 
+      <button onclick="trocarAba('pendentes')" class="item-menu" id="menuAba-pendentes">
+        <i class="fas fa-clipboard-check" style="color: #f59e0b;"></i>
+        <span>Itens Pendentes Alunos</span>
+      </button>
+
       <button onclick="trocarAba('categorias')" class="item-menu" id="menuAba-categorias">
-        <i class="fas fa-folder-open" style="color: #f59e0b;"></i>
+        <i class="fas fa-folder-open" style="color: #eab308;"></i>
         <span>Categorias</span>
       </button>
 
@@ -579,7 +639,7 @@
 
     <div class="menu-rodape">
       <button onclick="sairSecretaria()" class="btn-desconectar">
-        <i class="fas fa-sign-out-alt"></i> Sair da Secretaria
+        <i class="fas fa-sign-out-alt"></i> Desconectar da Sessão
       </button>
     </div>
   </aside>
@@ -589,20 +649,20 @@
 
     <!-- 1. ABA ESTOQUE / ITENS (FOTO 1) -->
     <section id="secao-itens">
-      <!-- Bloco de Ações Rápidas Ajustado -->
+      <!-- Bloco de Ações Rápidas (Foto 1 Ajustada) -->
       <div class="acoes-container">
-        <!-- Linha 1: Cadastrar Item -->
+        <!-- Linha 1: Botão Principal de Cadastro -->
         <button onclick="abrirModalCadastrar()" class="btn-novo-item">
           <i class="fas fa-plus-circle"></i> CADASTRAR ITEM
         </button>
 
-        <!-- Linha 2: Três botões com nome e ícone (Foto 1) -->
+        <!-- Linha 2: 3 Botões com Nome Curto e Ícone -->
         <div class="botoes-secundarios-grid">
-          <button onclick="gerarFolhaEtiquetasA4()" class="btn-acao btn-etiquetas" title="Gerar Folha A4 com QR Codes">
+          <button onclick="gerarFolhaEtiquetasA4()" class="btn-acao btn-etiquetas" title="Gerar Folha A4 de Etiquetas">
             <i class="fas fa-print"></i>
             <span>Etiquetas</span>
           </button>
-          <button onclick="exportarRelatorioCSV()" class="btn-acao btn-relatorio" title="Exportar Planilha CSV">
+          <button onclick="exportarRelatorioCSV()" class="btn-acao btn-relatorio" title="Exportar Planilha Excel/CSV">
             <i class="fas fa-file-excel"></i>
             <span>Relatório</span>
           </button>
@@ -613,10 +673,15 @@
         </div>
       </div>
 
-      <!-- Barra de Busca -->
-      <div class="busca-container">
-        <i class="fas fa-search"></i>
-        <input type="text" id="inputBusca" class="input-busca-geral" placeholder="Buscar item por ID, nome ou descrição..." oninput="filtrarItensNaTela()">
+      <!-- Barra de Busca com o Filtro de Categorias Embutido em Frente -->
+      <div class="linha-busca-filtro">
+        <div class="busca-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" id="inputBusca" class="input-busca-geral" placeholder="Buscar ID, nome ou descrição..." oninput="filtrarItensNaTela()">
+        </div>
+        <select id="filtroCategoria" class="select-categoria-busca" onchange="filtrarItensNaTela()">
+          <option value="TODAS">Todas Categorias</option>
+        </select>
       </div>
 
       <!-- Filtros em Pílulas -->
@@ -633,28 +698,35 @@
         </button>
       </div>
 
-      <!-- Lista de Itens Renderizada -->
+      <!-- Lista de Itens -->
       <div id="gridItensContainer" class="grid-itens">
-        <div class="text-center py-8" style="color: #8b949e; font-size: 13px;">Carregando itens...</div>
+        <div class="text-center py-8" style="color: #8b949e; font-size: 13px;">Carregando catálogo...</div>
       </div>
     </section>
 
-    <!-- 2. ABA CATEGORIAS -->
+    <!-- 2. ABA ITENS PENDENTES DE ALUNOS -->
+    <section id="secao-pendentes" class="hidden">
+      <h2 class="secao-titulo"><i class="fas fa-clipboard-check" style="color: #f59e0b;"></i> Itens Cadastrados por Alunos</h2>
+      <p style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">Objetos encontrados por alunos aguardando validação da secretaria.</p>
+      <div id="gridItensPendentesContainer" class="grid-itens"></div>
+    </section>
+
+    <!-- 3. ABA CATEGORIAS -->
     <section id="secao-categorias" class="hidden">
-      <h2 class="secao-titulo"><i class="fas fa-folder-open" style="color: #f59e0b;"></i> Gerenciar Categorias</h2>
+      <h2 class="secao-titulo"><i class="fas fa-folder-open" style="color: #eab308;"></i> Gerenciar Categorias</h2>
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
         <input type="text" id="inputNovaCat" class="campo-input" placeholder="Nome da categoria (ex: LIVROS)">
         <button onclick="adicionarCategoriaWeb()" class="btn-novo-item" style="width: auto; padding: 9px 16px;">Adicionar</button>
       </div>
       <div class="tabela-container">
         <table>
-          <thead><tr><th>Nome</th><th style="text-align: center; width: 60px;">Ação</th></tr></thead>
+          <thead><tr><th>Nome da Categoria</th><th style="text-align: center; width: 60px;">Ação</th></tr></thead>
           <tbody id="tabelaCategoriasBody"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- 3. ABA DASHBOARD -->
+    <!-- 4. ABA DASHBOARD -->
     <section id="secao-dashboard" class="hidden">
       <h2 class="secao-titulo"><i class="fas fa-chart-pie" style="color: #3b82f6;"></i> Visão Geral</h2>
       <div class="grid-dashboard-cards">
@@ -671,7 +743,7 @@
       </button>
     </section>
 
-    <!-- 4. ABA HISTÓRICO DE ENTREGAS -->
+    <!-- 5. ABA HISTÓRICO DE ENTREGAS -->
     <section id="secao-entregues" class="hidden">
       <h2 class="secao-titulo"><i class="fas fa-history" style="color: #06b6d4;"></i> Histórico de Entregas</h2>
       <div class="tabela-container">
@@ -682,7 +754,7 @@
       </div>
     </section>
 
-    <!-- 5. ABA DOAÇÕES -->
+    <!-- 6. ABA DOAÇÕES -->
     <section id="secao-doacoes" class="hidden">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <h2 class="secao-titulo" style="margin-bottom: 0;"><i class="fas fa-gift" style="color: #a855f7;"></i> Itens para Doação</h2>
@@ -696,7 +768,7 @@
       </div>
     </section>
 
-    <!-- 6. ABA MURAL DE RELATOS -->
+    <!-- 7. ABA MURAL DE RELATOS -->
     <section id="secao-mural" class="hidden">
       <h2 class="secao-titulo"><i class="fas fa-bullhorn" style="color: #f97316;"></i> Mural de Relatos</h2>
       <div class="tabela-container">
@@ -707,9 +779,9 @@
       </div>
     </section>
 
-    <!-- 7. ABA CHAT -->
+    <!-- 8. ABA CHAT -->
     <section id="secao-chat" class="hidden">
-      <h2 class="secao-titulo"><i class="fas fa-comments" style="color: #10b981;"></i> Chat Alunos</h2>
+      <h2 class="secao-titulo"><i class="fas fa-comments" style="color: #10b981;"></i> Atendimento Chat</h2>
       <div class="chat-layout">
         <div id="chatTituloAluno" class="chat-header">Selecione uma conversa</div>
         <div id="chatMensagensContainer" class="chat-mensagens-box">
@@ -811,12 +883,11 @@
   </div>
 
   <div id="toast" class="hidden"></div>
-
-  <!-- JAVASCRIPT DO SISTEMA -->
   <script>
     const API_URL = "https://etec-achados.up.railway.app";
     let tokenSecretaria = null;
     let itensSec = [];
+    let itensPendentesSec = [];
     let categoriasSec = [];
     let chatRmAtivo = null;
     let chatPollTimer = null;
@@ -899,7 +970,7 @@
       window.location.reload();
     }
 
-    /* MENU HAMBÚRGUER (FOTO 2) */
+    /* MENU HAMBÚRGUER */
     function toggleMenuHamburger() {
       const menu = document.getElementById('menuLateral');
       const backdrop = document.getElementById('menuBackdrop');
@@ -909,7 +980,7 @@
 
     function trocarAba(abaId) {
       toggleMenuHamburger();
-      ['itens', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat'].forEach(id => {
+      ['itens', 'pendentes', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat'].forEach(id => {
         const el = document.getElementById(`secao-${id}`);
         if (el) el.classList.add('hidden');
         const btn = document.getElementById(`menuAba-${id}`);
@@ -921,6 +992,7 @@
       const btnMenu = document.getElementById(`menuAba-${abaId}`);
       if (btnMenu) btnMenu.classList.add('active');
 
+      if (abaId === 'pendentes') carregarItensPendentes();
       if (abaId === 'categorias') renderizarCategorias();
       if (abaId === 'dashboard') carregarDashboard();
       if (abaId === 'entregues') carregarEntregues();
@@ -941,9 +1013,18 @@
         const res = await fetch(`${API_URL}/api/categorias`);
         if (res.ok) {
           categoriasSec = await res.json();
+          
+          // Popula o select do modal de cadastro
           const sel = document.getElementById('formItemCategoria');
           if (sel) {
             sel.innerHTML = categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+          }
+          
+          // Popula o select de filtro em frente à busca
+          const filtroCat = document.getElementById('filtroCategoria');
+          if (filtroCat) {
+            filtroCat.innerHTML = `<option value="TODAS">Todas Categorias</option>` + 
+              categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
           }
         }
       } catch (e) {}
@@ -959,7 +1040,7 @@
       } catch (e) {}
     }
 
-    /* FILTROS E CARDS (FOTO 1) */
+    /* FILTRO DE BUSCA E CATEGORIA */
     function aplicarFiltroStatus(status, el) {
       filtroStatusAtual = status;
       document.querySelectorAll('.pilula-filtro').forEach(b => b.classList.remove('active'));
@@ -970,12 +1051,21 @@
     function filtrarItensNaTela() {
       const container = document.getElementById('gridItensContainer');
       const termo = (document.getElementById('inputBusca').value || '').trim().toLowerCase();
+      const catFiltro = document.getElementById('filtroCategoria') ? document.getElementById('filtroCategoria').value : 'TODAS';
       
       const filtrados = itensSec.filter(item => {
         const st = (item.status || 'DISPONÍVEL').toUpperCase();
+        
+        // Filtro por Pílula
         if (filtroStatusAtual !== 'TODOS' && st !== filtroStatusAtual) return false;
         if (filtroStatusAtual === 'TODOS' && (st === 'ENTREGUE' || st === 'DOAÇÃO FEITA')) return false;
 
+        // Filtro pelo Dropdown de Categorias
+        if (catFiltro !== 'TODAS' && (item.categoria || 'OUTROS').toUpperCase() !== catFiltro.toUpperCase()) {
+          return false;
+        }
+
+        // Filtro pelo Texto de Busca
         if (termo) {
           const matchId = String(item.id).includes(termo);
           const matchNome = (item.nome || '').toLowerCase().includes(termo);
@@ -987,7 +1077,7 @@
       });
 
       if (!filtrados.length) {
-        container.innerHTML = `<div class="text-center py-8" style="color: #8b949e; font-size: 13px;">Nenhum item localizado.</div>`;
+        container.innerHTML = `<div class="text-center py-8" style="color: #8b949e; font-size: 13px;">Nenhum item localizado com esses filtros.</div>`;
         return;
       }
 
@@ -1019,6 +1109,63 @@
           </div>
         `;
       }).join('');
+    }
+
+    /* ITENS PENDENTES DE APROVAÇÃO (CADASTRADOS POR ALUNOS) */
+    async function carregarItensPendentes() {
+      const container = document.getElementById('gridItensPendentesContainer');
+      container.innerHTML = `<div class="text-center py-6" style="color: #8b949e;">Carregando pendências...</div>`;
+      try {
+        const res = await fetch(`${API_URL}/api/itens/pendentes`, { headers: getAuthHeadersGet() });
+        if (res.ok) {
+          itensPendentesSec = await res.json();
+          if (!itensPendentesSec.length) {
+            container.innerHTML = `<div class="text-center py-8" style="color: #10b981; font-weight: 600;">Nenhum item pendente de aprovação no momento!</div>`;
+            return;
+          }
+          container.innerHTML = itensPendentesSec.map(item => {
+            const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
+            const fotoHtml = fotoUrl 
+              ? `<div class="item-foto-thumb"><img src="${fotoUrl}" alt="Foto"></div>`
+              : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
+
+            return `
+              <div class="item-card" style="border-left: 3px solid #f59e0b;">
+                ${fotoHtml}
+                <div class="item-info">
+                  <div class="item-badges">
+                    <span class="badge-cat">${item.categoria || 'OUTROS'}</span>
+                    <span class="badge-status status-pendente">PENDENTE</span>
+                  </div>
+                  <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Objeto'}</div>
+                  <div class="item-local-data">Aluno RM: ${item.rm_aluno || 'Não informado'} | Local: ${item.txt_local || '-'}</div>
+                  <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button onclick="aprovarItemAluno(${item.id})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
+                      <i class="fas fa-check"></i> Aprovar
+                    </button>
+                    <button onclick="recusarSolicitacao(${item.id})" class="btn-acao" style="background: #dc2626; padding: 6px 12px; font-size: 11px;">
+                      <i class="fas fa-trash"></i> Recusar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="text-center py-6" style="color: #ef4444;">Erro ao carregar pendências.</div>`;
+      }
+    }
+
+    async function aprovarItemAluno(id) {
+      try {
+        const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
+        if (res.ok) {
+          mostrarToast("Item aprovado e inserido no catálogo!");
+          carregarItensPendentes();
+          carregarItensSecretaria();
+        }
+      } catch (e) {}
     }
 
     /* GERAÇÃO DE ETIQUETAS A4 COM QR CODE CORRIGIDO (FOTO 3) */
