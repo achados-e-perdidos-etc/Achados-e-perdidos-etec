@@ -33,10 +33,13 @@ def handle_preflight():
 @app.after_request
 def after_request(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, x-access-token'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+    if request.path.endswith('.html') or request.path == '/' or request.path.endswith('.js'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
     return response
-
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -69,16 +72,20 @@ def token_required(f):
         auth_header = request.headers.get('Authorization', '')
         if auth_header:
             parts = auth_header.split()
-            if len(parts) == 2 and parts[0].lower() == 'bearer':
+            if len(parts) >= 2 and parts[0].lower() == 'bearer':
                 token = parts[1].strip('"\'')
             elif len(parts) == 1:
-                token = parts[0].strip('"\'' )
+                token = parts[0].strip('"\'')
 
         if not token:
-            token = request.args.get('token', '').strip('"\'' )
+            token = request.headers.get('x-access-token', '').strip('"\'')
+        if not token:
+            token = request.args.get('token', '').strip('"\'')
+        if not token and request.is_json and request.json:
+            token = str(request.json.get('token') or '').strip('"\'')
 
         if not token or token.lower() in ['null', 'undefined', 'none', '']:
-            return jsonify({"success": False, "message": "Acesso negado: Token ausente."}), 401
+            return jsonify({"success": False, "message": "Acesso negado: Sessão não encontrada ou token ausente. Faça login novamente."}), 401
 
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"], leeway=timedelta(seconds=60), options={"verify_exp": True})
@@ -90,6 +97,7 @@ def token_required(f):
 
         return f(*args, **kwargs)
     return decorated
+
 
 def get_db_connection(): 
     return psycopg2.connect(DATABASE_URL, sslmode='require')
@@ -547,14 +555,14 @@ def cadastrar_item():
         if conn: conn.rollback(); conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'DELETE'])
+@app.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'POST', 'DELETE'])
 @token_required
 def gerenciar_item(item_id):
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        if request.method == 'DELETE':
+        if request.method == 'DELETE' or (request.is_json and request.json and request.json.get('_method') == 'DELETE'):
             cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
             conn.commit()
