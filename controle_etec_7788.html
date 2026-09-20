@@ -1527,32 +1527,45 @@
       });
     }
 
-    async function salvarItemForm(e) {
+        async function salvarItemForm(e) {
       e.preventDefault();
       const id = document.getElementById('formItemId').value;
-      const payload = {
-        nome: document.getElementById('formItemNome').value.trim(),
-        descricao: document.getElementById('formItemDescricao').value.trim(),
-        categoria: document.getElementById('formItemCategoria').value,
-        local: document.getElementById('formItemLocal').value.trim(),
-        data: document.getElementById('formItemData').value.trim(),
-        status: document.getElementById('formItemStatus').value,
-        fotos: fotosBase64Upload
-      };
-
       const btn = document.getElementById('btnSalvarItem');
       btn.disabled = true;
       btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Gravando...`;
 
+      const payload = {
+        nome: (document.getElementById('formItemNome').value || '').trim(),
+        descricao: (document.getElementById('formItemDescricao').value || '').trim(),
+        categoria: document.getElementById('formItemCategoria').value || 'OUTROS',
+        local: (document.getElementById('formItemLocal').value || '').trim(),
+        data: (document.getElementById('formItemData').value || '').trim(),
+        status: document.getElementById('formItemStatus').value || 'DISPONÍVEL',
+        fotos: fotosBase64Upload || [],
+        token: tokenSecretaria
+      };
+
       try {
         const url = id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`;
-        const method = id ? 'PUT' : 'POST';
-        const res = await fetch(url, {
-          method,
-          headers: getAuthHeaders(),
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json().catch(() => ({}));
+        let res;
+        try {
+          res = await fetch(url, {
+            method: id ? 'PUT' : 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+          });
+        } catch (errPut) {
+          console.warn("PUT bloqueado por operadora ou rede móvel. Tentando fallback via POST...", errPut);
+          res = await fetch(url, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ ...payload, _method: id ? 'PUT' : 'POST' })
+          });
+        }
+
+        let data = {};
+        try { data = await res.json(); } catch(e) {}
+
         if (res.ok && data.success !== false) {
           mostrarToast(id ? "Objeto atualizado com sucesso!" : "Objeto cadastrado com sucesso!");
           fecharModal('modalFormItem');
@@ -1566,13 +1579,16 @@
           }
           alert(data.message || data.error || `Erro ${res.status} ao salvar objeto.`);
         }
-      } catch (err) { alert("Erro de conexão."); }
-      finally {
+      } catch (err) {
+        console.error("Erro fatal ao salvar:", err);
+        alert(`Erro de conexão ao salvar: ${err.message || 'Verifique sua conexão ou tente recarregar a página.'}`);
+      } finally {
         btn.disabled = false;
         btn.innerHTML = "Gravar no Banco";
       }
     }
 
+    
     /* DAR BAIXA E COMPROVANTE */
     function abrirModalBaixa(id) {
       fecharModal('modalDetalhesItem');
