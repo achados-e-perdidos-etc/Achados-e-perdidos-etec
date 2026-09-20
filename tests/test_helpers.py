@@ -1,19 +1,23 @@
 """
-Testes Unitários para Funções Utilitárias Gerais
+Testes Unitários para Funções Utilitárias Gerais e Heurísticas Semânticas
 """
 import unittest
 from datetime import datetime, timedelta
-from utils.helpers import extrair_termos, calcular_dias_passados, sanitizar_texto
+from utils.helpers import (
+    extrair_termos, 
+    calcular_dias_passados, 
+    sanitizar_texto,
+    expandir_termos_semanticos,
+    calcular_afinidade_semantica
+)
 
 class TestHelpers(unittest.TestCase):
     def test_extrair_termos_basico(self):
         texto = "Perdi meu casaco azul com zíper na quadra de esportes"
         termos = extrair_termos(texto)
-        # Stopwords como 'perdi', 'meu', 'com', 'na', 'de' devem ser removidas
         self.assertNotIn("perdi", termos)
         self.assertNotIn("meu", termos)
         self.assertNotIn("com", termos)
-        # Palavras relevantes devem estar presentes
         self.assertIn("casaco", termos)
         self.assertIn("azul", termos)
         self.assertIn("quadra", termos)
@@ -44,6 +48,20 @@ class TestHelpers(unittest.TestCase):
         self.assertNotIn("\x00", sanitizado)
         self.assertNotIn("\x08", sanitizado)
         self.assertTrue(sanitizado.startswith("Caderno ETEC"))
+
+    def test_expansao_semantica_agasalhos(self):
+        termos = {"moletom"}
+        expandidos = expandir_termos_semanticos(termos)
+        self.assertIn("casaco", expandidos)
+        self.assertIn("blusa", expandidos)
+        self.assertIn("agasalho", expandidos)
+
+    def test_afinidade_semantica_sinonimos(self):
+        texto_aluno = "Perdi meu moletom preto na quadra"
+        texto_item = "Casaco preto esportivo encontrado"
+        score, motivos = calcular_afinidade_semantica(texto_aluno, texto_item)
+        self.assertGreater(score, 0.3)
+        self.assertTrue(any("Sinônimos" in m for m in motivos) or any("Termos" in m for m in motivos))
 
 if __name__ == '__main__':
     unittest.main()
