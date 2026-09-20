@@ -21,6 +21,8 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
         @media print {
             body * { visibility: hidden; }
             #comprovantePrintArea, #comprovantePrintArea * { visibility: visible; }
@@ -122,24 +124,56 @@
 
         <!-- ITENS CADASTRADOS -->
         <section id="secItensScreen" class="space-y-4">
-            <div class="flex gap-2">
-                <button onclick="abrirModalCadastrar()" class="flex-grow bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 transition">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="abrirModalCadastrar()" class="flex-grow bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 transition">
                     <i class="fas fa-plus-circle"></i> Cadastrar Item na Secretaria
+                </button>
+                <button onclick="exportarRelatorioCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2" title="Exportar Catálogo para Excel/CSV">
+                    <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">Exportar CSV</span>
                 </button>
                 <button onclick="abrirLeitorQR()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-5 rounded-xl text-xs shadow-lg transition flex items-center justify-center" title="Escanear QR Code">
                     <i class="fas fa-qrcode text-lg"></i>
                 </button>
             </div>
-            <div class="relative w-full">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                <input type="text" id="searchSecInput" oninput="filtrarItensSec()" placeholder="Buscar item por ID, nome ou descrição..." class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-red-500">
+
+            <!-- BUSCA E FILTROS RÁPIDOS POR STATUS -->
+            <div class="space-y-2.5">
+                <div class="relative w-full">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                    <input type="text" id="searchSecInput" oninput="filtrarItensSec()" placeholder="Buscar item por ID, nome ou descrição..." class="w-full bg-[#0d1117] border border-white/10 text-white text-xs rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-red-500">
+                </div>
+
+                <!-- FILTROS POR STATUS (CHIPS) -->
+                <div class="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1" id="filtroStatusSecContainer">
+                    <button type="button" onclick="selecionarFiltroStatusSec('TODOS', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-red-600 text-white border-red-500 shrink-0">
+                        Todos
+                    </button>
+                    <button type="button" onclick="selecionarFiltroStatusSec('SOLICITADO', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-amber-400 border-white/10 hover:bg-white/10 shrink-0 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-400"></span> Reivindicados
+                    </button>
+                    <button type="button" onclick="selecionarFiltroStatusSec('DISPONÍVEL', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-emerald-400 border-white/10 hover:bg-white/10 shrink-0 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Disponíveis
+                    </button>
+                    <button type="button" onclick="selecionarFiltroStatusSec('PARA DOAÇÃO', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-purple-400 border-white/10 hover:bg-white/10 shrink-0 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-purple-400"></span> Doações
+                    </button>
+                    <button type="button" onclick="selecionarFiltroStatusSec('ENTREGUE', this)" class="status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-slate-400 border-white/10 hover:bg-white/10 shrink-0">
+                        Entregues
+                    </button>
+                </div>
             </div>
+
             <div id="listaItensSec" class="space-y-3"></div>
         </section>
 
         <!-- ESTATÍSTICAS -->
         <section id="secStatsScreen" class="hidden space-y-4">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Visão Geral do Sistema:</h3>
+            <div class="flex justify-between items-center">
+                <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Visão Geral do Sistema:</h3>
+                <button onclick="exportarRelatorioCSV()" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+                    <i class="fas fa-file-excel"></i> Baixar Planilha
+                </button>
+            </div>
             <div class="grid grid-cols-3 gap-3">
                 <div class="glass-panel p-5 rounded-2xl text-center border border-white/10">
                     <i class="fas fa-boxes text-blue-400 text-2xl mb-1.5"></i>
@@ -363,9 +397,9 @@
         </div>
     </div>
 
-    <!-- MODAL DE BAIXA E COMPROVANTE -->
+    <!-- MODAL DE BAIXA E COMPROVANTE COM ASSINATURA TOUCH -->
     <div id="modalBaixa" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel border border-white/10 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+        <div class="glass-panel border border-white/10 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl max-h-[95vh] overflow-y-auto">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-white text-base"><i class="fas fa-check-circle text-emerald-400 mr-2"></i>Registrar Entrega</h3>
                 <button onclick="fecharModalBaixa()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
@@ -375,6 +409,18 @@
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nome Completo do Retirante:</label><input type="text" id="baixaNome" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">RM do Aluno:</label><input type="text" id="baixaRm" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-1">Turma / Curso:</label><input type="text" id="baixaTurma" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-red-500"></div>
+
+                <!-- ASSINATURA DIGITAL DO ALUNO (TOUCH/CANETA/MOUSE) -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-400 uppercase">Assinatura do Aluno na Tela:</label>
+                        <button type="button" onclick="limparCanvasAssinatura()" class="text-[11px] text-rose-400 hover:text-white font-semibold">Limpar</button>
+                    </div>
+                    <div class="border border-white/15 rounded-xl bg-white overflow-hidden touch-none relative">
+                        <canvas id="canvasAssinatura" width="380" height="120" class="w-full h-28 cursor-crosshair bg-white"></canvas>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">O aluno pode assinar com o dedo ou caneta diretamente na tela.</p>
+                </div>
             </div>
             <div class="flex gap-2 pt-2">
                 <button onclick="fecharModalBaixa()" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase">Cancelar</button>
@@ -408,9 +454,19 @@
                     Declaro para os devidos fins que retirei o objeto acima nas dependências da secretaria da ETEC, atestando seu recebimento e perfeito estado.
                 </p>
             </div>
-            <div class="grid grid-cols-2 gap-8 pt-10 text-center text-xs">
-                <div class="space-y-2"><div class="border-b border-black pb-1"></div><p class="font-bold">Assinatura do Aluno</p></div>
-                <div class="space-y-2"><div class="border-b border-black pb-1"></div><p class="font-bold">Responsável (Secretaria)</p></div>
+            <div class="grid grid-cols-2 gap-8 pt-6 text-center text-xs">
+                <div class="space-y-2 flex flex-col justify-end">
+                    <div id="areaImgAssinatura" class="min-h-[50px] flex items-center justify-center">
+                        <img id="compAssinaturaImg" class="h-14 max-w-full object-contain hidden" />
+                    </div>
+                    <div class="border-b border-black pb-1"></div>
+                    <p class="font-bold">Assinatura do Aluno</p>
+                </div>
+                <div class="space-y-2 flex flex-col justify-end">
+                    <div class="min-h-[50px]"></div>
+                    <div class="border-b border-black pb-1"></div>
+                    <p class="font-bold">Responsável (Secretaria)</p>
+                </div>
             </div>
             <div class="flex gap-3 pt-4 no-print">
                 <button onclick="window.print()" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs uppercase transition flex items-center justify-center gap-2">
@@ -421,20 +477,25 @@
         </div>
     </div>
 
-    <!-- SCRIPT DA SECRETARIA COM CORREÇÃO DE TOKEN JWT -->
+    <!-- SCRIPT DA SECRETARIA -->
     <script>
         const API_URL = "https://etec-achados.up.railway.app";
         let tokenSecretaria = null;
         let itensSec = [];
         let itensPendentesSec = [];
         let categoriasSec = [];
+        let statusFiltroSec = 'TODOS';
         let chatRmAtivo = null;
         let chatPollTimer = null;
         let acaoConfirmacaoCallback = null;
         let html5QrcodeScanner = null;
         let fotosEdicaoAtuais = [];
 
-        // Correção rigorosa para ler e enviar o Token JWT sem falhas
+        // Controle do Canvas de Assinatura
+        let canvasAssinatura, ctxAssinatura;
+        let desenhando = false;
+        let assinou = false;
+
         const getAuthHeaders = () => {
             const tokenAtual = (tokenSecretaria || localStorage.getItem('secretaria_token') || '').trim();
             return { 
@@ -465,6 +526,7 @@
         }
 
         window.onload = async () => {
+            inicializarCanvasAssinatura();
             const tokenSalvo = localStorage.getItem('secretaria_token');
             if (tokenSalvo) {
                 tokenSecretaria = tokenSalvo.trim();
@@ -574,6 +636,42 @@
             toast.innerHTML = `<i class="fas ${icone} text-lg shrink-0"></i><p class="text-xs font-semibold flex-grow">${mensagem}</p>`;
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 4000);
+        }
+
+        // ============================================================
+        // NOVO: EXPORTAR RELATÓRIO COMPLETO PARA EXCEL / CSV (UTF-8)
+        // ============================================================
+        function exportarRelatorioCSV() {
+            if (!itensSec || itensSec.length === 0) {
+                return mostrarToast("Nenhum item carregado para exportar.", "error");
+            }
+            const colunas = ["ID", "Nome do Item", "Descrição", "Categoria", "Local", "Data Registro", "Status", "Solicitante / Retirado Por", "RM"];
+            let csvContent = "\uFEFF"; // BOM para compatibilidade com o Excel no Brasil
+            csvContent += colunas.join(";") + "\r\n";
+
+            itensSec.forEach(i => {
+                const id = i.id || "";
+                const nome = (i.nome || i.txt_descricao || "").replace(/;/g, ",");
+                const desc = (i.txt_descricao || "").replace(/;/g, ",").replace(/[\r\n]+/g, " ");
+                const cat = (i.categoria || "").replace(/;/g, ",");
+                const local = (i.txt_local || "").replace(/;/g, ",");
+                const data = (i.txt_data || "").replace(/;/g, ",");
+                const status = (i.status || "DISPONÍVEL").replace(/;/g, ",");
+                const solicitante = (i.solicitado_por || i.retirado_por || "").replace(/;/g, ",");
+                const rm = (i.rm_aluno || i.rm_retirante || "").replace(/;/g, ",");
+
+                csvContent += `"${id}";"${nome}";"${desc}";"${cat}";"${local}";"${data}";"${status}";"${solicitante}";"${rm}"\r\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `relatorio_etec_achados_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            mostrarToast("Planilha CSV baixada com sucesso!", "success");
         }
 
         function abrirLeitorQR() {
@@ -711,15 +809,26 @@
                 if (res.status === 401) return sairSecretaria(false);
                 if (res.ok) { 
                     itensSec = await res.json(); 
-                    renderizarListaSec(itensSec); 
+                    filtrarItensSec(); 
                 }
             } catch (e) { mostrarToast("Erro ao carregar itens.", "error"); }
+        }
+
+        function selecionarFiltroStatusSec(status, botao) {
+            statusFiltroSec = status;
+            document.querySelectorAll('.status-sec-chip').forEach(b => {
+                b.className = "status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 shrink-0";
+            });
+            if (botao) {
+                botao.className = "status-sec-chip px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-red-600 text-white border-red-500 shrink-0";
+            }
+            filtrarItensSec();
         }
 
         function renderizarListaSec(lista) {
             const container = document.getElementById('listaItensSec');
             container.innerHTML = '';
-            if (lista.length === 0) return container.innerHTML = `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum objeto encontrado no catálogo.</div>`;
+            if (lista.length === 0) return container.innerHTML = `<div class="glass-panel text-center py-8 text-slate-500 text-xs rounded-2xl">Nenhum objeto corresponde aos filtros atuais.</div>`;
             
             lista.forEach(item => {
                 const card = document.createElement('div');
@@ -750,7 +859,16 @@
 
         function filtrarItensSec() {
             const termo = document.getElementById('searchSecInput').value.toLowerCase().trim();
-            renderizarListaSec(itensSec.filter(i => (i.nome || '').toLowerCase().includes(termo) || (i.txt_descricao || '').toLowerCase().includes(termo) || String(i.id) === termo));
+            const filtrados = itensSec.filter(i => {
+                const bateTexto = !termo || (i.nome || '').toLowerCase().includes(termo) || (i.txt_descricao || '').toLowerCase().includes(termo) || String(i.id) === termo;
+                const st = (i.status || 'DISPONÍVEL').toUpperCase();
+                let bateStatus = true;
+                if (statusFiltroSec !== 'TODOS') {
+                    bateStatus = st === statusFiltroSec;
+                }
+                return bateTexto && bateStatus;
+            });
+            renderizarListaSec(filtrados);
         }
 
         function abrirModalAcoesItem(id) {
@@ -918,11 +1036,75 @@
             }
         }
 
+        // ==========================================
+        // CANVAS DE ASSINATURA DIGITAL
+        // ==========================================
+        function inicializarCanvasAssinatura() {
+            canvasAssinatura = document.getElementById('canvasAssinatura');
+            if (!canvasAssinatura) return;
+            ctxAssinatura = canvasAssinatura.getContext('2d');
+            ctxAssinatura.strokeStyle = '#000000';
+            ctxAssinatura.lineWidth = 2.5;
+            ctxAssinatura.lineCap = 'round';
+            ctxAssinatura.lineJoin = 'round';
+
+            const getPos = (e) => {
+                const rect = canvasAssinatura.getBoundingClientRect();
+                const scaleX = canvasAssinatura.width / rect.width;
+                const scaleY = canvasAssinatura.height / rect.height;
+                if (e.touches && e.touches.length > 0) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                }
+                return {
+                    x: (e.clientX - rect.left) * scaleX,
+                    y: (e.clientY - rect.top) * scaleY
+                };
+            };
+
+            const iniciar = (e) => {
+                e.preventDefault();
+                desenhando = true;
+                assinou = true;
+                const pos = getPos(e);
+                ctxAssinatura.beginPath();
+                ctxAssinatura.moveTo(pos.x, pos.y);
+            };
+
+            const desenhar = (e) => {
+                if (!desenhando) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                ctxAssinatura.lineTo(pos.x, pos.y);
+                ctxAssinatura.stroke();
+            };
+
+            const parar = () => { desenhando = false; };
+
+            canvasAssinatura.addEventListener('mousedown', iniciar);
+            canvasAssinatura.addEventListener('mousemove', desenhar);
+            window.addEventListener('mouseup', parar);
+
+            canvasAssinatura.addEventListener('touchstart', iniciar, { passive: false });
+            canvasAssinatura.addEventListener('touchmove', desenhar, { passive: false });
+            window.addEventListener('touchend', parar);
+        }
+
+        function limparCanvasAssinatura() {
+            if (canvasAssinatura && ctxAssinatura) {
+                ctxAssinatura.clearRect(0, 0, canvasAssinatura.width, canvasAssinatura.height);
+                assinou = false;
+            }
+        }
+
         function abrirModalBaixa(id, nomeAluno, rmAluno) {
             document.getElementById('baixaItemId').value = id;
             document.getElementById('baixaNome').value = nomeAluno || ''; 
             document.getElementById('baixaRm').value = rmAluno || ''; 
             document.getElementById('baixaTurma').value = '';
+            limparCanvasAssinatura();
             document.getElementById('modalBaixa').classList.remove('hidden');
         }
         function fecharModalBaixa() { document.getElementById('modalBaixa').classList.add('hidden'); }
@@ -946,6 +1128,13 @@
                     carregarItensSecretaria(); 
                     carregarEstatisticas();
                     const itemObj = itensSec.find(i => String(i.id) === String(id));
+                    
+                    // Captura imagem da assinatura se houver
+                    let assinaturaDataUrl = null;
+                    if (assinou && canvasAssinatura) {
+                        assinaturaDataUrl = canvasAssinatura.toDataURL('image/png');
+                    }
+
                     exibirComprovante({ 
                         aluno: payload.retirado_por, 
                         rm: payload.rm_retirante, 
@@ -953,7 +1142,8 @@
                         nomeItem: itemObj ? (itemObj.nome || itemObj.txt_descricao) : `Item #${id}`, 
                         descItem: itemObj ? itemObj.txt_descricao : '', 
                         localItem: itemObj ? itemObj.txt_local : '', 
-                        dataEntrega: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') 
+                        dataEntrega: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR'),
+                        assinatura: assinaturaDataUrl
                     });
                 } else mostrarToast("Erro ao registrar entrega.", "error");
             } catch (e) { mostrarToast("Erro de conexão.", "error"); }
@@ -967,6 +1157,16 @@
             document.getElementById('compDescItem').innerText = dados.descItem; 
             document.getElementById('compLocalItem').innerText = dados.localItem; 
             document.getElementById('compDataEntrega').innerText = dados.dataEntrega;
+
+            const imgAss = document.getElementById('compAssinaturaImg');
+            if (dados.assinatura) {
+                imgAss.src = dados.assinatura;
+                imgAss.classList.remove('hidden');
+            } else {
+                imgAss.src = '';
+                imgAss.classList.add('hidden');
+            }
+
             document.getElementById('modalComprovante').classList.remove('hidden');
         }
         function fecharComprovante() { document.getElementById('modalComprovante').classList.add('hidden'); }
