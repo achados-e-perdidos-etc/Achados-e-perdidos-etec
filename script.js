@@ -14,8 +14,57 @@ let alunoSessao = null;
 let fotosAlunoSelecionadas = [];
 
 // ============================================================
-// NOVO: SOM SUTIL DE NOTIFICAÇÃO VIA WEB AUDIO API
+// NOVO: COMPRESSOR INTELIGENTE DE FOTOS NO NAVEGADOR (HTML5 CANVAS)
 // ============================================================
+function comprimirImagem(arquivo, maxDim = 1200, qualidade = 0.75) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width;
+                let h = img.height;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) {
+                        h = Math.round((h * maxDim) / w);
+                        w = maxDim;
+                    } else {
+                        w = Math.round((w * maxDim) / h);
+                        h = maxDim;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', qualidade));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(arquivo);
+    });
+}
+
+// ============================================================
+// DETECÇÃO DE CONEXÃO (ONLINE / OFFLINE)
+// ============================================================
+window.addEventListener('offline', () => {
+    const banner = document.getElementById('bannerStatusRede');
+    if (banner) banner.classList.remove('hidden');
+    mostrarToast("Você está sem internet. Exibindo dados em cache offline.", "info");
+});
+
+window.addEventListener('online', () => {
+    const banner = document.getElementById('bannerStatusRede');
+    if (banner) banner.classList.add('hidden');
+    mostrarToast("Conexão restabelecida! Atualizando pertences...", "success");
+    carregarItensDaAPI();
+});
+
+// SOM DE NOTIFICAÇÃO VIA WEB AUDIO API
 function tocarSomNotificacao() {
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -26,8 +75,8 @@ function tocarSomNotificacao() {
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // Tom Ré
-        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1); // Tom Lá
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1);
         gain.gain.setValueAtTime(0.12, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
         osc.start(ctx.currentTime);
@@ -35,7 +84,6 @@ function tocarSomNotificacao() {
     } catch(e) {}
 }
 
-// --- SISTEMA DE NOTIFICAÇÕES NATIVAS ---
 function solicitarPermissaoNotificacao() {
     if ("Notification" in window) {
         if (Notification.permission === "granted") {
@@ -57,7 +105,6 @@ function dispararNotificacaoNativa(titulo, corpo) {
     }
 }
 
-// --- CÁLCULO DE 90 DIAS ---
 function calcularDiasPassados(dataStr) {
     if (!dataStr) return 0;
     const partes = dataStr.trim().split(/[\/\-]/);
@@ -92,7 +139,6 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
     return st;
 }
 
-// --- SISTEMA DE AUTENTICAÇÃO E SESSÃO SEGURA (JWT) ---
 async function checarSessao() {
     const token = localStorage.getItem('aluno_token');
     const dados = localStorage.getItem('aluno_dados');
@@ -138,7 +184,6 @@ function fazerLogoff(recarregar = true) {
     }
 }
 
-// --- CONTROLES DOS MENUS FLUTUANTES ---
 function toggleMenuNavegacao() {
     const menu = document.getElementById('menuNavegacaoDropdown');
     const perfilMenu = document.getElementById('perfilMenu');
@@ -469,11 +514,7 @@ async function carregarCategoriasDinamicamente() {
     } catch (e) {}
 }
 
-// ============================================================
-// NOVO: CARREGAMENTO COM CACHE OFFLINE (LOCALSTORAGE)
-// ============================================================
 async function carregarItensDaAPI() {
-    // 1. Tenta carregar do cache para renderização imediata
     const cacheSalvo = localStorage.getItem('cache_itens_etec');
     if (cacheSalvo) {
         try {
@@ -491,7 +532,7 @@ async function carregarItensDaAPI() {
         }
     } catch(e){
         if (todosItens.length > 0) {
-            mostrarToast("Exibindo itens em cache offline.", "info");
+            mostrarToast("Exibindo itens salvos no dispositivo.", "info");
         }
     }
     setTimeout(() => {
@@ -765,9 +806,6 @@ function exibirMatchesImediatos(itens) {
     document.getElementById('modalMatchImediato').classList.remove('hidden');
 }
 
-// ============================================================
-// NOVO: POLLING INTELIGENTE DO CHAT (PAUSA QUANDO ABA MINIMIZADA)
-// ============================================================
 function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
@@ -866,23 +904,41 @@ async function enviarMensagemChat(e) {
 function abrirModalCadastrarAluno() {
     fotosAlunoSelecionadas = [];
     renderizarGridPreviewAluno();
+    const badge = document.getElementById('statusCompressaoFotos');
+    if (badge) badge.classList.add('hidden');
     document.getElementById('modalCadastrarAluno').classList.remove('hidden');
 }
 
-function prepararFotosAluno(input) {
-    if (input.files) {
+// ATUALIZADO: COMPRESSÃO AUTOMÁTICA DE IMAGENS DO CELULAR
+async function prepararFotosAluno(input) {
+    if (input.files && input.files.length > 0) {
+        const badge = document.getElementById('statusCompressaoFotos');
+        if (badge) {
+            badge.innerText = "Comprimindo fotos...";
+            badge.className = "text-[10px] text-amber-400 font-bold";
+            badge.classList.remove('hidden');
+        }
+
         const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
-        arquivos.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = e => {
+        for (const file of arquivos) {
+            try {
+                // Comprime a foto para no máximo 1200px e qualidade 75%
+                const fotoComprimida = await comprimirImagem(file, 1200, 0.75);
                 if (fotosAlunoSelecionadas.length < 4) {
-                    fotosAlunoSelecionadas.push(e.target.result);
-                    renderizarGridPreviewAluno();
+                    fotosAlunoSelecionadas.push(fotoComprimida);
                 }
-            };
-            reader.readAsDataURL(file);
-        });
+            } catch (err) {
+                console.warn("Erro ao comprimir, usando original:", err);
+            }
+        }
+
+        renderizarGridPreviewAluno();
         input.value = '';
+
+        if (badge) {
+            badge.innerText = "✓ Fotos otimizadas";
+            badge.className = "text-[10px] text-emerald-400 font-bold";
+        }
     }
 }
 
