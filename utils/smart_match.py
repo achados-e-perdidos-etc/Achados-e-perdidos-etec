@@ -1,0 +1,61 @@
+"""
+Módulo de Heurística de Smart Matching (Cruzamento Inteligente de Dados)
+Calcula pontuação percentual de afinidade entre relatos de perda e itens catalogados.
+"""
+import re
+from utils.helpers import extrair_termos
+
+CORES_LISTA = {
+    'preto', 'preta', 'azul', 'vermelho', 'vermelha', 'rosa', 'verde', 
+    'amarelo', 'amarela', 'cinza', 'branco', 'branca', 'prata', 'dourado', 
+    'marrom', 'roxo', 'roxa', 'laranja', 'bege', 'vinho', 'grafite'
+}
+
+def calcular_smart_match(relato, item):
+    """
+    Heurística ponderada de correlação:
+    - 30 pts: Categoria exata
+    - até 40 pts: Termos coincidentes na descrição/título
+    - 15 pts: Cores coincidentes
+    - 15 pts: Local compatível mencionado no relato
+    Retorna: (score_int [0-100], lista_de_motivos)
+    """
+    score = 0
+    detalhes = []
+    
+    # 1. Categoria (30 pts)
+    cat_relato = (relato.get('categoria') or '').strip().upper()
+    cat_item = (item.get('categoria') or '').strip().upper()
+    if cat_relato and cat_item and cat_relato == cat_item:
+        score += 30
+        detalhes.append(f"Mesma categoria ({cat_relato})")
+    
+    # 2. Termos do texto (até 40 pts)
+    txt_relato = (relato.get('descricao') or '')
+    txt_item = f"{item.get('nome') or ''} {item.get('txt_descricao') or item.get('descricao') or ''}"
+    termos_relato = extrair_termos(txt_relato)
+    termos_item = extrair_termos(txt_item)
+    intersecao = termos_relato.intersection(termos_item)
+    if termos_relato and intersecao:
+        pct_termos = len(intersecao) / max(1, len(termos_relato))
+        pts_termos = min(40, round(pct_termos * 40))
+        score += pts_termos
+        detalhes.append(f"Termos coincidentes: {', '.join(sorted(list(intersecao))[:3])}")
+    
+    # 3. Cores (15 pts)
+    palavras_relato = set(re.findall(r'[a-zA-Záéíóúãõâêîôûç]+', txt_relato.lower()))
+    palavras_item = set(re.findall(r'[a-zA-Záéíóúãõâêîôûç]+', txt_item.lower()))
+    cores_relato = palavras_relato.intersection(CORES_LISTA)
+    cores_item = palavras_item.intersection(CORES_LISTA)
+    cores_comuns = cores_relato.intersection(cores_item)
+    if cores_comuns:
+        score += 15
+        detalhes.append(f"Cor compatível: {', '.join(sorted(list(cores_comuns)))}")
+        
+    # 4. Local (15 pts)
+    local_item = (item.get('txt_local') or item.get('local_encontrado') or '').lower().strip()
+    if local_item and len(local_item) > 2 and local_item in txt_relato.lower():
+        score += 15
+        detalhes.append(f"Local compatível ({local_item})")
+        
+    return min(100, score), detalhes
