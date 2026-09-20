@@ -71,3 +71,71 @@ def sanitizar_texto(texto, max_len=500):
     # Remove caracteres de controle estranhos mantendo acentuação e pontuação comum
     texto_limpo = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', texto_str)
     return texto_limpo[:max_len]
+
+
+# ==============================================================================
+# FASE 3: GRUPOS SEMÂNTICOS E EXPANSÃO LÉXICA DE SINÔNIMOS ESCOLARES
+# ==============================================================================
+
+GRUPOS_SINONIMOS = [
+    # Agasalhos e Roupas
+    {'moletom', 'casaco', 'blusa', 'jaqueta', 'agasalho', 'sueter', 'corta-vento', 'cardigan'},
+    {'calça', 'bermuda', 'shorts', 'legging', 'jeans'},
+    {'camiseta', 'camisa', 'regata', 'uniforme'},
+    {'tenis', 'calcado', 'sapato', 'sandalia', 'chinelo'},
+    
+    # Material Escolar
+    {'estojo', 'penal', 'necessaire'},
+    {'caderno', 'bloco', 'agenda', 'fichario', 'planner'},
+    {'livro', 'apostila', 'manual', 'dicionario'},
+    {'caneta', 'lapiseira', 'lapis', 'marcador', 'marca-texto'},
+    
+    # Recipientes e Acessórios
+    {'garrafa', 'squeeze', 'termica', 'cantil', 'garrafinha', 'copo'},
+    {'mochila', 'bolsa', 'sacola', 'mala', 'pochete', 'bag'},
+    {'oculos', 'armacao', 'lente'},
+    {'chave', 'chaveiro', 'cadeado', 'tag'},
+    {'guarda-chuva', 'sombrinha'},
+    {'bone', 'chapeu', 'touca', 'gorro'},
+    
+    # Eletrônicos
+    {'fone', 'headphone', 'headset', 'airpods', 'earbuds', 'auricular'},
+    {'carregador', 'cabo', 'adaptador', 'fonte', 'usb'},
+    {'celular', 'smartphone', 'telefone', 'iphone', 'motorola', 'samsung', 'xiaomi'},
+    {'calculadora', 'cientifica'}
+]
+
+def expandir_termos_semanticos(termos_set):
+    termos_expandidos = set(termos_set)
+    for termo in termos_set:
+        termo_limpo = termo.lower().strip()
+        for grupo in GRUPOS_SINONIMOS:
+            if termo_limpo in grupo:
+                termos_expandidos.update(grupo)
+    return termos_expandidos
+
+def calcular_afinidade_semantica(texto_a, texto_b):
+    termos_a = extrair_termos(texto_a)
+    termos_b = extrair_termos(texto_b)
+    
+    if not termos_a or not termos_b:
+        return 0.0, []
+        
+    intersecao_exata = termos_a.intersection(termos_b)
+    expandidos_a = expandir_termos_semanticos(termos_a)
+    expandidos_b = expandir_termos_semanticos(termos_b)
+    
+    intersecao_semantica = expandidos_a.intersection(termos_b).union(expandidos_b.intersection(termos_a))
+    sinonimos_encontrados = list(intersecao_semantica - intersecao_exata)
+    
+    denominador = max(len(termos_a), len(termos_b))
+    score = (len(intersecao_exata) * 1.0 + len(sinonimos_encontrados) * 0.75) / max(1, denominador)
+    score_normalizado = min(1.0, score)
+    
+    motivos = []
+    if intersecao_exata:
+        motivos.append(f"Termos idênticos: {', '.join(sorted(list(intersecao_exata))[:3])}")
+    if sinonimos_encontrados:
+        motivos.append(f"Sinônimos equivalentes detectados: {', '.join(sorted(sinonimos_encontrados)[:3])}")
+        
+    return score_normalizado, motivos
