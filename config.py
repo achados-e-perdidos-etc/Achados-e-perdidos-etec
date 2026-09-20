@@ -1,6 +1,6 @@
 """
 Configurações Globais do Sistema ETEC Achados e Perdidos
-Centraliza variáveis de ambiente, credenciais e constantes institucionais.
+Centraliza variáveis de ambiente, credenciais, chaves Google OAuth e Push.
 """
 import os
 
@@ -21,6 +21,14 @@ DOMINIOS_EMAIL_PERMITIDOS = [
     "@cps.sp.gov.br",        # Servidores e professores do Centro Paula Souza
     "@etec.sp.gov.br"        # Domínio institucional legado/complementar
 ]
+
+# Google OAuth 2.0 / Single Sign-On (Google Identity Services)
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+
+# Web Push Notifications (VAPID Keys)
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDZKrxZJjSPO2S-2jT_GL5prEQC43XP0_12N_sample").strip()
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "mailto:achadoseperdidosetec@gmail.com").strip()
 
 # Armazenamento de Fotos na Nuvem (Cloudinary)
 CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
