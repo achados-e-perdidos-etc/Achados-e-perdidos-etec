@@ -45,6 +45,9 @@ ADMIN_SENHA_HASH = os.environ.get("ADMIN_SENHA_HASH", "").strip()
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 SMTP_SENDER = os.environ.get("SMTP_SENDER", "achadoseperdidosetec@gmail.com")
 
+# Controle de intervalo para a verificação de 90 dias
+ULTIMA_VERIFICACAO_DOACOES = None
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -117,7 +120,6 @@ def enviar_email_api_async(destinatario, assunto, html_content):
 def disparar_email(destinatario, assunto, html_content):
     Thread(target=enviar_email_api_async, args=(destinatario, assunto, html_content)).start()
 
-# FUNÇÃO QUE CALCULA DIAS PASSADOS
 def calcular_dias_passados(data_str):
     if not data_str: return 0
     data_limpa = str(data_str).strip()
@@ -130,8 +132,14 @@ def calcular_dias_passados(data_str):
             continue
     return 0
 
-# ROTINA AUTOMÁTICA: SE TIVER 90 DIAS OU MAIS PASSA PARA 'PARA DOAÇÃO'
-def verificar_e_atualizar_itens_doacao():
+# Verificação com controle de intervalo (não sobrecarrega o banco)
+def verificar_e_atualizar_itens_doacao(forcar=False):
+    global ULTIMA_VERIFICACAO_DOACOES
+    agora = datetime.now()
+    if not forcar and ULTIMA_VERIFICACAO_DOACOES and (agora - ULTIMA_VERIFICACAO_DOACOES).total_seconds() < 3600:
+        return
+    ULTIMA_VERIFICACAO_DOACOES = agora
+
     conn = None
     try:
         conn = get_db_connection()
@@ -158,9 +166,7 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
         cursor.execute('CREATE TABLE IF NOT EXISTS categorias (id SERIAL PRIMARY KEY, nome VARCHAR(50) UNIQUE NOT NULL);')
-        
         cursor.execute('''CREATE TABLE IF NOT EXISTS itens (
             id SERIAL PRIMARY KEY, 
             nome_item VARCHAR(150), 
@@ -213,9 +219,7 @@ def init_db():
                 cursor.execute("INSERT INTO categorias (nome) VALUES (%s) ON CONFLICT DO NOTHING;", (c,))
 
         conn.commit(); cursor.close(); conn.close()
-        
-        # Roda a verificação de 90 dias na inicialização
-        verificar_e_atualizar_itens_doacao()
+        verificar_e_atualizar_itens_doacao(forcar=True)
     except Exception as e: 
         print(f"Erro DB init: {e}")
 
@@ -312,8 +316,11 @@ def login_secretaria():
     email = (dados.get('email') or '').strip().lower()
     senha = (dados.get('senha') or '').strip()
     
+    if not email or not senha:
+        return jsonify({"success": False, "message": "Preencha e-mail e senha."}), 400
+
     login_valido = False
-    if email == EMAIL_SECRETARIA and senha:
+    if email == EMAIL_SECRETARIA:
         if ADMIN_SENHA and senha == ADMIN_SENHA:
             login_valido = True
         elif ADMIN_SENHA_HASH:
@@ -340,13 +347,10 @@ def categorias():
         conn.commit(); cursor.close(); conn.close()
         return jsonify({"success": True})
 
-# O GET EXECUTA A VERIFICAÇÃO AUTOMÁTICA DOS 90 DIAS
 @app.route('/api/itens', methods=['GET'])
 def get_itens():
     try:
-        # Atualiza automaticamente itens para doação
         verificar_e_atualizar_itens_doacao()
-        
         conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto, fotos_json, status, solicitado_por, rm_aluno, aprovado, cadastrado_por_aluno FROM itens WHERE aprovado = TRUE ORDER BY id DESC;")
         itens = cursor.fetchall()
@@ -452,7 +456,6 @@ def cadastrar_item():
         novo_id = row['id'] if isinstance(row, dict) else row[0]
         conn.commit()
 
-        # Alerta opcional no mural
         try:
             termos_novo = extrair_termos(f"{nome} {descricao}")
             cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
@@ -471,7 +474,7 @@ def cadastrar_item():
                             f"<div style='font-family:Arial;'><h2 style='color:#dc2626;'>Possível Match!</h2><p>Olá {mural['nome_aluno']}, a secretaria registrou um item parecido: <strong>{nome or descricao}</strong>.</p></div>"
                         )
             conn.commit()
-        except Exception as e_mural:
+        except Exception:
             if conn: conn.rollback()
 
         cursor.close()
@@ -631,7 +634,6 @@ def get_entregues():
 @app.route('/api/estatisticas', methods=['GET'])
 @token_required
 def estatisticas():
-    # Atualiza itens antigos na consulta das estatísticas
     verificar_e_atualizar_itens_doacao()
     conn = get_db_connection(); cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
