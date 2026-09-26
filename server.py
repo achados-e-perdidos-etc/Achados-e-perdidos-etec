@@ -42,7 +42,6 @@ DOMINIOS_EMAIL_PERMITIDOS = [
     "@etec.sp.gov.br"
 ]
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDZKrxZJjSPO2S-2jT_GL5prEQC43XP0_12N_sample").strip()
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
 VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "mailto:achadoseperdidosetec@gmail.com").strip()
@@ -506,31 +505,6 @@ def sub_push():
 @app.route('/api/auth/verificar', methods=['GET', 'OPTIONS'])
 @token_required
 def ver_token(): return jsonify({"success": True, "user": getattr(request, 'user', {})})
-
-@app.route('/api/auth/google', methods=['OPTIONS', 'POST'])
-def auth_google():
-    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
-    cred = (request.json or {}).get('credential', '').strip()
-    if not cred: return jsonify({"success": False, "message": "Token ausente."}), 400
-    try:
-        r = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={cred}", timeout=10)
-        if r.status_code != 200: return jsonify({"success": False, "message": "Token inválido."}), 401
-        p = r.json()
-        email, nome, pic = (p.get('email') or '').strip().lower(), (p.get('name') or 'Aluno ETEC').strip(), p.get('picture', '')
-        val, msg = validar_email_institucional(email)
-        if not val: return jsonify({"success": False, "message": msg}), 403
-
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT * FROM alunos WHERE email = %s;", (email,))
-        aluno = c.fetchone()
-        rm = aluno.get('rm') or 'PENDENTE' if aluno else 'PENDENTE'
-        if aluno: c.execute("UPDATE alunos SET nome = %s WHERE email = %s;", (nome, email))
-        else:
-            c.execute("INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", (email, nome, rm, generate_password_hash(f"sso_{random.randint(100000, 999999)}")))
-        conn.commit(); c.close(); conn.close()
-        token = gerar_token_aluno(email, nome, rm)
-        return jsonify({"success": True, "token": token, "aluno": {"nome": nome, "email": email, "rm": rm, "picture": pic, "precisa_rm": (rm == 'PENDENTE')}})
-    except Exception as e: return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/auth/atualizar-rm', methods=['OPTIONS', 'POST'])
 @token_required
