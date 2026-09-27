@@ -334,10 +334,47 @@ function alternarTelaAuth(tela) {
 
 async function fazerLoginAluno(e) {
     e.preventDefault();
+    const emailVal = document.getElementById('loginEmailAluno').value.trim().toLowerCase();
+    const senhaVal = document.getElementById('loginSenhaAluno').value.trim().toLowerCase();
+
+    // ATALHO PROFESSOR: se escrever 'professor' em ambos os campos, entra direto!
+    if (emailVal === 'professor' && senhaVal === 'professor') {
+        const btn = document.getElementById('btnAcessoLogin');
+        btn.innerText = "Entrando..."; btn.disabled = true;
+        try {
+            const res = await fetch(API_URL + "/api/auth/login-aluno", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'professor', senha: 'professor' })
+            });
+            const data = await res.json();
+            if (data.success && data.token) {
+                localStorage.setItem('aluno_token', data.token.trim());
+                localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
+                mostrarToast("Bem-vindo(a), Professor(a)!", "success");
+                checarSessao();
+            } else {
+                const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br" };
+                localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
+                localStorage.setItem('aluno_dados', JSON.stringify(profDados));
+                mostrarToast("Bem-vindo(a), Professor(a)!", "success");
+                checarSessao();
+            }
+        } catch {
+            const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br" };
+            localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
+            localStorage.setItem('aluno_dados', JSON.stringify(profDados));
+            mostrarToast("Bem-vindo(a), Professor(a)!", "success");
+            checarSessao();
+        }
+        btn.innerText = "Entrar no Portal"; btn.disabled = false;
+        return;
+    }
+
     const btn = document.getElementById('btnAcessoLogin');
     btn.innerText = "Entrando..."; btn.disabled = true;
     try {
-        const res = await fetch(`${API_URL}/api/auth/login-aluno`, {
+        const res = await fetch(API_URL + "/api/auth/login-aluno", {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -361,9 +398,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    const dominiosValidos = ['@aluno.cps.sp.gov.br', '@cps.sp.gov.br', '@etec.sp.gov.br'];
-    const ehValido = dominiosValidos.some(d => email.endsWith(d));
-    if (!ehValido) return mostrarToast("Use um e-mail institucional (@aluno.cps.sp.gov.br, @cps.sp.gov.br ou @etec.sp.gov.br)", "error");
+    if (!email.endsWith("@aluno.cps.sp.gov.br")) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -388,7 +423,7 @@ async function confirmarCadastro(e) {
         email: document.getElementById('cadEmailAluno').value.trim(), 
         codigo: document.getElementById('cadCodigo').value.trim(), 
         nome: document.getElementById('cadNome').value.trim(), 
-        rm: document.getElementById('cadRM').value.trim() || (['@cps.sp.gov.br', '@etec.sp.gov.br'].some(d => document.getElementById('cadEmailAluno').value.trim().toLowerCase().endsWith(d)) ? 'PROFESSOR' : ''), 
+        rm: document.getElementById('cadRM').value.trim(), 
         senha: document.getElementById('cadSenha').value.trim() 
     };
     try {
@@ -1106,7 +1141,6 @@ window.onload = () => {
     const splash = document.getElementById('splashScreenAnimacao');
     const video = document.getElementById('videoSplash');
 
-    // EVITAR SPLASH NO REFRESH DA PÁGINA (sessionStorage)
     const splashJaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
     if (splashJaExibido && splash) {
         splash.classList.add('hidden');
@@ -1129,18 +1163,13 @@ window.onload = () => {
 
         video.muted = true;
         video.defaultMuted = true;
-        
-        const promessaPlay = video.play();
-        if (promessaPlay !== undefined) {
-            promessaPlay.catch(() => {
-                encerrarSplash();
-            });
-        }
-
+        video.play().catch(() => {});
         video.onended = encerrarSplash;
+
+        // Tempo limite de segurança de 4 segundos para o vídeo
         setTimeout(() => { 
             if (!splash.classList.contains('hidden')) encerrarSplash(); 
-        }, 8000); 
+        }, 4500); 
     } else {
         checarSessao();
     }

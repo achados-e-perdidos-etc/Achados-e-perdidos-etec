@@ -37,9 +37,7 @@ ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "").strip()
 ADMIN_SENHA_HASH = os.environ.get("ADMIN_SENHA_HASH", "").strip()
 
 DOMINIOS_EMAIL_PERMITIDOS = [
-    "@aluno.cps.sp.gov.br",
-    "@cps.sp.gov.br",
-    "@etec.sp.gov.br"
+    "@aluno.cps.sp.gov.br"
 ]
 
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDZKrxZJjSPO2S-2jT_GL5prEQC43XP0_12N_sample").strip()
@@ -558,8 +556,22 @@ def cad_aluno():
 
 @app.route('/api/auth/login-aluno', methods=['OPTIONS', 'POST'])
 def log_aluno():
+    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
     d = request.json or {}
     email, senha = d.get('email', '').lower().strip(), d.get('senha', '').strip()
+    
+    # ACESSO PROFESSOR: digitar 'professor' no e-mail e na senha
+    if email == 'professor' and senha.lower() == 'professor':
+        token = gerar_token_aluno("professor@cps.sp.gov.br", "Professor(a)", "PROFESSOR")
+        return jsonify({
+            "success": True,
+            "token": token,
+            "aluno": {
+                "nome": "Professor(a)",
+                "rm": "PROFESSOR",
+                "email": "professor@cps.sp.gov.br"
+            }
+        })
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT * FROM alunos WHERE email = %s;", (email,))

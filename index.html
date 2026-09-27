@@ -41,8 +41,8 @@
                 <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-3 ring-4 ring-red-500/20">
                     <i class="fas fa-graduation-cap"></i>
                 </div>
-                <h2 class="text-xl font-extrabold text-white tracking-tight">Portal Institucional</h2>
-                <p class="text-xs text-slate-400 mt-1 font-medium">Acesso para Alunos e Professores da ETEC</p>
+                <h2 class="text-xl font-extrabold text-white tracking-tight">Portal do Aluno</h2>
+                <p class="text-xs text-slate-400 mt-1 font-medium">Use seu e-mail institucional @aluno.cps.sp.gov.br</p>
             </div>
 
             
@@ -51,7 +51,7 @@
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Institucional</label>
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="email" id="loginEmailAluno" required placeholder="seu.email@aluno.cps / @etec / @cps" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                        <input type="text" id="loginEmailAluno" required placeholder="seu.nome@aluno.cps.sp.gov.br (ou professor)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
                     </div>
                 </div>
                 <div>
@@ -83,7 +83,7 @@
                     <input type="text" id="cadCodigo" required placeholder="Código (6 dígitos)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
                     <div class="grid grid-cols-3 gap-2">
                         <input type="text" id="cadNome" required placeholder="Nome Completo" class="col-span-2 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
-                        <input type="text" id="cadRM" required placeholder="RM (Alunos) ou Matrícula" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
+                        <input type="text" id="cadRM" required placeholder="Seu RM" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                     </div>
                     <input type="password" id="cadSenha" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <button type="submit" id="btnConfirmarCad" class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Finalizar Cadastro</button>
