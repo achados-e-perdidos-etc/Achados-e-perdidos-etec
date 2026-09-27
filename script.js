@@ -1117,8 +1117,7 @@ window.onload = () => {
 
     if (splash && video) {
         sessionStorage.setItem('splash_ja_exibido', 'true');
-        video.muted = true;
-        video.play().catch(() => {});
+        
         const encerrarSplash = () => {
             splash.classList.add('opacity-0');
             setTimeout(() => { 
@@ -1127,8 +1126,21 @@ window.onload = () => {
                 checarSessao(); 
             }, 700);
         };
+
+        video.muted = true;
+        video.defaultMuted = true;
+        
+        const promessaPlay = video.play();
+        if (promessaPlay !== undefined) {
+            promessaPlay.catch(() => {
+                encerrarSplash();
+            });
+        }
+
         video.onended = encerrarSplash;
-        setTimeout(() => { if (!splash.classList.contains('hidden')) encerrarSplash(); }, 9000); 
+        setTimeout(() => { 
+            if (!splash.classList.contains('hidden')) encerrarSplash(); 
+        }, 8000); 
     } else {
         checarSessao();
     }
