@@ -540,6 +540,10 @@ def cad_aluno():
     val, email = validar_email_institucional(d.get('email', ''))
     if not val: return jsonify({"success": False, "message": email}), 400
     cod, nome, rm, senha = d.get('codigo', '').strip(), d.get('nome', '').strip(), d.get('rm', '').strip(), d.get('senha', '').strip()
+    if not rm:
+        rm = 'PROFESSOR' if any(email.endswith(d) for d in ['@cps.sp.gov.br', '@etec.sp.gov.br']) else 'ALUNO'
+    if not rm:
+        rm = 'PROFESSOR' if any(email.endswith(d) for d in ['@cps.sp.gov.br', '@etec.sp.gov.br']) else 'ALUNO'
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
