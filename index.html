@@ -16,8 +16,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
+    </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
     <!-- SPLASH SCREEN COM VÍDEO -->
@@ -42,33 +41,17 @@
                 <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-3 ring-4 ring-red-500/20">
                     <i class="fas fa-graduation-cap"></i>
                 </div>
-                <h2 class="text-xl font-extrabold text-white tracking-tight">Portal do Aluno</h2>
-                <p class="text-xs text-slate-400 mt-1 font-medium">Use seu e-mail institucional @aluno.cps.sp.gov.br</p>
+                <h2 class="text-xl font-extrabold text-white tracking-tight">Portal Institucional</h2>
+                <p class="text-xs text-slate-400 mt-1 font-medium">Acesso para Alunos e Professores da ETEC</p>
             </div>
 
             
             <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="space-y-4">
-                <!-- BOTÃO GOOGLE INSTITUCIONAL (SSO 1 CLIQUE) -->
-                <button type="button" onclick="iniciarLoginGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-900 font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-white/5 transition transform active:scale-[0.98]">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    <span>Entrar com Google Institucional</span>
-                </button>
-
-                <div class="relative flex py-1 items-center">
-                    <div class="flex-grow border-t border-white/10"></div>
-                    <span class="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-500">ou com senha institucional</span>
-                    <div class="flex-grow border-t border-white/10"></div>
-                </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Institucional</label>
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="email" id="loginEmailAluno" required placeholder="seu.nome@aluno.cps.sp.gov.br" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                        <input type="email" id="loginEmailAluno" required placeholder="seu.email@aluno.cps / @etec / @cps" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
                     </div>
                 </div>
                 <div>
@@ -89,7 +72,7 @@
                 <div id="passo1Cadastro" class="space-y-3">
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="email" id="cadEmailAluno" required placeholder="E-mail @aluno.cps.sp.gov.br" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500">
+                        <input type="email" id="cadEmailAluno" required placeholder="E-mail Institucional (@aluno.cps / @etec / @cps)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500">
                     </div>
                     <button type="button" id="btnEnviarCodigoCad" onclick="enviarCodigoAuth('cadEmailAluno', 'btnEnviarCodigoCad', 'passo2Cadastro', 'passo1Cadastro')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition">Enviar Código</button>
                 </div>
@@ -100,7 +83,7 @@
                     <input type="text" id="cadCodigo" required placeholder="Código (6 dígitos)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
                     <div class="grid grid-cols-3 gap-2">
                         <input type="text" id="cadNome" required placeholder="Nome Completo" class="col-span-2 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
-                        <input type="text" id="cadRM" required placeholder="Seu RM" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
+                        <input type="text" id="cadRM" required placeholder="RM (Alunos) ou Matrícula" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                     </div>
                     <input type="password" id="cadSenha" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <button type="submit" id="btnConfirmarCad" class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Finalizar Cadastro</button>
@@ -550,6 +533,11 @@
                     </div>
                     <input type="file" id="alunoItemFoto" accept="image/*" multiple onchange="prepararFotosAluno(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
                     <div id="gridPreviewAluno" class="mt-2.5 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
+                    <!-- BOTÃO AUTO-PREENCHIMENTO COM IA -->
+                    <button type="button" id="btnAutoPreencherIAAluno" onclick="analisarFotoAlunoComIA()" class="hidden w-full mt-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md active:scale-98">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>✨ Preencher Detalhes com Inteligência Artificial</span>
+                    </button>
                 </div>
                 <button type="submit" id="btnSalvarAlunoItem" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 transition">
                     Enviar para Moderação da Secretaria
@@ -573,18 +561,5 @@
 
     <script src="script.js"></script>
 
-    <!-- MODAL DE CONFIRMAÇÃO DE RM PARA LOGIN GOOGLE -->
-    <div id="modalConfirmarRM" class="hidden fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-xs rounded-2xl p-6 text-center border border-red-500/30">
-            <div class="w-12 h-12 rounded-xl bg-red-600/20 text-red-500 flex items-center justify-center text-xl mx-auto mb-3">
-                <i class="fas fa-id-card"></i>
-            </div>
-            <h3 class="text-base font-bold text-white mb-1">Informe seu RM</h3>
-            <p class="text-xs text-slate-400 mb-4">Para concluir a integração da sua conta institucional, informe seu RM de estudante:</p>
-            <input type="text" id="inputNovoRMGoogle" placeholder="Ex: 25238" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 mb-3 focus:border-red-500 outline-none text-center font-bold tracking-widest">
-            <button type="button" onclick="salvarRMGoogle()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition">Salvar e Acessar</button>
-        </div>
-    </div>
-</body>
+    </body>
 </html>
-

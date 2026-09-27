@@ -361,7 +361,9 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endsWith('@aluno.cps.sp.gov.br')) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    const dominiosValidos = ['@aluno.cps.sp.gov.br', '@cps.sp.gov.br', '@etec.sp.gov.br'];
+    const ehValido = dominiosValidos.some(d => email.endsWith(d));
+    if (!ehValido) return mostrarToast("Use um e-mail institucional (@aluno.cps.sp.gov.br, @cps.sp.gov.br ou @etec.sp.gov.br)", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -386,7 +388,7 @@ async function confirmarCadastro(e) {
         email: document.getElementById('cadEmailAluno').value.trim(), 
         codigo: document.getElementById('cadCodigo').value.trim(), 
         nome: document.getElementById('cadNome').value.trim(), 
-        rm: document.getElementById('cadRM').value.trim(), 
+        rm: document.getElementById('cadRM').value.trim() || (['@cps.sp.gov.br', '@etec.sp.gov.br'].some(d => document.getElementById('cadEmailAluno').value.trim().toLowerCase().endsWith(d)) ? 'PROFESSOR' : ''), 
         senha: document.getElementById('cadSenha').value.trim() 
     };
     try {
@@ -1132,92 +1134,6 @@ window.onload = () => {
     }
 };
 
-
-// ==============================================================================
-// FASE 2: AUTENTICAÇÃO INSTITUCIONAL GOOGLE (OAUTH 2.0 / SSO)
-// ==============================================================================
-function iniciarLoginGoogle() {
-    if (window.google && google.accounts && google.accounts.id) {
-        google.accounts.id.initialize({
-            client_id: "782012920232-example.apps.googleusercontent.com",
-            callback: handleGoogleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true
-        });
-        
-        google.accounts.id.prompt((notification) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                mostrarToast("Selecione sua conta institucional @aluno.cps.sp.gov.br no Google", "info");
-            }
-        });
-    } else {
-        mostrarToast("Carregando serviço Google... Clique novamente em instantes.", "info");
-    }
-}
-
-async function handleGoogleCredentialResponse(response) {
-    if (!response || !response.credential) return;
-    mostrarToast("Autenticando conta institucional no sistema...", "info");
-    try {
-        const res = await fetch(API_URL + "/api/auth/google", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential: response.credential })
-        });
-        const data = await res.json();
-        if (data.success && data.token) {
-            localStorage.setItem('aluno_token', data.token.trim());
-            localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
-            
-            if (data.aluno.precisa_rm) {
-                const modalRM = document.getElementById('modalConfirmarRM');
-                if (modalRM) modalRM.classList.remove('hidden');
-            } else {
-                checarSessao();
-                mostrarToast("Bem-vindo, " + data.aluno.nome + "!", "success");
-            }
-        } else {
-            mostrarToast(data.message || "Acesso restrito ao e-mail institucional.", "error");
-        }
-    } catch (err) {
-        mostrarToast("Erro ao comunicar com o servidor de autenticação.", "error");
-    }
-}
-
-async function salvarRMGoogle() {
-    const rmInput = document.getElementById('inputNovoRMGoogle');
-    const rm = rmInput ? rmInput.value.trim() : '';
-    if (!rm || rm.length < 3) return mostrarToast("Digite um RM válido de estudante.", "error");
-    
-    const token = localStorage.getItem('aluno_token');
-    try {
-        const res = await fetch(API_URL + "/api/auth/atualizar-rm", {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ rm: rm })
-        });
-        const data = await res.json();
-        if (data.success) {
-            const alunoDados = JSON.parse(localStorage.getItem('aluno_dados') || '{}');
-            alunoDados.rm = rm;
-            alunoDados.precisa_rm = false;
-            localStorage.setItem('aluno_dados', JSON.stringify(alunoDados));
-            if (data.token) localStorage.setItem('aluno_token', data.token);
-            
-            const modalRM = document.getElementById('modalConfirmarRM');
-            if (modalRM) modalRM.classList.add('hidden');
-            checarSessao();
-            mostrarToast("RM vinculado com sucesso! Acesso liberado.", "success");
-        } else {
-            mostrarToast(data.message || "Erro ao salvar RM.", "error");
-        }
-    } catch (err) {
-        mostrarToast("Erro ao conectar com o servidor.", "error");
-    }
-}
 
 // ==============================================================================
 // FASE 2: WEB PUSH NOTIFICATIONS NATIVAS (SERVICE WORKER & VAPID)
