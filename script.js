@@ -221,7 +221,17 @@ async function checarSessao() {
         
         document.getElementById('perfilNomeCompleto').innerText = alunoSessao.nome;
         document.getElementById('perfilEmailInstitucional').innerText = alunoSessao.email;
-        document.getElementById('perfilRM').innerText = alunoSessao.rm || 'N/A';
+        document.getElementById('perfilRM').innerText = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor') ? 'PROFESSOR (Apenas Cadastro)' : (alunoSessao.rm || 'N/A');
+
+        // AJUSTES ESPECÍFICOS PARA PROFESSOR:
+        const ehProf = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor');
+        const bPerdi = document.getElementById('btnPerdiBanner');
+        if (bPerdi) bPerdi.classList.toggle('hidden', ehProf);
+        const mMural = document.getElementById('menuBtnMural');
+        if (mMural) mMural.classList.toggle('hidden', ehProf);
+        if (ehProf) {
+            document.getElementById('lblBemVindo').innerText = "Olá, Professor(a)!";
+        }
 
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
@@ -354,14 +364,14 @@ async function fazerLoginAluno(e) {
                 mostrarToast("Bem-vindo(a), Professor(a)!", "success");
                 checarSessao();
             } else {
-                const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br" };
+                const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br", role: "professor" };
                 localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
                 localStorage.setItem('aluno_dados', JSON.stringify(profDados));
                 mostrarToast("Bem-vindo(a), Professor(a)!", "success");
                 checarSessao();
             }
         } catch {
-            const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br" };
+            const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br", role: "professor" };
             localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
             localStorage.setItem('aluno_dados', JSON.stringify(profDados));
             mostrarToast("Bem-vindo(a), Professor(a)!", "success");
@@ -803,7 +813,12 @@ function abrirDetalhes(item) {
     }
     
     const b = document.getElementById('btnSolicitar');
-    if (st !== 'DISPONÍVEL') { 
+    const ehProf = alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor');
+    if (ehProf) {
+        b.disabled = true;
+        b.innerText = "PROFESSORES NÃO PODEM SOLICITAR ITENS";
+        b.className = "w-full bg-slate-800 text-slate-400 font-bold py-3.5 rounded-xl text-xs uppercase cursor-not-allowed border border-white/5 opacity-80";
+    } else if (st !== 'DISPONÍVEL') { 
         b.disabled = true; 
         b.innerText = `STATUS: ${st}`; 
         b.className = "w-full bg-slate-800 text-slate-500 font-bold py-3.5 rounded-xl text-xs uppercase cursor-not-allowed"; 
@@ -826,10 +841,16 @@ function navegarFotos(dir) {
 }
 
 function abrirNovoModal() { 
+    if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
+        return mostrarToast("Conta de professor autorizada apenas para cadastrar itens, não para solicitar.", "error");
+    }
     if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); 
 }
 
 async function enviarNovo() {
+    if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
+        return mostrarToast("Conta de professor autorizada apenas para cadastrar itens, não para solicitar.", "error");
+    }
     const btn = document.getElementById('btnNovo'); 
     btn.disabled = true; btn.innerText = "Processando...";
     try {
@@ -860,6 +881,9 @@ async function enviarNovo() {
 
 async function enviarAvisoMural(e) {
     e.preventDefault();
+    if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
+        return mostrarToast("Conta de professor autorizada apenas para cadastrar itens encontrados.", "error");
+    }
     const btn = document.getElementById('btnPublicarMural'); 
     btn.disabled = true;
     try {

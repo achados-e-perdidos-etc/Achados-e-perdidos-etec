@@ -569,7 +569,8 @@ def log_aluno():
             "aluno": {
                 "nome": "Professor(a)",
                 "rm": "PROFESSOR",
-                "email": "professor@cps.sp.gov.br"
+                "email": "professor@cps.sp.gov.br",
+                "role": "professor"
             }
         })
     try:
@@ -777,7 +778,15 @@ def conc_doacoes():
 
 @app.route('/api/solicitar', methods=['OPTIONS', 'POST'])
 def sol_item():
+    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
     d = request.json or {}
+    rm = str(d.get('rm') or '').strip().upper()
+    email = str(d.get('email') or '').strip().lower()
+    
+    # REGRA: Conta de professor NÃO PODE solicitar nenhum item
+    if rm == 'PROFESSOR' or 'professor' in email:
+        return jsonify({"success": False, "message": "Conta de professor autorizada apenas para cadastrar itens, não para solicitar retiradas."}), 403
+
     conn = get_db_connection(); c = conn.cursor()
     c.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s WHERE id = %s AND status = 'DISPONÍVEL';", (d.get('nome'), d.get('rm'), d.get('email'), d.get('id')))
     af = c.rowcount; conn.commit(); c.close(); conn.close()
@@ -797,6 +806,10 @@ def rotas_mural():
         return jsonify(res)
     else:
         d = request.json or {}
+        rm = str(d.get('rm') or '').strip().upper()
+        email = str(d.get('email') or '').strip().lower()
+        if rm == 'PROFESSOR' or 'professor' in email:
+            return jsonify({"success": False, "message": "Conta de professor autorizada apenas para cadastrar itens encontrados, não para publicar relatos no mural."}), 403
         conn = get_db_connection(); c = conn.cursor()
         c.execute("INSERT INTO mural_perdidos (nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro, status) VALUES (%s, %s, %s, %s, %s, %s, 'PROCURANDO');", (d.get('nome'), d.get('rm'), d.get('email'), d.get('categoria'), d.get('descricao'), datetime.now().strftime("%d/%m/%Y %H:%M")))
         conn.commit(); c.close(); conn.close()
