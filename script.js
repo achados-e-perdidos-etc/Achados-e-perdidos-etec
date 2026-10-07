@@ -14,7 +14,7 @@ let alunoSessao = null;
 let fotosAlunoSelecionadas = [];
 
 // ============================================================
-// NOVO: COMPRESSOR INTELIGENTE DE FOTOS NO NAVEGADOR (HTML5 CANVAS)
+// COMPRESSOR INTELIGENTE DE FOTOS NO NAVEGADOR (HTML5 CANVAS)
 // ============================================================
 function comprimirImagem(arquivo, maxDim = 1200, qualidade = 0.75) {
     return new Promise((resolve, reject) => {
@@ -111,12 +111,10 @@ function calcularDiasPassados(dataStr) {
     if (partes.length === 3) {
         let dia, mes, ano;
         if (partes[0].length === 4) {
-            // Formato ISO: YYYY-MM-DD
             ano = parseInt(partes[0], 10);
             mes = parseInt(partes[1], 10) - 1;
             dia = parseInt(partes[2], 10);
         } else {
-            // Formato Brasileiro: DD/MM/YYYY
             dia = parseInt(partes[0], 10);
             mes = parseInt(partes[1], 10) - 1;
             ano = parseInt(partes[2], 10);
@@ -130,7 +128,6 @@ function calcularDiasPassados(dataStr) {
     }
     return 0;
 }
-
 
 const CORES_MATCH_ALUNO = ['preto', 'preta', 'azul', 'vermelho', 'vermelha', 'rosa', 'verde', 'amarelo', 'amarela', 'cinza', 'branco', 'branca', 'prata', 'dourado', 'marrom', 'roxo', 'roxa'];
 
@@ -180,7 +177,6 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
         st = (itemOuStatus || 'DISPONÍVEL').toUpperCase().trim();
     }
 
-    // Se já estiver explicitamente como doação no banco de dados
     if (st.includes('DOAÇÃO') || st.includes('DOACAO')) {
         return 'PARA DOAÇÃO';
     }
@@ -188,7 +184,6 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
         return st;
     }
 
-    // Se estiver DISPONÍVEL, só converte para DOAÇÃO se realmente tiver mais de 90 dias
     if (st === 'DISPONÍVEL' && dataStr) {
         const dias = calcularDiasPassados(dataStr);
         if (dias >= 90) {
@@ -196,6 +191,42 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
         }
     }
     return st;
+}
+
+async function ativarWebPush(rm) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            const resKey = await fetch(`${API_URL}/api/push/vapid-key`);
+            if (!resKey.ok) return;
+            const { publicKey } = await resKey.json();
+            if (!publicKey) return;
+            
+            const convertedKey = urlBase64ToUint8Array(publicKey);
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: convertedKey
+            });
+        }
+        await fetch(`${API_URL}/api/push/inscrever`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rm, subscription: sub })
+        });
+    } catch (e) {}
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
 }
 
 async function checarSessao() {
@@ -223,7 +254,6 @@ async function checarSessao() {
         document.getElementById('perfilEmailInstitucional').innerText = alunoSessao.email;
         document.getElementById('perfilRM').innerText = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor') ? 'PROFESSOR (Apenas Cadastro)' : (alunoSessao.rm || 'N/A');
 
-        // AJUSTES ESPECÍFICOS PARA PROFESSOR:
         const ehProf = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor');
         const bPerdi = document.getElementById('btnPerdiBanner');
         if (bPerdi) bPerdi.classList.toggle('hidden', ehProf);
@@ -347,7 +377,6 @@ async function fazerLoginAluno(e) {
     const emailVal = document.getElementById('loginEmailAluno').value.trim().toLowerCase();
     const senhaVal = document.getElementById('loginSenhaAluno').value.trim().toLowerCase();
 
-    // ATALHO PROFESSOR: se escrever 'professor' em ambos os campos, entra direto!
     if (emailVal === 'professor' && senhaVal === 'professor') {
         const btn = document.getElementById('btnAcessoLogin');
         btn.innerText = "Entrando..."; btn.disabled = true;
@@ -829,500 +858,441 @@ function abrirDetalhes(item) {
     }
 }
 
-function voltarParaCatalogo() { mudarAba('catalogo'); }
-
-function navegarFotos(dir) { 
-    const c = document.getElementById('carouselContainer'); 
-    if(fotosAtuais.length > 1) { 
-        fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; 
-        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); 
-        document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
-    } 
+function navegarFotos(dir) {
+    const cont = document.getElementById('carouselContainer');
+    if (!cont || fotosAtuais.length <= 1) return;
+    fotoIndiceAtual += dir;
+    if (fotoIndiceAtual < 0) fotoIndiceAtual = fotosAtuais.length - 1;
+    if (fotoIndiceAtual >= fotosAtuais.length) fotoIndiceAtual = 0;
+    
+    const w = cont.clientWidth;
+    cont.scrollTo({ left: w * fotoIndiceAtual, behavior: 'smooth' });
+    document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
 }
 
-function abrirNovoModal() { 
-    if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
-        return mostrarToast("Conta de professor autorizada apenas para cadastrar itens, não para solicitar.", "error");
+function voltarParaCatalogo() {
+    document.getElementById('detailScreen').classList.add('hidden');
+    document.getElementById('catalogScreen').classList.remove('hidden');
+}
+
+function abrirNovoModal() {
+    if (!alunoSessao) return mostrarToast("Faça login para continuar.", "error");
+    if (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor') {
+        return mostrarToast("Professores não podem solicitar a retirada de pertences.", "info");
     }
-    if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); 
+    document.getElementById('modalNovo').classList.remove('hidden');
 }
 
 async function enviarNovo() {
-    if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
-        return mostrarToast("Conta de professor autorizada apenas para cadastrar itens, não para solicitar.", "error");
-    }
-    const btn = document.getElementById('btnNovo'); 
-    btn.disabled = true; btn.innerText = "Processando...";
+    if (!itemSelecionado || !alunoSessao) return;
+    const b = document.getElementById('btnNovo');
+    b.innerText = "Enviando..."; b.disabled = true;
+
     try {
-        const token = localStorage.getItem('aluno_token');
-        const res = await fetch(`${API_URL}/api/solicitar`, { 
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            }, 
-            body: JSON.stringify({ 
-                id: itemSelecionado.id, 
-                nome: alunoSessao.nome, 
-                rm: alunoSessao.rm, 
-                email: alunoSessao.email 
-            }) 
+        const res = await fetch(`${API_URL}/api/solicitar-item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_item: itemSelecionado.id,
+                aluno_nome: alunoSessao.nome,
+                aluno_rm: alunoSessao.rm,
+                aluno_email: alunoSessao.email
+            })
         });
         const data = await res.json();
-        if(res.ok && data.success) { 
-            mostrarToast("Solicitação realizada! Compareça à secretaria para retirar.", "success"); 
-            document.getElementById('modalNovo').classList.add('hidden'); 
-            voltarParaCatalogo(); 
-            carregarItensDaAPI(); 
-        } else mostrarToast(data.message, "error");
-    } catch { mostrarToast("Erro na solicitação.", "error"); }
-    btn.disabled = false; btn.innerText = "Sim, é meu!";
+        if (data.success) {
+            mostrarToast("Solicitação enviada com sucesso! Dirija-se à secretaria.", "success");
+            document.getElementById('modalNovo').classList.add('hidden');
+            carregarItensDaAPI();
+            voltarParaCatalogo();
+        } else {
+            mostrarToast(data.message || "Erro ao solicitar item.", "error");
+        }
+    } catch (e) {
+        mostrarToast("Erro de comunicação com o servidor.", "error");
+    }
+    b.innerText = "Sim, é meu!"; b.disabled = false;
 }
 
 async function enviarAvisoMural(e) {
     e.preventDefault();
-    if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
-        return mostrarToast("Conta de professor autorizada apenas para cadastrar itens encontrados.", "error");
-    }
-    const btn = document.getElementById('btnPublicarMural'); 
-    btn.disabled = true;
-    try {
-        const token = localStorage.getItem('aluno_token');
-        const res = await fetch(`${API_URL}/api/mural`, { 
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            }, 
-            body: JSON.stringify({ 
-                nome: alunoSessao.nome, 
-                rm: alunoSessao.rm, 
-                email: alunoSessao.email, 
-                categoria: document.getElementById('muralCategoria').value, 
-                descricao: document.getElementById('muralDescricao').value.trim() 
-            }) 
-        });
-        const data = await res.json();
-        if (res.ok && data.success) { 
-            document.getElementById('muralDescricao').value = ''; 
-            if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
-                dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
-                exibirMatchesImediatos(data.matches_encontrados); 
-            } else {
-                mostrarToast("Relato publicado com sucesso no mural!", "success"); 
-            }
-            carregarMuralPublico();
-        } else mostrarToast(data.message || "Erro ao publicar.", "error");
-    } catch { mostrarToast("Erro ao conectar.", "error"); }
-    btn.disabled = false;
-}
+    if (!alunoSessao) return mostrarToast("Faça login para relatar.", "error");
+    
+    const cat = document.getElementById('muralCategoria').value;
+    const desc = document.getElementById('muralDescricao').value.trim();
+    if (!desc) return mostrarToast("Informe a descrição do objeto.", "error");
 
-async function carregarMuralPublico() {
-    const container = document.getElementById('listaMuralPublico');
-    if (!container) return;
-    try {
-        const res = await fetch(`${API_URL}/api/mural`);
-        if (res.ok) {
-            const mural = await res.json();
-            if (mural.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 italic p-4 text-center glass-panel rounded-2xl">Nenhum relato recente publicado.</p>`;
-                return;
-            }
-            container.innerHTML = mural.map(m => `
-                <div class="glass-panel rounded-2xl p-4 border border-white/5 space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">${m.categoria}</span>
-                        <span class="text-[10px] text-slate-500">${m.data_registro || ''}</span>
-                    </div>
-                    <p class="text-xs text-slate-200 font-medium">"${m.descricao}"</p>
-                    <p class="text-[10px] text-slate-400 font-bold"><i class="fas fa-user text-slate-500 mr-1"></i>${m.nome_aluno}</p>
-                </div>
-            `).join('');
-        }
-    } catch(e){}
-}
-
-function exibirMatchesImediatos(itens) {
-    const lst = document.getElementById('matchItensLista'); 
-    lst.innerHTML = '';
-    itens.forEach(i => {
-        lst.innerHTML += `
-            <div class="glass-panel p-3 rounded-2xl flex justify-between items-center gap-3 border border-white/5">
-                <div>
-                    <p class="text-xs font-bold text-white">${i.nome || i.txt_descricao}</p>
-                    <span class="text-[9px] uppercase font-bold text-emerald-400">${i.categoria}</span>
-                </div>
-                <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")}); document.getElementById("modalMatchImediato").classList.add("hidden");' class="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs">VER</button>
-            </div>`;
-    });
-    document.getElementById('modalMatchImediato').classList.remove('hidden');
-}
-
-function alternarJanelaChat() {
-    chatAberto = !chatAberto;
-    document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
-    document.getElementById('badgeChatWeb').classList.add('hidden');
-    if (chatAberto) { 
-        atualizarMensagensChat(); 
-        iniciarPollingChatAluno();
-    } else {
-        pararPollingChatAluno();
-    }
-}
-
-function iniciarPollingChatAluno() {
-    pararPollingChatAluno();
-    chatTimerPolling = setInterval(() => {
-        if (!document.hidden && chatAberto) {
-            atualizarMensagensChat();
-        }
-    }, 3000);
-}
-
-function pararPollingChatAluno() {
-    if (chatTimerPolling) {
-        clearInterval(chatTimerPolling);
-        chatTimerPolling = null;
-    }
-}
-
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && chatAberto) {
-        atualizarMensagensChat();
-    }
-});
-
-function abrirChatComItem() { 
-    if(!chatAberto) alternarJanelaChat(); 
-    if(itemSelecionado) {
-        document.getElementById('chatInputTexto').value = `Olá! Gostaria de informações sobre o item #${itemSelecionado.id} (${itemSelecionado.nome || itemSelecionado.txt_descricao}): `;
-        document.getElementById('chatInputTexto').focus();
-    } 
-}
-
-async function atualizarMensagensChat() {
-    if(!alunoSessao) return;
-    try {
-        const res = await fetch(`${API_URL}/api/chat/mensagens/${alunoSessao.rm}?marcar_lida=true&origem=ALUNO`);
-        if(!res.ok) return;
-        const msgs = await res.json();
-        const c = document.getElementById('chatMensagens');
-        if(msgs.length !== ultimaQtdMensagens) {
-            if (ultimaQtdMensagens > 0) {
-                const ultimaMensagem = msgs[msgs.length - 1];
-                if (ultimaMensagem.remetente !== 'ALUNO') {
-                    tocarSomNotificacao();
-                    if (document.hidden || !chatAberto) {
-                        dispararNotificacaoNativa("Secretaria ETEC respondeu", ultimaMensagem.mensagem);
-                    }
-                }
-            }
-            ultimaQtdMensagens = msgs.length; 
-            c.innerHTML = '';
-            msgs.forEach(m => { 
-                const eu = m.remetente === 'ALUNO'; 
-                c.innerHTML += `
-                    <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
-                        <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
-                            ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 shadow-md text-white"><i class="fas fa-shield-alt text-[10px]"></i></div>` : ''}
-                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${eu ? 'rounded-tr-sm bg-gradient-to-r from-red-600 to-rose-600 text-white' : 'rounded-tl-sm border border-white/10 bg-[#161c28] text-slate-200'}">
-                                ${m.mensagem}
-                            </div>
-                        </div>
-                    </div>`; 
-            });
-            c.scrollTop = c.scrollHeight;
-        }
-    } catch(e){}
-}
-
-async function enviarMensagemChat(e) {
-    e.preventDefault();
-    const txt = document.getElementById('chatInputTexto').value.trim();
-    if(!txt || !alunoSessao) return;
-    try {
-        const res = await fetch(`${API_URL}/api/chat/enviar`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt }) 
-        });
-        if(res.ok) {
-            document.getElementById('chatInputTexto').value = ''; 
-            atualizarMensagensChat();
-        }
-    } catch(e){}
-}
-
-function abrirModalCadastrarAluno() {
-    fotosAlunoSelecionadas = [];
-    renderizarGridPreviewAluno();
-        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
-        if (btnIAAluno) {
-            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
-            else btnIAAluno.classList.add('hidden');
-        }
-    const badge = document.getElementById('statusCompressaoFotos');
-    if (badge) badge.classList.add('hidden');
-    document.getElementById('modalCadastrarAluno').classList.remove('hidden');
-}
-
-// ATUALIZADO: COMPRESSÃO AUTOMÁTICA DE IMAGENS DO CELULAR
-async function prepararFotosAluno(input) {
-    if (input.files && input.files.length > 0) {
-        const badge = document.getElementById('statusCompressaoFotos');
-        if (badge) {
-            badge.innerText = "Comprimindo fotos...";
-            badge.className = "text-[10px] text-amber-400 font-bold";
-            badge.classList.remove('hidden');
-        }
-
-        const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
-        for (const file of arquivos) {
-            try {
-                // Comprime a foto para no máximo 1200px e qualidade 75%
-                const fotoComprimida = await comprimirImagem(file, 1200, 0.75);
-                if (fotosAlunoSelecionadas.length < 4) {
-                    fotosAlunoSelecionadas.push(fotoComprimida);
-                }
-            } catch (err) {
-                console.warn("Erro ao comprimir, usando original:", err);
-            }
-        }
-
-        renderizarGridPreviewAluno();
-        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
-        if (btnIAAluno) {
-            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
-            else btnIAAluno.classList.add('hidden');
-        }
-        input.value = '';
-
-        if (badge) {
-            badge.innerText = "✓ Fotos otimizadas";
-            badge.className = "text-[10px] text-emerald-400 font-bold";
-        }
-    }
-}
-
-function renderizarGridPreviewAluno() {
-    const container = document.getElementById('gridPreviewAluno');
-    container.innerHTML = '';
-    if (fotosAlunoSelecionadas.length > 0) {
-        container.classList.remove('hidden');
-        fotosAlunoSelecionadas.forEach((f, i) => {
-            container.innerHTML += `
-                <div class="relative w-20 h-20 shrink-0">
-                    <img src="${f}" class="w-full h-full object-cover rounded-xl border border-white/10">
-                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();
-        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
-        if (btnIAAluno) {
-            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
-            else btnIAAluno.classList.add('hidden');
-        }" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button>
-                </div>`;
-        });
-    } else container.classList.add('hidden');
-}
-
-async function enviarCadastroAluno(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btnSalvarAlunoItem');
-    btn.innerText = "Enviando..."; btn.disabled = true;
-
-    const payload = {
-        nome: document.getElementById('alunoItemNome').value.trim(),
-        descricao: document.getElementById('alunoItemDesc').value.trim(),
-        categoria: document.getElementById('alunoItemCat').value,
-        local: document.getElementById('alunoItemLocal').value.trim(),
-        data: new Date().toLocaleDateString('pt-BR'),
-        rm: alunoSessao.rm,
-        fotos: fotosAlunoSelecionadas,
-        foto: fotosAlunoSelecionadas[0] || ""
-    };
+    const b = document.getElementById('btnPublicarMural');
+    b.innerText = "Publicando..."; b.disabled = true;
 
     try {
-        const token = localStorage.getItem('aluno_token');
-        const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
+        const res = await fetch(`${API_URL}/api/mural`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rm: alunoSessao.rm,
+                aluno_nome: alunoSessao.nome,
+                categoria: cat,
+                descricao: desc
+            })
         });
         const data = await res.json();
         if (data.success) {
-            mostrarToast("Objeto enviado para moderação da secretaria!", "success");
-            document.getElementById('modalCadastrarAluno').classList.add('hidden');
-            e.target.reset();
-        } else mostrarToast(data.message, "error");
-    } catch { mostrarToast("Erro ao conectar.", "error"); }
-    btn.innerText = "Enviar para Moderação da Secretaria"; btn.disabled = false;
-}
+            mostrarToast("Relato publicado no mural!", "success");
+            document.getElementById('muralDescricao').value = '';
+            carregarMuralPublico();
 
-window.onload = () => { 
-    document.body.classList.add('dark-theme'); 
-    const splash = document.getElementById('splashScreenAnimacao');
-    const video = document.getElementById('videoSplash');
+            // VERIFICA MATCH IMEDIATO NO CATÁLOGO
+            const relatoFicticio = { categoria: cat, descricao: desc };
+            const matches = [];
+            (todosItens || []).forEach(it => {
+                if (normalizarStatus(it) === 'DISPONÍVEL') {
+                    const m = calcularSmartMatchAluno(relatoFicticio, it);
+                    if (m.score >= 50) matches.push({ item: it, score: m.score, motivos: m.motivos });
+                }
+            });
 
-    const splashJaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
-    if (splashJaExibido && splash) {
-        splash.classList.add('hidden');
-        splash.style.display = 'none';
-        checarSessao();
-        return;
-    }
-
-    if (splash && video) {
-        sessionStorage.setItem('splash_ja_exibido', 'true');
-        
-        const encerrarSplash = () => {
-            splash.classList.add('opacity-0');
-            setTimeout(() => { 
-                splash.classList.add('hidden'); 
-                splash.style.display = 'none'; 
-                checarSessao(); 
-            }, 700);
-        };
-
-        video.muted = true;
-        video.defaultMuted = true;
-        video.play().catch(() => {});
-        video.onended = encerrarSplash;
-
-        // Tempo limite de segurança de 4 segundos para o vídeo
-        setTimeout(() => { 
-            if (!splash.classList.contains('hidden')) encerrarSplash(); 
-        }, 4500); 
-    } else {
-        checarSessao();
-    }
-};
-
-
-// ==============================================================================
-// FASE 2: WEB PUSH NOTIFICATIONS NATIVAS (SERVICE WORKER & VAPID)
-// ==============================================================================
-async function ativarWebPush(rmAluno) {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !rmAluno || rmAluno === 'PENDENTE') return;
-    try {
-        const reg = await navigator.serviceWorker.ready;
-        const subExistente = await reg.pushManager.getSubscription();
-        if (subExistente) {
-            enviarSubscricaoAoBackend(rmAluno, subExistente);
-            return;
+            if (matches.length > 0) {
+                matches.sort((x, y) => y.score - x.score);
+                const listaEl = document.getElementById('matchItensLista');
+                listaEl.innerHTML = '';
+                matches.slice(0, 3).forEach(m => {
+                    const fotosArray = (m.item.fotos && m.item.fotos.length > 0) ? m.item.fotos : (m.item.foto ? [m.item.foto] : []);
+                    listaEl.innerHTML += `
+                        <div class="glass-panel p-3 rounded-2xl flex items-center justify-between gap-3 border border-emerald-500/30 bg-emerald-500/5">
+                            <div class="flex items-center gap-3">
+                                ${fotosArray[0] ? `<img src="${fotosArray[0]}" class="w-12 h-12 object-cover rounded-xl border border-white/10">` : `<div class="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-slate-500"><i class="fas fa-box"></i></div>`}
+                                <div>
+                                    <p class="text-xs font-bold text-white">${m.item.nome || m.item.txt_descricao}</p>
+                                    <span class="text-[10px] text-emerald-400 font-bold">${m.score}% de compatibilidade (${m.motivos.join(', ')})</span>
+                                </div>
+                            </div>
+                            <button onclick="document.getElementById('modalMatchImediato').classList.add('hidden'); abrirDetalhes(${JSON.stringify(m.item).replace(/'/g, "&apos;")});" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-md hover:bg-emerald-500 transition">Ver</button>
+                        </div>
+                    `;
+                });
+                document.getElementById('modalMatchImediato').classList.remove('hidden');
+            }
+        } else {
+            mostrarToast(data.message || "Erro ao publicar relato.", "error");
         }
-
-        const keyRes = await fetch(API_URL + "/api/push/public-key");
-        const keyData = await keyRes.json();
-        if (!keyData.success || !keyData.publicKey) return;
-
-        const sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
-        });
-        enviarSubscricaoAoBackend(rmAluno, sub);
     } catch (e) {
-        console.warn("[Web Push] Aviso na subscrição push:", e);
+        mostrarToast("Erro de comunicação ao publicar relato.", "error");
     }
+    b.innerText = "Publicar Relato no Mural"; b.disabled = false;
 }
 
-async function enviarSubscricaoAoBackend(rm, sub) {
+async function carregarMuralPublico() {
+    const c = document.getElementById('listaMuralPublico');
+    c.innerHTML = '<p class="text-xs text-slate-500 italic">Carregando relatos...</p>';
     try {
-        await fetch(API_URL + "/api/push/subscribe", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rm: rm, subscription: sub })
-        });
-    } catch (e) {}
-}
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
-
-// ==============================================================================
-// REFRESH INTELIGENTE DO PORTAL DO ALUNO (SEM RECARREGAR PÁGINA E SEM SPLASH)
-// ==============================================================================
-async function atualizarPortalAluno() {
-    const icone = document.getElementById('iconeRefreshPortal');
-    const btn = document.getElementById('btnRefreshPortal');
-    if (icone) icone.classList.add('fa-spin');
-    if (btn) btn.disabled = true;
-
-    try {
-        await Promise.all([
-            typeof carregarItensDaAPI === 'function' ? carregarItensDaAPI() : Promise.resolve(),
-            typeof carregarCategoriasDinamicamente === 'function' ? carregarCategoriasDinamicamente() : Promise.resolve(),
-            typeof carregarMuralPublico === 'function' ? carregarMuralPublico() : Promise.resolve(),
-            typeof atualizarMensagensChat === 'function' && chatAberto ? atualizarMensagensChat() : Promise.resolve()
-        ]);
-        mostrarToast("Catálogo e pertences atualizados!", "success");
-    } catch (err) {
-        mostrarToast("Erro ao sincronizar dados com o servidor.", "error");
-    } finally {
-        setTimeout(() => {
-            if (icone) icone.classList.remove('fa-spin');
-            if (btn) btn.disabled = false;
-        }, 500);
+        const res = await fetch(`${API_URL}/api/mural/publico`);
+        if (res.ok) {
+            const relatos = await res.json();
+            if (relatos.length === 0) {
+                c.innerHTML = '<p class="text-xs text-slate-500 italic">Nenhum relato no mural até o momento.</p>';
+                return;
+            }
+            c.innerHTML = '';
+            relatos.forEach(r => {
+                c.innerHTML += `
+                    <div class="glass-panel rounded-2xl p-4 space-y-1.5 border border-white/5">
+                        <div class="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                            <span class="text-amber-400 font-extrabold uppercase">[${r.categoria}]</span>
+                            <span>${r.data || 'Recente'}</span>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-200 leading-relaxed">${r.descricao}</p>
+                        <p class="text-[10px] text-slate-500 text-right font-medium">— Por: ${r.aluno_nome || 'Aluno'}</p>
+                    </div>
+                `;
+            });
+        }
+    } catch (e) {
+        c.innerHTML = '<p class="text-xs text-rose-400">Erro ao atualizar mural.</p>';
     }
 }
 
+function abrirModalCadastrarAluno() {
+    if (!alunoSessao) return mostrarToast("Faça login para cadastrar um objeto.", "error");
+    fotosAlunoSelecionadas = [];
+    document.getElementById('gridPreviewAluno').innerHTML = '';
+    document.getElementById('gridPreviewAluno').classList.add('hidden');
+    document.getElementById('btnAutoPreencherIAAluno').classList.add('hidden');
+    document.getElementById('statusCompressaoFotos').classList.add('hidden');
+    document.getElementById('modalCadastrarAluno').classList.remove('hidden');
+}
 
-// ==============================================================================
-// FASE 3: AUTO-PREENCHIMENTO COM IA (VISÃO COMPUTACIONAL MULTIMODAL)
-// ==============================================================================
+async function prepararFotosAluno(input) {
+    const files = Array.from(input.files).slice(0, 4);
+    if (files.length === 0) return;
+
+    fotosAlunoSelecionadas = [];
+    const grid = document.getElementById('gridPreviewAluno');
+    grid.innerHTML = '<span class="text-[10px] text-slate-400 animate-pulse">Otimizando imagens...</span>';
+    grid.classList.remove('hidden');
+
+    for (let f of files) {
+        try {
+            const base64Comprimido = await comprimirImagem(f, 1000, 0.7);
+            fotosAlunoSelecionadas.push(base64Comprimido);
+        } catch (e) {}
+    }
+
+    grid.innerHTML = '';
+    fotosAlunoSelecionadas.forEach((src, idx) => {
+        grid.innerHTML += `
+            <div class="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-white/10 group">
+                <img src="${src}" class="w-full h-full object-cover">
+                <button type="button" onclick="removerFotoAluno(${idx})" class="absolute top-1 right-1 bg-black/80 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button>
+            </div>
+        `;
+    });
+
+    if (fotosAlunoSelecionadas.length > 0) {
+        document.getElementById('statusCompressaoFotos').classList.remove('hidden');
+        document.getElementById('btnAutoPreencherIAAluno').classList.remove('hidden');
+    }
+}
+
+function removerFotoAluno(idx) {
+    fotosAlunoSelecionadas.splice(idx, 1);
+    const grid = document.getElementById('gridPreviewAluno');
+    grid.innerHTML = '';
+    fotosAlunoSelecionadas.forEach((src, i) => {
+        grid.innerHTML += `
+            <div class="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-white/10 group">
+                <img src="${src}" class="w-full h-full object-cover">
+                <button type="button" onclick="removerFotoAluno(${i})" class="absolute top-1 right-1 bg-black/80 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button>
+            </div>
+        `;
+    });
+    if (fotosAlunoSelecionadas.length === 0) {
+        grid.classList.add('hidden');
+        document.getElementById('btnAutoPreencherIAAluno').classList.add('hidden');
+        document.getElementById('statusCompressaoFotos').classList.add('hidden');
+    }
+}
+
 async function analisarFotoAlunoComIA() {
-    if (!fotosAlunoSelecionadas || fotosAlunoSelecionadas.length === 0) {
-        return mostrarToast("Selecione uma foto primeiro.", "info");
-    }
+    if (fotosAlunoSelecionadas.length === 0) return mostrarToast("Selecione pelo menos uma foto.", "error");
+
     const btn = document.getElementById('btnAutoPreencherIAAluno');
-    if (btn) {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Analisando com IA...';
-        btn.disabled = true;
-    }
+    const txtOriginal = btn.innerHTML;
+    btn.innerHTML = `<i class="fas fa-circle-notch animate-spin"></i> Analisando imagem com IA...`;
+    btn.disabled = true;
 
     try {
-        const res = await fetch(API_URL + "/api/ia/analisar-imagem", {
+        const res = await fetch(`${API_URL}/api/analisar-imagem-ia`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foto: fotosAlunoSelecionadas[0] })
+            body: JSON.stringify({ imagem_base64: fotosAlunoSelecionadas[0] })
         });
         const data = await res.json();
-        if (data.success && data.resultado) {
-            const r = data.resultado;
-            const inputNome = document.getElementById('alunoItemNome');
-            const inputDesc = document.getElementById('alunoItemDesc');
-            const selectCat = document.getElementById('alunoItemCat');
-
-            if (inputNome && r.nome) inputNome.value = r.nome;
-            if (inputDesc && r.descricao) inputDesc.value = r.descricao;
-            if (selectCat && r.categoria) {
-                for (let opt of selectCat.options) {
-                    if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                        selectCat.value = opt.value;
+        if (data.success && data.analise) {
+            const a = data.analise;
+            if (a.nome) document.getElementById('alunoItemNome').value = a.nome;
+            if (a.descricao) document.getElementById('alunoItemDesc').value = a.descricao;
+            if (a.categoria) {
+                const sel = document.getElementById('alunoItemCat');
+                for (let opt of sel.options) {
+                    if (opt.value.toUpperCase() === a.categoria.toUpperCase()) {
+                        sel.value = opt.value;
                         break;
                     }
                 }
             }
-            mostrarToast("Campos preenchidos com IA!", "success");
+            mostrarToast("Campos preenchidos automaticamente pela IA!", "success");
         } else {
-            mostrarToast(data.message || "Não foi possível analisar os detalhes.", "error");
+            mostrarToast(data.message || "Não foi possível analisar a imagem.", "error");
         }
-    } catch (err) {
-        mostrarToast("Erro ao conectar ao serviço de inteligência artificial.", "error");
-    } finally {
-        if (btn) {
-            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles mr-1"></i> ✨ Preencher com Inteligência Artificial';
-            btn.disabled = false;
+    } catch (e) {
+        mostrarToast("Erro ao conectar com a API de IA.", "error");
+    }
+    btn.innerHTML = txtOriginal;
+    btn.disabled = false;
+}
+
+async function enviarCadastroAluno(e) {
+    e.preventDefault();
+    if (!alunoSessao) return mostrarToast("Sua sessão expirou.", "error");
+
+    const nome = document.getElementById('alunoItemNome').value.trim();
+    const desc = document.getElementById('alunoItemDesc').value.trim();
+    const cat = document.getElementById('alunoItemCat').value;
+    const local = document.getElementById('alunoItemLocal').value.trim();
+
+    if (!nome || !desc || !local) return mostrarToast("Preencha todos os campos obrigatórios.", "error");
+
+    const btn = document.getElementById('btnSalvarAlunoItem');
+    btn.innerText = "Cadastrando..."; btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_URL}/api/cadastrar-item-aluno`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nome: nome,
+                descricao: desc,
+                categoria: cat,
+                local: local,
+                fotos: fotosAlunoSelecionadas,
+                cadastrado_por_nome: alunoSessao.nome,
+                cadastrado_por_rm: alunoSessao.rm,
+                cadastrado_por_email: alunoSessao.email
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            mostrarToast("Item cadastrado! Entregue-o na secretaria para aprovação.", "success");
+            document.getElementById('modalCadastrarAluno').classList.add('hidden');
+            document.getElementById('alunoItemNome').value = '';
+            document.getElementById('alunoItemDesc').value = '';
+            document.getElementById('alunoItemLocal').value = '';
+            fotosAlunoSelecionadas = [];
+        } else {
+            mostrarToast(data.message || "Erro ao cadastrar item.", "error");
+        }
+    } catch (e) {
+        mostrarToast("Erro ao enviar cadastro.", "error");
+    }
+    btn.innerText = "Enviar para Moderação da Secretaria"; btn.disabled = false;
+}
+
+// ============================================================
+// CHAT INTERATIVO COM A SECRETARIA
+// ============================================================
+function alternarJanelaChat() {
+    chatAberto = !chatAberto;
+    const janela = document.getElementById('janelaChat');
+    janela.classList.toggle('hidden', !chatAberto);
+    
+    if (chatAberto) {
+        carregarMensagensChat();
+        if (!chatTimerPolling) chatTimerPolling = setInterval(carregarMensagensChat, 4000);
+    } else {
+        if (chatTimerPolling) {
+            clearInterval(chatTimerPolling);
+            chatTimerPolling = null;
         }
     }
 }
+
+function abrirChatComItem() {
+    if (!chatAberto) alternarJanelaChat();
+    if (itemSelecionado) {
+        const input = document.getElementById('chatInputTexto');
+        input.value = `Olá! Tenho dúvidas sobre o item #${itemSelecionado.id} (${itemSelecionado.nome || itemSelecionado.txt_descricao}).`;
+        input.focus();
+    }
+}
+
+async function carregarMensagensChat() {
+    if (!alunoSessao || !alunoSessao.rm) return;
+    try {
+        const res = await fetch(`${API_URL}/api/chat/mensagens/${alunoSessao.rm}`);
+        if (res.ok) {
+            const msgs = await res.json();
+            const cont = document.getElementById('chatMensagens');
+            
+            if (msgs.length > ultimaQtdMensagens && ultimaQtdMensagens !== 0) {
+                tocarSomNotificacao();
+            }
+            ultimaQtdMensagens = msgs.length;
+
+            if (msgs.length === 0) {
+                cont.innerHTML = `
+                    <div class="text-center py-8 space-y-2">
+                        <i class="fas fa-comments text-slate-600 text-3xl"></i>
+                        <p class="text-xs text-slate-400 font-medium">Inicie uma conversa diretamente com a secretaria para tirar dúvidas sobre objetos.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            cont.innerHTML = '';
+            msgs.forEach(m => {
+                const ehAluno = m.remetente === 'aluno' || m.rm_aluno === alunoSessao.rm;
+                cont.innerHTML += `
+                    <div class="flex flex-col ${ehAluno ? 'items-end' : 'items-start'}">
+                        <div class="max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs ${ehAluno ? 'bg-red-600 text-white rounded-br-none' : 'bg-[#1a2233] text-slate-200 border border-white/10 rounded-bl-none'}">
+                            <p class="leading-relaxed font-medium">${m.texto}</p>
+                        </div>
+                        <span class="text-[9px] text-slate-500 mt-1 px-1">${m.hora || 'Agora'}</span>
+                    </div>
+                `;
+            });
+            cont.scrollTop = cont.scrollHeight;
+        }
+    } catch (e) {}
+}
+
+async function enviarMensagemChat(e) {
+    e.preventDefault();
+    if (!alunoSessao) return mostrarToast("Faça login para enviar mensagens.", "error");
+
+    const input = document.getElementById('chatInputTexto');
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    input.value = '';
+    try {
+        const res = await fetch(`${API_URL}/api/chat/enviar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rm_aluno: alunoSessao.rm,
+                aluno_nome: alunoSessao.nome,
+                remetente: 'aluno',
+                texto: texto
+            })
+        });
+        if (res.ok) {
+            carregarMensagensChat();
+        } else {
+            mostrarToast("Erro ao enviar mensagem.", "error");
+        }
+    } catch (e) {
+        mostrarToast("Erro de rede ao enviar mensagem.", "error");
+    }
+}
+
+function atualizarPortalAluno() {
+    const icone = document.getElementById('iconeRefreshPortal');
+    if (icone) icone.classList.add('animate-spin');
+    
+    carregarItensDaAPI();
+    carregarCategoriasDinamicamente();
+    
+    setTimeout(() => {
+        if (icone) icone.classList.remove('animate-spin');
+        mostrarToast("Portal atualizado com sucesso!", "success");
+    }, 600);
+}
+
+// ============================================================
+// INICIALIZAÇÃO DO APLICATIVO
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Tratamento e encerramento da Splash Screen (Vídeo / Timeout)
+    const splash = document.getElementById('splashScreenAnimacao');
+    const video = document.getElementById('videoSplash');
+
+    if (splash) {
+        const finalizarSplash = () => {
+            splash.style.opacity = '0';
+            setTimeout(() => splash.remove(), 700);
+        };
+
+        if (video) {
+            video.onended = finalizarSplash;
+            video.onerror = finalizarSplash;
+            // Timeout de segurança caso o vídeo falhe ao carregar
+            setTimeout(finalizarSplash, 4000);
+        } else {
+            finalizarSplash();
+        }
+    }
+
+    // Inicializa a verificação de sessão e leitura da API
+    checarSessao();
+});
