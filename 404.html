@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#dc2626">
+<title>404 · Página perdida | ETEC Achados e Perdidos</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root{--bg:#090d13;--card:#141a26;--red:#dc2626;--rose:#f43f5e;--ok:#10b981;--mut:#94a3b8;--line:rgba(255,255,255,.1)}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:#f1f5f9;font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* fundo: mesma grade vermelha do portal */
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55;background-image:radial-gradient(circle at 50% 28%,rgba(220,38,38,.24),transparent 62%),linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:100% 100%,48px 48px,48px 48px;animation:gm 14s linear infinite}
+@keyframes gm{to{background-position:0 0,48px 48px,48px 48px}}
+.page{position:relative;z-index:1;min-height:100%;display:flex;flex-direction:column;max-width:980px;margin:0 auto;padding:env(safe-area-inset-top) 14px calc(18px + env(safe-area-inset-bottom))}
+
+/* palco: 404 + objetos escondidos */
+.stage{position:relative;flex:1 1 auto;min-height:min(46vh,430px);display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.digits{display:flex;align-items:center;gap:clamp(2px,1.5vw,14px);font-weight:900;font-size:clamp(96px,27vw,230px);line-height:1;letter-spacing:-.04em;transform:translate(var(--px,0),var(--py,0));transition:transform .15s ease-out;cursor:pointer}
+.d{position:relative;background:linear-gradient(180deg,#fff 10%,#fca5a5 45%,var(--red) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 28px rgba(220,38,38,.45))}
+.d::before,.d::after{content:attr(data-t);position:absolute;inset:0;background:inherit;-webkit-background-clip:text;background-clip:text;color:transparent;opacity:0}
+.d::before{transform:translate(-4px,0);filter:hue-rotate(160deg)}
+.d::after{transform:translate(4px,0)}
+.glitch .d::before,.glitch .d::after{opacity:.85;animation:gl .26s steps(2) 2}
+@keyframes gl{0%{clip-path:inset(10% 0 60% 0)}50%{clip-path:inset(55% 0 12% 0)}100%{clip-path:inset(30% 0 35% 0)}}
+.lens{width:.8em;height:.8em;flex:none;transform-origin:70% 70%;animation:sway 4.5s ease-in-out infinite alternate;filter:drop-shadow(0 0 26px rgba(220,38,38,.5))}
+@keyframes sway{from{rotate:-7deg}to{rotate:7deg}}
+
+.lost{position:absolute;left:var(--x);top:var(--y);width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:18px;border:1px solid rgba(255,255,255,.2);background:#1a2233;color:#fde68a;font-size:22px;display:grid;place-items:center;cursor:pointer;animation:fl var(--d,7s) ease-in-out infinite alternate;box-shadow:0 8px 24px -6px rgba(0,0,0,.7);transition:scale .2s}
+.lost:hover{scale:1.15}
+.lost:focus-visible{outline:2px solid #fde68a;outline-offset:3px}
+@keyframes fl{from{transform:translate(0,0) rotate(-8deg)}to{transform:translate(10px,-14px) rotate(8deg)}}
+.lost.got{animation:got .55s forwards;pointer-events:none}
+@keyframes got{to{transform:translateY(-64px) scale(1.7);opacity:0}}
+
+.hint{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:8px;align-items:center;white-space:nowrap;font-size:12px;font-weight:600;color:var(--mut);background:rgba(9,13,19,.75);padding:7px 14px;border-radius:999px;border:1px solid var(--line);transition:opacity .5s;pointer-events:none}
+.hint.off{opacity:0}
+
+/* escuridão + luz da lanterna */
+.night{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle var(--r,170px) at var(--lx,50%) var(--ly,35%),rgba(9,13,19,0) 0,rgba(9,13,19,.4) 55%,rgba(9,13,19,.95) 100%)}
+.warm{position:fixed;inset:0;z-index:6;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(circle calc(var(--r,170px)*.8) at var(--lx,50%) var(--ly,35%),rgba(255,200,120,.16),transparent 70%)}
+
+/* cartão no formato de ticket de item perdido */
+.card{position:relative;z-index:10;margin:0 auto;width:100%;max-width:560px;background:var(--card);border:1px solid rgba(220,38,38,.3);border-radius:26px;padding:20px 20px 16px;box-shadow:0 0 38px -6px rgba(220,38,38,.28),0 24px 50px -20px #000}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(239,68,68,.4)}
+.brand b{display:block;font-size:14px;font-weight:800}
+.brand small{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.badge{font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:9px;border:1px solid;white-space:nowrap;transition:.4s}
+.badge.bad{color:#f87171;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35)}
+.badge.ok{color:#34d399;background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35)}
+h2{font-size:clamp(20px,5.2vw,26px);font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:16px 0 6px}
+.lead{font-size:13px;line-height:1.55;color:#cbd5e1;max-width:56ch}
+.ticket{position:relative;margin:16px -20px 0;padding:16px 20px 0;border-top:2px dashed rgba(255,255,255,.14)}
+.ticket::before,.ticket::after{content:"";position:absolute;top:-11px;width:20px;height:20px;border-radius:50%;background:var(--bg)}
+.ticket::before{left:-10px}.ticket::after{right:-10px}
+.cells{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cell{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);min-width:0}
+.cell span{display:block;font-size:11px;font-weight:600;color:#64748b}
+.cell p{font-size:12px;font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.found{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.found h3{font-size:12px;font-weight:800;color:var(--mut)}
+.slots{display:flex;gap:6px}
+.slot{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:14px;color:#334155;background:#0d1117;border:1px dashed rgba(255,255,255,.14);transition:.35s}
+.slot.on{color:#34d399;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.4);scale:1.08}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+@media(min-width:480px){.actions{flex-direction:row}.actions .main{flex:1}}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 18px;border-radius:14px;font-family:inherit;font-weight:800;font-size:13px;text-decoration:none;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;transition:background .2s,filter .2s,scale .1s}
+.btn:hover{background:rgba(255,255,255,.12)}
+.btn.main{background:linear-gradient(90deg,#dc2626,#e11d48);border-color:transparent;box-shadow:0 10px 24px -8px rgba(220,38,38,.6)}
+.btn.main:hover{filter:brightness(1.12)}
+.btn:active{scale:.98}
+.btn:focus-visible,.link:focus-visible{outline:2px solid #fca5a5;outline-offset:3px}
+.foot{display:flex;justify-content:center;gap:18px;margin-top:12px;font-size:12px;font-weight:700}
+.link{background:none;border:0;color:var(--mut);cursor:pointer;font:inherit;display:inline-flex;gap:6px;align-items:center}
+.link:hover{color:#fff}
+
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));z-index:30;transform:translate(-50%,-30px);opacity:0;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px 16px;font-size:12px;font-weight:700;display:flex;gap:10px;align-items:center;box-shadow:0 16px 40px -10px #000;transition:.35s cubic-bezier(.175,.885,.32,1.275);max-width:92vw}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast i{color:#34d399}
+.pc{position:fixed;width:8px;height:8px;border-radius:2px;z-index:40;pointer-events:none}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.lost.got{opacity:0!important}}
+</style>
+<noscript><style>.night,.warm,.lost,.hint{display:none}</style></noscript>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="page">
+  <h1 class="sr">Erro 404: página não encontrada</h1>
+
+  <section class="stage" id="stage" aria-label="Palco escuro com objetos perdidos escondidos">
+    <div class="digits" id="digits" aria-hidden="true">
+      <span class="d" data-t="4">4</span>
+      <svg class="lens" viewBox="0 0 100 100">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fecaca"/><stop offset="1" stop-color="#dc2626"/></linearGradient></defs>
+        <line x1="72" y1="72" x2="93" y2="93" stroke="url(#lg)" stroke-width="12" stroke-linecap="round"/>
+        <circle cx="44" cy="44" r="32" fill="rgba(220,38,38,.10)" stroke="url(#lg)" stroke-width="9"/>
+        <path d="M24 38a22 22 0 0 1 14-14" stroke="#fff" stroke-opacity=".7" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <text x="44" y="57" text-anchor="middle" font-size="40" font-weight="900" fill="#fff" fill-opacity=".9">?</text>
+      </svg>
+      <span class="d" data-t="4">4</span>
+    </div>
+
+    <button class="lost" data-n="Óculos" aria-label="Objeto escondido: óculos"><i class="fa-solid fa-glasses"></i></button>
+    <button class="lost" data-n="Chave" aria-label="Objeto escondido: chave"><i class="fa-solid fa-key"></i></button>
+    <button class="lost" data-n="Fone de ouvido" aria-label="Objeto escondido: fone de ouvido"><i class="fa-solid fa-headphones"></i></button>
+    <button class="lost" data-n="Guarda-chuva" aria-label="Objeto escondido: guarda-chuva"><i class="fa-solid fa-umbrella"></i></button>
+    <button class="lost" data-n="Garrafa" aria-label="Objeto escondido: garrafa"><i class="fa-solid fa-bottle-water"></i></button>
+    <button class="lost" data-n="Carteirinha" aria-label="Objeto escondido: carteirinha"><i class="fa-solid fa-id-card"></i></button>
+
+    <div class="hint" id="hint"><i class="fa-solid fa-lightbulb"></i><span id="hintTxt">Mova o mouse para acender a lanterna</span></div>
+  </section>
+
+  <div class="night"></div>
+  <div class="warm"></div>
+
+  <article class="card" aria-labelledby="t">
+    <div class="top">
+      <div class="brand">
+        <img src="/logo.png" alt="" onerror="this.style.display='none'">
+        <div><b>ETEC Achados</b><small>Registro de item perdido</small></div>
+      </div>
+      <span class="badge bad" id="badge">Não encontrada</span>
+    </div>
+
+    <h2 id="t">Esta página foi parar nos Achados e Perdidos</h2>
+    <p class="lead" id="lead">O endereço que você abriu não existe ou mudou de lugar. Volte ao catálogo para continuar, ou acenda a lanterna e ajude a procurar os objetos perdidos no escuro.</p>
+
+    <div class="ticket">
+      <div class="cells">
+        <div class="cell"><span>Local procurado</span><p id="path">/</p></div>
+        <div class="cell"><span>Data de registro</span><p id="date">-</p></div>
+      </div>
+      <div class="found">
+        <h3 id="count" aria-live="polite">Objetos achados: 0 de 6</h3>
+        <div class="slots" id="slots" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a class="btn main" href="/"><i class="fa-solid fa-house"></i> Voltar ao catálogo</a>
+      <button class="btn" id="back" type="button"><i class="fa-solid fa-arrow-left"></i> Página anterior</button>
+    </div>
+    <div class="foot">
+      <button class="link" id="copy" type="button"><i class="fa-regular fa-copy"></i> Copiar relato do erro</button>
+      <button class="link" id="again" type="button" hidden><i class="fa-solid fa-rotate"></i> Esconder de novo</button>
+    </div>
+  </article>
+</div>
+
+<div class="toast" id="toast" role="status"><i class="fa-solid fa-circle-check"></i><span id="toastTxt"></span></div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s), root = document.documentElement;
+  const stage = $('#stage'), digits = $('#digits'), hint = $('#hint'), badge = $('#badge');
+  const objs = [...document.querySelectorAll('.lost')], slots = $('#slots'), total = objs.length;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const T0 = { t: $('#t').textContent, l: $('#lead').textContent };
+
+  // dados do erro (textContent evita injeção pela URL)
+  let path = location.pathname + location.search;
+  try { path = decodeURIComponent(path); } catch (e) {}
+  $('#path').textContent = path; $('#path').title = path;
+  $('#date').textContent = new Date().toLocaleDateString('pt-BR');
+  if (matchMedia('(pointer: coarse)').matches) $('#hintTxt').textContent = 'Arraste o dedo para acender a lanterna';
+
+  objs.forEach(o => { const s = document.createElement('div'); s.className = 'slot'; s.innerHTML = o.innerHTML; slots.appendChild(s); });
+
+  // esconde os objetos em lugares diferentes a cada visita
+  const spots = [[10,14],[90,22],[16,86],[84,80],[50,8],[50,90]];
+  function hide() {
+    const s = spots.slice().sort(() => Math.random() - .5);
+    objs.forEach((o, i) => {
+      o.style.setProperty('--x', (s[i][0] + Math.random() * 5 - 2.5) + '%');
+      o.style.setProperty('--y', (s[i][1] + Math.random() * 5 - 2.5) + '%');
+      o.style.setProperty('--d', (5 + Math.random() * 4).toFixed(1) + 's');
+      o.classList.remove('got');
+    });
+  }
+
+  // lanterna
+  let W = innerWidth, H = innerHeight, lastMove = -1e9, won = false, found = 0, touched = false;
+  const baseR = () => Math.max(120, Math.min(190, W * .3));
+  const L = { x: W / 2, y: H * .3, tx: W / 2, ty: H * .3, r: baseR(), tr: baseR() };
+
+  function move(e) {
+    if (won) return;
+    L.tx = e.clientX; L.ty = e.clientY; lastMove = performance.now();
+    if (!touched) { touched = true; hint.classList.add('off'); }
+    digits.style.setProperty('--px', ((L.tx - W / 2) / -45).toFixed(1) + 'px');
+    digits.style.setProperty('--py', ((L.ty - H / 2) / -45).toFixed(1) + 'px');
+  }
+  addEventListener('pointermove', move, { passive: true });
+  addEventListener('pointerdown', move, { passive: true });
+  addEventListener('resize', () => { W = innerWidth; H = innerHeight; if (!won) L.tr = baseR(); });
+
+  function frame(t) {
+    if (!won && t - lastMove > 2500) { // sem toque: a lanterna passeia sozinha
+      const r = stage.getBoundingClientRect();
+      if (reduce) { L.tx = W / 2; L.ty = r.top + r.height / 2; }
+      else { L.tx = W * (.5 + .38 * Math.sin(t / 1300)); L.ty = r.top + r.height * (.5 + .4 * Math.sin(t / 900 + 1)); }
+    }
+    L.x += (L.tx - L.x) * .16; L.y += (L.ty - L.y) * .16; L.r += (L.tr - L.r) * (won ? .04 : .12);
+    root.style.setProperty('--lx', L.x.toFixed(1) + 'px');
+    root.style.setProperty('--ly', L.y.toFixed(1) + 'px');
+    root.style.setProperty('--r', L.r.toFixed(1) + 'px');
+    requestAnimationFrame(frame);
+  }
+
+  // avisos e confete
+  let tt;
+  function say(m) { $('#toastTxt').textContent = m; const t = $('#toast'); t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2800); }
+  function burst(x, y, n) {
+    if (reduce) return;
+    const c = ['#ef4444', '#f59e0b', '#10b981', '#60a5fa', '#f472b6'];
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement('i'); p.className = 'pc';
+      p.style.cssText = `left:${x}px;top:${y}px;background:${c[i % c.length]}`;
+      document.body.appendChild(p);
+      const a = Math.random() * Math.PI * 2, d = 50 + Math.random() * (n > 20 ? 280 : 70);
+      p.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${Math.cos(a) * d}px,${Math.sin(a) * d + 40}px) rotate(${Math.random() * 540}deg) scale(.4)`, opacity: 0 }], { duration: 700 + Math.random() * 500, easing: 'cubic-bezier(.2,.8,.3,1)' }).onfinish = () => p.remove();
+    }
+  }
+
+  // achar objetos
+  objs.forEach((o, i) => {
+    o.addEventListener('click', () => {
+      if (o.classList.contains('got') || won) return;
+      const r = o.getBoundingClientRect();
+      o.classList.add('got'); slots.children[i].classList.add('on'); found++;
+      $('#count').textContent = `Objetos achados: ${found} de ${total}`;
+      burst(r.left + r.width / 2, r.top + r.height / 2, 12);
+      say(`Achou: ${o.dataset.n}. Já pode entregar na secretaria.`);
+      if (found === total) win();
+    });
+    o.addEventListener('focus', () => { const r = o.getBoundingClientRect(); L.tx = r.left + r.width / 2; L.ty = r.top + r.height / 2; lastMove = performance.now(); });
+  });
+
+  function win() {
+    won = true; L.tr = Math.hypot(W, H) * 1.3;
+    badge.className = 'badge ok'; badge.textContent = 'Luz acesa';
+    $('#t').textContent = 'Achou tudo! Só a página continua sumida';
+    $('#lead').textContent = 'Os objetos seguem para a secretaria. Para encontrar o que você procurava, volte ao catálogo.';
+    $('#again').hidden = false; hint.classList.add('off');
+    burst(W / 2, H * .3, 40); say('Todos os objetos foram achados!');
+  }
+  $('#again').addEventListener('click', () => {
+    won = false; found = 0; L.tr = baseR(); lastMove = performance.now();
+    [...slots.children].forEach(s => s.classList.remove('on'));
+    $('#count').textContent = `Objetos achados: 0 de ${total}`;
+    badge.className = 'badge bad'; badge.textContent = 'Não encontrada';
+    $('#t').textContent = T0.t; $('#lead').textContent = T0.l;
+    $('#again').hidden = true; hide();
+  });
+
+  // botões
+  $('#back').addEventListener('click', () => { history.length > 1 ? history.back() : (location.href = '/'); });
+  $('#copy').addEventListener('click', async () => {
+    const txt = `Link quebrado no ETEC Achados: ${location.href} (${new Date().toLocaleString('pt-BR')})`;
+    try { await navigator.clipboard.writeText(txt); say('Relato copiado. Envie para a secretaria.'); }
+    catch (e) { say('Não foi possível copiar automaticamente.'); }
+  });
+
+  // glitch no 404 (sozinho e ao tocar)
+  function glitch() { digits.classList.add('glitch'); setTimeout(() => digits.classList.remove('glitch'), 520); }
+  digits.addEventListener('click', glitch);
+  if (!reduce) setInterval(glitch, 4200);
+
+  hide();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
