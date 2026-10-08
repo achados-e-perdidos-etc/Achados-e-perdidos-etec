@@ -1,6 +1,6 @@
 """
 Blueprint de Interface Web e Arquivos Estáticos
-Roteamento para index.html, painel da secretaria e recursos visuais.
+Roteamento para index.html, painel da secretaria, recursos visuais e tratamento de erro 404.
 """
 from flask import Blueprint, send_from_directory, request, current_app, jsonify
 
@@ -31,11 +31,12 @@ def home():
 def pagina_nao_encontrada(erro):
     """
     404 personalizado.
-    - Navegador abrindo um endereço (Accept: text/html) -> página interativa 404.html
-    - Chamadas da API / imagens / scripts -> resposta curta em JSON (não quebra o front)
+    - Chamadas de API (/api/...) -> resposta curta em JSON.
+    - Qualquer outra rota/página no navegador -> renderiza a tela 404.html interativa.
     """
-    if 'text/html' not in request.headers.get('Accept', ''):
-        return jsonify({'erro': 'Rota não encontrada'}), 404
+    if request.path.startswith('/api/'):
+        return jsonify({'erro': 'Rota de API não encontrada'}), 404
+
     try:
         resposta = send_from_directory(current_app.static_folder, '404.html')
         resposta.status_code = 404
