@@ -19,11 +19,9 @@
     </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
-    <!-- SPLASH SCREEN COM VÍDEO -->
+    <!-- SPLASH SCREEN COM GIF (celular = animacao.GIF | PC/paisagem = animacao_pc.GIF) -->
     <div id="splashScreenAnimacao" class="fixed inset-0 z-[300] bg-black flex items-center justify-center transition-opacity duration-700">
-        <video id="videoSplash" class="w-full h-full object-cover sm:object-contain" autoplay muted playsinline webkit-playsinline preload="auto" disablepictureinpicture disableremoteplayback>
-            <source src="animacao.GIF" type="video/GIF">
-        </video>
+        <img id="gifSplash" alt="ETEC Achados e Perdidos" decoding="async" class="w-full h-full object-cover landscape:object-contain">
     </div>
 
     <!-- BANNER DE STATUS DE REDE (ONLINE / OFFLINE) -->
@@ -560,6 +558,71 @@
     </div>
 
     <script src="script.js"></script>
+
+    <!-- ==========================================================================
+         SPLASH COM GIF (substitui o vídeo animacao.mp4)
+         - Celular (tela em pé / retrato)  -> animacao.GIF
+         - PC / tela deitada (paisagem)    -> animacao_pc.GIF
+         Este bloco redefine o window.onload do script.js (que ainda usava <video>).
+         ========================================================================== -->
+    <script>
+    (function () {
+        const GIF_CELULAR = 'animacao.GIF';
+        const GIF_PC      = 'animacao_pc.GIF';
+        const DURACAO_GIF_MS = 9990;   // duração de uma volta completa dos dois GIFs (~10 s)
+        const LIMITE_MAX_MS  = 25000;  // segurança: se o GIF não terminar de baixar, libera o portal
+
+        const splash = document.getElementById('splashScreenAnimacao');
+        const gif = document.getElementById('gifSplash');
+        let encerrado = false;
+
+        function esconderSplash() {
+            splash.classList.add('hidden');
+            splash.style.display = 'none';
+            if (gif) gif.removeAttribute('src'); // libera a memória do GIF
+        }
+
+        function encerrarSplash() {
+            if (encerrado) return;
+            encerrado = true;
+            splash.classList.add('opacity-0');
+            setTimeout(() => {
+                esconderSplash();
+                checarSessao();
+            }, 700);
+        }
+
+        // Splash só aparece 1x por sessão (igual ao comportamento anterior)
+        const jaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
+
+        if (jaExibido || !splash || !gif) {
+            if (splash) esconderSplash();
+            window.onload = () => {
+                document.body.classList.add('dark-theme');
+                checarSessao();
+            };
+            return;
+        }
+
+        sessionStorage.setItem('splash_ja_exibido', 'true');
+
+        // Escolhe o GIF conforme a tela: em pé = celular, deitada = PC
+        const emPaisagem = window.matchMedia('(orientation: landscape)').matches;
+
+        // O relógio só começa quando o GIF terminou de carregar (para não cortar a animação)
+        const timerFalha = setTimeout(encerrarSplash, LIMITE_MAX_MS);
+        gif.onload = () => {
+            clearTimeout(timerFalha);
+            setTimeout(encerrarSplash, DURACAO_GIF_MS);
+        };
+        gif.onerror = encerrarSplash;
+        gif.src = emPaisagem ? GIF_PC : GIF_CELULAR;
+
+        window.onload = () => {
+            document.body.classList.add('dark-theme');
+        };
+    })();
+    </script>
 
     </body>
 </html>
