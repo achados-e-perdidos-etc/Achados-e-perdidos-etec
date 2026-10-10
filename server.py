@@ -455,6 +455,22 @@ def sec_web(): return send_from_directory(app.static_folder, 'controle_etec_7788
 @app.route('/')
 def home(): return send_from_directory(app.static_folder, 'index.html')
 
+# ------------------------------------------------------------
+# PÁGINA 404 PERSONALIZADA
+# - Navegador abrindo um endereço que não existe -> 404.html (status 404)
+# - Chamadas da API, imagens, scripts etc. -> JSON, para não quebrar o front
+# ------------------------------------------------------------
+@app.errorhandler(404)
+def pagina_nao_encontrada(erro):
+    if request.path.startswith('/api/') or 'text/html' not in request.headers.get('Accept', ''):
+        return jsonify({"success": False, "message": "Rota não encontrada."}), 404
+    try:
+        resposta = send_from_directory(app.static_folder, '404.html')
+        resposta.status_code = 404
+        return resposta
+    except Exception:
+        return "Página não encontrada", 404
+
 # ============================================================
 # ROTAS DE IA (FASE 3)
 # ============================================================
