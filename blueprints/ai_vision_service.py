@@ -35,7 +35,9 @@ def analisar_imagem_com_ia(imagem_entrada):
 
     if str(imagem_entrada).startswith('http'):
         try:
-            res = requests.get(imagem_entrada, timeout=8)
+            res = requests.get(imagem_entrada, timeout=8, allow_redirects=False)
+            res.raise_for_status()
+            if len(res.content) > 8 * 1024 * 1024: return None, "Imagem excede 8 MB."
             img_bytes = res.content
             img_b64 = base64.b64encode(img_bytes).decode('utf-8')
             if 'png' in imagem_entrada.lower(): mime_type = "image/png"
@@ -55,11 +57,15 @@ def analisar_imagem_com_ia(imagem_entrada):
     if GEMINI_API_KEY and img_b64:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-            prompt = """Analise a foto do pertence escolar e retorne estritamente um JSON valido:
-{"nome": "Titulo conciso", "categoria": "ROUPAS, ACESSORIOS, ESCOLARES, ELETRONICOS, MOCHILA ou OUTROS", "cores": ["cor1"], "descricao": "Descricao visual detalhada", "tags": ["tag1"]}"""
+            prompt = """Analise a imagem para cadastro de achados e perdidos escolares. Retorne APENAS JSON válido.
+Identifique visualmente o objeto e faça OCR de qualquer texto legível em carteirinhas, documentos, cadernos, agendas ou etiquetas.
+Nunca invente dados pessoais: use string vazia quando não estiver legível e marque a confiança.
+Formato:
+{"nome":"título curto do objeto","categoria":"ROUPAS, ACESSÓRIOS, ESCOLARES, ELETRÔNICOS, MOCHILA ou OUTROS","cores":["cor1"],"descricao":"descrição visual objetiva","tags":["tag"],"ocr_texto":"texto realmente legível na imagem","ocr_nome_aluno":"","ocr_rm":"","ocr_serie":"","tipo_documento":"","ocr_confianca":"baixa|media|alta"}
+O RM pode aparecer como RM, matrícula ou registro acadêmico. Não confunda números aleatórios com RM sem evidência."""
             payload = {
                 "contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": mime_type, "data": img_b64}}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 500}
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800, "responseMimeType": "application/json"}
             }
             resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
             if resp.status_code == 200:
@@ -67,7 +73,10 @@ def analisar_imagem_com_ia(imagem_entrada):
                 raw_text = re.sub(r'^```json\s*', '', raw_text)
                 raw_text = re.sub(r'\s*```$', '', raw_text).strip()
                 resultado = json.loads(raw_text)
-                resultado['metodo'] = 'gemini_vision'
+                resultado['metodo'] = 'gemini_vision_ocr'
+                for key in ('ocr_texto', 'ocr_nome_aluno', 'ocr_rm', 'ocr_serie', 'tipo_documento', 'ocr_confianca'):
+                    resultado[key] = str(resultado.get(key) or '').strip()[:1000]
+                resultado['cores'] = resultado.get('cores') if isinstance(resultado.get('cores'), list) else []
                 return resultado, None
         except Exception as e:
             print(f"[Gemini] Falha: {e}")
