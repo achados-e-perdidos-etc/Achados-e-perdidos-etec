@@ -1595,6 +1595,7 @@
     let chatPollTimer = null;
     let html5QrScannerInstance = null;
     let fotosBase64Upload = [];
+    let ocrRmIdentificado = '';
     let filtroStatusAtual = 'TODOS';
     let comprovanteDadosTexto = '';
 
@@ -2203,6 +2204,7 @@
       document.getElementById('formItemStatus').value = item.status || 'DISPONÍVEL';
       fotosBase64Upload = (item.fotos && item.fotos.length) ? item.fotos.slice() : (item.foto ? [item.foto] : []);
       document.getElementById('formFotosStatus').innerText = `${fotosBase64Upload.length} foto(s) carregada(s)`;
+      ocrRmIdentificado = '';
       document.getElementById('modalFormItem').classList.remove('hidden');
     }
 
@@ -2230,7 +2232,13 @@
             ctx.drawImage(img, 0, 0, w, h);
             fotosBase64Upload.push(canvas.toDataURL('image/jpeg', 0.75));
             count++;
-            if (count === files.length) statusEl.innerText = `${fotosBase64Upload.length} foto(s) otimizada(s)`;
+            if (count === files.length) {
+              statusEl.innerText = `${fotosBase64Upload.length} foto(s) otimizada(s) — analisando com IA...`;
+              const aiBtn = document.getElementById('btnAutoTagIA');
+              if (aiBtn) aiBtn.style.display = 'block';
+              // Fast Drop: analisa automaticamente a primeira foto após a compressão.
+              analisarFotoSecretariaComIA();
+            }
           };
           img.src = e.target.result;
         };
@@ -2253,6 +2261,7 @@
         data: (document.getElementById('formItemData').value || '').trim(),
         status: document.getElementById('formItemStatus').value || 'DISPONÍVEL',
         fotos: fotosBase64Upload || [],
+        ocr_rm: ocrRmIdentificado,
         token: tokenSecretaria
       };
 
@@ -3307,22 +3316,36 @@
           body: JSON.stringify({ foto: fotosBase64Upload[0] })
         });
         const data = await res.json();
+        if (!res.ok) throw new Error((data.error && data.error.message) || data.message || `HTTP ${res.status}`);
         if (data.success && data.resultado) {
           const r = data.resultado;
           if (r.nome) document.getElementById('formItemNome').value = r.nome;
           if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
           if (r.categoria) {
             const sel = document.getElementById('formItemCategoria');
+            const alvo = String(r.categoria).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase();
             for (let opt of sel.options) {
-              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                sel.value = opt.value;
-                break;
-              }
+              const atual = opt.value.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase();
+              if (atual === alvo || atual.includes(alvo) || alvo.includes(atual)) { sel.value = opt.value; break; }
             }
           }
+          ocrRmIdentificado = r.ocr_rm || '';
+          if (r.cores && r.cores.length) {
+            const descEl = document.getElementById('formItemDescricao');
+            if (descEl && !descEl.value.toLowerCase().includes('cor predominante')) descEl.value += ` Cor predominante: ${r.cores.join(', ')}.`;
+          }
+          const aluno = r.aluno_correspondente;
+          const statusEl = document.getElementById('formFotosStatus');
+          if (statusEl) statusEl.innerText = aluno
+            ? `IA identificou ${r.nome || 'o objeto'} e encontrou possível cadastro de aluno. Confira os dados antes de salvar.`
+            : `IA preencheu os campos (${r.metodo || 'análise visual'}). Confira antes de salvar.`;
+        } else {
+          throw new Error(data.message || 'A IA não retornou um resultado.');
         }
       } catch (err) {
-        console.warn("Erro ao chamar IA:", err);
+        console.error("[FAST_DROP][OCR_ANALYSIS_FAILED]", err);
+        const statusEl = document.getElementById('formFotosStatus');
+        if (statusEl) statusEl.innerText = `A análise automática falhou: ${err.message}. Você pode preencher manualmente ou tentar novamente.`;
       } finally {
         if (btn) {
           btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
