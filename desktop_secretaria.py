@@ -66,7 +66,7 @@ class SecretariaApp:
         self.estilo.theme_use("clam")
         
         self.estilo.configure("TNotebook", background=COR_BG_GERAL, borderwidth=0)
-        self.estilo.configure("TNotebook.Tab", background=COR_BG_HEADER, foreground=COR_TEXTO_PRINCIPAL, padding=, font=("Segoe UI", 10, "bold"), relief="flat")
+        self.estilo.configure("TNotebook.Tab", background=COR_BG_HEADER, foreground=COR_TEXTO_PRINCIPAL, padding=(10, 8), font=("Segoe UI", 10, "bold"), relief="flat")
         self.estilo.map("TNotebook.Tab", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
         
         self.estilo.configure("Treeview", background=COR_BG_CARD, foreground=COR_TEXTO_PRINCIPAL, fieldbackground=COR_BG_CARD, borderwidth=0, rowheight=34, font=("Segoe UI", 10))
@@ -442,6 +442,7 @@ class SecretariaApp:
         
         fotos_atuais = item_edit['fotos'] if item_edit and item_edit.get('fotos') else ([item_edit['foto']] if item_edit and item_edit.get('foto') else [])
         fotos_upload_base64 = fotos_atuais.copy()
+        ocr_rm_identificado = ''
 
         def criar_campo(label, var, widget_type="entry", values=None):
             frame = tk.Frame(modal, bg=COR_BG_CARD)
@@ -470,6 +471,7 @@ class SecretariaApp:
         lbl_foto_status.pack(side="right")
 
         def selecionar_fotos():
+            nonlocal ocr_rm_identificado
             filenames = filedialog.askopenfilenames(title="Selecione até 4 fotos", filetypes=[("Imagens", "*.png;*.jpg;*.jpeg")])
             if filenames:
                 fotos_upload_base64.clear()
@@ -478,7 +480,39 @@ class SecretariaApp:
                 for f in filenames[:4]:
                     enc = comprimir_foto_desktop(f, max_dim=1200, qualidade=75)
                     if enc: fotos_upload_base64.append(enc)
-                lbl_foto_status.config(text=f"Fotos otimizadas: {len(fotos_upload_base64)}", fg=COR_VERDE)
+                lbl_foto_status.config(text=f"Fotos otimizadas: {len(fotos_upload_base64)} — analisando com IA...", fg="#f59e0b")
+                if fotos_upload_base64:
+                    try:
+                        resposta = requests.post(
+                            f"{API_URL}/api/ia/analisar-imagem",
+                            json={"foto": fotos_upload_base64[0]},
+                            timeout=25
+                        )
+                        dados_ia = resposta.json()
+                        if not resposta.ok or not dados_ia.get("success"):
+                            detalhe = dados_ia.get("error", {}).get("message") or dados_ia.get("message") or f"HTTP {resposta.status_code}"
+                            lbl_foto_status.config(text=f"IA indisponível: {detalhe}", fg="#f87171")
+                            messagebox.showwarning("Análise de imagem", f"A foto foi carregada, mas a IA não conseguiu analisá-la.\n\nDetalhe: {detalhe}\n\nVocê pode preencher os campos manualmente.")
+                        else:
+                            r = dados_ia.get("resultado") or {}
+                            if r.get("nome"): var_nome.set(str(r["nome"])[:150])
+                            if r.get("descricao"):
+                                descricao = str(r["descricao"])[:1500]
+                                if r.get("cores"): descricao += " Cor predominante: " + ", ".join(map(str, r["cores"][:3])) + "."
+                                var_desc.set(descricao)
+                            categoria_ia = str(r.get("categoria") or "").strip().upper()
+                            for opcao in self.categorias_atuais:
+                                if opcao.upper() == categoria_ia or opcao.upper().replace("É", "E") == categoria_ia.replace("É", "E"):
+                                    cb_cat.set(opcao)
+                                    break
+                            ocr_rm_identificado = str(r.get("ocr_rm") or "")[:20]
+                            aluno = r.get("aluno_correspondente")
+                            status_ia = f"IA preencheu os campos. Confira antes de salvar. Método: {r.get('metodo', 'análise visual')}."
+                            if aluno: status_ia += f" Possível aluno correspondente: {aluno.get('nome', 'cadastro localizado')}."
+                            lbl_foto_status.config(text=status_ia, fg=COR_VERDE)
+                    except Exception as exc:
+                        lbl_foto_status.config(text=f"Falha na IA: {type(exc).__name__}: {exc}", fg="#f87171")
+                        messagebox.showwarning("Análise de imagem", f"Não foi possível analisar a foto.\n\nEtapa: POST /api/ia/analisar-imagem\nErro: {type(exc).__name__}: {exc}\n\nO cadastro manual continua disponível.")
 
         tk.Button(frame_fotos, text="📷 Selecionar Fotos", bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5, cursor="hand2", command=selecionar_fotos).pack(side="left")
 
@@ -486,7 +520,7 @@ class SecretariaApp:
             payload = {
                 "nome": var_nome.get().strip(), "descricao": var_desc.get().strip(),
                 "categoria": cb_cat.get(), "data": var_data.get().strip(),
-                "local": var_local.get().strip(), "status": cb_status.get(), "fotos": fotos_upload_base64
+                "local": var_local.get().strip(), "status": cb_status.get(), "fotos": fotos_upload_base64, "ocr_rm": ocr_rm_identificado
             }
             if not payload['nome'] or not payload['descricao']: return messagebox.showwarning("Aviso", "Preencha título e descrição!")
             try:
@@ -500,7 +534,12 @@ class SecretariaApp:
                     modal.destroy()
                     self.carregar_itens()
                     self.carregar_dashboard()
-                else: messagebox.showerror("Erro", "Acesso Negado ou erro no servidor.")
+                else:
+                    try:
+                        detalhe = res.json().get("error") or res.json().get("message") or res.text[:500]
+                    except Exception:
+                        detalhe = res.text[:500]
+                    messagebox.showerror("Erro ao salvar item", f"Etapa: POST/PUT /api/itens\nHTTP {res.status_code}\nDetalhe: {detalhe}")
             except Exception as e: messagebox.showerror("Erro", str(e))
 
         tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg=COR_VERDE, fg="white", font=("Segoe UI", 11, "bold"), pady=12, relief="flat", cursor="hand2", command=salvar).pack(fill="x", padx=40, pady=25)

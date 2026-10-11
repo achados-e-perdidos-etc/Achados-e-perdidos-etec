@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+import logging
 from services.ai_vision_service import analisar_imagem_com_ia
 from utils.helpers import calcular_afinidade_semantica
 
