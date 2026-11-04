@@ -2758,7 +2758,7 @@
     async function carregarMensagensConversa(rm, scrollFim = true) {
       if (!rm) return;
       try {
-        const res = await fetch(`${API_URL}/api/chat/mensagens/${rm}?marcar_lida=true&origem=SECRETARIA`);
+        const res = await fetch(`${API_URL}/api/chat/mensagens/${encodeURIComponent(rm)}?marcar_lida=true`, { headers: getAuthHeadersGet() });
         if (res.ok) {
           const msgs = await res.json();
           const box = document.getElementById('chatMensagensContainer');
@@ -2793,7 +2793,7 @@
       try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             rm: chatRmAtivo,
             nome: 'Secretaria',
@@ -3357,4 +3357,5 @@
 </script>
 </body>
 </html>
+
 

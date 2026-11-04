@@ -8,7 +8,8 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection, verificar_e_atualizar_itens_doacao
-from utils.security import token_required
+from utils.doacoes import DOACOES_PENDENTES_SQL
+from utils.security import secretaria_required, categorias_required
 from utils.helpers import extrair_termos
 from services.cloudinary_service import processar_fotos
 from services.email_service import disparar_email
@@ -21,6 +22,7 @@ itens_bp = Blueprint('itens', __name__)
 
 @itens_bp.route('/api/categorias/<string:nome>', methods=['OPTIONS', 'DELETE'])
 @itens_bp.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST', 'DELETE'])
+@categorias_required
 def categorias(nome=None):
     """Gerencia listagem, criação e exclusão de categorias de itens."""
     if request.method == 'OPTIONS':
@@ -127,7 +129,7 @@ def get_itens():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/pendentes', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def get_itens_pendentes():
     """Lista itens cadastrados por alunos aguardando aprovação da secretaria."""
     try:
@@ -191,7 +193,7 @@ def cadastrar_item_aluno():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/<int:item_id>/aprovar', methods=['OPTIONS', 'PUT'])
-@token_required
+@secretaria_required
 def aprovar_item(item_id):
     """Aprova um item pendente, tornando-o visível no catálogo público."""
     try:
@@ -206,7 +208,7 @@ def aprovar_item(item_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens', methods=['OPTIONS', 'POST'])
-@token_required
+@secretaria_required
 def cadastrar_item():
     """Cadastra um novo pertence achado diretamente pela secretaria escolar com auto-notificação de matches."""
     data = request.json or {}
@@ -277,7 +279,7 @@ def cadastrar_item():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'POST', 'DELETE'])
-@token_required
+@secretaria_required
 def gerenciar_item(item_id):
     """Atualiza ou exclui um item catalogado, incluindo registro formal de entrega se status for 'ENTREGUE'."""
     conn = None
@@ -363,7 +365,7 @@ def gerenciar_item(item_id):
         return jsonify({"success": False, "error": str(e), "message": f"Erro interno ao atualizar item: {str(e)}"}), 500
 
 @itens_bp.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
-@token_required
+@secretaria_required
 def recusar_solicitacao(item_id):
     """
     Recusa solicitação ou cadastro:
@@ -398,12 +400,12 @@ def recusar_solicitacao(item_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
-@token_required
+@secretaria_required
 def concluir_doacoes():
-    """Remove do catálogo itens cujo processo de doação já foi concluído e registrado."""
+    """Arquiva as doações pendentes, preservando o histórico dos itens."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
+    cursor.execute(f"UPDATE itens SET status = 'DOAÇÃO FEITA' WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")
     conn.commit()
     cursor.close()
     conn.close()
@@ -432,3 +434,4 @@ def solicitar_item():
     if afetados > 0:
         return jsonify({"success": True, "message": "Solicitação enviada com sucesso!"})
     return jsonify({"success": False, "message": "Este item não está mais disponível."}), 400
+

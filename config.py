@@ -4,7 +4,9 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "@#Etec_Achad0s_2026_Secret_T0ken!)").strip()
+JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
+if len(JWT_SECRET.encode('utf-8')) < 32:
+    raise RuntimeError("Configure JWT_SECRET com um segredo aleatório de pelo menos 32 bytes no ambiente.")
 EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "achadoseperdidosetec@gmail.com").strip().lower()
 ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "").strip()
 ADMIN_SENHA_HASH = os.environ.get("ADMIN_SENHA_HASH", "").strip()
@@ -31,3 +33,4 @@ SMTP_SENDER = os.environ.get("SMTP_SENDER", "achadoseperdidosetec@gmail.com").st
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_AI_API_KEY", "").strip()
 
 PORT = int(os.environ.get("PORT", 5000))
+

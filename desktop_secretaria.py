@@ -912,7 +912,7 @@ class SecretariaApp:
     def carregar_mensagens_aluno(self):
         if not self.rm_chat_ativo: return
         try:
-            res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true&origem=SECRETARIA")
+            res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.txt_mensagens.config(state="normal")
                 self.txt_mensagens.delete("1.0", tk.END)
@@ -926,7 +926,7 @@ class SecretariaApp:
     def enviar_mensagem(self):
         if not self.rm_chat_ativo or not self.entry_chat.get().strip(): return
         try:
-            res = requests.post(f"{API_URL}/api/chat/enviar", json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()})
+            res = requests.post(f"{API_URL}/api/chat/enviar", headers=self.get_auth_headers(), json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()})
             if res.status_code == 200:
                 self.entry_chat.delete(0, tk.END)
                 self.carregar_mensagens_aluno()
@@ -942,3 +942,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = SecretariaApp(root)
     root.mainloop()
+

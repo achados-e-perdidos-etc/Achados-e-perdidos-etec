@@ -8,7 +8,7 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
-from utils.security import token_required
+from utils.security import secretaria_required
 from utils.helpers import extrair_termos
 
 mural_bp = Blueprint('mural', __name__)
@@ -88,7 +88,7 @@ def mural_aluno(rm):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @mural_bp.route('/api/mural/<int:id>', methods=['OPTIONS', 'DELETE'])
-@token_required
+@secretaria_required
 def deletar_mural(id):
     """Exclui um relato do mural de perdidos."""
     conn = get_db_connection()
@@ -98,3 +98,4 @@ def deletar_mural(id):
     cursor.close()
     conn.close()
     return jsonify({"success": True})
+

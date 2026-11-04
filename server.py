@@ -25,6 +25,10 @@ import cloudinary
 import cloudinary.uploader
 import jwt
 from PIL import Image
+from utils.security import token_required, secretaria_required, categorias_required, pode_acessar_chat
+from utils.helpers import validar_email_institucional
+from utils.doacoes import DOACOES_PENDENTES_SQL
+from config import JWT_SECRET
 
 # ============================================================
 # CONFIGURAÇÕES E AMBIENTE
@@ -68,13 +72,12 @@ def handle_unexpected_error(error):
 
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
-JWT_SECRET = os.environ.get("JWT_SECRET", "@#Etec_Achad0s_2026_Secret_T0ken!)").strip()
 EMAIL_SECRETARIA = os.environ.get("ADMIN_EMAIL", "achadoseperdidosetec@gmail.com").strip().lower()
 ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "").strip()
 ADMIN_SENHA_HASH = os.environ.get("ADMIN_SENHA_HASH", "").strip()
 
 DOMINIOS_EMAIL_PERMITIDOS = [
-    "@aluno.cps.sp.gov.br"
+    "@aluno.cps.sp.gov.br", "@cps.sp.gov.br", "@etec.sp.gov.br"
 ]
 
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDZKrxZJjSPO2S-2jT_GL5prEQC43XP0_12N_sample").strip()
@@ -128,37 +131,6 @@ def after_request(response):
 # ============================================================
 # SEGURANÇA E TOKENS JWT
 # ============================================================
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if request.method == 'OPTIONS':
-            return jsonify({"success": True}), 200
-        token = None
-        auth_header = request.headers.get('Authorization', '')
-        if auth_header:
-            parts = auth_header.split()
-            if len(parts) >= 2 and parts[0].lower() == 'bearer':
-                token = parts[1].strip('"\'')
-            elif len(parts) == 1:
-                token = parts[0].strip('"\'')
-        if not token: token = request.headers.get('x-access-token', '').strip('"\'')
-        if not token: token = request.args.get('token', '').strip('"\'')
-        if not token and request.is_json and request.json:
-            token = str(request.json.get('token') or '').strip('"\'')
-
-        if not token or token.lower() in ['null', 'undefined', 'none', '']:
-            return jsonify({"success": False, "message": "Sessão não encontrada ou token ausente."}), 401
-        try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"], leeway=timedelta(seconds=60), options={"verify_exp": True})
-            request.user = payload
-        except jwt.ExpiredSignatureError:
-            return jsonify({"success": False, "message": "Sessão expirada. Faça login novamente.", "expired": True}), 401
-        except Exception:
-            logger.warning("Token JWT inválido | path=%s", request.path)
-            return jsonify({"success": False, "message": "Token inválido. Faça login novamente.", "code": "INVALID_TOKEN"}), 401
-        return f(*args, **kwargs)
-    return decorated
-
 def gerar_token_aluno(email, nome, rm, dias_validade=30):
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
     return jwt.encode({"email": email, "nome": nome, "rm": rm, "role": "aluno", "exp": exp}, JWT_SECRET, algorithm="HS256")
@@ -472,13 +444,6 @@ def disparar_email(dest, assunto, html):
         except Exception as e: print(f"[Brevo] {e}")
     Thread(target=_send).start()
 
-def validar_email_institucional(email):
-    if not email: return False, "E-mail vazio."
-    e = email.strip().lower()
-    if not any(e.endswith(d) for d in DOMINIOS_EMAIL_PERMITIDOS):
-        return False, f"Apenas e-mails ({', '.join(DOMINIOS_EMAIL_PERMITIDOS)}) permitidos."
-    return True, e
-
 # ============================================================
 # ROTAS FRONTEND & STATIC
 # ============================================================
@@ -719,6 +684,7 @@ def log_sec():
 # ============================================================
 @app.route('/api/categorias/<string:nome>', methods=['OPTIONS', 'DELETE'])
 @app.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST', 'DELETE'])
+@categorias_required
 def rotas_cat(nome=None):
     if request.method == 'OPTIONS': return jsonify({"success": True}), 200
     if request.method == 'GET':
@@ -762,7 +728,7 @@ def get_all_itens():
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/pendentes', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def get_pend():
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
@@ -790,7 +756,7 @@ def cad_item_aluno():
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/<int:item_id>/aprovar', methods=['OPTIONS', 'PUT'])
-@token_required
+@secretaria_required
 def apr_item(item_id):
     try:
         conn = get_db_connection(); c = conn.cursor()
@@ -800,7 +766,7 @@ def apr_item(item_id):
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens', methods=['OPTIONS', 'POST'])
-@token_required
+@secretaria_required
 @limiter.limit('30 per minute')
 def cad_item():
     d = request.json or {}
@@ -845,7 +811,7 @@ def cad_item():
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'POST', 'DELETE'])
-@token_required
+@secretaria_required
 def gen_item(item_id):
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
@@ -875,7 +841,7 @@ def gen_item(item_id):
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
-@token_required
+@secretaria_required
 def rec_item(item_id):
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
@@ -892,10 +858,10 @@ def rec_item(item_id):
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
-@token_required
+@secretaria_required
 def conc_doacoes():
     conn = get_db_connection(); c = conn.cursor()
-    c.execute("DELETE FROM itens WHERE UPPER(status) LIKE 'DOAÇÃO%' OR UPPER(status) LIKE 'DOACAO%';")
+    c.execute(f"UPDATE itens SET status = 'DOAÇÃO FEITA' WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")
     conn.commit(); c.close(); conn.close()
     return jsonify({"success": True})
 
@@ -946,7 +912,7 @@ def mural_al(rm):
     return jsonify(res)
 
 @app.route('/api/mural/<int:id>', methods=['OPTIONS', 'DELETE'])
-@token_required
+@secretaria_required
 def del_mural(id):
     conn = get_db_connection(); c = conn.cursor()
     c.execute("DELETE FROM mural_perdidos WHERE id = %s;", (id,))
@@ -957,9 +923,16 @@ def del_mural(id):
 # ROTAS CHAT
 # ============================================================
 @app.route('/api/chat/enviar', methods=['OPTIONS', 'POST'])
+@token_required
 def env_chat():
     d = request.json or {}
-    rm, nome, rem, msg = str(d.get('rm', '')).strip(), d.get('nome', 'Anônimo').strip(), d.get('remetente', 'ALUNO').upper().strip(), d.get('mensagem', '').strip()
+    user = request.user
+    rm = str(d.get('rm') or user.get('rm') or '').strip()
+    if not pode_acessar_chat(rm):
+        return jsonify({'success': False, 'message': 'Acesso negado a esta conversa.'}), 403
+    rem = 'SECRETARIA' if user.get('role') == 'secretaria' else 'ALUNO'
+    nome = 'Secretaria' if rem == 'SECRETARIA' else user.get('nome', 'Aluno')
+    msg = limpar_texto_entrada(d.get('mensagem'), 4000)
     if not rm or not msg: return jsonify({"success": False}), 400
     conn = get_db_connection(); c = conn.cursor()
     c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", (rm, nome, rem, msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
@@ -967,19 +940,22 @@ def env_chat():
     return jsonify({"success": True})
 
 @app.route('/api/chat/mensagens/<string:rm>', methods=['OPTIONS', 'GET'])
+@token_required
 def get_chat_msgs(rm):
+    if not pode_acessar_chat(rm):
+        return jsonify({'success': False, 'message': 'Acesso negado a esta conversa.'}), 403
     conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("SELECT * FROM mensagens_chat WHERE rm_aluno = %s ORDER BY id ASC;", (rm,))
     msgs = c.fetchall()
     if request.args.get('marcar_lida', 'false').lower() == 'true' and msgs:
-        outro = 'SECRETARIA' if request.args.get('origem', 'ALUNO').upper() == 'ALUNO' else 'ALUNO'
+        outro = 'ALUNO' if request.user.get('role') == 'secretaria' else 'SECRETARIA'
         c.execute("UPDATE mensagens_chat SET lida = TRUE WHERE rm_aluno = %s AND remetente = %s AND lida = FALSE;", (rm, outro))
         conn.commit()
     c.close(); conn.close()
     return jsonify(msgs)
 
 @app.route('/api/chat/conversas', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def list_convs():
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
@@ -999,7 +975,7 @@ def list_convs():
 # ROTAS RELATÓRIOS & SMART MATCH
 # ============================================================
 @app.route('/api/entregues', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def rotas_entregues():
     conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("SELECT * FROM entregues ORDER BY id DESC;")
@@ -1007,7 +983,7 @@ def rotas_entregues():
     return jsonify(res)
 
 @app.route('/api/estatisticas', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def rotas_stats():
     verificar_e_atualizar_itens_doacao()
     conn = None
@@ -1017,7 +993,7 @@ def rotas_stats():
         total_itens = c.fetchone()['total']
         c.execute("SELECT COUNT(*) as total FROM entregues;")
         total_entregues = c.fetchone()['total']
-        c.execute("SELECT COUNT(*) as total FROM itens WHERE (status LIKE 'DOAÇÃO%' OR status LIKE 'DOACAO%') AND aprovado = TRUE;")
+        c.execute(f"SELECT COUNT(*) as total FROM itens WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")
         total_doacoes = c.fetchone()['total']
         c.execute("SELECT COUNT(*) as total FROM itens WHERE status = 'DISPONÍVEL' AND aprovado = TRUE;")
         total_disponiveis = c.fetchone()['total']
@@ -1037,7 +1013,7 @@ def rotas_stats():
         logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/smart-match', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def rotas_sm_match():
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
@@ -1067,3 +1043,4 @@ if __name__ == "__main__":
     porta = int(os.environ.get("PORT", PORT))
     print(f"🚀 Servidor ETEC iniciado na porta {porta}")
     app.run(host='0.0.0.0', port=porta)
+

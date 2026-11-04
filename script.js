@@ -1003,7 +1003,9 @@ function abrirChatComItem() {
 async function atualizarMensagensChat() {
     if(!alunoSessao) return;
     try {
-        const res = await fetch(`${API_URL}/api/chat/mensagens/${alunoSessao.rm}?marcar_lida=true&origem=ALUNO`);
+        const res = await fetch(`${API_URL}/api/chat/mensagens/${encodeURIComponent(alunoSessao.rm)}?marcar_lida=true`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('aluno_token') || ''}` }
+        });
         if(!res.ok) return;
         const msgs = await res.json();
         const c = document.getElementById('chatMensagens');
@@ -1043,7 +1045,7 @@ async function enviarMensagemChat(e) {
     try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, { 
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('aluno_token') || ''}` },
             body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt }) 
         });
         if(res.ok) {
@@ -1326,3 +1328,4 @@ async function analisarFotoAlunoComIA() {
         }
     }
 }
+

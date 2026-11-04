@@ -1,0 +1,52 @@
+# Achados e Perdidos ETEC — pendências
+
+Registro em 04/11/2026. Repositório: https://github.com/achados-e-perdidos-etc/Achados-e-perdidos-etec
+
+## Prioridade atual definida pelo usuário
+
+Corrigir as pendências do projeto. Hospedagem e migração de banco adiadas por orientação do usuário. Esta primeira etapa está preparada para revisão, sem publicação ou alteração do banco real.
+
+## Erros identificados na revisão inicial
+
+Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram o comportamento anterior. Detalhes e limites em VALIDACAO.md.
+
+- [x] P1 — Autorização administrativa: `server.py:token_required` valida a assinatura do JWT, mas não o perfil. Rotas administrativas de aprovação, edição e exclusão usam esse decorador sem exigir secretaria. Reproduzido localmente com token de aluno e o decorador original extraído via AST; nenhuma operação real foi feita.
+- [x] P1 — Categorias: POST e DELETE em `/api/categorias` não exigem autenticação.
+- [x] P1 — Chat: envio aceita remetente informado pelo cliente; leitura por RM não exige autenticação nem verifica a identidade. Proteger leitura e escrita e derivar a identidade da sessão.
+- [x] P2 — Doações: atualização automática grava `PARA DOAÇÃO`; conclusão e estatísticas usam `LIKE 'DOAÇÃO%'` ou `LIKE 'DOACAO%'`. Esses filtros não incluem o status gravado.
+- [x] P2 — E-mails: o servidor em uso aceita apenas domínio de aluno, rejeitando professores CPS/ETEC. Também aceita endereço sem parte local (`@aluno.cps.sp.gov.br`). Os testes usam `utils.helpers`, cuja implementação difere da usada por `server.py`.
+
+## Outros pontos para revisar
+
+- [x] Removido o segredo JWT padrão do código; inicialização exige segredo com pelo menos 32 bytes.
+- [ ] Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
+- [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros.
+- [ ] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts.
+- [ ] Revisar login compartilhado de professor e acesso público a dados pessoais nas respostas de itens/mural.
+- [ ] Após a migração, substituir a URL Railway fixa no frontend e verificar também painel e aplicativo desktop.
+
+## Validação desta etapa
+
+40 testes passaram: 17 existentes, 22 testes de contratos de rotas nas implementações unificada/modular e um teste da configuração JWT. JavaScript e compilação Python também verificados. Integrações externas e dados reais permanecem sem teste. Consulte VALIDACAO.md.
+
+## Verificações da análise inicial
+
+- 17 testes passaram com `python -m unittest discover -s tests -v`.
+- Sintaxe de `script.js` e `sw.js` passou em `node --check`.
+- Compilação dos arquivos Python baixados passou.
+- Os testes não cobrem o fluxo completo das rotas do servidor unificado.
+- Não foi possível executar o servidor completo: faltam dependências e a conexão do shell ao proxy falhou.
+- O endereço publicado não foi acessível pela ferramenta de navegação. Isso não prova, isoladamente, indisponibilidade global.
+- Não foram validados banco real, login completo, e-mails, Cloudinary, push e IA.
+
+## Plano de hospedagem a avaliar
+
+Render Free para Flask/Gunicorn e Neon Free para PostgreSQL. Manter imagens em armazenamento externo, como o Cloudinary já previsto no código. Confirmar acesso ao banco antigo e obter backup antes de migrar: criar banco novo não recupera dados antigos.
+
+Fontes consultadas em 04/11/2026:
+- https://render.com/docs/free — serviço web dorme após 15 minutos, pode demorar cerca de um minuto para reativar; há cotas mensais. Banco PostgreSQL grátis do Render expira em 30 dias, portanto não atende ao objetivo de evitar expiração.
+- https://neon.com/pricing — plano Free sem prazo de teste, sujeito às cotas do serviço.
+
+Configuração esperada: build `pip install -r requirements.txt`; start `gunicorn --bind 0.0.0.0:$PORT server:app`. Configurar DATABASE_URL, JWT_SECRET e credenciais das integrações no painel do provedor, nunca em arquivo público. Inspecionar todos os clientes antes de mudar a URL da API.
+
+As correções e esta lista estão preparadas para revisão em branch separada. A branch principal, a hospedagem e o banco real não foram alterados.

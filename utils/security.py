@@ -56,14 +56,46 @@ def token_required(f):
                 "message": "Sua sessão expirou. Faça login novamente.", 
                 "expired": True
             }), 401
-        except Exception as e:
+        except Exception:
             return jsonify({
                 "success": False, 
-                "message": f"Token inválido: {str(e)}"
+                "message": "Token inválido. Faça login novamente."
             }), 401
 
         return f(*args, **kwargs)
     return decorated
+
+def secretaria_required(f):
+    """Exige uma sessão autenticada com perfil da secretaria."""
+    @token_required
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.user.get('role') != 'secretaria':
+            return jsonify({"success": False, "message": "Acesso exclusivo da secretaria."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def categorias_required(f):
+    """Mantém a consulta pública e protege as alterações de categorias."""
+    protegido = secretaria_required(f)
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method in ('GET', 'OPTIONS'):
+            return f(*args, **kwargs)
+        return protegido(*args, **kwargs)
+    return decorated
+
+def pode_acessar_chat(rm):
+    """O aluno acessa somente o próprio RM; a secretaria atende os alunos."""
+    user = request.user
+    if user.get('role') == 'secretaria':
+        return bool(rm)
+    proprio_rm = str(user.get('rm') or '').strip()
+    return (
+        user.get('role') == 'aluno'
+        and proprio_rm.upper() not in ('', 'ALUNO', 'PENDENTE', 'PROFESSOR')
+        and str(rm).strip() == proprio_rm
+    )
 
 def gerar_token_aluno(email, nome, rm, dias_validade=30):
     """
@@ -86,3 +118,4 @@ def gerar_token_secretaria(email, dias_validade=7):
         JWT_SECRET,
         algorithm="HS256"
     )
+

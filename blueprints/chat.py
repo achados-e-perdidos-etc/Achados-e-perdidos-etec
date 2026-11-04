@@ -7,18 +7,22 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
-from utils.security import token_required
+from utils.security import token_required, secretaria_required, pode_acessar_chat
 
 chat_bp = Blueprint('chat', __name__)
 
 @chat_bp.route('/api/chat/enviar', methods=['OPTIONS', 'POST'])
+@token_required
 def enviar_chat():
     """Envia uma mensagem no chat (origem: ALUNO ou SECRETARIA)."""
     data = request.json or {}
-    rm = str(data.get('rm', '')).strip()
-    nome = data.get('nome', 'Anônimo').strip()
-    remetente = data.get('remetente', 'ALUNO').upper().strip()
-    mensagem = data.get('mensagem', '').strip()
+    user = request.user
+    rm = str(data.get('rm') or user.get('rm') or '').strip()
+    if not pode_acessar_chat(rm):
+        return jsonify({'success': False, 'message': 'Acesso negado a esta conversa.'}), 403
+    remetente = 'SECRETARIA' if user.get('role') == 'secretaria' else 'ALUNO'
+    nome = 'Secretaria' if remetente == 'SECRETARIA' else user.get('nome', 'Aluno')
+    mensagem = str(data.get('mensagem') or '').strip()[:4000]
     
     if not rm or not mensagem:
         return jsonify({"success": False, "message": "RM e mensagem são obrigatórios."}), 400
@@ -35,8 +39,11 @@ def enviar_chat():
     return jsonify({"success": True})
 
 @chat_bp.route('/api/chat/mensagens/<string:rm>', methods=['OPTIONS', 'GET'])
+@token_required
 def buscar_mensagens(rm):
-    """Retorna o histórico de mensagens trocadas com o aluno especificado por seu RM."""
+    """Retorna somente conversas autorizadas pela sessão."""
+    if not pode_acessar_chat(rm):
+        return jsonify({"success": False, "message": "Acesso negado a esta conversa."}), 403
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("SELECT * FROM mensagens_chat WHERE rm_aluno = %s ORDER BY id ASC;", (rm,))
@@ -44,7 +51,7 @@ def buscar_mensagens(rm):
     
     # Marca como lida se solicitado pelo leitor
     if request.args.get('marcar_lida', 'false').lower() == 'true' and msgs:
-        outro = 'SECRETARIA' if request.args.get('origem', 'ALUNO').upper() == 'ALUNO' else 'ALUNO'
+        outro = 'ALUNO' if request.user.get('role') == 'secretaria' else 'SECRETARIA'
         cursor.execute("UPDATE mensagens_chat SET lida = TRUE WHERE rm_aluno = %s AND remetente = %s AND lida = FALSE;", (rm, outro))
         conn.commit()
         
@@ -53,7 +60,7 @@ def buscar_mensagens(rm):
     return jsonify(msgs)
 
 @chat_bp.route('/api/chat/conversas', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def listar_conversas():
     """
     Lista todos os atendimentos agrupados por aluno para o painel da Secretaria.
@@ -85,3 +92,4 @@ def listar_conversas():
         if conn:
             conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
+
