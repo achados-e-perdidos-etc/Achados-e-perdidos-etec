@@ -20,7 +20,9 @@ Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram
 
 - [x] Removido o segredo JWT padrão do código; inicialização exige segredo com pelo menos 32 bytes.
 - [ ] Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
-- [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros.
+- [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros. Adiado pelo usuário até obter a lista oficial da escola com e-mail institucional e matrícula; não implementar aprovação manual nesta etapa.
+- [x] Exigir sessão nas operações pessoais e obter autoria da sessão em solicitação de itens, publicação no mural e cadastro de objetos encontrados. Detalhes na sétima etapa.
+- [ ] Proteger a vinculação de notificações push à sessão; `/api/push/subscribe` ainda aceita RM enviado pelo cliente sem autenticação.
 - [x] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts no portal e painel; detalhes e limites na sexta etapa.
 - [x] Removido login compartilhado professor/professor e sessões fictícias do navegador. Professores usam conta institucional com senha individual; tokens antigos exigem novo login.
 - [x] Catálogo e mural públicos usam lista explícita de campos sem nome do autor, RM ou e-mail de alunos. Dados administrativos exigem token de secretaria; consultas pessoais filtram pelo e-mail da sessão. Conteúdo livre de descrições e imagens ainda pode conter dados pessoais e exige moderação.
@@ -104,3 +106,17 @@ Branch derivada da proposta #18. Nomes, descrições, mensagens, categorias, dad
 - [x] Novo arquivo seguranca-interface.js carregado antes das interfaces dependentes.
 
 Validação: 116 testes Python, 18 testes JavaScript existentes e 10 testes no Chromium com as páginas reais e respostas de API simuladas. Foram verificados textos maliciosos, botões com aspas, chat nos dois sentidos, catálogo, mural, categorias, detalhes, sugestões de itens, diálogos e relatórios de inventário/entregas. Sintaxe JavaScript também verificada. Nenhum banco, credencial ou serviço de produção foi utilizado; a proposta ainda precisa ser integrada para chegar ao site. A próxima pendência de código registrada é comprovação e unicidade do RM.
+
+## Sétima etapa — autoria nas operações de alunos
+
+Branch derivada da proposta #19. A validação do RM pela lista oficial foi adiada a pedido do usuário, pois a lista ainda está com a escola. A revisão revelou que solicitar um item, publicar no mural e cadastrar um objeto não exigiam autenticação nas rotas correspondentes. As gravações aceitavam dados de autoria escolhidos pelo navegador.
+
+- [x] As três operações exigem token válido antes de consultar o banco ou processar fotos.
+- [x] Nome, e-mail e RM da solicitação e do relato vêm da sessão assinada; dados de autoria enviados no corpo são ignorados.
+- [x] O RM de quem cadastra um objeto vem da sessão; o nome do objeto continua sendo o título informado no formulário.
+- [x] Professores podem cadastrar objetos encontrados, inclusive quando aprovados para ajudar a secretaria. São identificados como PROFESSOR, sem usar RM de aluno, e não podem solicitar retiradas ou publicar relatos de perda.
+- [x] Contas sem RM individual informado recebem orientação para completá-lo antes de solicitar ou publicar; consulta pública do catálogo/mural e OPTIONS continuam disponíveis.
+- [x] Frontend envia somente ID/conteúdo e autenticação, sem dados de autoria escolhidos localmente.
+- [x] Solicitar por ID também exige que o objeto já esteja aprovado para o catálogo, preservando a moderação.
+
+Validação: 134 testes Python, 21 testes JavaScript e 10 testes no Chromium passaram. Os casos novos cobrem visitantes, tokens forjados, alteração dos campos de autoria, perfis de professor com/sem aprovação e consultas de duas contas após gravações reais em SQLite temporário. Tanto o servidor unificado quanto os blueprints foram verificados. Não houve migração, alteração de conta ou acesso a produção. Esta correção vincula as operações à sessão; comprovar a titularidade e unicidade do RM continua pendente da lista oficial, sem ser considerado resolvido por esta etapa.

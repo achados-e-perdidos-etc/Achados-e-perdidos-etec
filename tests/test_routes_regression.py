@@ -58,9 +58,95 @@ class RouteTests(unittest.TestCase):
                                          json={'nome': 'OUTROS'}).status_code, 200)
 
     def test_preflight_continua_publico(self):
-        for path in ['/api/categorias', '/api/chat/enviar', '/api/itens/1/aprovar']:
+        for path in ['/api/categorias', '/api/chat/enviar', '/api/itens/1/aprovar',
+                     '/api/solicitar', '/api/mural', '/api/itens/cadastrar-aluno']:
             self.assertEqual(self.client.options(path).status_code, 200)
         self.get_db.assert_not_called()
+
+    def test_escritas_de_aluno_rejeitam_anonimo_e_token_invalido_antes_de_fotos_ou_banco(self):
+        with patch('server.processar_fotos') as fotos_unificado, \
+             patch('blueprints.itens.processar_fotos') as fotos_modular:
+            for path in ['/api/solicitar', '/api/mural', '/api/itens/cadastrar-aluno']:
+                for headers in [{}, {'Authorization': 'Bearer forjado'}]:
+                    response = self.client.post(path, headers=headers, json={
+                        'id': 7, 'nome': 'Outra pessoa', 'rm': '99999',
+                        'email': 'outra@aluno.cps.sp.gov.br', 'foto': 'foto-forjada'})
+                    self.assertEqual(response.status_code, 401, path)
+            fotos_unificado.assert_not_called()
+            fotos_modular.assert_not_called()
+        self.get_db.assert_not_called()
+
+    def test_solicitacao_usa_identidade_assinada_e_funciona_so_com_id(self):
+        self.cursor.rowcount = 1
+        for body in [{'id': 7}, {'id': 7, 'nome': 'Terceiro', 'rm': '99999',
+                                'email': 'terceiro@aluno.cps.sp.gov.br', 'role': 'secretaria'}]:
+            result = self.client.post('/api/solicitar', headers=self.aluno, json=body)
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(self.cursor.execute.call_args.args[1],
+                             ('Nome real', '12345', 'aluno@aluno.cps.sp.gov.br', 7))
+
+    def test_mural_ignora_identidade_informada_no_corpo(self):
+        result = self.client.post('/api/mural', headers=self.aluno, json={
+            'nome': 'Terceiro', 'rm': '99999', 'email': 'terceiro@aluno.cps.sp.gov.br',
+            'categoria': 'OUTROS', 'descricao': 'Perdi meu estojo'})
+        self.assertEqual(result.status_code, 200)
+        inserts = [call for call in self.cursor.execute.call_args_list
+                   if 'INSERT INTO mural_perdidos' in call.args[0]]
+        self.assertEqual(len(inserts), 1)
+        self.assertEqual(inserts[0].args[1][:5],
+                         ('Nome real', '12345', 'aluno@aluno.cps.sp.gov.br', 'OUTROS', 'Perdi meu estojo'))
+
+    def test_cadastro_objeto_usa_rm_assinado_e_mantem_titulo_e_moderacao(self):
+        with patch('server.processar_fotos', return_value=[]), \
+             patch('blueprints.itens.processar_fotos', return_value=[]):
+            result = self.client.post('/api/itens/cadastrar-aluno', headers=self.aluno,
+                json={'nome': 'Estojo preto', 'descricao': 'Encontrado no pátio', 'rm': '99999'})
+        self.assertEqual(result.status_code, 200)
+        query, params = self.cursor.execute.call_args.args
+        self.assertIn('FALSE, TRUE', query)
+        self.assertEqual(params[0], 'Estojo preto')
+        self.assertEqual(params[-1], '12345')
+
+    def test_professor_nao_pode_se_passar_por_aluno_mesmo_com_acesso_ao_painel(self):
+        for acesso in [None, {'status': 'APROVADO'}]:
+            with patch('services.professores_service.buscar_acesso', return_value=acesso):
+                professor = {'Authorization': 'Bearer ' + server.gerar_token_aluno(
+                    'docente@etec.sp.gov.br', 'Docente', '12345')}
+                for path in ['/api/solicitar', '/api/mural']:
+                    result = self.client.post(path, headers=professor, json={
+                        'id': 7, 'nome': 'Aluno', 'rm': '99999', 'email': 'aluno@aluno.cps.sp.gov.br'})
+                    self.assertEqual(result.status_code, 403)
+        self.get_db.assert_not_called()
+
+    def test_professor_ainda_pode_cadastrar_objetos_sem_usar_rm_de_aluno(self):
+        for acesso in [None, {'status': 'APROVADO'}]:
+            with patch('services.professores_service.buscar_acesso', return_value=acesso), \
+                 patch('server.processar_fotos', return_value=[]), \
+                 patch('blueprints.itens.processar_fotos', return_value=[]):
+                professor = {'Authorization': 'Bearer ' + server.gerar_token_aluno(
+                    'docente@etec.sp.gov.br', 'Docente', '12345')}
+                result = self.client.post('/api/itens/cadastrar-aluno', headers=professor,
+                    json={'nome': 'Controle', 'descricao': 'Encontrado', 'rm': '99999'})
+                self.assertEqual(result.status_code, 200)
+                self.assertEqual(self.cursor.execute.call_args.args[1][-1], 'PROFESSOR')
+
+    def test_perfil_admin_e_rm_generico_nao_podem_solicitar_ou_publicar_com_identidade_falsa(self):
+        tokens = [self.secretaria]
+        for rm in ['ALUNO', 'PENDENTE', 'PROFESSOR', '']:
+            tokens.append({'Authorization': 'Bearer ' + server.gerar_token_aluno(
+                'aluno@aluno.cps.sp.gov.br', 'Aluno', rm)})
+        for headers in tokens:
+            for path in ['/api/solicitar', '/api/mural']:
+                self.assertEqual(self.client.post(path, headers=headers, json={
+                    'id': 7, 'rm': '99999', 'email': 'terceiro@aluno.cps.sp.gov.br'}).status_code, 403)
+        self.get_db.assert_not_called()
+
+    def test_palavra_professor_no_email_de_aluno_nao_bloqueia_solicitacao(self):
+        self.cursor.rowcount = 1
+        headers = {'Authorization': 'Bearer ' + server.gerar_token_aluno(
+            'professor.nome@aluno.cps.sp.gov.br', 'Aluno', '12345')}
+        result = self.client.post('/api/solicitar', headers=headers, json={'id': 7})
+        self.assertEqual(result.status_code, 200)
 
     def test_chat_exige_autenticacao_e_rm_proprio(self):
         for method, path in [('GET', '/api/chat/mensagens/12345'),

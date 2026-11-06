@@ -10,7 +10,7 @@ from psycopg2.extras import RealDictCursor
 from database import get_db_connection, verificar_e_atualizar_itens_doacao
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.privacy import item_publico, relato_publico
-from utils.security import consulta_publica, token_required, secretaria_required, categorias_required
+from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, identidade_aluno, identidade_portal
 from utils.helpers import extrair_termos
 from services.cloudinary_service import processar_fotos
 from services.email_service import disparar_email
@@ -159,15 +159,19 @@ def get_itens_pendentes():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/cadastrar-aluno', methods=['OPTIONS', 'POST'])
+@token_required
 def cadastrar_item_aluno():
     """Permite que um estudante cadastre um objeto encontrado para análise da secretaria."""
+    autor = identidade_portal()
+    if not autor:
+        return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
     data = request.json or {}
     nome = (data.get('nome') or '').strip()
     descricao = (data.get('descricao') or '').strip()
     categoria = (data.get('categoria') or 'OUTROS').strip()
     data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
     local = (data.get('local') or 'Não informado').strip()
-    rm = (data.get('rm') or '').strip()
+    rm = autor['rm']
     
     lista_entrada = data.get('fotos', [])
     if not lista_entrada and data.get('foto'):
@@ -415,20 +419,22 @@ def concluir_doacoes():
     return jsonify({"success": True})
 
 @itens_bp.route('/api/solicitar', methods=['OPTIONS', 'POST'])
+@token_required
 def solicitar_item():
     """Permite ao estudante solicitar a retirada de um item disponível."""
+    aluno = identidade_aluno()
+    if not aluno:
+        return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem solicitar a retirada de itens.'}), 403
     data = request.json or {}
     item_id = data.get('id')
-    nome = data.get('nome')
-    rm = data.get('rm')
-    email_aluno = data.get('email')
+    nome, rm, email_aluno = aluno['nome'], aluno['rm'], aluno['email']
     
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE itens 
         SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s 
-        WHERE id = %s AND status = 'DISPONÍVEL';
+        WHERE id = %s AND status = 'DISPONÍVEL' AND (aprovado IS NULL OR aprovado = TRUE);
     """, (nome, rm, email_aluno, item_id))
     afetados = cursor.rowcount
     conn.commit()

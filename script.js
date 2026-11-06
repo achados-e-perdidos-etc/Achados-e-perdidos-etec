@@ -835,12 +835,7 @@ async function enviarNovo() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             }, 
-            body: JSON.stringify({ 
-                id: itemSelecionado.id, 
-                nome: alunoSessao.nome, 
-                rm: alunoSessao.rm, 
-                email: alunoSessao.email 
-            }) 
+            body: JSON.stringify({ id: itemSelecionado.id })
         });
         const data = await res.json();
         if(res.ok && data.success) { 
@@ -869,9 +864,6 @@ async function enviarAvisoMural(e) {
                 'Authorization': `Bearer ${token}` 
             }, 
             body: JSON.stringify({ 
-                nome: alunoSessao.nome, 
-                rm: alunoSessao.rm, 
-                email: alunoSessao.email, 
                 categoria: document.getElementById('muralCategoria').value, 
                 descricao: document.getElementById('muralDescricao').value.trim() 
             }) 
@@ -1111,7 +1103,6 @@ async function enviarCadastroAluno(e) {
         categoria: document.getElementById('alunoItemCat').value,
         local: document.getElementById('alunoItemLocal').value.trim(),
         data: new Date().toLocaleDateString('pt-BR'),
-        rm: alunoSessao.rm,
         fotos: fotosAlunoSelecionadas,
         foto: fotosAlunoSelecionadas[0] || ""
     };

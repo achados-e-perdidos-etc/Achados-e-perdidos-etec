@@ -21,6 +21,7 @@ node tests/test_portal_auth.cjs
 node tests/test_privacy_portal.cjs
 node tests/test_teacher_portal.cjs
 node tests/test_vision_form.cjs
+node tests/test_student_operations.cjs
 ```
 
 Os testes usam o cliente Flask real, banco simulado e uma tabela SQLite temporária para executar o SQL de doações. Não verificam a conexão com PostgreSQL em produção nem serviços de e-mail, imagens, IA ou push. Não inserem ou removem dados reais.
@@ -101,3 +102,19 @@ CHROMIUM_PATH=/usr/bin/chromium python tests/browser_text_safety.py
 ```
 
 O novo script seguranca-interface.js deve ser publicado junto com os dois HTML e script.js. Não exige variável de ambiente nem migração de banco. A branch parte da proposta #18 e deve preservar as propostas anteriores antes da integração na main.
+
+## Sétima etapa: operações vinculadas à sessão
+
+A pedido do usuário, a validação da matrícula dependerá de lista oficial de e-mails e RMs fornecida pela escola. Como essa lista ainda não está disponível, a implementação da comprovação e unicidade do RM foi adiada. Não foi criada importação de alunos, aprovação manual ou restrição baseada em uma lista vazia.
+
+Esta etapa corrige uma falha separada: POST /api/solicitar e POST /api/itens/cadastrar-aluno passam a exigir token_required. No mural, consulta_publica mantém GET anônimo, mas autentica escritas. O autor da solicitação ou do relato é extraído exclusivamente da sessão assinada. O corpo não pode escolher outro nome, e-mail ou RM. O cadastro de objeto usa o RM da sessão, sem confundir o campo nome (título do objeto) com o nome do autor.
+
+As funções compartilhadas identidade_portal e identidade_aluno verificam o perfil e o domínio institucional da sessão. Professores identificados pelo domínio ETEC/CPS continuam cadastrando objetos e recebem o identificador PROFESSOR nesse fluxo, inclusive com acesso delegado ao painel. Ações pessoais de retirada e relato exigem perfil de aluno, domínio @aluno.cps.sp.gov.br e RM diferente dos marcadores ALUNO/PENDENTE/PROFESSOR. A palavra professor na parte local de um e-mail de aluno não o transforma em docente. A secretaria usa suas rotas administrativas próprias.
+
+O frontend já enviava Authorization nas três operações e agora omite campos de autoria. Clientes antigos que ainda enviam esses campos continuam funcionando, mas seus valores são ignorados. A consulta pública de catálogo e mural, a moderação dos objetos cadastrados e o preflight CORS foram preservados.
+
+A atualização de solicitação também exige aprovado=TRUE ou o valor NULL legado, além de status DISPONÍVEL. Adivinhar o ID de um objeto pendente de moderação não permite solicitá-lo. A condição é verificada na própria atualização, sem separar uma consulta prévia da gravação.
+
+Validação: 134 testes Python e 21 testes JavaScript passaram, além dos 10 testes de renderização no Chromium. Os novos casos executam as rotas reais no servidor unificado e modular, verificam rejeição antes de banco/processamento de fotos e conferem os parâmetros persistidos. Um fluxo adicional usa SQL real em SQLite temporário e duas sessões para solicitar um item, publicar um relato, cadastrar um objeto e consultar os dados pessoais sem atribuí-los à conta citada no corpo adulterado. Fotos e serviços externos foram simulados. Sintaxe Python/JavaScript e git diff --check passaram.
+
+Não exige novas variáveis nem migração de banco. O token continua contendo nome e RM informados durante o cadastro, sem validação contra registros escolares. A confirmação do vínculo, a unicidade do RM, a atualização de sessões antigas e a privacidade de conversas baseadas apenas no RM precisam da revisão de matrículas que foi adiada. A vinculação de push à sessão também permanece registrada como pendência própria. Nenhum dado de produção foi consultado ou corrigido; esta etapa não altera a autoria de registros antigos.

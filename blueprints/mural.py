@@ -9,7 +9,7 @@ from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
 from utils.privacy import item_publico, relato_publico
-from utils.security import consulta_publica, token_required, secretaria_required
+from utils.security import consulta_publica, token_required, secretaria_required, identidade_aluno
 from utils.helpers import extrair_termos
 
 mural_bp = Blueprint('mural', __name__)
@@ -31,10 +31,11 @@ def mural():
         return jsonify(res if request.user.get('role') == 'secretaria' else [relato_publico(it) for it in res])
         
     else:
+        aluno = identidade_aluno()
+        if not aluno:
+            return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem publicar relatos de perda.'}), 403
         data = request.json or {}
-        nome = data.get('nome')
-        rm = data.get('rm')
-        email_aluno = data.get('email')
+        nome, rm, email_aluno = aluno['nome'], aluno['rm'], aluno['email']
         categoria = data.get('categoria')
         descricao = data.get('descricao')
         

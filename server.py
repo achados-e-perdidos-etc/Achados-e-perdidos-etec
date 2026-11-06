@@ -27,7 +27,7 @@ import jwt
 from PIL import Image
 from services.ai_vision_service import analisar_imagem_com_ia
 from utils.privacy import item_publico, relato_publico
-from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat
+from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat, identidade_aluno, identidade_portal
 from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.professores import SCHEMA_ACESSO_PROFESSORES
@@ -670,11 +670,15 @@ def get_pend():
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/cadastrar-aluno', methods=['OPTIONS', 'POST'])
+@token_required
 @limiter.limit('10 per minute')
 def cad_item_aluno():
+    autor = identidade_portal()
+    if not autor:
+        return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
     d = request.json or {}
     nome, desc, cat = limpar_texto_entrada(d.get('nome'), 150), limpar_texto_entrada(d.get('descricao'), 2000), (limpar_texto_entrada(d.get('categoria'), 50) or 'OUTROS').upper()
-    data_enc, local, rm = (d.get('data') or datetime.now().strftime("%d/%m/%Y")).strip(), (d.get('local') or 'Não informado').strip(), (d.get('rm') or '').strip()
+    data_enc, local, rm = (d.get('data') or datetime.now().strftime("%d/%m/%Y")).strip(), (d.get('local') or 'Não informado').strip(), autor['rm']
     urls = processar_fotos(d.get('fotos') or ([d.get('foto')] if d.get('foto') else []))
     try:
         conn = get_db_connection(); c = conn.cursor()
@@ -794,18 +798,14 @@ def conc_doacoes():
     return jsonify({"success": True})
 
 @app.route('/api/solicitar', methods=['OPTIONS', 'POST'])
+@token_required
 def sol_item():
-    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
+    aluno = identidade_aluno()
+    if not aluno:
+        return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem solicitar a retirada de itens.'}), 403
     d = request.json or {}
-    rm = str(d.get('rm') or '').strip().upper()
-    email = str(d.get('email') or '').strip().lower()
-    
-    # REGRA: Conta de professor NÃO PODE solicitar nenhum item
-    if rm == 'PROFESSOR' or 'professor' in email:
-        return jsonify({"success": False, "message": "Conta de professor autorizada apenas para cadastrar itens, não para solicitar retiradas."}), 403
-
     conn = get_db_connection(); c = conn.cursor()
-    c.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s WHERE id = %s AND status = 'DISPONÍVEL';", (d.get('nome'), d.get('rm'), d.get('email'), d.get('id')))
+    c.execute("UPDATE itens SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s WHERE id = %s AND status = 'DISPONÍVEL' AND (aprovado IS NULL OR aprovado = TRUE);", (aluno['nome'], aluno['rm'], aluno['email'], d.get('id')))
     af = c.rowcount; conn.commit(); c.close(); conn.close()
     if af > 0: return jsonify({"success": True})
     return jsonify({"success": False, "message": "Item indisponível."}), 400
@@ -823,13 +823,12 @@ def rotas_mural():
         res = c.fetchall(); c.close(); conn.close()
         return jsonify(res if request.user.get('role') == 'secretaria' else [relato_publico(it) for it in res])
     else:
+        aluno = identidade_aluno()
+        if not aluno:
+            return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem publicar relatos de perda.'}), 403
         d = request.json or {}
-        rm = str(d.get('rm') or '').strip().upper()
-        email = str(d.get('email') or '').strip().lower()
-        if rm == 'PROFESSOR' or 'professor' in email:
-            return jsonify({"success": False, "message": "Conta de professor autorizada apenas para cadastrar itens encontrados, não para publicar relatos no mural."}), 403
         conn = get_db_connection(); c = conn.cursor()
-        c.execute("INSERT INTO mural_perdidos (nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro, status) VALUES (%s, %s, %s, %s, %s, %s, 'PROCURANDO');", (d.get('nome'), d.get('rm'), d.get('email'), d.get('categoria'), d.get('descricao'), datetime.now().strftime("%d/%m/%Y %H:%M")))
+        c.execute("INSERT INTO mural_perdidos (nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro, status) VALUES (%s, %s, %s, %s, %s, %s, 'PROCURANDO');", (aluno['nome'], aluno['rm'], aluno['email'], d.get('categoria'), d.get('descricao'), datetime.now().strftime("%d/%m/%Y %H:%M")))
         conn.commit(); c.close(); conn.close()
         return jsonify({"success": True})
 

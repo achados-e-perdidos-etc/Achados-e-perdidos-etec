@@ -9,6 +9,7 @@ import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import JWT_SECRET
 from utils.professores import email_de_professor
+from utils.helpers import validar_email_institucional
 
 def token_required(f):
     """
@@ -96,10 +97,12 @@ def secretaria_required(f):
     return decorated
 
 def consulta_publica(f):
-    """GET anônimo é público; se houver token, sua validade é obrigatória."""
+    """GET anônimo é público; escritas e consultas com token exigem sessão."""
     autenticado = token_required(f)
     @wraps(f)
     def decorated(*args, **kwargs):
+        if request.method not in ('GET', 'OPTIONS'):
+            return autenticado(*args, **kwargs)
         if request.method == 'GET':
             if (request.headers.get('Authorization') or request.headers.get('x-access-token')
                     or request.args.get('token')):
@@ -111,6 +114,30 @@ def consulta_publica(f):
         response.vary.add('x-access-token')
         return response
     return decorated
+
+def identidade_portal():
+    """Identidade assinada para cadastrar objetos, inclusive como professor."""
+    user = getattr(request, 'user', {})
+    valido, email = validar_email_institucional(user.get('email'))
+    professor = email_de_professor(email) if valido else False
+    perfil_permitido = user.get('role') == 'aluno' or (
+        professor and user.get('role') == 'secretaria' and user.get('acesso_delegado'))
+    nome = user.get('nome')
+    rm = user.get('rm')
+    if not valido or not perfil_permitido or not isinstance(nome, str) or not nome.strip():
+        return None
+    if not isinstance(rm, str) or not rm.strip():
+        return None
+    return {'nome': nome, 'email': email, 'rm': 'PROFESSOR' if professor else rm}
+
+def identidade_aluno():
+    """Dados da sessão para operações pessoais; não comprova vínculo do RM."""
+    identidade = identidade_portal()
+    if (not identidade or not identidade['email'].endswith('@aluno.cps.sp.gov.br')
+            or request.user.get('role') != 'aluno'
+            or identidade['rm'].strip().upper() in ('ALUNO', 'PENDENTE', 'PROFESSOR')):
+        return None
+    return identidade
 
 def categorias_required(f):
     """Mantém a consulta pública e protege as alterações de categorias."""
