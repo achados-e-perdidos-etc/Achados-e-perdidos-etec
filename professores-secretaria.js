@@ -10,6 +10,7 @@ async function verificarSessaoPainel() {
         document.getElementById('menuAba-professores').classList.add('hidden');
         document.getElementById('loginScreen').classList.remove('hidden');
         localStorage.removeItem('secretaria_token');
+        sessionStorage.removeItem('secretaria_token');
         mostrarToast('Sua sessão não tem acesso ao painel. Entre novamente.');
         return false;
     }

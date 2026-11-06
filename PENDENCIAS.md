@@ -136,3 +136,15 @@ Branch numerada 21-protecao-notificacoes-push, derivada da proposta #20. A numer
 - [x] Backend unificado usa o mesmo blueprint de push que a versão modular; ambas as inicializações criam a nova tabela de forma idempotente.
 
 Validação: 195 testes Python, 33 testes JavaScript e 10 testes no Chromium passaram. Também foi executada uma migração de tabelas legadas em PostgreSQL real temporário, repetindo as duas inicializações e verificando múltiplos dispositivos, contas com o mesmo RM e exclusão restrita. Serviços push e credenciais de produção não foram usados. Cadastro protegido não equivale a envio real de notificações; o emissor e a entrega em dispositivos reais continuam pendentes. A validação do RM pela lista oficial permanece adiada.
+
+## Nona etapa — lembrar acesso e animação de autenticação (proposta 22)
+
+Branch 22-lembrar-login-animacao, baseada na proposta #21.
+
+- [x] Lembrar de mim no login e no cadastro do portal. Desmarcado por padrão: sessão da aba em sessionStorage. Marcado: acesso persistido em localStorage até expiração do token ou logout, sem salvar senha.
+- [x] Sessões antigas sem escolha explícita migram para armazenamento da sessão. Logout limpa ambas as formas de armazenamento.
+- [x] Consultas pessoais, chat, solicitações, notificações e acesso delegado dos professores usam a mesma leitura de sessão. O painel aceita o token temporário do professor sem torná-lo persistente.
+- [x] Animação de busca em vermelho/rosa, órbitas, brilho, progresso indeterminado e confirmação verde após resposta de sucesso, tanto no login quanto no cadastro.
+- [x] Envios duplicados bloqueados; falhas restauram o formulário e o foco. Movimento reduzido respeitado, com estado anunciado por leitores de tela.
+
+Validação: 195 testes Python e 33 testes JavaScript anteriores passaram, com fixtures atualizadas para o acesso compartilhado à sessão. Cinco novos testes no Chromium cobrem persistência, nova aba, logout, cadastro, falhas, duplicidade, sessão legada e acesso de professor. Os 10 testes de renderização anteriores também passaram. Prévia visual verificada em celular de 390 × 844, sem rolagem horizontal. Não houve publicação em produção, mudança de validade do JWT ou uso de credenciais reais. O envio real de Web Push e a comprovação do RM continuam nas pendências anteriores.

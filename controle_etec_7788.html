@@ -1511,7 +1511,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const salvo = localStorage.getItem('secretaria_token');
+      const salvo = sessionStorage.getItem('secretaria_token') || localStorage.getItem('secretaria_token');
       if (salvo) {
         tokenSecretaria = salvo;
         document.getElementById('loginScreen').classList.add('hidden');
@@ -1577,6 +1577,7 @@
     }
 
     function sairSecretaria() {
+      sessionStorage.removeItem('secretaria_token');
       localStorage.removeItem('secretaria_token');
       window.location.reload();
     }

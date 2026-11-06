@@ -18,6 +18,7 @@ function portal(name,next) {
  const start=source.indexOf(`async function ${name}(`);
  const end=source.indexOf(next,start);
  assert.ok(start>=0&&end>start);
+ ctx.SessaoPortal={token:()=>ctx.localStorage.getItem('aluno_token')};
  vm.runInContext(source.slice(start,end),ctx);
  return {ctx,calls};
 }

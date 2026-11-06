@@ -20,6 +20,7 @@ function setup() {
   window:{PushManager(){},Notification:{},atob:s=>Buffer.from(s,'base64').toString('binary'),location:{reload(){reloads++;}}},
   document:{getElementById(){return {classList:{remove(){}}};}},
   setTimeout,fetch:async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>({success:true,publicKey:'BAAA'})};}});
+ ctx.SessaoPortal={token:()=>storage.get('aluno_token'),limpar(){storage.clear();}};
  vm.runInContext(source,ctx);
  return {ctx,storage,calls,sub,registration,unsubscribes:()=>unsubscribes,subscriptions:()=>subscriptions,reloads:()=>reloads};
 }

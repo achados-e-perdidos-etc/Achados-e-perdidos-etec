@@ -2,11 +2,11 @@
 let cicloPush = 0;
 
 async function ativarWebPush() {
-    const token = localStorage.getItem('aluno_token');
+    const token = SessaoPortal.token();
     if (!token || !('serviceWorker' in navigator) || !('PushManager' in window)
         || !('Notification' in window) || Notification.permission !== 'granted') return false;
     const ciclo = cicloPush;
-    const sessaoAtiva = () => ciclo === cicloPush && localStorage.getItem('aluno_token') === token;
+    const sessaoAtiva = () => ciclo === cicloPush && SessaoPortal.token() === token;
     try {
         const existente = await navigator.serviceWorker.getRegistration();
         if (!sessaoAtiva()) return false;
@@ -27,7 +27,7 @@ async function ativarWebPush() {
             });
         }
         if (!sessaoAtiva()) {
-            if (!localStorage.getItem('aluno_token')) await sub.unsubscribe();
+            if (!SessaoPortal.token()) await sub.unsubscribe();
             return false;
         }
         return await enviarSubscricaoAoBackend(sub, token);
@@ -36,8 +36,8 @@ async function ativarWebPush() {
     }
 }
 
-async function enviarSubscricaoAoBackend(sub, token = localStorage.getItem('aluno_token')) {
-    if (!token || localStorage.getItem('aluno_token') !== token) return false;
+async function enviarSubscricaoAoBackend(sub, token = SessaoPortal.token()) {
+    if (!token || SessaoPortal.token() !== token) return false;
     try {
         const res = await fetch(API_URL + '/api/push/subscribe', {
             method: 'POST', headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},

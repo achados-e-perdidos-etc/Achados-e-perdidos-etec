@@ -136,3 +136,21 @@ O portal envia Authorization e somente subscription no cadastro. Quando não há
 Validação: 195 testes Python e 33 testes JavaScript passaram. Os casos novos executam o SQL real em SQLite isolado e verificam autenticação, persistência por e-mail, contas com o mesmo RM, vários dispositivos, troca de conta, exclusão restrita, validação de entrada, rollback e erros sem dados de assinatura. Os testes JavaScript cobrem assinatura existente/nova, registro do service worker, Authorization, permissão, recusa, falha de rede e tarefas atrasadas no logout. Os 10 testes de renderização no Chromium também passaram. Foi executada uma atualização com tabelas legadas em PostgreSQL real temporário, repetindo ambas as inicializações e exercitando as operações por conta. Sintaxe e git diff --check foram verificados. Nenhum banco ou credencial de produção foi acessado.
 
 Esta etapa protege o cadastro e a desvinculação, sem afirmar entrega de notificações em segundo plano. A revisão encontrou service worker receptor e notificações locais de página, mas não um emissor Web Push no servidor nem dependência correspondente. Implementar o envio deve usar push_dispositivos por e-mail autenticado e nunca voltar à tabela legada por RM. Entrega real ainda requer emissor, VAPID válido, site HTTPS e teste em dispositivos; o valor VAPID de exemplo não serve como credencial de produção.
+
+## Nona etapa: acesso lembrado e animações
+
+O novo acesso-portal.js centraliza SessaoPortal. Login e cadastro oferecem escolha explícita, inicialmente desmarcada. Sem lembrar, token e dados da conta ficam em sessionStorage; ao lembrar, ficam em localStorage com um marcador de consentimento. A senha nunca é persistida pelo aplicativo e o campo é limpo após autenticação bem-sucedida. A duração do JWT continua sendo a existente: a escolha muda o armazenamento do navegador, sem estender o token. Navegadores podem restaurar abas e seu sessionStorage; fechar uma aba não revoga o JWT no servidor.
+
+Sessões legadas persistidas sem o marcador migram para sessionStorage no primeiro uso, para não presumir consentimento. Leitura de token/dados, chamadas do portal, notificações e professores usam a mesma implementação. Ao abrir o painel como docente, o token delegado conserva a preferência de armazenamento; o painel lê sessionStorage antes de localStorage. O login direto da secretaria mantém seu comportamento anterior. Logout remove os tokens das duas áreas e preserva a tentativa de desvincular push da etapa anterior.
+
+A animação usa CSS e SVG locais, sem biblioteca nova: órbitas, lupa, pontos e progresso sem porcentagem fictícia. O estado de sucesso só aparece depois de resposta válida da API e da gravação da sessão; a transição de confirmação dura 450 ms, eliminada em prefers-reduced-motion. Os formulários ficam inertes durante envio, com guarda contra duplicação, aria-busy e status anunciado. Erros encerram a animação, restauram interações e foco e não criam sessão. Formulários também têm transição leve de entrada. Não houve alteração de rotas de autenticação, credenciais ou esquema de banco.
+
+Validação: 195 testes Python, 33 testes JavaScript e 15 testes no Chromium passaram (10 regressões anteriores e 5 novos fluxos em tests/browser_login_experience.py). APIs foram simuladas. Os testes verificam armazenamento real no Chromium, acesso em nova aba, logout, sucesso e recusa do cadastro, falha de rede, cliques repetidos, movimento reduzido, migração de sessão legada e armazenamento do token delegado. Também houve inspeção visual de celular em 390 × 844 sem transbordamento horizontal. O teste de nova aba usa uma aba aberta sem opener, evitando a cópia de sessionStorage que alguns navegadores fazem ao duplicar uma aba. Sintaxe e diff verificados.
+
+Para repetir os fluxos de interface com Playwright e Chromium instalados:
+
+```bash
+CHROMIUM_PATH=/usr/bin/chromium python tests/browser_login_experience.py
+```
+
+Publicar acesso-portal.js antes dos demais scripts do portal, junto com index.html, script.js, style.css, notificacoes-push.js, professores.js, professores-secretaria.js e o HTML do painel. Não há novas variáveis ou migração de banco. Hospedagem, envio real de e-mail/Web Push e vínculo de matrícula não foram validados nesta etapa.

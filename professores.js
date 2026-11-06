@@ -15,7 +15,7 @@ async function atualizarAcessoProfessor() {
     abrir.classList.add('hidden');
     try {
         const res = await fetch(`${API_URL}/api/professores/acesso`, {
-            headers: {Authorization: `Bearer ${localStorage.getItem('aluno_token') || ''}`}
+            headers: {Authorization: `Bearer ${SessaoPortal.token() || ''}`}
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw Error(data.message || 'Falha na consulta.');
@@ -42,7 +42,7 @@ async function solicitarAcessoProfessor() {
     btn.disabled = true;
     try {
         const res = await fetch(`${API_URL}/api/professores/acesso`, {
-            method: 'POST', headers: {Authorization: `Bearer ${localStorage.getItem('aluno_token') || ''}`}
+            method: 'POST', headers: {Authorization: `Bearer ${SessaoPortal.token() || ''}`}
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw Error(data.message || 'Falha ao solicitar.');
@@ -61,6 +61,6 @@ async function abrirPainelProfessor() {
         mostrarToast('Entre pelo endereço principal do site para abrir o painel.', 'info');
         return;
     }
-    localStorage.setItem('secretaria_token', localStorage.getItem('aluno_token'));
+    SessaoPortal.compartilharPainel();
     window.location.assign(destino.href);
 }

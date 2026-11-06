@@ -20,6 +20,7 @@ function setup(email='docente@etec.sp.gov.br') {
   localStorage:{getItem(k){return values.get(k);},setItem(k,v){values.set(k,v);}},
   window:{location:{origin:'https://escola.exemplo',assign(url){destination=url;}}},
   fetch:async(url,opts)=>{calls.push({url,opts});return {ok:status!=='ERRO',json:async()=>({success:status!=='ERRO',status})};}});
+ ctx.SessaoPortal={token:()=>values.get('aluno_token'),compartilharPainel(){values.set('secretaria_token',values.get('aluno_token'));}};
  vm.runInContext(fs.readFileSync('professores.js','utf8'),ctx);
  return {ctx,el,calls,values,status(x){status=x;},destination:()=>destination};
 }

@@ -201,8 +201,8 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
 }
 
 async function checarSessao() {
-    const token = localStorage.getItem('aluno_token');
-    const dados = localStorage.getItem('aluno_dados');
+    const token = SessaoPortal.token();
+    const dados = SessaoPortal.dados();
     
     if (token && token.startsWith('token_prof_')) {
         fazerLogoff(false);
@@ -222,7 +222,7 @@ async function checarSessao() {
             }
         } catch (e) {}
 
-        alunoSessao = JSON.parse(dados);
+        alunoSessao = dados;
         ativarWebPush();
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Olá, ${alunoSessao.nome.split(' ')[0]}!`;
@@ -249,15 +249,14 @@ async function checarSessao() {
             setTimeout(solicitarPermissaoNotificacao, 3000);
         }
     } else {
+        if (token) SessaoPortal.limpar();
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
 }
 
 function fazerLogoff(recarregar = true) {
-    const limpezaPush = desativarWebPush(localStorage.getItem('aluno_token'));
-    localStorage.removeItem('aluno_token');
-    localStorage.removeItem('aluno_dados');
-    localStorage.removeItem('secretaria_token');
+    const limpezaPush = desativarWebPush(SessaoPortal.token());
+    SessaoPortal.limpar();
     alunoSessao = null;
     if (recarregar) {
         return Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])
@@ -348,6 +347,7 @@ window.addEventListener('click', (e) => {
 });
 
 function alternarTelaAuth(tela) {
+    if (authOcupada) return;
     document.getElementById('formLoginAluno').classList.add('hidden');
     document.getElementById('formCadastroAluno').classList.add('hidden');
     document.getElementById('formRecuperarAluno').classList.add('hidden');
@@ -358,8 +358,9 @@ function alternarTelaAuth(tela) {
 
 async function fazerLoginAluno(e) {
     e.preventDefault();
-    const btn = document.getElementById('btnAcessoLogin');
-    btn.innerText = "Entrando..."; btn.disabled = true;
+    if (!iniciarAnimacaoAuth('login')) return;
+    const lembrar = document.getElementById('lembrarLogin').checked;
+    let sucesso = false;
     try {
         const res = await fetch(API_URL + "/api/auth/login-aluno", {
             method: 'POST', 
@@ -371,16 +372,17 @@ async function fazerLoginAluno(e) {
         });
         const data = await res.json();
         if (res.ok && data.success && data.token) {
-            localStorage.setItem('aluno_token', data.token.trim());
-            localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
-            checarSessao();
+            SessaoPortal.salvar(data.token, data.aluno, lembrar);
+            document.getElementById('loginSenhaAluno').value = '';
+            await confirmarAnimacaoAuth('login');
+            await checarSessao();
+            sucesso = true;
         } else {
             mostrarToast(data.message || "Erro no login.", "error");
         }
     } catch { 
         mostrarToast("Erro ao conectar com o servidor.", "error"); 
-    }
-    btn.innerText = "Entrar no Portal"; btn.disabled = false;
+    } finally { encerrarAnimacaoAuth(sucesso); }
 }
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
@@ -406,6 +408,9 @@ async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
 
 async function confirmarCadastro(e) {
     e.preventDefault();
+    if (!iniciarAnimacaoAuth('cadastro')) return;
+    const lembrar = document.getElementById('lembrarCadastro').checked;
+    let sucesso = false;
     const payload = { 
         email: document.getElementById('cadEmailAluno').value.trim(), 
         codigo: document.getElementById('cadCodigo').value.trim(), 
@@ -420,13 +425,16 @@ async function confirmarCadastro(e) {
             body: JSON.stringify(payload) 
         });
         const data = await res.json();
-        if (data.success && data.token) {
-            localStorage.setItem('aluno_token', data.token.trim()); 
-            localStorage.setItem('aluno_dados', JSON.stringify(data.aluno)); 
+        if (res.ok && data.success && data.token) {
+            SessaoPortal.salvar(data.token, data.aluno, lembrar);
+            document.getElementById('cadSenha').value = '';
+            await confirmarAnimacaoAuth('cadastro');
             mostrarToast("Conta criada com sucesso!", "success");
-            checarSessao();
+            await checarSessao();
+            sucesso = true;
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro ao finalizar cadastro.", "error"); }
+    finally { encerrarAnimacaoAuth(sucesso); }
 }
 
 async function confirmarRedefinicao(e) {
@@ -493,7 +501,7 @@ function mudarAba(aba) {
 async function abrirPainelMeusItens() {
     mudarAba('meusItens');
     if (!alunoSessao) return;
-    const headers = { 'Authorization': `Bearer ${localStorage.getItem('aluno_token') || ''}` };
+    const headers = { 'Authorization': `Bearer ${SessaoPortal.token() || ''}` };
 
     const listaSol = document.getElementById('listaMinhasSolicitacoes');
     const listaRel = document.getElementById('listaMeusRelatosMural');
@@ -834,7 +842,7 @@ async function enviarNovo() {
     const btn = document.getElementById('btnNovo'); 
     btn.disabled = true; btn.innerText = "Processando...";
     try {
-        const token = localStorage.getItem('aluno_token');
+        const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/solicitar`, { 
             method: 'POST', 
             headers: { 
@@ -862,7 +870,7 @@ async function enviarAvisoMural(e) {
     const btn = document.getElementById('btnPublicarMural'); 
     btn.disabled = true;
     try {
-        const token = localStorage.getItem('aluno_token');
+        const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/mural`, { 
             method: 'POST', 
             headers: { 
@@ -976,7 +984,7 @@ async function atualizarMensagensChat() {
     if(!alunoSessao) return;
     try {
         const res = await fetch(`${API_URL}/api/chat/mensagens/${encodeURIComponent(alunoSessao.rm)}?marcar_lida=true`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('aluno_token') || ''}` }
+            headers: { 'Authorization': `Bearer ${SessaoPortal.token() || ''}` }
         });
         if(!res.ok) return;
         const msgs = await res.json();
@@ -1017,7 +1025,7 @@ async function enviarMensagemChat(e) {
     try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, { 
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('aluno_token') || ''}` },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SessaoPortal.token() || ''}` },
             body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt }) 
         });
         if(res.ok) {
@@ -1114,7 +1122,7 @@ async function enviarCadastroAluno(e) {
     };
 
     try {
-        const token = localStorage.getItem('aluno_token');
+        const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
             method: 'POST', 
             headers: { 

@@ -17,6 +17,8 @@ function setup(fetch, email = 'professor', password = 'professor') {
     document: {getElementById: element}, mostrarToast(){},
     localStorage: {setItem(k,v){values.set(k,v);}},
     checarSessao(){sessions++;}});
+  ctx.iniciarAnimacaoAuth=()=>true;ctx.confirmarAnimacaoAuth=async()=>{};ctx.encerrarAnimacaoAuth=()=>{};
+  ctx.SessaoPortal={token:()=>values.get('aluno_token'),dados:()=>JSON.parse(values.get('aluno_dados')||'null'),salvar(token,dados){values.set('aluno_token',token.trim());values.set('aluno_dados',JSON.stringify(dados));}};
   const start = source.indexOf('async function fazerLoginAluno(');
   const end = source.indexOf('async function confirmarCadastro(', start);
   vm.runInContext(source.slice(start, end), ctx);
