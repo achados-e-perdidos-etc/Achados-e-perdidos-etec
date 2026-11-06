@@ -12,42 +12,13 @@ let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 let alunoSessao = null;
 let fotosAlunoSelecionadas = [];
+let loteFotosAluno = 0;
+let preparandoFotosAluno = false;
+let envioCadastroAluno = false;
 
 // ============================================================
 // NOVO: COMPRESSOR INTELIGENTE DE FOTOS NO NAVEGADOR (HTML5 CANVAS)
 // ============================================================
-function comprimirImagem(arquivo, maxDim = 1200, qualidade = 0.75) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                let w = img.width;
-                let h = img.height;
-                if (w > maxDim || h > maxDim) {
-                    if (w > h) {
-                        h = Math.round((h * maxDim) / w);
-                        w = maxDim;
-                    } else {
-                        w = Math.round((w * maxDim) / h);
-                        h = maxDim;
-                    }
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', qualidade));
-            };
-            img.onerror = reject;
-            img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(arquivo);
-    });
-}
-
 // ============================================================
 // DETECÇÃO DE CONEXÃO (ONLINE / OFFLINE)
 // ============================================================
@@ -1036,6 +1007,14 @@ async function enviarMensagemChat(e) {
 }
 
 function abrirModalCadastrarAluno() {
+    if (envioCadastroAluno) return;
+    loteFotosAluno++; preparandoFotosAluno = false;
+    document.getElementById('alunoItemFoto').disabled = false;
+    document.getElementById('alunoItemFoto').value = '';
+    document.getElementById('btnSalvarAlunoItem').disabled = false;
+    document.getElementById('gridPreviewAluno').inert = false;
+    ocultarEstadoFotos('statusCompressaoFotos');
+    document.getElementById('btnAutoPreencherIAAluno').disabled = false;
     fotosAlunoSelecionadas = [];
     renderizarGridPreviewAluno();
         const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
@@ -1050,38 +1029,39 @@ function abrirModalCadastrarAluno() {
 
 // ATUALIZADO: COMPRESSÃO AUTOMÁTICA DE IMAGENS DO CELULAR
 async function prepararFotosAluno(input) {
-    if (input.files && input.files.length > 0) {
-        const badge = document.getElementById('statusCompressaoFotos');
-        if (badge) {
-            badge.innerText = "Comprimindo fotos...";
-            badge.className = "text-[10px] text-amber-400 font-bold";
-            badge.classList.remove('hidden');
-        }
-
-        const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
-        for (const file of arquivos) {
+    if (envioCadastroAluno || !input.files?.length) return;
+    const lote = ++loteFotosAluno;
+    const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
+    if (!arquivos.length) {
+        mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'Limite de 4 fotos. Remova uma antes de adicionar outra.');
+        input.value = ''; return;
+    }
+    preparandoFotosAluno = true; input.disabled = true;
+    document.getElementById('btnSalvarAlunoItem').disabled = true;
+    document.getElementById('btnAutoPreencherIAAluno').disabled = true;
+    document.getElementById('gridPreviewAluno').inert = true;
+    let falhas = 0;
+    try {
+        for (let i = 0; i < arquivos.length; i++) {
+            mostrarEstadoFotos('statusCompressaoFotos', 'preparando', `Preparando foto ${i + 1} de ${arquivos.length}…`);
             try {
-                // Comprime a foto para no máximo 1200px e qualidade 75%
-                const fotoComprimida = await comprimirImagem(file, 1200, 0.75);
-                if (fotosAlunoSelecionadas.length < 4) {
-                    fotosAlunoSelecionadas.push(fotoComprimida);
-                }
-            } catch (err) {
-                console.warn("Erro ao comprimir, usando original:", err);
-            }
+                const foto = await comprimirImagem(arquivos[i]);
+                if (lote !== loteFotosAluno) return;
+                fotosAlunoSelecionadas.push(foto);
+            } catch (error) { falhas++; }
+            if (lote !== loteFotosAluno) return;
         }
-
         renderizarGridPreviewAluno();
-        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
-        if (btnIAAluno) {
-            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
-            else btnIAAluno.classList.add('hidden');
-        }
-        input.value = '';
-
-        if (badge) {
-            badge.innerText = "✓ Fotos otimizadas";
-            badge.className = "text-[10px] text-emerald-400 font-bold";
+        document.getElementById('btnAutoPreencherIAAluno').classList.toggle('hidden', !fotosAlunoSelecionadas.length);
+        mostrarEstadoFotos('statusCompressaoFotos', falhas ? 'erro' : 'prontas', falhas
+            ? `${falhas} foto(s) não puderam ser abertas. As demais foram preservadas; tente selecionar novamente.`
+            : `${fotosAlunoSelecionadas.length} foto(s) prontas. O envio acontece ao salvar o item.`);
+    } finally {
+        if (lote === loteFotosAluno) {
+            preparandoFotosAluno = false; input.disabled = false; input.value = '';
+            document.getElementById('btnSalvarAlunoItem').disabled = false;
+            document.getElementById('btnAutoPreencherIAAluno').disabled = false;
+            document.getElementById('gridPreviewAluno').inert = false;
         }
     }
 }
@@ -1108,6 +1088,13 @@ function renderizarGridPreviewAluno() {
 
 async function enviarCadastroAluno(e) {
     e.preventDefault();
+    if (envioCadastroAluno) return;
+    if (preparandoFotosAluno) return mostrarToast('Aguarde a preparação das fotos.', 'info');
+    envioCadastroAluno = true;
+    document.getElementById('alunoItemFoto').disabled = true;
+    document.getElementById('gridPreviewAluno').inert = true;
+    document.getElementById('btnAutoPreencherIAAluno').disabled = true;
+    mostrarEstadoFotos('statusCompressaoFotos', 'enviando', fotosAlunoSelecionadas.length ? 'Enviando fotos e salvando o item…' : 'Salvando o item…');
     const btn = document.getElementById('btnSalvarAlunoItem');
     btn.innerText = "Enviando..."; btn.disabled = true;
 
@@ -1132,13 +1119,25 @@ async function enviarCadastroAluno(e) {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) {
-            mostrarToast("Objeto enviado para moderação da secretaria!", "success");
+        if (res.ok && data.success) {
+            mostrarEstadoFotos('statusCompressaoFotos', 'sucesso', 'Envio concluído!');
+            mostrarToast(fotosAlunoSelecionadas.length ? "Fotos enviadas! Item aguardando moderação." : "Objeto enviado para moderação da secretaria!", "success");
             document.getElementById('modalCadastrarAluno').classList.add('hidden');
             e.target.reset();
-        } else mostrarToast(data.message, "error");
-    } catch { mostrarToast("Erro ao conectar.", "error"); }
-    btn.innerText = "Enviar para Moderação da Secretaria"; btn.disabled = false;
+        } else {
+            mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'O envio não foi concluído. Suas fotos foram mantidas para tentar novamente.');
+            mostrarToast(data.message || 'Não foi possível salvar.', 'error');
+        }
+    } catch {
+        mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'Falha de conexão. Suas fotos foram mantidas para tentar novamente.');
+        mostrarToast('Erro ao conectar.', 'error');
+    } finally {
+        envioCadastroAluno = false;
+        document.getElementById('alunoItemFoto').disabled = false;
+        document.getElementById('gridPreviewAluno').inert = false;
+        document.getElementById('btnAutoPreencherIAAluno').disabled = false;
+        btn.innerText = 'Enviar para Moderação da Secretaria'; btn.disabled = false;
+    }
 }
 
 window.onload = () => { 
@@ -1230,7 +1229,7 @@ async function analisarFotoAlunoComIA() {
             body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
-        if (fotosAlunoSelecionadas[0] !== fotoAnalisada) return;
+        if (envioCadastroAluno || fotosAlunoSelecionadas[0] !== fotoAnalisada) return;
         if (res.ok && data.success && data.resultado) {
             const r = data.resultado;
             const aplicado = aplicarSugestaoVisual(r, {

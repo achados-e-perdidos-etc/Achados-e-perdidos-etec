@@ -28,7 +28,7 @@ test('fallback e baixa confiança preservam todos os campos',()=>{
 function portal(response, deferred) {
  const f=fields();const ui={alunoItemNome:f.nome,alunoItemDesc:f.descricao,alunoItemCat:f.categoria,btnAutoPreencherIAAluno:{disabled:false,innerHTML:''}};
  const messages=[];const photos=['foto-A'];
- const ctx=vm.createContext({API_URL:'https://exemplo',fotosAlunoSelecionadas:photos,
+ const ctx=vm.createContext({API_URL:'https://exemplo',envioCadastroAluno:false,fotosAlunoSelecionadas:photos,
   document:{getElementById:id=>ui[id]},mostrarToast:(...args)=>messages.push(args),
   fetch:deferred|| (async()=>({ok:true,json:async()=>({success:true,resultado:response})}))});
  vm.runInContext(helper,ctx);const js=fs.readFileSync('script.js','utf8');vm.runInContext(js.slice(js.indexOf('async function analisarFotoAlunoComIA(')),ctx);
@@ -45,7 +45,7 @@ test('análise de foto antiga não preenche o formulário da foto nova',async()=
 });
 test('painel da secretaria não usa OCR nem apaga dados manuais em fallback',async()=>{
  const f=fields(), ui={formItemNome:f.nome,formItemDescricao:f.descricao,formItemCategoria:f.categoria,formFotosStatus:{innerText:''},btnAutoTagIA:{disabled:false,innerHTML:''}};
- const ctx=vm.createContext({fotosBase64Upload:['foto-A'],ocrRmIdentificado:'rm-antigo',
+ const ctx=vm.createContext({envioItemSecretaria:false,fotosBase64Upload:['foto-A'],ocrRmIdentificado:'rm-antigo',
   document:{getElementById:id=>ui[id]},console,alert(){},
   fetch:async()=>({ok:true,json:async()=>({success:true,resultado:{...valid(),pode_preencher:false,aviso:'Análise indisponível',ocr_rm:'12345'}})})});
  vm.runInContext(helper,ctx);const html=fs.readFileSync('controle_etec_7788.html','utf8');const start=html.lastIndexOf('async function analisarFotoSecretariaComIA(');

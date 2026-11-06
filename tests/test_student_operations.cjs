@@ -6,13 +6,13 @@ const source=fs.readFileSync('script.js','utf8');
 
 function portal(name,next) {
  const calls=[];
- const ui={btnNovo:{},btnPublicarMural:{},btnSalvarAlunoItem:{},
+ const ui={alunoItemFoto:{},gridPreviewAluno:{},btnAutoPreencherIAAluno:{},btnNovo:{},btnPublicarMural:{},btnSalvarAlunoItem:{},
   muralCategoria:{value:'OUTROS'},muralDescricao:{value:'  Perdi meu estojo  '},
   alunoItemNome:{value:'  Estojo preto  '},alunoItemDesc:{value:'  Encontrado  '},
   alunoItemCat:{value:'OUTROS'},alunoItemLocal:{value:'  Pátio  '}};
  const ctx=vm.createContext({API_URL:'https://exemplo',itemSelecionado:{id:7},
   alunoSessao:{nome:'Nome armazenado no navegador',rm:'99999',email:'outro@aluno.cps.sp.gov.br'},
-  fotosAlunoSelecionadas:[],localStorage:{getItem:()=> 'sessao-assinada'},
+  envioCadastroAluno:false,preparandoFotosAluno:false,mostrarEstadoFotos(){},fotosAlunoSelecionadas:[],localStorage:{getItem:()=> 'sessao-assinada'},
   document:{getElementById:id=>ui[id]},mostrarToast(){},
   fetch:async(url,options)=>{calls.push({url,options});return {ok:false,json:async()=>({success:false,message:'Teste'})};}});
  const start=source.indexOf(`async function ${name}(`);

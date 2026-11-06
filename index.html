@@ -16,6 +16,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="estado-fotos.css">
     </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
@@ -556,9 +557,9 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fotos do Objeto (Até 4 fotos):</label>
-                        <span id="statusCompressaoFotos" class="text-[10px] text-emerald-400 font-bold hidden"><i class="fas fa-check"></i> Fotos otimizadas</span>
                     </div>
                     <input type="file" id="alunoItemFoto" accept="image/*" multiple onchange="prepararFotosAluno(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
+                    <div id="statusCompressaoFotos" hidden></div>
                     <div id="gridPreviewAluno" class="mt-2.5 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
                     <!-- BOTÃO AUTO-PREENCHIMENTO COM IA -->
                     <button type="button" id="btnAutoPreencherIAAluno" onclick="analisarFotoAlunoComIA()" class="hidden w-full mt-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md active:scale-98">
@@ -589,6 +590,7 @@
     <script src="seguranca-interface.js"></script>
     <script src="visao-formulario.js"></script>
     <script src="acesso-portal.js"></script>
+    <script src="estado-fotos.js"></script>
     <script src="script.js"></script>
     <script src="notificacoes-push.js"></script>
     <script src="professores.js"></script>

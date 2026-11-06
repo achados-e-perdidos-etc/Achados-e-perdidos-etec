@@ -26,6 +26,7 @@ import cloudinary.uploader
 import jwt
 from PIL import Image
 from services.ai_vision_service import analisar_imagem_com_ia
+from services.cloudinary_service import processar_fotos, FalhaUploadFotos
 from utils.privacy import item_publico, relato_publico
 from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat, identidade_aluno, identidade_portal
 from utils.helpers import validar_email_institucional
@@ -62,6 +63,10 @@ def limpar_texto_entrada(valor, limite=1000):
     return texto.strip()[:limite]
 
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_UPLOAD_BYTES', 8 * 1024 * 1024))
+
+@app.errorhandler(FalhaUploadFotos)
+def falha_upload_fotos(error):
+    return jsonify({'success': False, 'message': str(error)}), 502
 
 @app.errorhandler(413)
 def payload_too_large(error):
@@ -363,19 +368,6 @@ def calcular_smart_match(relato, item):
         score += 15
         detalhes.append(f"Local compatível ({loc})")
     return min(100, score), detalhes
-
-def processar_fotos(fotos_array):
-    urls = []
-    if not fotos_array: return urls
-    for f in fotos_array:
-        if not f: continue
-        if str(f).startswith('http'): urls.append(str(f))
-        else:
-            try:
-                res = cloudinary.uploader.upload(f, folder="etec_achados")
-                if "secure_url" in res: urls.append(res["secure_url"])
-            except Exception as e: print(f"[Cloudinary] {e}")
-    return urls
 
 def disparar_email(dest, assunto, html):
     def _send():
@@ -728,6 +720,7 @@ def cad_item():
 @app.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'POST', 'DELETE'])
 @secretaria_required
 def gen_item(item_id):
+    conn = None
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         if request.method == 'DELETE' or (request.is_json and request.json and request.json.get('_method') == 'DELETE'):
@@ -747,12 +740,18 @@ def gen_item(item_id):
             local = (d.get('local') or it.get('local_encontrado', '')).strip()
             status = (d.get('status') or it.get('status', 'DISPONÍVEL')).strip()
 
+            urls = processar_fotos(d['fotos']) if 'fotos' in d and d['fotos'] is not None else None
             c.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s, aprovado=TRUE WHERE id=%s;", (nome, desc, cat, data_enc, local, status, item_id))
+            if urls is not None:
+                c.execute('UPDATE itens SET foto=%s, fotos_json=%s WHERE id=%s;', (urls[0] if urls else '', json.dumps(urls), item_id))
             if status.upper() == 'ENTREGUE':
                 c.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
                 c.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, nome or desc, d.get('retirado_por', it.get('solicitado_por', '')), d.get('rm_retirante', it.get('rm_aluno', '')), d.get('turma_curso', '-'), d.get('data_entrega', datetime.now().strftime("%d/%m/%Y %H:%M")), d.get('funcionario_responsavel', 'Secretaria')))
             conn.commit(); c.close(); conn.close()
             return jsonify({"success": True})
+    except FalhaUploadFotos as error:
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'message': str(error)}), 502
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])

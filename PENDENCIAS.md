@@ -148,3 +148,17 @@ Branch 22-lembrar-login-animacao, baseada na proposta #21.
 - [x] Envios duplicados bloqueados; falhas restauram o formulário e o foco. Movimento reduzido respeitado, com estado anunciado por leitores de tela.
 
 Validação: 195 testes Python e 33 testes JavaScript anteriores passaram, com fixtures atualizadas para o acesso compartilhado à sessão. Cinco novos testes no Chromium cobrem persistência, nova aba, logout, cadastro, falhas, duplicidade, sessão legada e acesso de professor. Os 10 testes de renderização anteriores também passaram. Prévia visual verificada em celular de 390 × 844, sem rolagem horizontal. Não houve publicação em produção, mudança de validade do JWT ou uso de credenciais reais. O envio real de Web Push e a comprovação do RM continuam nas pendências anteriores.
+
+## Décima etapa — preparação e envio de fotos (proposta 23)
+
+Branch 23-carregamento-imagens, baseada na proposta #22.
+
+- [x] Indicador animado na seleção e no envio das fotos, no portal e no painel, com texto específico para preparação, envio, sucesso e falha.
+- [x] Check verde sem espera artificial: preparação informa que o envio acontece ao salvar; envio concluído exige confirmação da API. A confirmação visível de cadastro usa o toast existente, sem prolongar a operação.
+- [x] Impede salvar enquanto as fotos estão sendo preparadas e bloqueia envios duplicados. Arquivos inválidos não deixam o indicador preso nem recebem confirmação verde.
+- [x] Preparações antigas são ignoradas ao reabrir o formulário; fotos são mantidas quando o envio falha para permitir nova tentativa.
+- [x] Compressão compartilhada em até 1200 px/JPEG 75%, preservando a ordem e o limite de quatro fotos; no painel, uma substituição totalmente inválida preserva as fotos existentes.
+- [x] Falhas no armazenamento não são ignoradas pelo servidor: o item não é criado/atualizado como se todas as fotos tivessem sido enviadas.
+- [x] Corrigida a edição no servidor unificado, que antes ignorava as fotos enviadas no formulário. Omitir o campo preserva as fotos; enviar lista vazia remove a associação de fotos nas duas versões.
+
+Validação: 214 testes Python, 33 testes JavaScript e 21 testes no Chromium passaram, incluindo seis novos fluxos de fotos. Foram usadas imagens PNG reais para leitura e compressão no navegador, APIs/provedor simulados e SQL real em SQLite temporário para edição de fotos. Não houve upload para Cloudinary real nem acesso a produção. Nenhuma espera artificial ou porcentagem fictícia foi adicionada; o indicador de envio cobre a requisição completa de fotos e gravação do item. O emissor Web Push e a lista oficial de RM permanecem pendentes.

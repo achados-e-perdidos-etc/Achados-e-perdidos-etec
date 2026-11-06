@@ -1213,6 +1213,7 @@
             <i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial
           </button>
           <div id="formFotosStatus" style="font-size: 11px; color: #8b949e; margin-top: 4px;">Nenhuma foto selecionada</div>
+          <div id="estadoEnvioSecretaria" hidden></div>
         </div>
         <button type="submit" id="btnSalvarItem" class="btn-novo-item" style="background: #059669; margin-top: 10px;">Gravar no Banco</button>
       </form>
@@ -1323,6 +1324,8 @@
   <div id="toast" class="hidden"></div>
 
   <script src="seguranca-interface.js"></script>
+  <link rel="stylesheet" href="estado-fotos.css">
+  <script src="estado-fotos.js"></script>
   <!-- JAVASCRIPT DO SISTEMA -->
   <script>
     /* ==========================================================================
@@ -1484,6 +1487,9 @@
     let chatPollTimer = null;
     let html5QrScannerInstance = null;
     let fotosBase64Upload = [];
+    let loteFotosSecretaria = 0;
+    let preparandoFotosSecretaria = false;
+    let envioItemSecretaria = false;
     let ocrRmIdentificado = '';
     let filtroStatusAtual = 'TODOS';
     let comprovanteDadosTexto = '';
@@ -2069,6 +2075,13 @@
 
     /* CADASTRO E EDIÇÃO */
     function abrirModalCadastrar() {
+      if (envioItemSecretaria) return;
+      loteFotosSecretaria++; preparandoFotosSecretaria = false;
+      document.getElementById('formItemFotosInput').disabled = false;
+      document.getElementById('formItemFotosInput').value = '';
+      document.getElementById('btnSalvarItem').disabled = false;
+      ocultarEstadoFotos('estadoEnvioSecretaria');
+      document.getElementById('btnAutoTagIA').disabled = false;
       document.getElementById('formItemId').value = '';
       document.getElementById('modalFormTitulo').innerText = "Cadastrar Novo Objeto";
       document.getElementById('formItemNome').value = '';
@@ -2082,6 +2095,13 @@
     }
 
     function editarItemForm(id) {
+      if (envioItemSecretaria) return;
+      loteFotosSecretaria++; preparandoFotosSecretaria = false;
+      document.getElementById('formItemFotosInput').disabled = false;
+      document.getElementById('formItemFotosInput').value = '';
+      document.getElementById('btnSalvarItem').disabled = false;
+      ocultarEstadoFotos('estadoEnvioSecretaria');
+      document.getElementById('btnAutoTagIA').disabled = false;
       fecharModal('modalDetalhesItem');
       const item = itensSec.find(i => String(i.id) === String(id));
       if (!item) return;
@@ -2100,46 +2120,46 @@
       document.getElementById('modalFormItem').classList.remove('hidden');
     }
 
-    function processarFotosInput(input) {
-      const files = Array.from(input.files).slice(0, 4);
-      if (!files.length) return;
-      fotosBase64Upload = [];
-      const statusEl = document.getElementById('formFotosStatus');
-      statusEl.innerText = "Comprimindo fotos...";
-      let count = 0;
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let w = img.width, h = img.height;
-            const maxDim = 1200;
-            if (w > maxDim || h > maxDim) {
-              if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-              else { w = Math.round((w * maxDim) / h); h = maxDim; }
-            }
-            canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            fotosBase64Upload.push(canvas.toDataURL('image/jpeg', 0.75));
-            count++;
-            if (count === files.length) {
-              statusEl.innerText = `${fotosBase64Upload.length} foto(s) otimizada(s) — analisando com IA...`;
-              const aiBtn = document.getElementById('btnAutoTagIA');
-              if (aiBtn) aiBtn.style.display = 'block';
-              // Fast Drop: analisa automaticamente a primeira foto após a compressão.
-              analisarFotoSecretariaComIA();
-            }
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
+    async function processarFotosInput(input) {
+      if (envioItemSecretaria || !input.files?.length) return;
+      const lote = ++loteFotosSecretaria;
+      const files = Array.from(input.files).slice(0, 4), novas = [];
+      preparandoFotosSecretaria = true; input.disabled = true;
+      document.getElementById('btnSalvarItem').disabled = true;
+      document.getElementById('btnAutoTagIA').disabled = true;
+      let falhas = 0;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          mostrarEstadoFotos('estadoEnvioSecretaria', 'preparando', `Preparando foto ${i + 1} de ${files.length}…`);
+          try { novas.push(await comprimirImagem(files[i])); } catch (error) { falhas++; }
+          if (lote !== loteFotosSecretaria) return;
+        }
+        if (novas.length) fotosBase64Upload = novas;
+        document.getElementById('formFotosStatus').innerText = `${fotosBase64Upload.length} foto(s) selecionada(s)`;
+        mostrarEstadoFotos('estadoEnvioSecretaria', falhas ? 'erro' : 'prontas', falhas
+          ? `${falhas} foto(s) não puderam ser abertas. Confira a seleção antes de salvar.`
+          : `${novas.length} foto(s) prontas. O envio acontece ao salvar o item.`);
+        if (novas.length) {
+          document.getElementById('btnAutoTagIA').style.display = 'block';
+          analisarFotoSecretariaComIA();
+        }
+      } finally {
+        if (lote === loteFotosSecretaria) {
+          preparandoFotosSecretaria = false; input.disabled = false; input.value = '';
+          document.getElementById('btnSalvarItem').disabled = false;
+          document.getElementById('btnAutoTagIA').disabled = false;
+        }
+      }
     }
 
-        async function salvarItemForm(e) {
+    async function salvarItemForm(e) {
       e.preventDefault();
+      if (envioItemSecretaria) return;
+      if (preparandoFotosSecretaria) return mostrarToast('Aguarde a preparação das fotos.');
+      envioItemSecretaria = true;
+      document.getElementById('formItemFotosInput').disabled = true;
+      document.getElementById('btnAutoTagIA').disabled = true;
+      mostrarEstadoFotos('estadoEnvioSecretaria', 'enviando', fotosBase64Upload.length ? 'Enviando fotos e salvando o item…' : 'Salvando o item…');
       const id = document.getElementById('formItemId').value;
       const btn = document.getElementById('btnSalvarItem');
       btn.disabled = true;
@@ -2167,6 +2187,7 @@
             body: JSON.stringify(payload)
           });
         } catch (errPut) {
+          if (!id) throw errPut;
           console.warn("PUT bloqueado por operadora ou rede móvel. Tentando fallback via POST...", errPut);
           res = await fetch(url, {
             method: 'POST',
@@ -2178,11 +2199,13 @@
         let data = {};
         try { data = await res.json(); } catch(e) {}
 
-        if (res.ok && data.success !== false) {
-          mostrarToast(id ? "Objeto atualizado com sucesso!" : "Objeto cadastrado com sucesso!");
+        if (res.ok && data.success === true) {
+          mostrarEstadoFotos('estadoEnvioSecretaria', 'sucesso', 'Envio concluído!');
+          mostrarToast(fotosBase64Upload.length ? "✓ Fotos enviadas e item salvo!" : (id ? "Objeto atualizado com sucesso!" : "Objeto cadastrado com sucesso!"));
           fecharModal('modalFormItem');
           await carregarItensSecretaria();
         } else {
+          mostrarEstadoFotos('estadoEnvioSecretaria', 'erro', 'O envio não foi concluído. Suas fotos foram mantidas para tentar novamente.');
           if (res.status === 401 || data.expired) {
             exibirErroDetalhado({
               operacao: "Sessão Administrativa Expirada",
@@ -2206,6 +2229,7 @@
           });
         }
       } catch (err) {
+        mostrarEstadoFotos('estadoEnvioSecretaria', 'erro', 'Falha de conexão. Suas fotos foram mantidas para tentar novamente.');
         console.error("Erro fatal ao salvar:", err);
         exibirErroDetalhado({
           operacao: id ? `Erro de Conexão ao Salvar Item #${id}` : "Erro de Conexão ao Cadastrar Item",
@@ -2217,6 +2241,9 @@
           solucao: "Verifique sua conexão Wi-Fi/4G e aguarde 20 segundos se o Railway estiver fazendo deploy."
         });
       } finally {
+        envioItemSecretaria = false;
+        document.getElementById('formItemFotosInput').disabled = false;
+        document.getElementById('btnAutoTagIA').disabled = false;
         btn.disabled = false;
         btn.innerHTML = "Gravar no Banco";
       }
@@ -3210,7 +3237,7 @@
           body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
-        if (fotosBase64Upload[0] !== fotoAnalisada) return;
+        if (envioItemSecretaria || fotosBase64Upload[0] !== fotoAnalisada) return;
         if (!res.ok) throw new Error((data.error && data.error.message) || data.message || `HTTP ${res.status}`);
         if (data.success && data.resultado) {
           const r = data.resultado;

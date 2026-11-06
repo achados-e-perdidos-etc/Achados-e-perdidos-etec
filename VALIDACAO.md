@@ -154,3 +154,25 @@ CHROMIUM_PATH=/usr/bin/chromium python tests/browser_login_experience.py
 ```
 
 Publicar acesso-portal.js antes dos demais scripts do portal, junto com index.html, script.js, style.css, notificacoes-push.js, professores.js, professores-secretaria.js e o HTML do painel. Não há novas variáveis ou migração de banco. Hospedagem, envio real de e-mail/Web Push e vínculo de matrícula não foram validados nesta etapa.
+
+## Décima etapa: indicador de fotos e confirmação de armazenamento
+
+estado-fotos.js e estado-fotos.css são compartilhados pelo portal e painel. O indicador usa spinner discreto e check verde, aria-live/aria-busy e movimento reduzido. A preparação local mostra a posição real do arquivo no lote; não há porcentagem de rede inventada. Como fotos e dados são enviados na mesma requisição JSON, o estado de envio dura até a resposta da operação completa, incluindo gravação. Não há timeout visual, pausa mínima ou espera pelo toast.
+
+Selecionar arquivos não é anunciado como upload: o estado informa que as fotos estão prontas e serão enviadas ao salvar. O sucesso de envio exige HTTP bem-sucedido e success=true. O formulário fecha após confirmação, com mensagem de sucesso no toast já existente; não se segura o usuário no modal para exibir uma animação. Falhas deixam mensagem e preservam fotos/dados para nova tentativa. Controles de envio, seleção e análise são bloqueados durante as operações pertinentes; guardas impedem chamadas duplicadas. Lotes antigos não preenchem um formulário reaberto. Fotos parcialmente inválidas são indicadas e as válidas permanecem disponíveis, sem anunciar sucesso total.
+
+A compressão usa o mesmo FileReader/Image/canvas nas duas interfaces, até 1200 px e qualidade JPEG 0,75. Erros de leitura/decodificação são tratados. O painel mantém a análise automática existente como etapa separada, sem esperar IA para concluir o indicador de preparação; resultados de análise não são aplicados durante gravação.
+
+A revisão identificou duas causas de confirmação incorreta: processar_fotos ignorava falhas de provedor e retornava uma lista incompleta; o PUT de edição em server.py ignorava completamente o campo fotos. O processamento agora é canônico em services.cloudinary_service. Qualquer foto inválida, falha de upload ou resposta sem URL HTTPS interrompe a operação com erro público genérico. Criações não chegam ao banco; edições não executam UPDATE e fazem rollback. Provider/credenciais não são expostos pela mensagem. URLs existentes continuam sendo reutilizadas sem novo upload. A edição persiste foto de capa/fotos_json, preserva quando o campo é omitido e limpa quando a lista é explicitamente vazia. Não há exclusão de arquivos remotos.
+
+Uploads parciais já concluídos no Cloudinary não são revertidos: em falha posterior, esses arquivos podem permanecer sem associação. Uma falha após envio da requisição também pode deixar resultado incerto por perda de conexão; não há idempotência global de criação nesta etapa. O painel deixou de repetir automaticamente um POST de criação após falha de rede, evitando uma fonte de duplicação; o fallback de PUT para POST de um item existente permanece.
+
+Validação: 214 testes Python, 33 JavaScript e 21 no Chromium passaram. São 19 novos casos Python para contrato do provedor, falha parcial, ausência de URL, criação/edição nas duas versões e persistência de fotos em SQLite real temporário. Os seis novos testes de navegador executam PNG real e verificam preparação, bloqueios, resposta adiada, falha/retry, arquivos inválidos, conservação de fotos existentes, descarte de lote antigo e movimento reduzido. Os 15 casos anteriores de autenticação/renderização continuam passando. O provedor e as APIs foram simulados; a conta real do Cloudinary e hospedagem não foram utilizadas. Sintaxe Python, JS externo/inline e diff verificados.
+
+Para repetir os novos fluxos de navegador:
+
+```bash
+CHROMIUM_PATH=/usr/bin/chromium python tests/browser_image_upload.py
+```
+
+Publicar os dois novos arquivos estado-fotos.js/estado-fotos.css junto com ambos os HTML, script.js, server.py, blueprints/itens.py e services/cloudinary_service.py. Não há migração de banco ou variável nova. A branch parte da proposta #22; não foi integrada à main nem publicada em produção.

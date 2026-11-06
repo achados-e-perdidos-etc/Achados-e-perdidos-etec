@@ -14,25 +14,28 @@ if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY:
         secure=True
     )
 
+class FalhaUploadFotos(RuntimeError):
+    """Nenhum item deve ser salvo como sucesso quando uma foto falha."""
+
+
 def processar_fotos(fotos_array, folder="etec_achados"):
-    """
-    Processa uma lista de imagens (Base64 comprimido ou URLs já existentes)
-    e retorna uma lista de URLs permanentes no Cloudinary.
-    """
-    urls_finais = []
+    urls = []
     if not fotos_array:
-        return urls_finais
-        
+        return urls
+    if not isinstance(fotos_array, list) or len(fotos_array) > 4:
+        raise FalhaUploadFotos('Selecione no máximo quatro fotos válidas.')
     for foto in fotos_array:
-        if not foto:
+        if not isinstance(foto, str) or not foto:
+            raise FalhaUploadFotos('Uma das fotos é inválida. Selecione novamente.')
+        if foto.startswith(('https://', 'http://')):
+            urls.append(foto)
             continue
-        if str(foto).startswith('http'):
-            urls_finais.append(str(foto))
-        else:
-            try:
-                res_upload = cloudinary.uploader.upload(foto, folder=folder)
-                if "secure_url" in res_upload:
-                    urls_finais.append(res_upload["secure_url"])
-            except Exception as e:
-                print(f"[Cloudinary] Erro no upload da foto: {e}")
-    return urls_finais
+        try:
+            resultado = cloudinary.uploader.upload(foto, folder=folder)
+            url = resultado.get('secure_url')
+            if not isinstance(url, str) or not url.startswith('https://'):
+                raise ValueError('Resposta de armazenamento incompleta.')
+            urls.append(url)
+        except Exception:
+            raise FalhaUploadFotos('Não foi possível enviar todas as fotos. Tente novamente.') from None
+    return urls

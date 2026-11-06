@@ -12,7 +12,7 @@ from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.privacy import item_publico, relato_publico
 from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, identidade_aluno, identidade_portal
 from utils.helpers import extrair_termos
-from services.cloudinary_service import processar_fotos
+from services.cloudinary_service import processar_fotos, FalhaUploadFotos
 from services.email_service import disparar_email
 
 itens_bp = Blueprint('itens', __name__)
@@ -20,6 +20,10 @@ itens_bp = Blueprint('itens', __name__)
 # ==============================================================================
 # CATEGORIAS
 # ==============================================================================
+
+@itens_bp.errorhandler(FalhaUploadFotos)
+def falha_upload_fotos(error):
+    return jsonify({'success': False, 'message': str(error)}), 502
 
 @itens_bp.route('/api/categorias/<string:nome>', methods=['OPTIONS', 'DELETE'])
 @itens_bp.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST', 'DELETE'])
@@ -329,8 +333,8 @@ def gerenciar_item(item_id):
             if 'fotos' in data and data.get('fotos') is not None:
                 fotos_rec = data.get('fotos') or []
                 urls = processar_fotos(fotos_rec)
-                foto_capa = urls[0] if urls else (item_atual.get('foto') or '')
-                fotos_json_str = json.dumps(urls) if urls else (item_atual.get('fotos_json') or '[]')
+                foto_capa = urls[0] if urls else ''
+                fotos_json_str = json.dumps(urls)
                 cursor.execute("""
                     UPDATE itens 
                     SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, 
@@ -365,6 +369,9 @@ def gerenciar_item(item_id):
             cursor.close()
             conn.close()
             return jsonify({"success": True, "message": "Item atualizado com sucesso!"})
+    except FalhaUploadFotos as error:
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'message': str(error)}), 502
     except Exception as e:
         if conn:
             conn.rollback()
