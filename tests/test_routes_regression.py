@@ -15,6 +15,9 @@ class RouteTests(unittest.TestCase):
         server.app.config['TESTING'] = True
         server.limiter.enabled = False
         self.client = server.app.test_client()
+        permission_patch = patch('services.professores_service.buscar_acesso', return_value=None)
+        permission_patch.start()
+        self.addCleanup(permission_patch.stop)
         self.aluno = {'Authorization': 'Bearer ' + server.gerar_token_aluno(
             'aluno@aluno.cps.sp.gov.br', 'Nome real', '12345')}
         self.secretaria = {'Authorization': 'Bearer ' + server.gerar_token_secretaria(

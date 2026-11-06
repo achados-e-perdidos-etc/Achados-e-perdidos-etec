@@ -16,6 +16,8 @@ from utils.helpers import validar_email_institucional
 from services.email_service import disparar_email
 
 auth_bp = Blueprint('auth', __name__)
+from blueprints.professores import professores_bp
+auth_bp.register_blueprint(professores_bp)
 
 @auth_bp.route('/api/auth/verificar', methods=['GET', 'OPTIONS'])
 @token_required

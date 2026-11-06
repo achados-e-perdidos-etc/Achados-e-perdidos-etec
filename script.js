@@ -230,7 +230,7 @@ async function checarSessao() {
         document.getElementById('perfilRM').innerText = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor') ? 'PROFESSOR (Apenas Cadastro)' : (alunoSessao.rm || 'N/A');
 
         // AJUSTES ESPECÍFICOS PARA PROFESSOR:
-        const ehProf = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor');
+        const ehProf = /@(etec|cps)\.sp\.gov\.br$/i.test(alunoSessao.email || '') || alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor';
         const bPerdi = document.getElementById('btnPerdiBanner');
         if (bPerdi) bPerdi.classList.toggle('hidden', ehProf);
         const mMural = document.getElementById('menuBtnMural');
@@ -239,6 +239,7 @@ async function checarSessao() {
             document.getElementById('lblBemVindo').innerText = "Olá, Professor(a)!";
         }
 
+        atualizarAcessoProfessor();
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
         
@@ -253,6 +254,7 @@ async function checarSessao() {
 function fazerLogoff(recarregar = true) {
     localStorage.removeItem('aluno_token');
     localStorage.removeItem('aluno_dados');
+    localStorage.removeItem('secretaria_token');
     if (recarregar) {
         window.location.reload();
     } else {

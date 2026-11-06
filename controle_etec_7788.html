@@ -875,6 +875,10 @@
         <span>Categorias</span>
       </button>
 
+      <button onclick="trocarAba('professores')" class="item-menu hidden" id="menuAba-professores">
+        <i class="fas fa-user-shield"></i><span>Acesso de Professores</span>
+      </button>
+
       <button onclick="trocarAba('dashboard')" class="item-menu" id="menuAba-dashboard">
         <i class="fas fa-chart-pie" style="color: #3b82f6;"></i>
         <span>Dashboard & Métricas</span>
@@ -992,6 +996,13 @@
     </section>
 
     <!-- 4. ABA DASHBOARD (INDICADORES & BI) -->
+    <section id="secao-professores" class="hidden">
+      <h2 class="secao-titulo">Acesso de Professores</h2>
+      <p>Professores aprovados podem atender alunos e gerenciar itens no painel. Apenas a secretaria titular pode aprovar, recusar ou revogar acessos.</p>
+      <button type="button" onclick="carregarSolicitacoesProfessores()" class="btn-novo-item">Atualizar solicitações</button>
+      <div id="listaAcessosProfessores" aria-live="polite"></div>
+    </section>
+
     <section id="secao-dashboard" class="hidden">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
         <h2 class="secao-titulo" style="margin-bottom: 0;"><i class="fas fa-chart-pie" style="color: #3b82f6;"></i> Inteligência & Indicadores</h2>
@@ -1704,7 +1715,7 @@
       toggleMenuHamburger();
       if (abaId === 'dashboard') carregarDashboard();
       if (abaId === 'mural') carregarMural();
-      ['itens', 'pendentes', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat'].forEach(id => {
+      ['itens', 'pendentes', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat', 'professores'].forEach(id => {
         const el = document.getElementById(`secao-${id}`);
         if (el) el.classList.add('hidden');
         const btn = document.getElementById(`menuAba-${id}`);
@@ -1723,10 +1734,12 @@
       if (abaId === 'doacoes') renderizarDoacoes();
       if (abaId === 'mural') carregarMural();
       if (abaId === 'chat') carregarConversasChat();
+      if (abaId === 'professores') carregarSolicitacoesProfessores();
     }
 
     /* CARREGAMENTO DE DADOS */
     async function carregarTudo() {
+      if (!await verificarSessaoPainel()) return;
       await carregarCategorias();
       await carregarItensSecretaria();
       iniciarPollingChat();
@@ -3355,6 +3368,7 @@
     }
 
 </script>
+<script src="professores-secretaria.js"></script>
 </body>
 </html>
 

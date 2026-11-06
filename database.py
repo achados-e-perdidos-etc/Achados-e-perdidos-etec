@@ -1,3 +1,4 @@
+from utils.professores import SCHEMA_ACESSO_PROFESSORES
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -110,6 +111,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
+        cursor.execute(SCHEMA_ACESSO_PROFESSORES)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')

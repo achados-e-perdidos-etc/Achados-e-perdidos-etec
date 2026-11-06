@@ -63,3 +63,17 @@ As correções e esta lista estão preparadas para revisão em branch separada. 
 Branch separada a partir da proposta #15. Respostas públicas deixam de expor campos estruturados de identificação pessoal; a secretaria mantém acesso autenticado. A área Meus itens usa consulta autenticada por e-mail, sem filtrar por nome ou matrícula no navegador. Relatos por RM exigem sessão e restringem alunos ao próprio e-mail. Consultas retornam Cache-Control private, no-store e variam por cabeçalho de autenticação.
 
 Validação: 58 testes Python e 6 testes JavaScript passaram. Nenhum banco de produção foi acessado. Solicitações antigas sem email_solicitante não podem ser atribuídas com segurança só pelo nome e exigem revisão pela secretaria. Os campos de texto livre e fotografias seguem públicos por finalidade do catálogo; não foi feita anonimização automática de seus conteúdos. Hospedagem continua aguardando cadastro no provedor.
+
+## Quarta etapa — professores ajudando a secretaria
+
+Nova branch derivada da proposta #16, conforme orientação de continuar sempre da última proposta.
+
+- [x] Botão no portal para professores com e-mail @etec.sp.gov.br ou @cps.sp.gov.br solicitarem acesso.
+- [x] Solicitação vinculada à conta autenticada, com nome obtido do cadastro; o navegador não escolhe qual conta receberá permissão.
+- [x] Área Acesso de Professores no painel para a secretaria titular aprovar, recusar e revogar.
+- [x] Permissão aprovada consultada no banco a cada requisição; revogação afeta também sessões já abertas.
+- [x] Professores aprovados podem operar o painel, mas não conceder permissões a outros professores.
+- [x] Registro do responsável e da data da decisão; reenvio de solicitação recusada ou revogada exige nova aprovação.
+- [x] Regra de branches futuras registrada em AGENTS.md.
+
+Validação: 72 testes Python e 11 testes JavaScript passaram. Também foi executado o ciclo de login, solicitação, aprovação, operação, restrição de decisões e revogação com PostgreSQL real isolado. Nenhum dado real foi acessado. A tabela professores_acesso é criada na inicialização do banco nas duas implementações. Nenhum acesso é concedido automaticamente a contas existentes.

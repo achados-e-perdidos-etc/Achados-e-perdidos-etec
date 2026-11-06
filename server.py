@@ -29,6 +29,7 @@ from utils.privacy import item_publico, relato_publico
 from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat
 from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
+from utils.professores import SCHEMA_ACESSO_PROFESSORES
 from config import JWT_SECRET
 
 # ============================================================
@@ -36,6 +37,8 @@ from config import JWT_SECRET
 # ============================================================
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
+from blueprints.professores import professores_bp
+app.register_blueprint(professores_bp)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
 
@@ -234,6 +237,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
+        cursor.execute(SCHEMA_ACESSO_PROFESSORES)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')

@@ -210,6 +210,14 @@
 
     <main class="max-w-5xl mx-auto w-full p-4 flex-grow space-y-6">
 
+        <section id="acessoProfessor" class="hidden glass-panel rounded-2xl p-5 space-y-3">
+            <h2 class="font-bold text-white">Ajudar a secretaria</h2>
+            <p id="statusAcessoProfessor" class="text-sm text-slate-300" aria-live="polite">Consultando seu acesso...</p>
+            <button id="btnSolicitarAcessoProfessor" type="button" onclick="solicitarAcessoProfessor()" class="rounded-xl bg-red-600 text-white px-4 py-2 disabled:opacity-50">Solicitar acesso ao painel</button>
+            <button id="btnAbrirPainelProfessor" type="button" onclick="abrirPainelProfessor()" class="hidden rounded-xl bg-emerald-600 text-white px-4 py-2">Abrir painel da secretaria</button>
+            <button type="button" onclick="atualizarAcessoProfessor()" class="text-sm text-slate-300 underline">Atualizar status</button>
+        </section>
+
         <!-- DASHBOARD HERO BANNER -->
         <section class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10 glow-red relative overflow-hidden">
             <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -558,6 +566,7 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="professores.js"></script>
 
     <!-- ==========================================================================
          SPLASH COM GIF (substitui o vídeo animacao.mp4)

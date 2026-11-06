@@ -8,6 +8,7 @@ from flask import request, jsonify, make_response
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import JWT_SECRET
+from utils.professores import email_de_professor
 
 def token_required(f):
     """
@@ -63,6 +64,19 @@ def token_required(f):
                 "success": False, 
                 "message": "Token inválido. Faça login novamente."
             }), 401
+
+        # Permissions are checked on every request, so revocation also affects old tokens.
+        request.user.pop('acesso_delegado', None)
+        if request.user.get('role') != 'secretaria' and email_de_professor(request.user.get('email')):
+            from services.professores_service import buscar_acesso
+            try:
+                acesso = buscar_acesso(request.user['email'])
+            except Exception:
+                return jsonify({'success': False, 'message': 'Não foi possível verificar sua permissão. Tente novamente.'}), 503
+            request.professor_access = acesso
+            if acesso and acesso['status'] == 'APROVADO':
+                request.user['role'] = 'secretaria'
+                request.user['acesso_delegado'] = True
 
         response = make_response(f(*args, **kwargs))
         response.headers['Cache-Control'] = 'private, no-store'
@@ -142,3 +156,14 @@ def gerar_token_secretaria(email, dias_validade=7):
         algorithm="HS256"
     )
 
+
+
+def secretaria_titular_required(f):
+    """Professores podem operar o painel, mas não conceder privilégios."""
+    @secretaria_required
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.user.get('acesso_delegado'):
+            return jsonify({'success': False, 'message': 'Somente a secretaria titular pode autorizar professores.'}), 403
+        return f(*args, **kwargs)
+    return decorated

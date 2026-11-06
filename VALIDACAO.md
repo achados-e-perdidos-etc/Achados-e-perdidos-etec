@@ -18,6 +18,7 @@ node --check script.js
 node --check sw.js
 node tests/test_portal_auth.cjs
 node tests/test_privacy_portal.cjs
+node tests/test_teacher_portal.cjs
 ```
 
 Os testes usam o cliente Flask real, banco simulado e uma tabela SQLite temporária para executar o SQL de doações. Não verificam a conexão com PostgreSQL em produção nem serviços de e-mail, imagens, IA ou push. Não inserem ou removem dados reais.
@@ -52,3 +53,15 @@ Catálogo e mural públicos retornam somente campos permitidos. O nome público 
 GET /api/itens/meus exige sessão e filtra pelo email_solicitante correspondente ao e-mail do token. A consulta de relatos por RM também exige sessão; para alunos, a seleção é feita pelo e-mail autenticado. Isso evita misturar pessoas com o mesmo nome ou RM. Solicitações legadas sem e-mail precisam de revisão pela secretaria, sem fallback por nome. A API marca respostas como private, no-store e define Vary nos cabeçalhos de autenticação.
 
 Textos livres e imagens não são inspecionados ou anonimizados automaticamente; dados pessoais escritos neles continuam dependendo de moderação. Não há migração ou exclusão de registros. Validação: 58 testes Python e 6 testes JavaScript passaram.
+
+## Quarta etapa: autorização de professores
+
+No portal do professor, a área Ajudar a secretaria apresenta Solicitar acesso ao painel e Atualizar status. Somente contas institucionais de docentes (@etec.sp.gov.br e @cps.sp.gov.br, excluindo @aluno.cps.sp.gov.br) podem solicitar. A identidade vem da sessão e do cadastro; nomes, e-mails e perfis enviados pelo cliente são ignorados. Conta inexistente não cria solicitação.
+
+No painel da secretaria titular, o menu Acesso de Professores permite aprovar ou recusar pedidos pendentes e revogar acessos aprovados. Professores aprovados ganham acesso operacional ao painel: catálogo, cadastros, alterações, exclusões, atendimento e relatórios. Não podem aprovar, recusar ou revogar acessos de outros professores. A autorização é verificada no backend a cada requisição, inclusive quando o professor mantém o mesmo token. Falha no banco retorna 503 em vez de liberar privilégios. A nova área usa textContent para nomes e e-mails.
+
+O estado fica na tabela professores_acesso, criada por init_db em server.py e database.py. O usuário do banco deve ter permissão para criar essa tabela, que referencia alunos(email). O serviço usa a mesma DATABASE_URL já configurada e não exige novas variáveis. Faça backup antes de atualizar uma instalação real. Nenhuma conta recebe aprovação automática. O ciclo de migração foi verificado com PostgreSQL real isolado e também com os contratos SQL em banco temporário.
+
+Se o provedor usa a implementação modular, registrar auth_bp também registra as novas rotas de professores. O backend unificado registra o blueprint diretamente. Os arquivos professores.js e professores-secretaria.js precisam ser publicados junto com HTML e Python; as interfaces dependem desses arquivos novos. Para abrir o painel mantendo a sessão, portal e painel precisam estar na mesma origem. A substituição da URL Railway durante a migração de hospedagem permanece pendente.
+
+A versão verificada tem 72 testes Python e 11 testes JavaScript passando. As verificações de sintaxe incluem o JavaScript inline do painel. Envio de e-mail real, uso sob carga e hospedagem pública continuam fora desta validação. A aprovação confirma a decisão da secretaria, sem comprovar automaticamente vínculos escolares além da conta institucional.
