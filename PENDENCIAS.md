@@ -21,7 +21,7 @@ Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram
 - [x] Removido o segredo JWT padrão do código; inicialização exige segredo com pelo menos 32 bytes.
 - [ ] Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
 - [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros.
-- [ ] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts.
+- [x] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts no portal e painel; detalhes e limites na sexta etapa.
 - [x] Removido login compartilhado professor/professor e sessões fictícias do navegador. Professores usam conta institucional com senha individual; tokens antigos exigem novo login.
 - [x] Catálogo e mural públicos usam lista explícita de campos sem nome do autor, RM ou e-mail de alunos. Dados administrativos exigem token de secretaria; consultas pessoais filtram pelo e-mail da sessão. Conteúdo livre de descrições e imagens ainda pode conter dados pessoais e exige moderação.
 - [ ] Após a migração, substituir a URL Railway fixa no frontend e verificar também painel e aplicativo desktop.
@@ -91,4 +91,16 @@ Branch derivada da proposta #17. A revisão identificou uma cópia antiga da vis
 - [x] Resultado atrasado de uma foto anterior é ignorado; OCR não confiável não é aplicado nem cruzado com alunos.
 - [ ] Validar precisão visual com credencial real e fotos representativas. Confiança declarada pelo modelo não comprova acerto.
 
-116 testes Python e 18 testes JavaScript passaram. Não houve chamada real a um provedor de visão nem medição da precisão visual. As melhorias técnicas estão preparadas em proposta separada; a issue #13 será encerrada como não planejada a pedido do usuário, sem afirmar que o reconhecimento está 100% resolvido. Os dados de produção não foram acessados.
+116 testes Python e 18 testes JavaScript passaram. Não houve chamada real a um provedor de visão nem medição da precisão visual. Após avaliar os exemplos no chat, o usuário pediu o encerramento da issue #13 como concluída; isso foi registrado no GitHub, mantendo pendente a validação da precisão com o provedor real. Os dados de produção não foram acessados.
+
+## Sexta etapa — textos seguros no portal e painel
+
+Branch derivada da proposta #18. Nomes, descrições, mensagens, categorias, dados de alunos e campos de relatórios eram inseridos diretamente em HTML, permitindo injeção de marcação e eventos.
+
+- [x] Codificação de texto e atributos em catálogo, mural, Meus itens, chat, painel, comprovantes, etiquetas e relatórios impressos.
+- [x] Argumentos de botões serializados como JSON e codificados para o atributo HTML, preservando aspas, acentos e os dados originais.
+- [x] Imagens aceitam HTTP/HTTPS e data URI de formatos raster permitidos; protocolos executáveis, SVG inline e documentos HTML são recusados. Abertura de imagens externas usa noopener/noreferrer.
+- [x] Diálogos conservam somente tags básicas de formatação, sem atributos, scripts ou elementos ativos.
+- [x] Novo arquivo seguranca-interface.js carregado antes das interfaces dependentes.
+
+Validação: 116 testes Python, 18 testes JavaScript existentes e 10 testes no Chromium com as páginas reais e respostas de API simuladas. Foram verificados textos maliciosos, botões com aspas, chat nos dois sentidos, catálogo, mural, categorias, detalhes, sugestões de itens, diálogos e relatórios de inventário/entregas. Sintaxe JavaScript também verificada. Nenhum banco, credencial ou serviço de produção foi utilizado; a proposta ainda precisa ser integrada para chegar ao site. A próxima pendência de código registrada é comprovação e unicidade do RM.

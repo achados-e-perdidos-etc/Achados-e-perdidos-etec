@@ -1322,6 +1322,7 @@
 
   <div id="toast" class="hidden"></div>
 
+  <script src="seguranca-interface.js"></script>
   <!-- JAVASCRIPT DO SISTEMA -->
   <script>
     /* ==========================================================================
@@ -1331,7 +1332,7 @@
       return new Promise((resolve) => {
         const modal = document.getElementById('modalConfirmacao');
         document.getElementById('confirmTitulo').innerText = titulo;
-        document.getElementById('confirmMensagem').innerHTML = mensagem;
+        definirTextoFormatado(document.getElementById('confirmMensagem'), mensagem);
 
         const iconeEl = document.getElementById('confirmIcone');
         iconeEl.className = `fas ${icone}`;
@@ -1361,7 +1362,7 @@
       return new Promise((resolve) => {
         const modal = document.getElementById('modalAlertaBonito');
         document.getElementById('alertaTitulo').innerText = titulo;
-        document.getElementById('alertaMensagem').innerHTML = mensagem;
+        definirTextoFormatado(document.getElementById('alertaMensagem'), mensagem);
 
         let icone = 'fa-info-circle';
         let cor = '#3b82f6';
@@ -1420,7 +1421,7 @@
         document.getElementById('erroOnde').innerText = ultimoRelatorioErro.onde;
         document.getElementById('erroComunicacao').innerText = ultimoRelatorioErro.comunicacao;
         document.getElementById('erroMensagem').innerText = `${ultimoRelatorioErro.mensagem}${ultimoRelatorioErro.detalhes ? '\n\n[Traceback / Detalhes]:\n' + ultimoRelatorioErro.detalhes : ''}`;
-        document.getElementById('erroSolucao').innerHTML = ultimoRelatorioErro.solucao;
+        definirTextoFormatado(document.getElementById('erroSolucao'), ultimoRelatorioErro.solucao);
         modal.classList.remove('hidden');
       } else {
         alert(`❌ ERRO: ${ultimoRelatorioErro.operacao}\n\n📍 Onde: ${ultimoRelatorioErro.onde}\n📡 Info: ${ultimoRelatorioErro.comunicacao}\n🔍 Detalhes: ${ultimoRelatorioErro.mensagem}\n💡 Causa: ${ultimoRelatorioErro.causa}`);
@@ -1630,7 +1631,7 @@
           
           const sel = document.getElementById('formItemCategoria');
           if (sel) {
-            sel.innerHTML = categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            sel.innerHTML = categoriasSec.map(c => `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`).join('');
           }
           
           // Filtro de categorias removido da barra de busca a pedido do usuário
@@ -1654,7 +1655,7 @@
           }
         } else {
           console.error("HTTP error:", res.status);
-          if (container) container.innerHTML = `<div class="text-center py-8" style="color: #ef4444;">Falha ao buscar itens (Status ${res.status}). Verifique o servidor.</div>`;
+          if (container) container.innerHTML = `<div class="text-center py-8" style="color: #ef4444;">Falha ao buscar itens (Status ${textoHTML(res.status)}). Verifique o servidor.</div>`;
         }
       } catch (e) {
         console.error("Network error:", e);
@@ -1714,20 +1715,20 @@
 
         const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
         const fotoHtml = fotoUrl 
-          ? `<div class="item-foto-thumb"><img src="${fotoUrl}" alt="Foto" loading="lazy"></div>`
+          ? `<div class="item-foto-thumb"><img src="${imagemHTML(fotoUrl)}" alt="Foto" loading="lazy"></div>`
           : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
 
         return `
-          <div class="item-card" onclick="abrirDetalhesItem(${item.id})">
+          <div class="item-card" onclick="abrirDetalhesItem(${argumentoHTML(item.id)})">
             ${fotoHtml}
             <div class="item-info">
               <div class="item-badges">
-                <span class="badge-cat">${item.categoria || 'OUTROS'}</span>
-                <span class="badge-status ${statusCls}">${st}</span>
+                <span class="badge-cat">${textoHTML(item.categoria || 'OUTROS')}</span>
+                <span class="badge-status ${textoHTML(statusCls)}">${textoHTML(st)}</span>
               </div>
-              <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Sem Título'}</div>
+              <div class="item-titulo truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao || 'Sem Título')}</div>
               <div class="item-local-data truncate">
-                <i class="fas fa-map-marker-alt"></i> ${item.txt_local || 'Local não informado'}
+                <i class="fas fa-map-marker-alt"></i> ${textoHTML(item.txt_local || 'Local não informado')}
               </div>
             </div>
           </div>
@@ -1751,11 +1752,11 @@
         const st = (d.status || 'PARA DOAÇÃO').toUpperCase();
         return `
           <tr>
-            <td>#${d.id}</td>
-            <td><strong>${nome}</strong></td>
-            <td>${d.categoria || 'OUTROS'}</td>
-            <td><span class="badge-status status-doacao">${st}</span></td>
-            <td>${d.txt_data || '-'}</td>
+            <td>#${textoHTML(d.id)}</td>
+            <td><strong>${textoHTML(nome)}</strong></td>
+            <td>${textoHTML(d.categoria || 'OUTROS')}</td>
+            <td><span class="badge-status status-doacao">${textoHTML(st)}</span></td>
+            <td>${textoHTML(d.txt_data || '-')}</td>
           </tr>
         `;
       }).join('');
@@ -1768,7 +1769,7 @@
       }
       const ok = await abrirConfirmacaoModal({
         titulo: "Concluir Doações",
-        mensagem: `Deseja concluir a doação e arquivar os <strong>${doacoes.length} item(ns)</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens passarão para o status DOAÇÃO FEITA e sairão do catálogo ativo.</span>`,
+        mensagem: `Deseja concluir a doação e arquivar os <strong>${textoHTML(doacoes.length)} item(ns)</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens passarão para o status DOAÇÃO FEITA e sairão do catálogo ativo.</span>`,
         icone: "fa-gift",
         corIcone: "#a855f7",
         textoConfirmar: "Sim, Concluir",
@@ -1807,7 +1808,7 @@
           container.innerHTML = itensPendentesSec.map(item => {
             const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
             const fotoHtml = fotoUrl 
-              ? `<div class="item-foto-thumb"><img src="${fotoUrl}" alt="Foto"></div>`
+              ? `<div class="item-foto-thumb"><img src="${imagemHTML(fotoUrl)}" alt="Foto"></div>`
               : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
 
             return `
@@ -1815,16 +1816,16 @@
                 ${fotoHtml}
                 <div class="item-info">
                   <div class="item-badges">
-                    <span class="badge-cat">${item.categoria || 'OUTROS'}</span>
+                    <span class="badge-cat">${textoHTML(item.categoria || 'OUTROS')}</span>
                     <span class="badge-status status-pendente">PENDENTE</span>
                   </div>
-                  <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Objeto'}</div>
-                  <div class="item-local-data">Aluno RM: ${item.rm_aluno || '-'} | Local: ${item.txt_local || '-'}</div>
+                  <div class="item-titulo truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao || 'Objeto')}</div>
+                  <div class="item-local-data">Aluno RM: ${textoHTML(item.rm_aluno || '-')} | Local: ${textoHTML(item.txt_local || '-')}</div>
                   <div style="display: flex; gap: 8px; margin-top: 8px;">
-                    <button onclick="aprovarItemAluno(${item.id})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
+                    <button onclick="aprovarItemAluno(${argumentoHTML(item.id)})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
                       <i class="fas fa-check"></i> Aprovar
                     </button>
-                    <button onclick="recusarCadastroAluno(${item.id})" class="btn-acao" style="background: #dc2626; padding: 6px 12px; font-size: 11px;">
+                    <button onclick="recusarCadastroAluno(${argumentoHTML(item.id)})" class="btn-acao" style="background: #dc2626; padding: 6px 12px; font-size: 11px;">
                       <i class="fas fa-trash"></i> Recusar
                     </button>
                   </div>
@@ -1923,12 +1924,12 @@
 
         htmlCards.push(`
           <div class="etiqueta-box">
-            <div class="tag-cat">${cat}</div>
+            <div class="tag-cat">${textoHTML(cat)}</div>
             <div class="qr-container">
-              <img src="${qrBase64}" alt="QR #${item.id}" />
+              <img src="${imagemHTML(qrBase64)}" alt="QR #${textoHTML(item.id)}" />
             </div>
-            <div class="titulo-item">#${item.id} - ${nome}</div>
-            <div class="local-item">${data} | ${local}</div>
+            <div class="titulo-item">#${textoHTML(item.id)} - ${textoHTML(nome)}</div>
+            <div class="local-item">${textoHTML(data)} | ${textoHTML(local)}</div>
           </div>
         `);
       }
@@ -2034,32 +2035,32 @@
       const st = (item.status || 'DISPONÍVEL').toUpperCase();
       
       let info = `
-        <div><strong>Categoria:</strong> ${item.categoria || 'OUTROS'}</div>
-        <div><strong>Status:</strong> ${st}</div>
-        <div><strong>Local:</strong> ${item.txt_local || '-'}</div>
-        <div><strong>Data:</strong> ${item.txt_data || '-'}</div>
-        <div><strong>Descrição:</strong> ${item.txt_descricao || '-'}</div>
+        <div><strong>Categoria:</strong> ${textoHTML(item.categoria || 'OUTROS')}</div>
+        <div><strong>Status:</strong> ${textoHTML(st)}</div>
+        <div><strong>Local:</strong> ${textoHTML(item.txt_local || '-')}</div>
+        <div><strong>Data:</strong> ${textoHTML(item.txt_data || '-')}</div>
+        <div><strong>Descrição:</strong> ${textoHTML(item.txt_descricao || '-')}</div>
       `;
       if (item.solicitado_por) {
-        info += `<div style="color: #f59e0b; margin-top: 4px;"><strong>Solicitado por:</strong> ${item.solicitado_por} (RM: ${item.rm_aluno || '-'})</div>`;
+        info += `<div style="color: #f59e0b; margin-top: 4px;"><strong>Solicitado por:</strong> ${textoHTML(item.solicitado_por)} (RM: ${textoHTML(item.rm_aluno || '-')})</div>`;
       }
       document.getElementById('detalhesInfoCard').innerHTML = info;
 
       const galeria = document.getElementById('detalhesGaleriaFotos');
       const fotos = (item.fotos && item.fotos.length) ? item.fotos : (item.foto ? [item.foto] : []);
       galeria.innerHTML = fotos.length
-        ? fotos.map(f => `<img src="${f}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #30363d; cursor: pointer;" onclick="window.open('${f}', '_blank')">`).join('')
+        ? fotos.map(f => `<img src="${imagemHTML(f)}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #30363d; cursor: pointer;" onclick="abrirImagemSegura(${argumentoHTML(f)})">`).join('')
         : `<span style="font-size: 11px; color: #8b949e;">Sem fotos.</span>`;
 
-      let btns = `<button onclick="editarItemForm(${item.id})" class="btn-acao" style="background: #d97706;"><i class="fas fa-edit"></i> Editar</button>`;
-      if (st === 'SOLICITADO') btns += `<button onclick="recusarSolicitacao(${item.id})" class="btn-acao" style="background: #b45309;"><i class="fas fa-ban"></i> Recusar</button>`;
+      let btns = `<button onclick="editarItemForm(${argumentoHTML(item.id)})" class="btn-acao" style="background: #d97706;"><i class="fas fa-edit"></i> Editar</button>`;
+      if (st === 'SOLICITADO') btns += `<button onclick="recusarSolicitacao(${argumentoHTML(item.id)})" class="btn-acao" style="background: #b45309;"><i class="fas fa-ban"></i> Recusar</button>`;
       if (st !== 'ENTREGUE' && !st.includes('DOAÇÃO FEITA') && !st.includes('DOACAO FEITA')) {
-        btns += `<button onclick="abrirModalBaixa(${item.id})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
+        btns += `<button onclick="abrirModalBaixa(${argumentoHTML(item.id)})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
       }
       if (!isStatusDoacao(st) && st !== 'ENTREGUE') {
-        btns += `<button onclick="marcarItemDoacao(${item.id})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
+        btns += `<button onclick="marcarItemDoacao(${argumentoHTML(item.id)})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
       }
-      btns += `<button onclick="excluirItem(${item.id})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
+      btns += `<button onclick="excluirItem(${argumentoHTML(item.id)})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
 
       document.getElementById('detalhesBotoesAcao').innerHTML = btns;
       document.getElementById('modalDetalhesItem').classList.remove('hidden');
@@ -2261,11 +2262,11 @@
           const nomeObj = item ? (item.nome || item.txt_descricao || 'Objeto') : 'Objeto';
           
           document.getElementById('comprovanteDadosBox').innerHTML = `
-            <div><strong>Aluno(a):</strong> ${nome}</div>
-            <div><strong>RM:</strong> ${rm} | <strong>Turma:</strong> ${turma}</div>
+            <div><strong>Aluno(a):</strong> ${textoHTML(nome)}</div>
+            <div><strong>RM:</strong> ${textoHTML(rm)} | <strong>Turma:</strong> ${textoHTML(turma)}</div>
             <hr style="margin: 6px 0; border: none; border-top: 1px dashed #d1d5db;">
-            <div><strong>Objeto #${id}:</strong> ${nomeObj}</div>
-            <div><strong>Data da Entrega:</strong> ${dataHora}</div>
+            <div><strong>Objeto #${textoHTML(id)}:</strong> ${textoHTML(nomeObj)}</div>
+            <div><strong>Data da Entrega:</strong> ${textoHTML(dataHora)}</div>
           `;
           comprovanteDadosTexto = `ETEC - TERMO DE RETIRADA\nAluno: ${nome} (RM: ${rm})\nTurma: ${turma}\nItem #${id}: ${nomeObj}\nData: ${dataHora}`;
           document.getElementById('modalComprovante').classList.remove('hidden');
@@ -2288,7 +2289,7 @@
     async function recusarSolicitacao(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Recusar Solicitação",
-        mensagem: `Deseja recusar a solicitação do item <strong>#${id}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL para outros alunos.</span>`,
+        mensagem: `Deseja recusar a solicitação do item <strong>#${textoHTML(id)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL para outros alunos.</span>`,
         icone: "fa-times-circle",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Recusar",
@@ -2304,7 +2305,7 @@
     async function marcarItemDoacao(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Destinar para Doação",
-        mensagem: `Deseja marcar o pertence <strong>#${id}</strong> para DOAÇÃO?`,
+        mensagem: `Deseja marcar o pertence <strong>#${textoHTML(id)}</strong> para DOAÇÃO?`,
         icone: "fa-gift",
         corIcone: "#a855f7",
         textoConfirmar: "Sim, Destinar",
@@ -2328,7 +2329,7 @@
     async function excluirItem(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Excluir Objeto Permanentemente",
-        mensagem: `Tem certeza que deseja apagar o item <strong>#${id}</strong> do banco de dados?<br><span style="font-size: 11px; color: #ef4444;">Esta ação é irreversível.</span>`,
+        mensagem: `Tem certeza que deseja apagar o item <strong>#${textoHTML(id)}</strong> do banco de dados?<br><span style="font-size: 11px; color: #ef4444;">Esta ação é irreversível.</span>`,
         icone: "fa-trash-alt",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Excluir",
@@ -2344,7 +2345,7 @@
     /* CATEGORIAS / DASHBOARD / ENTREGUES / MURAL / CHAT */
     function renderizarCategorias() {
       document.getElementById('tabelaCategoriasBody').innerHTML = categoriasSec.map(c => `
-        <tr><td><strong>${c.nome}</strong></td><td style="text-align: center;"><button onclick="removerCategoria('${c.nome}')" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
+        <tr><td><strong>${textoHTML(c.nome)}</strong></td><td style="text-align: center;"><button onclick="removerCategoria(${argumentoHTML(c.nome)})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
       `).join('');
     }
 
@@ -2353,7 +2354,7 @@
     async function removerCategoria(nome) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Excluir Categoria",
-        mensagem: `Deseja realmente excluir a categoria <strong>${nome}</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens já cadastrados continuarão seguros no sistema.</span>`,
+        mensagem: `Deseja realmente excluir a categoria <strong>${textoHTML(nome)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens já cadastrados continuarão seguros no sistema.</span>`,
         icone: "fa-trash-alt",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Excluir",
@@ -2436,7 +2437,7 @@
         if (res.ok) {
           const l = await res.json();
           document.getElementById('tabelaEntreguesBody').innerHTML = l.map(e => `
-            <tr><td>#${e.item_id}</td><td><strong>${e.nome_item}</strong></td><td>${e.retirado_por}</td><td>${e.rm_retirante}</td><td>${e.data_entrega}</td><td><button onclick="desfazerEntrega(${e.item_id})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button></td></tr>
+            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td><button onclick="desfazerEntrega(${argumentoHTML(e.item_id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button></td></tr>
           `).join('');
         }
       } catch (e) {}
@@ -2445,7 +2446,7 @@
     async function desfazerEntrega(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Reverter Entrega",
-        mensagem: `Deseja reverter a entrega do pertence <strong>#${id}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL no catálogo.</span>`,
+        mensagem: `Deseja reverter a entrega do pertence <strong>#${textoHTML(id)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL no catálogo.</span>`,
         icone: "fa-undo",
         corIcone: "#f59e0b",
         textoConfirmar: "Sim, Reverter",
@@ -2464,7 +2465,7 @@
         if (res.ok) {
           const mural = await res.json();
           document.getElementById('tabelaMuralBody').innerHTML = mural.map(m => `
-            <tr><td><strong>${m.nome_aluno}</strong></td><td>${m.rm_aluno}</td><td>${m.descricao}</td><td>${m.data_registro}</td><td><button onclick="excluirRelatoMural(${m.id})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
+            <tr><td><strong>${textoHTML(m.nome_aluno)}</strong></td><td>${textoHTML(m.rm_aluno)}</td><td>${textoHTML(m.descricao)}</td><td>${textoHTML(m.data_registro)}</td><td><button onclick="excluirRelatoMural(${argumentoHTML(m.id)})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
           `).join('');
         }
       } catch (e) {}
@@ -2473,7 +2474,7 @@
     async function excluirRelatoMural(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Apagar Relato do Mural",
-        mensagem: `Deseja remover o relato <strong>#${id}</strong> do mural de perdidos?`,
+        mensagem: `Deseja remover o relato <strong>#${textoHTML(id)}</strong> do mural de perdidos?`,
         icone: "fa-trash-alt",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Remover",
@@ -2490,7 +2491,7 @@
     async function recusarCadastroAluno(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Recusar Item de Aluno",
-        mensagem: `Deseja realmente recusar e descartar o item <strong>#${id}</strong> cadastrado pelo aluno?<br><span style="font-size: 11px; color: #8b949e;">O item será removido das pendências e não entrará no catálogo.</span>`,
+        mensagem: `Deseja realmente recusar e descartar o item <strong>#${textoHTML(id)}</strong> cadastrado pelo aluno?<br><span style="font-size: 11px; color: #8b949e;">O item será removido das pendências e não entrará no catálogo.</span>`,
         icone: "fa-times-circle",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Recusar",
@@ -2589,16 +2590,16 @@
         const hora = (c.ultima_msg_data || '').split(' ')[1] || (c.ultima_msg_data || '');
 
         return `
-          <div onclick="selecionarConversaAluno('${rm}', '${nome.replace(/'/g, "\\'")}')" class="card-conversa-aluno ${isActive ? 'active' : ''}">
-            <div class="avatar-circulo-chat">${inicial}</div>
+          <div onclick="selecionarConversaAluno(${argumentoHTML(rm)}, ${argumentoHTML(nome)})" class="card-conversa-aluno ${textoHTML(isActive ? 'active' : '')}">
+            <div class="avatar-circulo-chat">${textoHTML(inicial)}</div>
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <div style="color: #ffffff; font-weight: 700; font-size: 12.5px;" class="truncate">${nome}</div>
-                <div style="font-size: 10px; color: #8b949e; white-space: nowrap;">${hora}</div>
+                <div style="color: #ffffff; font-weight: 700; font-size: 12.5px;" class="truncate">${textoHTML(nome)}</div>
+                <div style="font-size: 10px; color: #8b949e; white-space: nowrap;">${textoHTML(hora)}</div>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-                <div style="font-size: 11px; color: #8b949e;" class="truncate">${ultimaMsg}</div>
-                ${naoLidas > 0 ? `<span style="background: #10b981; color: #ffffff; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800;">${naoLidas}</span>` : ''}
+                <div style="font-size: 11px; color: #8b949e;" class="truncate">${textoHTML(ultimaMsg)}</div>
+                ${naoLidas > 0 ? `<span style="background: #10b981; color: #ffffff; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800;">${textoHTML(naoLidas)}</span>` : ''}
               </div>
             </div>
           </div>
@@ -2658,9 +2659,9 @@
           }
 
           box.innerHTML = msgs.map(m => `
-            <div class="msg-balao ${m.remetente === 'SECRETARIA' ? 'msg-secretaria' : 'msg-aluno'}">
-              <div style="font-size: 9.5px; opacity: 0.8; margin-bottom: 2px;">${m.remetente === 'SECRETARIA' ? 'Secretaria ETEC' : (m.nome_aluno || 'Aluno')} • ${m.data_envio || ''}</div>
-              <div style="word-break: break-word;">${m.mensagem}</div>
+            <div class="msg-balao ${textoHTML(m.remetente === 'SECRETARIA' ? 'msg-secretaria' : 'msg-aluno')}">
+              <div style="font-size: 9.5px; opacity: 0.8; margin-bottom: 2px;">${textoHTML(m.remetente === 'SECRETARIA' ? 'Secretaria ETEC' : (m.nome_aluno || 'Aluno'))} • ${textoHTML(m.data_envio || '')}</div>
+              <div style="word-break: break-word;">${textoHTML(m.mensagem)}</div>
             </div>
           `).join('');
 
@@ -2910,22 +2911,22 @@
               const corBadge = top.score >= 70 ? '#10b981' : '#f59e0b';
               const bgBadge = top.score >= 70 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)';
               badgeMatch = `
-                <button onclick="abrirModalComparacaoMatch(${m.id})" style="background: ${bgBadge}; border: 1px solid ${corBadge}; color: ${corBadge}; padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                  <i class="fas fa-magic"></i> ${matchesDeste.length} Match (${top.score}%)
+                <button onclick="abrirModalComparacaoMatch(${argumentoHTML(m.id)})" style="background: ${textoHTML(bgBadge)}; border: 1px solid ${textoHTML(corBadge)}; color: ${textoHTML(corBadge)}; padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                  <i class="fas fa-magic"></i> ${textoHTML(matchesDeste.length)} Match (${textoHTML(top.score)}%)
                 </button>
               `;
             }
 
             return `
               <tr>
-                <td><strong>${m.nome_aluno}</strong></td>
-                <td>${m.rm_aluno}</td>
-                <td><span class="badge-categoria" style="font-size: 10px;">${m.categoria || 'OUTROS'}</span></td>
-                <td style="max-width: 250px; line-height: 1.3;">${m.descricao}</td>
+                <td><strong>${textoHTML(m.nome_aluno)}</strong></td>
+                <td>${textoHTML(m.rm_aluno)}</td>
+                <td><span class="badge-categoria" style="font-size: 10px;">${textoHTML(m.categoria || 'OUTROS')}</span></td>
+                <td style="max-width: 250px; line-height: 1.3;">${textoHTML(m.descricao)}</td>
                 <td>${badgeMatch}</td>
-                <td style="white-space: nowrap; font-size: 11px; color: #8b949e;">${m.data_registro || '-'}</td>
+                <td style="white-space: nowrap; font-size: 11px; color: #8b949e;">${textoHTML(m.data_registro || '-')}</td>
                 <td>
-                  <button onclick="excluirRelatoMural(${m.id})" style="background: none; border: none; color: #f87171; cursor: pointer; padding: 6px;" title="Apagar relato">
+                  <button onclick="excluirRelatoMural(${argumentoHTML(m.id)})" style="background: none; border: none; color: #f87171; cursor: pointer; padding: 6px;" title="Apagar relato">
                     <i class="fas fa-trash"></i>
                   </button>
                 </td>
@@ -2956,11 +2957,11 @@
 
       document.getElementById('smartMatchRelatoBox').innerHTML = `
         <div style="font-size: 11px; color: #a855f7; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Relato Oficial do Aluno</div>
-        <div style="font-size: 13.5px; color: #ffffff; font-weight: 700;">${relato.nome_aluno} <span style="font-size: 12px; color: #8b949e; font-weight: normal;">(RM: ${relato.rm_aluno})</span></div>
+        <div style="font-size: 13.5px; color: #ffffff; font-weight: 700;">${textoHTML(relato.nome_aluno)} <span style="font-size: 12px; color: #8b949e; font-weight: normal;">(RM: ${textoHTML(relato.rm_aluno)})</span></div>
         <div style="font-size: 12px; color: #c9d1d9; margin-top: 4px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px; border: 1px solid #30363d;">
-          "${relato.descricao}"
+          "${textoHTML(relato.descricao)}"
         </div>
-        <div style="font-size: 11px; color: #8b949e; margin-top: 5px;">Categoria: <strong>${relato.categoria}</strong> | Registrado em: ${relato.data_registro}</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 5px;">Categoria: <strong>${textoHTML(relato.categoria)}</strong> | Registrado em: ${textoHTML(relato.data_registro)}</div>
       `;
 
       const container = document.getElementById('smartMatchItensContainer');
@@ -2976,22 +2977,22 @@
           return `
             <div style="background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; display: flex; gap: 12px; align-items: center;">
               <div style="width: 60px; height: 60px; border-radius: 8px; background: #0d1117; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-                ${foto ? `<img src="${foto}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-box text-slate-600"></i>`}
+                ${foto ? `<img src="${imagemHTML(foto)}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-box text-slate-600"></i>`}
               </div>
               <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-                  <div style="font-weight: 700; color: #ffffff; font-size: 13px;" class="truncate">#${item.id} - ${item.nome || item.txt_descricao}</div>
-                  <span style="background: ${bgBadge}; color: ${corBadge}; border: 1px solid ${corBadge}; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap;">
-                    ${m.score}% Compatível
+                  <div style="font-weight: 700; color: #ffffff; font-size: 13px;" class="truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao)}</div>
+                  <span style="background: ${textoHTML(bgBadge)}; color: ${textoHTML(corBadge)}; border: 1px solid ${textoHTML(corBadge)}; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap;">
+                    ${textoHTML(m.score)}% Compatível
                   </span>
                 </div>
-                <div style="font-size: 11px; color: #8b949e; margin-top: 2px;">Local: ${item.txt_local || 'Indefinido'} | Data: ${item.txt_data || '-'}</div>
+                <div style="font-size: 11px; color: #8b949e; margin-top: 2px;">Local: ${textoHTML(item.txt_local || 'Indefinido')} | Data: ${textoHTML(item.txt_data || '-')}</div>
                 <div style="font-size: 10.5px; color: #34d399; margin-top: 4px;">
-                  ${m.motivos.map(mot => `<span style="background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; margin-right: 4px;">✓ ${mot}</span>`).join('')}
+                  ${m.motivos.map(mot => `<span style="background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; margin-right: 4px;">✓ ${textoHTML(mot)}</span>`).join('')}
                 </div>
               </div>
               <div style="flex-shrink: 0;">
-                <button onclick="prepararBaixaPorMatch(${item.id}, '${relato.nome_aluno.replace(/'/g, "\\'")}', '${relato.rm_aluno}')" class="btn-acao" style="background: #10b981; padding: 7px 11px; font-size: 11px;" title="Vincular e Entregar">
+                <button onclick="prepararBaixaPorMatch(${argumentoHTML(item.id)}, ${argumentoHTML(relato.nome_aluno)}, ${argumentoHTML(relato.rm_aluno)})" class="btn-acao" style="background: #10b981; padding: 7px 11px; font-size: 11px;" title="Vincular e Entregar">
                   <i class="fas fa-check"></i> Dar Baixa
                 </button>
               </div>
@@ -3051,25 +3052,25 @@
       let linhasTabela = '';
       if (tipo === 'ENTREGAS') {
         linhasTabela = itensFiltrados.map((it, idx) => `
-          <tr style="border-bottom: 1px solid #e5e7eb; ${idx % 2 === 0 ? 'background: #f9fafb;' : ''}">
-            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${it.item_id || it.id || '-'}</td>
-            <td style="padding: 7px 9px; font-weight: bold;">${it.nome_item || it.nome || '-'}</td>
-            <td style="padding: 7px 9px;">${it.retirado_por || '-'}</td>
-            <td style="padding: 7px 9px; font-family: monospace;">${it.rm_retirante || '-'}</td>
-            <td style="padding: 7px 9px;">${it.turma_curso || '-'}</td>
-            <td style="padding: 7px 9px;">${it.data_entrega || '-'}</td>
-            <td style="padding: 7px 9px;">${it.funcionario_responsavel || 'Secretaria'}</td>
+          <tr style="border-bottom: 1px solid #e5e7eb; ${textoHTML(idx % 2 === 0 ? 'background: #f9fafb;' : '')}">
+            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${textoHTML(it.item_id || it.id || '-')}</td>
+            <td style="padding: 7px 9px; font-weight: bold;">${textoHTML(it.nome_item || it.nome || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.retirado_por || '-')}</td>
+            <td style="padding: 7px 9px; font-family: monospace;">${textoHTML(it.rm_retirante || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.turma_curso || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.data_entrega || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.funcionario_responsavel || 'Secretaria')}</td>
           </tr>
         `).join('');
       } else {
         linhasTabela = itensFiltrados.map((it, idx) => `
-          <tr style="border-bottom: 1px solid #e5e7eb; ${idx % 2 === 0 ? 'background: #f9fafb;' : ''}">
-            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${it.id}</td>
-            <td style="padding: 7px 9px; font-weight: bold;">${it.nome || it.txt_descricao || '-'}</td>
-            <td style="padding: 7px 9px;">${it.categoria || 'OUTROS'}</td>
-            <td style="padding: 7px 9px;">${it.txt_local || 'Indefinido'}</td>
-            <td style="padding: 7px 9px;">${it.txt_data || '-'}</td>
-            <td style="padding: 7px 9px; font-weight: bold; font-size: 10px;">${(it.status || 'DISPONÍVEL').toUpperCase()}</td>
+          <tr style="border-bottom: 1px solid #e5e7eb; ${textoHTML(idx % 2 === 0 ? 'background: #f9fafb;' : '')}">
+            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${textoHTML(it.id)}</td>
+            <td style="padding: 7px 9px; font-weight: bold;">${textoHTML(it.nome || it.txt_descricao || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.categoria || 'OUTROS')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.txt_local || 'Indefinido')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.txt_data || '-')}</td>
+            <td style="padding: 7px 9px; font-weight: bold; font-size: 10px;">${textoHTML((it.status || 'DISPONÍVEL').toUpperCase())}</td>
           </tr>
         `).join('');
       }
@@ -3101,7 +3102,7 @@
         <html lang="pt-BR">
         <head>
           <meta charset="UTF-8">
-          <title>${tituloDocumento} - ${protocolo}</title>
+          <title>${textoHTML(tituloDocumento)} - ${textoHTML(protocolo)}</title>
           <style>
             @page { size: A4; margin: 12mm 15mm 15mm 15mm; }
             * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; color: #111827; }
@@ -3139,21 +3140,21 @@
               <p>Núcleo de Gestão Escolar & Secretaria Administrativa</p>
             </div>
             <div style="text-align: right; font-size: 10px; color: #6b7280;">
-              <div><strong>Protocolo:</strong> ${protocolo}</div>
-              <div><strong>Data:</strong> ${dataHora}</div>
+              <div><strong>Protocolo:</strong> ${textoHTML(protocolo)}</div>
+              <div><strong>Data:</strong> ${textoHTML(dataHora)}</div>
             </div>
           </div>
 
           <div style="text-align: center; margin-bottom: 14px;">
-            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: #111827;">${tituloDocumento}</h3>
-            <p style="font-size: 12px; color: #dc2626; font-weight: 700; margin-top: 2px;">${subtitulo}</p>
+            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: #111827;">${textoHTML(tituloDocumento)}</h3>
+            <p style="font-size: 12px; color: #dc2626; font-weight: 700; margin-top: 2px;">${textoHTML(subtitulo)}</p>
           </div>
 
           <div class="meta-box">
             <div><strong>Unidade Escolar:</strong> ETEC Profº José Ignácio Azevedo Filho</div>
             <div><strong>Emissão:</strong> Secretaria Acadêmica / Gestão de Pertences</div>
-            <div><strong>Total de Registros Constantes:</strong> ${itensFiltrados.length} item(ns)</div>
-            <div><strong>Código de Autenticidade:</strong> ${protocolo}</div>
+            <div><strong>Total de Registros Constantes:</strong> ${textoHTML(itensFiltrados.length)} item(ns)</div>
+            <div><strong>Código de Autenticidade:</strong> ${textoHTML(protocolo)}</div>
           </div>
 
           <table class="tabela-relatorio">

@@ -15,6 +15,7 @@ Instale `requirements.txt` em um ambiente virtual. Execute com banco desabilitad
 ```bash
 JWT_SECRET=teste-local-apenas-0123456789abcdef DATABASE_URL='' python -m pytest -q
 node --check script.js
+node --check seguranca-interface.js
 node --check sw.js
 node tests/test_portal_auth.cjs
 node tests/test_privacy_portal.cjs
@@ -33,7 +34,7 @@ Os testes usam o cliente Flask real, banco simulado e uma tabela SQLite temporá
 - Doações pendentes são contadas pelo mesmo filtro usado na conclusão, incluindo nomes históricos. Concluir arquiva como `DOAÇÃO FEITA`, preservando registros.
 - Servidor e testes usam a mesma validação de e-mail institucional, incluindo CPS e ETEC.
 
-Esta é uma primeira etapa. Ainda é necessário revisar a comprovação e unicidade do RM no cadastro/alteração, exposição de dados pessoais e renderização de conteúdo informado por usuários. A sessão identifica o RM declarado na conta; não comprova vínculo com a matrícula escolar.
+Esta seção descreve a primeira etapa. As revisões de exposição de dados e renderização estão registradas nas etapas posteriores. A comprovação e unicidade do RM no cadastro/alteração continuam pendentes. A sessão identifica o RM declarado na conta; não comprova vínculo com a matrícula escolar.
 
 ## Aplicar o pacote
 
@@ -77,4 +78,26 @@ A UI usa visao-formulario.js para aplicar somente respostas completas do método
 
 Validação desta revisão: 116 testes Python e 18 JavaScript passaram. Há 44 casos de visão com PNG real em memória e provedor simulado, além de casos de formulário para fallback, baixa confiança, categorias com/sem acentos, preservação de valores manuais e troca de foto durante análise. Essa validação comprova contratos e tratamento de falhas; não comprova reconhecimento visual 100%, acesso ao modelo na conta real, OCR correto em documentos reais ou melhoria quantitativa de precisão.
 
-A pedido do usuário, se não fosse possível comprovar o funcionamento integral, a issue #13 deveria ser fechada para retomada manual. A proposta preserva melhorias verificadas, mas o encerramento será sem classificação de resolução integral. Não usar Closes #13 como declaração de precisão comprovada. Não houve mudança de hospedagem ou acesso ao banco de produção.
+A issue #13 foi encerrada como concluída a pedido posterior do usuário, após os exemplos discutidos no chat. Essa decisão não substitui a validação com a API real descrita acima. Não houve mudança de hospedagem ou acesso ao banco de produção.
+
+## Sexta etapa: renderização segura de conteúdo
+
+O portal e o painel carregam seguranca-interface.js antes dos scripts existentes. textoHTML codifica os cinco caracteres com significado em texto/atributos HTML. argumentoHTML serializa o valor como JSON e então o codifica para um atributo delimitado por aspas duplas; por isso um nome com aspas continua sendo o argumento original do botão, sem formar código adicional. Os dados enviados à API e salvos no banco não são codificados nem modificados.
+
+Todos os templates HTML identificados em script.js e no painel foram revisados. Fragmentos compostos internos (cards, imagens, badges e linhas de relatórios) continuam sendo HTML, mas os valores interpolados em seu interior recebem a codificação adequada. As áreas de professores já usam textContent/createElement. Diálogos que precisam de negrito e quebras de linha usam uma árvore recriada a partir de template inerte: somente b, strong, em, i, br, p, ul, ol, li, code e span, sem atributos. Não há suporte a HTML arbitrário nos textos de usuários.
+
+URLs de imagem são normalizadas e limitadas a HTTP/HTTPS ou data URI base64 de PNG/JPEG/WebP/GIF. URLs relativas continuam funcionando; SVG inline, javascript:, file: e data:text/html são recusados. Imagens HTTP/HTTPS ainda podem ser externas; isto não valida os bytes de uma URL externa nem é um scanner de imagens. A abertura dessas URLs em outra aba remove acesso ao opener. Os textos livres podem continuar contendo dados pessoais e ainda dependem de moderação.
+
+Validação: os 116 testes Python e 18 testes JavaScript anteriores passaram. Há também 10 testes de regressão no Chromium usando os HTML e scripts reais do projeto. Todas as solicitações de rede são interceptadas e simuladas: não há acesso ao Railway nem a outros serviços. Os testes verificam ausência de elementos/eventos injetados e execução de scripts, preservação literal de símbolos/acentos, argumentos originais de botões, filtros de URL, formatação básica de diálogos e documentos de impressão. Foram verificadas também a sintaxe dos scripts externos/inline e a consistência do diff. Isso cobre os caminhos testados, sem afirmar proteção contra toda vulnerabilidade futura ou contra scripts de terceiros comprometidos.
+
+Para repetir os testes de navegador separadamente (dependência opcional de desenvolvimento):
+
+```bash
+pip install playwright
+playwright install chromium
+python tests/browser_text_safety.py
+# Alternativa com Chromium existente:
+CHROMIUM_PATH=/usr/bin/chromium python tests/browser_text_safety.py
+```
+
+O novo script seguranca-interface.js deve ser publicado junto com os dois HTML e script.js. Não exige variável de ambiente nem migração de banco. A branch parte da proposta #18 e deve preservar as propostas anteriores antes da integração na main.

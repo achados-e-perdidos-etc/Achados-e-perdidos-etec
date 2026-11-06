@@ -15,6 +15,7 @@ test('Meus itens usa sessão e consulta privada sem depender de nome ou RM retor
   }});
  const start=source.indexOf('async function abrirPainelMeusItens(');
  const end=source.indexOf('function selecionarFiltroCategoria(',start);
+ vm.runInContext(fs.readFileSync('seguranca-interface.js','utf8'),ctx);
  vm.runInContext(source.slice(start,end),ctx);
  await ctx.abrirPainelMeusItens();
  assert.equal(calls.length,2);

@@ -452,8 +452,8 @@ function mostrarToast(mensagem, tipo = 'info') {
     
     t.className = `glass-panel text-white px-4 py-3 rounded-2xl flex items-center gap-3 toast-enter pointer-events-auto shadow-2xl border border-white/10 min-w-[280px] max-w-sm`;
     t.innerHTML = `
-        <i class="fas ${icone} ${corIcone} text-base shrink-0"></i>
-        <p class="text-xs font-semibold flex-grow leading-snug">${mensagem}</p>
+        <i class="fas ${textoHTML(icone)} ${textoHTML(corIcone)} text-base shrink-0"></i>
+        <p class="text-xs font-semibold flex-grow leading-snug">${textoHTML(mensagem)}</p>
         <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white text-xs"><i class="fas fa-times"></i></button>
     `;
     c.appendChild(t); 
@@ -468,7 +468,9 @@ function fecharZoomImagem(e) {
     if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect(); 
 }
 function abrirZoomImagem(src) { 
-    document.getElementById('imgZoomConteudo').src = src; 
+    const url = urlImagemSegura(src);
+    if (!url) return;
+    document.getElementById('imgZoomConteudo').src = url;
     document.getElementById('modalZoomImagem').classList.add('ativo'); 
     document.body.style.overflow = 'hidden'; 
 }
@@ -506,10 +508,10 @@ async function abrirPainelMeusItens() {
                     listaSol.innerHTML += `
                         <div class="glass-panel rounded-2xl p-4 flex justify-between items-center gap-3 border border-white/5">
                             <div>
-                                <p class="text-xs font-bold text-white">${i.nome || i.txt_descricao}</p>
-                                <p class="text-[10px] text-slate-400 mt-0.5">Status: <span class="font-bold text-amber-400 uppercase">${st}</span></p>
+                                <p class="text-xs font-bold text-white">${textoHTML(i.nome || i.txt_descricao)}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Status: <span class="font-bold text-amber-400 uppercase">${textoHTML(st)}</span></p>
                             </div>
-                            <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")})' class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition">VER</button>
+                            <button onclick="abrirDetalhes(${argumentoHTML(i)})" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition">VER</button>
                         </div>`;
                 });
             } else listaSol.innerHTML = `<p class="text-xs text-slate-500 italic">Você ainda não solicitou nenhum item.</p>`;
@@ -537,9 +539,9 @@ async function abrirPainelMeusItens() {
                         htmlMatchBadge = `
                             <div class="mt-2.5 pt-2.5 border-t border-white/5 flex items-center justify-between">
                                 <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
-                                    <i class="fas fa-magic"></i> Encontramos item compatível (${top.score}%)
+                                    <i class="fas fa-magic"></i> Encontramos item compatível (${textoHTML(top.score)}%)
                                 </span>
-                                <button onclick='abrirDetalhes(${JSON.stringify(top.item).replace(/'/g, "&apos;")})' class="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 transition">
+                                <button onclick="abrirDetalhes(${argumentoHTML(top.item)})" class="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 transition">
                                     Ver Objeto
                                 </button>
                             </div>
@@ -550,8 +552,8 @@ async function abrirPainelMeusItens() {
                         <div class="glass-panel rounded-2xl p-4 border border-white/5">
                             <div class="flex justify-between items-center gap-3">
                                 <div>
-                                    <p class="text-xs font-bold text-white"><span class="text-amber-400">[${r.categoria}]</span> ${r.descricao}</p>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Data do registro: ${r.data || 'Recente'}</p>
+                                    <p class="text-xs font-bold text-white"><span class="text-amber-400">[${textoHTML(r.categoria)}]</span> ${textoHTML(r.descricao)}</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Data do registro: ${textoHTML(r.data || 'Recente')}</p>
                                 </div>
                                 <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider shrink-0">ATIVO</span>
                             </div>
@@ -604,18 +606,18 @@ async function carregarCategoriasDinamicamente() {
                 containerChips.innerHTML = '';
                 cats.forEach(c => {
                     containerChips.innerHTML += `
-                        <button id="chipCat_${c.nome}" onclick="selecionarFiltroCategoria('${c.nome}', '${c.nome}')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white/5 text-slate-300 border-white/10 hover:bg-white/10">
-                            ${c.nome}
+                        <button id="chipCat_${textoHTML(c.nome)}" onclick="selecionarFiltroCategoria(${argumentoHTML(c.nome)}, ${argumentoHTML(c.nome)})" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white/5 text-slate-300 border-white/10 hover:bg-white/10">
+                            ${textoHTML(c.nome)}
                         </button>`;
                 });
             }
             if (selectMural) {
                 selectMural.innerHTML = '';
-                cats.forEach(c => { selectMural.innerHTML += `<option value="${c.nome}">${c.nome}</option>`; });
+                cats.forEach(c => { selectMural.innerHTML += `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`; });
             }
             if (selectAlunoCad) {
                 selectAlunoCad.innerHTML = '';
-                cats.forEach(c => { selectAlunoCad.innerHTML += `<option value="${c.nome}">${c.nome}</option>`; });
+                cats.forEach(c => { selectAlunoCad.innerHTML += `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`; });
             }
         }
     } catch (e) {}
@@ -691,27 +693,27 @@ function renderizarItens() {
         }
 
         grid.innerHTML += `
-            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="interactive-card glass-panel rounded-3xl p-4 cursor-pointer flex flex-col justify-between group border border-white/10">
+            <div onclick="abrirDetalhes(${argumentoHTML(item)})" class="interactive-card glass-panel rounded-3xl p-4 cursor-pointer flex flex-col justify-between group border border-white/10">
                 <div>
                     <div class="relative w-full h-44 rounded-2xl overflow-hidden mb-3.5 bg-black/40 border border-white/5">
-                        ${imagemSrc ? `<img src="${imagemSrc}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex flex-col justify-center items-center text-slate-600"><i class="fas fa-box text-3xl mb-1"></i><span class="text-[10px] font-bold">Sem imagem</span></div>`}
+                        ${imagemSrc ? `<img src="${imagemHTML(imagemSrc)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex flex-col justify-center items-center text-slate-600"><i class="fas fa-box text-3xl mb-1"></i><span class="text-[10px] font-bold">Sem imagem</span></div>`}
                         <div class="absolute top-2.5 left-2.5">
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/10 shadow-sm">${item.categoria}</span>
+                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/10 shadow-sm">${textoHTML(item.categoria)}</span>
                         </div>
                         <div class="absolute top-2.5 right-2.5">
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border shadow-sm ${badgeCor}">
-                                ${st}
+                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border shadow-sm ${textoHTML(badgeCor)}">
+                                ${textoHTML(st)}
                             </span>
                         </div>
-                        ${fotosArray.length > 1 ? `<div class="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md border border-white/10"><i class="fas fa-images mr-1"></i>${fotosArray.length}</div>` : ''}
+                        ${fotosArray.length > 1 ? `<div class="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md border border-white/10"><i class="fas fa-images mr-1"></i>${textoHTML(fotosArray.length)}</div>` : ''}
                     </div>
 
-                    <h4 class="font-extrabold text-sm text-white truncate tracking-tight">${item.nome || item.txt_descricao}</h4>
-                    <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-snug">${item.txt_descricao}</p>
+                    <h4 class="font-extrabold text-sm text-white truncate tracking-tight">${textoHTML(item.nome || item.txt_descricao)}</h4>
+                    <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-snug">${textoHTML(item.txt_descricao)}</p>
                 </div>
 
                 <div class="pt-3 mt-3 border-t border-white/5 flex justify-between items-center text-[11px] text-slate-400">
-                    <span class="truncate max-w-[150px]"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${item.txt_local}</span>
+                    <span class="truncate max-w-[150px]"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${textoHTML(item.txt_local)}</span>
                     <span class="font-bold text-slate-300 flex items-center gap-1">Ver <i class="fas fa-chevron-right text-[9px] text-red-500"></i></span>
                 </div>
             </div>
@@ -764,7 +766,7 @@ function abrirDetalhes(item) {
     if(fotosAtuais.length > 0) {
         document.getElementById('detailPlaceholder').classList.add('hidden');
         fotosAtuais.forEach(f => {
-            cont.innerHTML += `<div class="w-full h-full flex-shrink-0 snap-center flex justify-center items-center p-2"><img src="${f}" onclick="abrirZoomImagem('${f}')" class="max-h-full max-w-full object-contain rounded-xl cursor-zoom-in"></div>`;
+            cont.innerHTML += `<div class="w-full h-full flex-shrink-0 snap-center flex justify-center items-center p-2"><img src="${imagemHTML(f)}" onclick="abrirZoomImagem(${argumentoHTML(urlImagemSegura(f))})" class="max-h-full max-w-full object-contain rounded-xl cursor-zoom-in"></div>`;
         });
         if (fotosAtuais.length > 1) {
             counterEl.classList.remove('hidden');
@@ -903,11 +905,11 @@ async function carregarMuralPublico() {
             container.innerHTML = mural.map(m => `
                 <div class="glass-panel rounded-2xl p-4 border border-white/5 space-y-2">
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">${m.categoria}</span>
-                        <span class="text-[10px] text-slate-500">${m.data_registro || ''}</span>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">${textoHTML(m.categoria)}</span>
+                        <span class="text-[10px] text-slate-500">${textoHTML(m.data_registro || '')}</span>
                     </div>
-                    <p class="text-xs text-slate-200 font-medium">"${m.descricao}"</p>
-                    <p class="text-[10px] text-slate-400 font-bold"><i class="fas fa-user text-slate-500 mr-1"></i>${m.nome_aluno}</p>
+                    <p class="text-xs text-slate-200 font-medium">"${textoHTML(m.descricao)}"</p>
+                    <p class="text-[10px] text-slate-400 font-bold"><i class="fas fa-user text-slate-500 mr-1"></i>${textoHTML(m.nome_aluno)}</p>
                 </div>
             `).join('');
         }
@@ -921,10 +923,10 @@ function exibirMatchesImediatos(itens) {
         lst.innerHTML += `
             <div class="glass-panel p-3 rounded-2xl flex justify-between items-center gap-3 border border-white/5">
                 <div>
-                    <p class="text-xs font-bold text-white">${i.nome || i.txt_descricao}</p>
-                    <span class="text-[9px] uppercase font-bold text-emerald-400">${i.categoria}</span>
+                    <p class="text-xs font-bold text-white">${textoHTML(i.nome || i.txt_descricao)}</p>
+                    <span class="text-[9px] uppercase font-bold text-emerald-400">${textoHTML(i.categoria)}</span>
                 </div>
-                <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")}); document.getElementById("modalMatchImediato").classList.add("hidden");' class="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs">VER</button>
+                <button onclick="abrirDetalhes(${argumentoHTML(i)}); document.getElementById('modalMatchImediato').classList.add('hidden');" class="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs">VER</button>
             </div>`;
     });
     document.getElementById('modalMatchImediato').classList.remove('hidden');
@@ -996,11 +998,11 @@ async function atualizarMensagensChat() {
             msgs.forEach(m => { 
                 const eu = m.remetente === 'ALUNO'; 
                 c.innerHTML += `
-                    <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
-                        <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
+                    <div class="flex w-full ${textoHTML(eu ? 'justify-end' : 'justify-start')}">
+                        <div class="flex items-end gap-2 max-w-[85%] ${textoHTML(eu ? 'flex-row-reverse' : 'flex-row')}">
                             ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 shadow-md text-white"><i class="fas fa-shield-alt text-[10px]"></i></div>` : ''}
-                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${eu ? 'rounded-tr-sm bg-gradient-to-r from-red-600 to-rose-600 text-white' : 'rounded-tl-sm border border-white/10 bg-[#161c28] text-slate-200'}">
-                                ${m.mensagem}
+                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${textoHTML(eu ? 'rounded-tr-sm bg-gradient-to-r from-red-600 to-rose-600 text-white' : 'rounded-tl-sm border border-white/10 bg-[#161c28] text-slate-200')}">
+                                ${textoHTML(m.mensagem)}
                             </div>
                         </div>
                     </div>`; 
@@ -1086,8 +1088,8 @@ function renderizarGridPreviewAluno() {
         fotosAlunoSelecionadas.forEach((f, i) => {
             container.innerHTML += `
                 <div class="relative w-20 h-20 shrink-0">
-                    <img src="${f}" class="w-full h-full object-cover rounded-xl border border-white/10">
-                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();
+                    <img src="${imagemHTML(f)}" class="w-full h-full object-cover rounded-xl border border-white/10">
+                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${textoHTML(i)}, 1); renderizarGridPreviewAluno();
         const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
         if (btnIAAluno) {
             if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
