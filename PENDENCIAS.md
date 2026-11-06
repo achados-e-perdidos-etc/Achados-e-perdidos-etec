@@ -1,5 +1,9 @@
 # Achados e Perdidos ETEC — pendências
 
+## Situação atual — orientação do proprietário
+
+O envio Web Push foi implementado na proposta #25. As demais pendências conhecidas ficam **adiadas por inviabilidade atual**, preservadas no histórico abaixo. Quando o proprietário perguntar por pendências, informar que não há outra pendência ativa viável nesta rodada; não reoferecer tarefas adiadas nem afirmar que foram concluídas. Isso inclui integração/publicação das propostas, hospedagem/migração, configuração real de serviços, validação de RM pela escola e revisão visual completa de monitores grandes.
+
 Registro em 04/11/2026. Repositório: https://github.com/achados-e-perdidos-etc/Achados-e-perdidos-etec
 
 ## Prioridade atual definida pelo usuário
@@ -19,15 +23,16 @@ Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram
 ## Outros pontos para revisar
 
 - [x] Removido o segredo JWT padrão do código; inicialização exige segredo com pelo menos 32 bytes.
-- [ ] Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
-- [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros. Adiado pelo usuário até obter a lista oficial da escola com e-mail institucional e matrícula; não implementar aprovação manual nesta etapa.
+- [ ] **ADIADO** — Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
+- [ ] **ADIADO** — Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros. Adiado pelo usuário até obter a lista oficial da escola com e-mail institucional e matrícula; não implementar aprovação manual nesta etapa.
 - [x] Exigir sessão nas operações pessoais e obter autoria da sessão em solicitação de itens, publicação no mural e cadastro de objetos encontrados. Detalhes na sétima etapa.
 - [x] Proteger a vinculação de notificações push à sessão; cadastro e exclusão exigem login e usam a conta por e-mail, sem escolher destinatário por RM. Detalhes na oitava etapa.
-- [ ] Implementar e validar o emissor de Web Push no servidor com VAPID real e hospedagem HTTPS. O projeto tem cadastro de assinaturas e recepção no service worker, mas ainda não foi encontrada rotina de envio Web Push no backend; notificações locais do navegador não comprovam entrega em segundo plano.
+- [x] Implementar emissor Web Push com VAPID, criptografia, fila persistida e testes de protocolo/transporte controlado. Detalhes na proposta #25.
+- [ ] **ADIADO** — Ativar e comprovar entrega em aparelhos reais após publicação HTTPS e configuração de VAPID. A implementação e os testes locais não equivalem a entrega real validada.
 - [x] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts no portal e painel; detalhes e limites na sexta etapa.
 - [x] Removido login compartilhado professor/professor e sessões fictícias do navegador. Professores usam conta institucional com senha individual; tokens antigos exigem novo login.
 - [x] Catálogo e mural públicos usam lista explícita de campos sem nome do autor, RM ou e-mail de alunos. Dados administrativos exigem token de secretaria; consultas pessoais filtram pelo e-mail da sessão. Conteúdo livre de descrições e imagens ainda pode conter dados pessoais e exige moderação.
-- [ ] Após a migração, substituir a URL Railway fixa no frontend e verificar também painel e aplicativo desktop.
+- [ ] **ADIADO** — Após a migração, substituir a URL Railway fixa no frontend e verificar também painel e aplicativo desktop.
 
 ## Segunda etapa — acesso de professores
 
@@ -92,7 +97,7 @@ Branch derivada da proposta #17. A revisão identificou uma cópia antiga da vis
 - [x] Formulários só aplicam resposta completa do modelo com confiança declarada alta/média; baixa confiança e fallback preservam campos existentes.
 - [x] Categorias são comparadas por igualdade após normalização correta, sem escolher a primeira opção por correspondência vazia.
 - [x] Resultado atrasado de uma foto anterior é ignorado; OCR não confiável não é aplicado nem cruzado com alunos.
-- [ ] Validar precisão visual com credencial real e fotos representativas. Confiança declarada pelo modelo não comprova acerto.
+- [ ] **ADIADO** — Validar precisão visual com credencial real e fotos representativas. Confiança declarada pelo modelo não comprova acerto.
 
 116 testes Python e 18 testes JavaScript passaram. Não houve chamada real a um provedor de visão nem medição da precisão visual. Após avaliar os exemplos no chat, o usuário pediu o encerramento da issue #13 como concluída; isso foi registrado no GitHub, mantendo pendente a validação da precisão com o provedor real. Os dados de produção não foram acessados.
 
@@ -174,3 +179,22 @@ Branch 24-animacoes-transicoes, baseada na proposta #23.
 - [x] Foco visível de teclado e preferência de movimento reduzido aplicada aos efeitos CSS, ao carrossel e à abertura com GIF, que é ignorada nessa preferência.
 
 Validação desta etapa: 33 testes JavaScript e 27 testes no Chromium passaram (21 regressões anteriores e seis novos fluxos de movimento). Conferidos abertura/fechamento durante animação, término sem transformações persistentes, sequência limitada, chat estável, foco de teclado, 404 e preferência de movimento reduzido. Prévia de celular em 390 × 844 sem transbordamento horizontal. Backend e banco não foram modificados; a suíte Python do backend não foi repetida nesta etapa visual. Nenhuma publicação em produção ou integração à main.
+
+
+## Décima segunda etapa — emissor de Web Push (proposta 25)
+
+Branch 25-envio-notificacoes, baseada na proposta #24.
+
+- [x] Emissor com pywebpush, VAPID correspondente à chave pública e criptografia AES128GCM; mensagens genéricas, sem texto privado do chat, nomes, RM ou descrição de item na tela bloqueada.
+- [x] Fila persistida por dispositivo, reserva exclusiva entre workers e retomada após reinicialização. Não bloqueia rotas aguardando o provedor.
+- [x] Avisos de resposta da secretaria, mudança de status/recusa de pedido e possíveis correspondências com relatos do mural, sempre por e-mail da conta.
+- [x] Autoria de novas mensagens registrada por e-mail autenticado. Conversas antigas ou ambíguas não recebem destinatário adivinhado por RM.
+- [x] Assinaturas removidas/revinculadas são conferidas antes de enviar; 404/410 removem apenas a assinatura correspondente, sem apagar novo vínculo durante uma troca de conta.
+- [x] Timeout de oito segundos, até quatro tentativas e intervalos de reenvio. Endpoints de provedores conhecidos e sem redirecionamento; erros não registram chaves ou endpoints.
+- [x] Botão Testar Notificações solicita envio somente para a própria conta, com limite de um teste a cada 30 segundos e sem declarar entrega antes da recepção.
+- [x] Rotação de VAPID no navegador renova a assinatura quando necessário; chave de exemplo removida. Clique na notificação abre somente a origem do site.
+- [x] Orientação sobre pendências adiadas registrada em AGENTS.md e nesta lista.
+
+Validação: testes criptografam/assinam com chaves efêmeras reais, interceptam o transporte sem contatar provedores e decifram/verificam o payload/JWT. Fila e migrações foram exercitadas em PostgreSQL temporário, com ambas as implementações de rotas. O recebimento por um aparelho real não foi comprovado: ativação e validação com serviços reais ficam adiadas junto das demais tarefas atualmente inviáveis. Nenhum banco/credencial de produção foi usado, nenhuma notificação foi enviada a contas reais e a proposta permanece separada da main.
+
+Verificação desta etapa: 266 testes Python (incluindo 13 casos em PostgreSQL real temporário), 40 testes JavaScript e 29 testes no Chromium passaram. O transporte dos testes foi interceptado; não houve entrega a um serviço/dispositivo de produção.

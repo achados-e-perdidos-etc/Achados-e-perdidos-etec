@@ -26,13 +26,14 @@ import cloudinary.uploader
 import jwt
 from PIL import Image
 from services.ai_vision_service import analisar_imagem_com_ia
+from services import push_delivery
 from services.cloudinary_service import processar_fotos, FalhaUploadFotos
 from utils.privacy import item_publico, relato_publico
 from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat, identidade_aluno, identidade_portal
 from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.professores import SCHEMA_ACESSO_PROFESSORES
-from utils.push import SCHEMA_PUSH
+from utils.push import SCHEMA_PUSH, SCHEMA_ENTREGAS_PUSH, SCHEMA_EMAIL_CHAT, SCHEMA_LIMITE_PUSH, INDICE_ENTREGAS_PUSH
 from config import JWT_SECRET
 
 # ============================================================
@@ -93,7 +94,7 @@ DOMINIOS_EMAIL_PERMITIDOS = [
     "@aluno.cps.sp.gov.br", "@cps.sp.gov.br", "@etec.sp.gov.br"
 ]
 
-VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDZKrxZJjSPO2S-2jT_GL5prEQC43XP0_12N_sample").strip()
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "").strip()
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
 VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "mailto:achadoseperdidosetec@gmail.com").strip()
 
@@ -248,6 +249,10 @@ def init_db():
         );''')
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
         cursor.execute(SCHEMA_PUSH)
+        cursor.execute(SCHEMA_ENTREGAS_PUSH)
+        cursor.execute(INDICE_ENTREGAS_PUSH)
+        cursor.execute(SCHEMA_EMAIL_CHAT)
+        cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')
@@ -705,15 +710,19 @@ def cad_item():
                 conn.rollback()
                 logger.exception("Falha ao notificar aluno por OCR | item_id=%s", nid)
 
+        destinatarios_push = set()
         try:
             termos_n = extrair_termos(f"{nome} {desc}")
             c.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (cat,))
             for m in c.fetchall():
                 if len(termos_n.intersection(extrair_termos(m.get('descricao', '')))) >= 1:
+                    if m.get('email_aluno'): destinatarios_push.add(m['email_aluno'].strip().lower())
                     c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, 'SECRETARIA', %s, %s);", (m['rm_aluno'], m['nome_aluno'], f"Possível pertence encontrado: '{nome or desc}'. Veja o catálogo!", datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
             conn.commit()
-        except Exception: conn.rollback()
+        except Exception:
+            conn.rollback(); destinatarios_push.clear()
         c.close(); conn.close()
+        for destino in destinatarios_push: push_delivery.notificar(destino, 'match')
         return jsonify({"success": True, "id": nid})
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
@@ -748,6 +757,8 @@ def gen_item(item_id):
                 c.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
                 c.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, nome or desc, d.get('retirado_por', it.get('solicitado_por', '')), d.get('rm_retirante', it.get('rm_aluno', '')), d.get('turma_curso', '-'), d.get('data_entrega', datetime.now().strftime("%d/%m/%Y %H:%M")), d.get('funcionario_responsavel', 'Secretaria')))
             conn.commit(); c.close(); conn.close()
+            if status != it.get('status'):
+                push_delivery.notificar(it.get('email_solicitante'), 'item')
             return jsonify({"success": True})
     except FalhaUploadFotos as error:
         if conn: conn.rollback(); conn.close()
@@ -759,7 +770,7 @@ def gen_item(item_id):
 def rec_item(item_id):
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT aprovado FROM itens WHERE id = %s;", (item_id,))
+        c.execute("SELECT aprovado, email_solicitante FROM itens WHERE id = %s;", (item_id,))
         it = c.fetchone()
         if it and it.get('aprovado') is False:
             c.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
@@ -768,6 +779,7 @@ def rec_item(item_id):
             c.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL WHERE id = %s;", (item_id,))
             msg = "Item retornado para DISPONÍVEL."
         conn.commit(); c.close(); conn.close()
+        push_delivery.notificar(it.get('email_solicitante') if it else None, 'item')
         return jsonify({"success": True, "message": msg})
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
@@ -849,8 +861,9 @@ def env_chat():
     msg = limpar_texto_entrada(d.get('mensagem'), 4000)
     if not rm or not msg: return jsonify({"success": False}), 400
     conn = get_db_connection(); c = conn.cursor()
-    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", (rm, nome, rem, msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, %s, %s, %s, %s);", (rm, nome, rem, msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), user.get('email') if rem == 'ALUNO' else None))
     conn.commit(); c.close(); conn.close()
+    if rem == 'SECRETARIA': push_delivery.notificar_resposta(rm)
     return jsonify({"success": True})
 
 @app.route('/api/chat/mensagens/<string:rm>', methods=['OPTIONS', 'GET'])

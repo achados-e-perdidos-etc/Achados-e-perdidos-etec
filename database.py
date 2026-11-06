@@ -1,5 +1,5 @@
 from utils.professores import SCHEMA_ACESSO_PROFESSORES
-from utils.push import SCHEMA_PUSH
+from utils.push import SCHEMA_PUSH, SCHEMA_ENTREGAS_PUSH, SCHEMA_EMAIL_CHAT, SCHEMA_LIMITE_PUSH, INDICE_ENTREGAS_PUSH
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -114,6 +114,10 @@ def init_db():
         );''')
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
         cursor.execute(SCHEMA_PUSH)
+        cursor.execute(SCHEMA_ENTREGAS_PUSH)
+        cursor.execute(INDICE_ENTREGAS_PUSH)
+        cursor.execute(SCHEMA_EMAIL_CHAT)
+        cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')

@@ -14,16 +14,23 @@ async function ativarWebPush() {
         if (!sessaoAtiva()) return false;
         const reg = await navigator.serviceWorker.ready;
         if (!sessaoAtiva()) return false;
+        const chaveRes = await fetch(API_URL + '/api/push/public-key');
+        if (!chaveRes.ok || !sessaoAtiva()) return false;
+        const chaveData = await chaveRes.json();
+        if (!chaveData.success || !chaveData.publicKey || !sessaoAtiva()) return false;
+        const chaveAtual = urlBase64ToUint8Array(chaveData.publicKey);
         let sub = await reg.pushManager.getSubscription();
+        if (sub?.options?.applicationServerKey) {
+            const antiga = new Uint8Array(sub.options.applicationServerKey);
+            if (antiga.length !== chaveAtual.length || antiga.some((v,i)=>v !== chaveAtual[i])) {
+                await sub.unsubscribe(); sub = null;
+            }
+        }
         if (!sessaoAtiva()) return false;
         if (!sub) {
-            const res = await fetch(API_URL + '/api/push/public-key');
-            if (!res.ok || !sessaoAtiva()) return false;
-            const data = await res.json();
-            if (!data.success || !data.publicKey || !sessaoAtiva()) return false;
             sub = await reg.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+                applicationServerKey: chaveAtual
             });
         }
         if (!sessaoAtiva()) {
@@ -74,4 +81,25 @@ function urlBase64ToUint8Array(base64String) {
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const rawData = window.atob(base64);
     return Uint8Array.from(rawData, char => char.charCodeAt(0));
+}
+
+
+async function testarNotificacaoPush() {
+    const btn = document.getElementById('btnTestarPush');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+        if (!('Notification' in window)) throw Error('Este navegador não oferece notificações.');
+        if (Notification.permission === 'default') await Notification.requestPermission();
+        if (Notification.permission !== 'granted') throw Error('Permita notificações nas configurações do navegador.');
+        if (!await ativarWebPush()) throw Error('Não foi possível ativar as notificações neste dispositivo.');
+        const res = await fetch(API_URL + '/api/push/test', {
+            method: 'POST', headers: {Authorization: `Bearer ${SessaoPortal.token()}`}
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.queued) throw Error(data.message || 'Não foi possível solicitar o teste.');
+        mostrarToast('Teste solicitado. Aguarde a notificação.', 'info');
+    } catch (error) {
+        mostrarToast(error.message || 'Não foi possível solicitar o teste.', 'info');
+    } finally { btn.disabled = false; }
 }

@@ -14,6 +14,7 @@ from utils.security import consulta_publica, token_required, secretaria_required
 from utils.helpers import extrair_termos
 from services.cloudinary_service import processar_fotos, FalhaUploadFotos
 from services.email_service import disparar_email
+from services import push_delivery
 
 itens_bp = Blueprint('itens', __name__)
 
@@ -221,6 +222,7 @@ def aprovar_item(item_id):
 @itens_bp.route('/api/itens', methods=['OPTIONS', 'POST'])
 @secretaria_required
 def cadastrar_item():
+    destinatarios_push = set()
     """Cadastra um novo pertence achado diretamente pela secretaria escolar com auto-notificação de matches."""
     data = request.json or {}
     nome = (data.get('nome') or '').strip()
@@ -257,6 +259,7 @@ def cadastrar_item():
         novo_id = row['id'] if isinstance(row, dict) else row[0]
         conn.commit()
 
+        destinatarios_push = set()
         # Verifica correspondências com o mural de perdidos dos alunos
         try:
             termos_novo = extrair_termos(f"{nome} {descricao}")
@@ -264,6 +267,7 @@ def cadastrar_item():
             for mural in cursor.fetchall():
                 termos_mural = extrair_termos(mural.get('descricao', ''))
                 if len(termos_novo.intersection(termos_mural)) >= 1:
+                    if mural.get('email_aluno'): destinatarios_push.add(mural['email_aluno'].strip().lower())
                     msg_match = f"A secretaria registrou um objeto parecido: '{nome or descricao}'. Veja o catálogo!"
                     cursor.execute(
                         "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
@@ -279,13 +283,16 @@ def cadastrar_item():
         except Exception:
             if conn:
                 conn.rollback()
+            destinatarios_push.clear()
 
         cursor.close()
         conn.close()
+        for destino in destinatarios_push: push_delivery.notificar(destino, 'match')
         return jsonify({"success": True, "id": novo_id, "message": "Item salvo com sucesso!"})
     except Exception as e:
         if conn:
             conn.rollback()
+            destinatarios_push.clear()
             conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -368,6 +375,8 @@ def gerenciar_item(item_id):
             conn.commit()
             cursor.close()
             conn.close()
+            if status != item_atual.get('status'):
+                push_delivery.notificar(item_atual.get('email_solicitante'), 'item')
             return jsonify({"success": True, "message": "Item atualizado com sucesso!"})
     except FalhaUploadFotos as error:
         if conn: conn.rollback(); conn.close()
@@ -390,7 +399,7 @@ def recusar_solicitacao(item_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT aprovado, cadastrado_por_aluno FROM itens WHERE id = %s;", (item_id,))
+        cursor.execute("SELECT aprovado, cadastrado_por_aluno, email_solicitante FROM itens WHERE id = %s;", (item_id,))
         item = cursor.fetchone()
         
         if item and item.get('aprovado') is False:
@@ -407,6 +416,7 @@ def recusar_solicitacao(item_id):
         conn.commit()
         cursor.close()
         conn.close()
+        push_delivery.notificar(item.get('email_solicitante') if item else None, 'item')
         return jsonify({"success": True, "message": msg})
     except Exception as e:
         if conn:

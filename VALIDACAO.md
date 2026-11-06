@@ -192,3 +192,51 @@ CHROMIUM_PATH=/usr/bin/chromium python tests/browser_site_motion.py
 ```
 
 Publicar movimento.css junto com os três HTML e script.js. Não há novas dependências, variáveis ou migração de banco. A branch parte da proposta #23; permanecem pendentes o envio real de Web Push, a lista oficial de RM e a hospedagem.
+
+
+## Décima segunda etapa: emissor de notificações (proposta 25)
+
+Esta etapa implementa o envio Web Push, além do cadastro de dispositivos já protegido. O emissor usa pywebpush 2.5.0, AES128GCM e VAPID P-256. A chave pública só é anunciada quando corresponde à privada; o valor de exemplo foi removido. Sem configuração válida, o teste informa que o envio está desabilitado, e operações normais do site continuam funcionando sem enfileirar notificações. Não foi criada ou publicada credencial de produção.
+
+Os eventos implementados são: resposta da secretaria a uma conversa com autoria autenticada inequívoca, mudança de status/recusa de um item solicitado com email_solicitante e correspondência de objeto cadastrado com relatos do mural que tenham email_aluno. O destino da assinatura é sempre o e-mail da conta. Notificações não contêm nome de aluno, RM, texto do chat ou descrição do objeto; orientam abrir o portal. O OCR por RM não cria um destinatário push. Conversas antigas sem autoria por e-mail ou com mais de uma conta no mesmo RM não recebem destinatário adivinhado; o chat continua gravando normalmente. Mensagens novas de alunos guardam o e-mail da sessão, ignorando autoria enviada no corpo.
+
+As inicializações de server.py e database.py criam push_entregas, índice de agenda, push_ultimo_teste e a coluna opcional mensagens_chat.email_aluno, de forma idempotente. push_entregas guarda um evento por dispositivo, com snapshot da assinatura e e-mail de destino. O worker confere se esse vínculo ainda existe antes de enviar. Reservas com SELECT FOR UPDATE SKIP LOCKED e lease de 90 segundos permitem workers concorrentes e retomada após falha; conclusões condicionadas à tentativa evitam que um worker antigo apague uma reserva nova. O processamento é limitado a lotes de 20, com um thread daemon por processo web, fora da resposta das rotas.
+
+O worker é iniciado preguiçosamente na primeira requisição com configuração válida e retoma a fila persistida, consultando a cada 30 segundos quando ocioso. HTTP 2xx significa aceitação pelo serviço push, não confirmação de que o aparelho exibiu a notificação. 404/410 removem somente a assinatura cujo snapshot/e-mail ainda corresponde; mudanças de conta durante o envio não apagam o vínculo novo. Falhas de rede, 401/403, 408, 429 e erros 5xx recebem no máximo quatro tentativas, com intervalos de 60, 300 e 900 segundos. A requisição ao provedor tem timeout de oito segundos e TTL de uma hora. Um tag estável por evento ajuda o navegador a substituir um aviso repetido, mas não há promessa de entrega exatamente uma vez. Uma conexão perdida após aceitação pode causar repetição.
+
+O envio só acessa endpoints HTTPS dos serviços conhecidos de Chrome/Google, Firefox/Mozilla, Apple e Windows, sem seguir redirecionamentos; URLs arbitrárias não transformam o emissor em cliente HTTP aberto. O contato VAPID é mailto. Erros de provedor e SQL da fila não são registrados com endpoints/chaves. Uma falha ao enfileirar após o commit principal não transforma um cadastro/resposta já salvo em erro. Isso também significa que a gravação principal e a criação do evento são transações distintas: se o banco falhar nesse intervalo, o aviso pode não entrar na fila. O histórico de chat/item permanece a referência do usuário.
+
+O botão Testar Notificações fica no menu de perfil. Ele ativa/recadastra a assinatura do próprio navegador, envia Authorization e pede somente o próprio teste. A API ignora destinatários do corpo e usa a sessão; aplica limite atômico de um teste por conta a cada 30 segundos. A interface informa Teste solicitado, sem anunciar entrega. Ao trocar a chave VAPID, o navegador detecta uma assinatura vinculada à chave anterior e solicita outra. Cliques no aviso abrem somente a origem do site, com ícone local e texto limitado.
+
+### Ativação quando a publicação voltar a ser viável
+
+Instalar requirements.txt atualizado e manter as variáveis já previstas no projeto:
+
+- DATABASE_URL e JWT_SECRET da aplicação.
+- VAPID_PRIVATE_KEY: chave privada P-256, em base64url de 32 bytes, DER/base64url ou PEM (quebras reais ou escapes de nova linha).
+- VAPID_PUBLIC_KEY: ponto público não comprimido de 65 bytes em base64url, correspondente à privada.
+- VAPID_CLAIMS_EMAIL: contato em formato mailto:responsavel@dominio.
+
+O usuário do banco precisa poder criar tabelas/índice e adicionar a coluna de autoria. O site precisa ser servido em HTTPS e ter permissão de notificações concedida no aparelho. No iOS, o Web Push pode depender da instalação do site na tela inicial e da versão do sistema. Não colar chaves no GitHub ou no chat. Não reutilizar chaves de testes. O thread funciona enquanto o processo web estiver ativo; hospedagem que suspende processos suspende também o worker, retomando a fila ao voltar. Há opção de executar um processo dedicado com o mesmo ambiente:
+
+```bash
+python -m services.push_delivery
+```
+
+Essa ativação e a confirmação em aparelhos reais ficam adiadas por orientação do proprietário, assim como as demais tarefas inviáveis no momento. A implementação foi concluída e os registros antigos de pendência permanecem preservados; não tratá-los como tarefas ativas nem afirmar que já foram executados.
+
+### Verificação realizada
+
+266 testes Python passaram, incluindo 39 casos novos de protocolo/rotas e 13 integrações em PostgreSQL real temporário. A biblioteca Web Push cifrou o payload e assinou VAPID de verdade com chaves efêmeras; somente o transporte HTTP foi interceptado. Os testes decifraram o corpo com a chave do destinatário e verificaram o JWT, TTL, timeout e bloqueio de redirects. Também foram verificados erros de provedor, configuração inválida, fila concorrente, retomada de reserva, cooldown, troca de conta, falha de fila sem desfazer chat e eventos de chat/item/mural nas implementações unificada e modular.
+
+Passaram ainda 40 testes JavaScript e 29 no Chromium: o botão de teste usa a sessão, bloqueia duplicidade, restaura em recusa e anuncia solicitação; o service worker mostra o aviso, abre só o portal e respeita dispensar. As regressões anteriores de acesso, upload, renderização e movimento continuam passando. Sintaxe Python/JS/inline e git diff --check foram verificados.
+
+Não houve contato com um provedor push real, envio para uma conta/dispositivo real, uso de VAPID de produção ou acesso ao banco antigo. Essa verificação comprova implementação de protocolo e integração local; não comprova disponibilidade/aceitação das credenciais da conta de produção, exibição no sistema operacional ou funcionamento com o servidor suspenso.
+
+```bash
+python -m pytest -q
+node --test tests/*.cjs
+CHROMIUM_PATH=/usr/bin/chromium python tests/browser_push_delivery.py
+```
+
+Os testes de PostgreSQL são opcionais e requerem pgserver instalado e permissão de socket local; sem ele, esse módulo é ignorado. No ambiente desta tarefa, ele estava instalado e os 13 casos rodaram. Publicar os arquivos Python/JS/HTML, dependência e migrações em conjunto. A branch 25-envio-notificacoes parte da proposta #24 e permanece sem integração à main ou publicação em produção.

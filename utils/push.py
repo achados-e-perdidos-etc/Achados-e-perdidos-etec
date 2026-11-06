@@ -54,3 +54,24 @@ def validar_assinatura(data):
         'keys': {'p256dh': _chave(data['keys'].get('p256dh'), 65),
                  'auth': _chave(data['keys'].get('auth'), 16)}
     }
+
+SCHEMA_ENTREGAS_PUSH = '''CREATE TABLE IF NOT EXISTS push_entregas (
+    id BIGSERIAL PRIMARY KEY,
+    email_aluno VARCHAR(150) NOT NULL REFERENCES alunos(email) ON DELETE CASCADE,
+    endpoint_hash VARCHAR(64) NOT NULL,
+    subscription_json TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    tentativas INTEGER NOT NULL DEFAULT 0,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    proxima_tentativa TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reservado_ate TIMESTAMPTZ
+);'''
+
+INDICE_ENTREGAS_PUSH = 'CREATE INDEX IF NOT EXISTS push_entregas_agenda ON push_entregas (proxima_tentativa, id);'
+
+SCHEMA_EMAIL_CHAT = 'ALTER TABLE mensagens_chat ADD COLUMN IF NOT EXISTS email_aluno VARCHAR(150);'
+
+SCHEMA_LIMITE_PUSH = '''CREATE TABLE IF NOT EXISTS push_ultimo_teste (
+    email_aluno VARCHAR(150) PRIMARY KEY REFERENCES alunos(email) ON DELETE CASCADE,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);'''

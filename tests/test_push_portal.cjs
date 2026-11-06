@@ -28,9 +28,9 @@ function setup() {
 test('assinatura existente é recadastrada com sessão, sem escolher RM/e-mail',async()=>{
  const p=setup();
  assert.equal(await p.ctx.ativarWebPush(),true);
- assert.equal(p.calls.length,1);
- assert.equal(p.calls[0].options.headers.Authorization,'Bearer sessao-A');
- assert.deepEqual(JSON.parse(p.calls[0].options.body),{subscription:{endpoint:p.sub.endpoint,keys:p.sub.keys}});
+ assert.equal(p.calls.length,2);
+ assert.equal(p.calls[1].options.headers.Authorization,'Bearer sessao-A');
+ assert.deepEqual(JSON.parse(p.calls[1].options.body),{subscription:{endpoint:p.sub.endpoint,keys:p.sub.keys}});
  assert.equal(p.subscriptions(),0);
 });
 
@@ -132,4 +132,26 @@ test('fazerLogoff limpa sessão imediatamente e aguarda limpeza antes de recarre
  assert.equal(p.storage.size,0);assert.equal(p.ctx.alunoSessao,null);
  assert.equal(p.reloads(),0);
  await pending;assert.equal(p.reloads(),1);assert.equal(p.unsubscribes(),1);
+});
+
+
+test('rotação de chave VAPID recadastra assinatura incompatível',async()=>{
+ const p=setup();p.sub.options={applicationServerKey:new Uint8Array([99,99]).buffer};
+ assert.equal(await p.ctx.ativarWebPush(),true);
+ assert.equal(p.unsubscribes(),1);assert.equal(p.subscriptions(),1);
+});
+
+test('configuração desabilitada não registra assinatura nem anuncia sucesso',async()=>{
+ const p=setup();p.ctx.fetch=async()=>({ok:true,json:async()=>({success:false,habilitado:false,publicKey:''})});
+ assert.equal(await p.ctx.ativarWebPush(),false);assert.equal(p.subscriptions(),0);
+});
+
+test('teste solicita apenas a própria conta e anuncia fila, sem afirmar entrega',async()=>{
+ const p=setup();const btn={disabled:false},messages=[];p.ctx.document.getElementById=()=>btn;
+ p.ctx.mostrarToast=text=>messages.push(text);
+ p.ctx.fetch=async(url,opts)=>{p.calls.push({url,options:opts});return {ok:true,json:async()=>url.endsWith('/test')?{success:true,queued:true}:{success:true,publicKey:'BAAA'}};};
+ await p.ctx.testarNotificacaoPush();
+ const call=p.calls.find(c=>c.url.endsWith('/test'));
+ assert.equal(call.options.headers.Authorization,'Bearer sessao-A');assert.equal(call.options.body,undefined);
+ assert.match(messages[0],/solicitado/);assert.equal(btn.disabled,false);
 });

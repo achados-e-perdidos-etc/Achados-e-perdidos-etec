@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
+from services import push_delivery
 from utils.security import token_required, secretaria_required, pode_acessar_chat
 
 chat_bp = Blueprint('chat', __name__)
@@ -30,12 +31,13 @@ def enviar_chat():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) 
-        VALUES (%s, %s, %s, %s, %s);
-    """, (rm, nome, remetente, mensagem, datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+        INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno)
+        VALUES (%s, %s, %s, %s, %s, %s);
+    """, (rm, nome, remetente, mensagem, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), user.get('email') if remetente == 'ALUNO' else None))
     conn.commit()
     cursor.close()
     conn.close()
+    if remetente == 'SECRETARIA': push_delivery.notificar_resposta(rm)
     return jsonify({"success": True})
 
 @chat_bp.route('/api/chat/mensagens/<string:rm>', methods=['OPTIONS', 'GET'])
