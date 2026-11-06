@@ -162,3 +162,15 @@ Branch 23-carregamento-imagens, baseada na proposta #22.
 - [x] Corrigida a edição no servidor unificado, que antes ignorava as fotos enviadas no formulário. Omitir o campo preserva as fotos; enviar lista vazia remove a associação de fotos nas duas versões.
 
 Validação: 214 testes Python, 33 testes JavaScript e 21 testes no Chromium passaram, incluindo seis novos fluxos de fotos. Foram usadas imagens PNG reais para leitura e compressão no navegador, APIs/provedor simulados e SQL real em SQLite temporário para edição de fotos. Não houve upload para Cloudinary real nem acesso a produção. Nenhuma espera artificial ou porcentagem fictícia foi adicionada; o indicador de envio cobre a requisição completa de fotos e gravação do item. O emissor Web Push e a lista oficial de RM permanecem pendentes.
+
+## Décima primeira etapa — movimento no site (proposta 24)
+
+Branch 24-animacoes-transicoes, baseada na proposta #23.
+
+- [x] Estilo de movimento compartilhado pelo portal, painel e página 404, sem biblioteca ou observador JavaScript novo.
+- [x] Entradas leves em abas, menus, filtros, janela de chat, modais, cards e avisos; respostas visuais em botões, links, campos e linhas de tabela.
+- [x] Movimentos curtos e sequência de cards limitada a 90 ms; fechamento continua imediato, sem aguardar animação ou bloquear ações.
+- [x] Hover de cards restrito a ponteiro preciso; chat não reanima mensagens a cada polling e a impressão não recebe animações.
+- [x] Foco visível de teclado e preferência de movimento reduzido aplicada aos efeitos CSS, ao carrossel e à abertura com GIF, que é ignorada nessa preferência.
+
+Validação desta etapa: 33 testes JavaScript e 27 testes no Chromium passaram (21 regressões anteriores e seis novos fluxos de movimento). Conferidos abertura/fechamento durante animação, término sem transformações persistentes, sequência limitada, chat estável, foco de teclado, 404 e preferência de movimento reduzido. Prévia de celular em 390 × 844 sem transbordamento horizontal. Backend e banco não foram modificados; a suíte Python do backend não foi repetida nesta etapa visual. Nenhuma publicação em produção ou integração à main.

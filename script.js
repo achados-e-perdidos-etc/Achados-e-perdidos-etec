@@ -794,7 +794,7 @@ function navegarFotos(dir) {
     const c = document.getElementById('carouselContainer'); 
     if(fotosAtuais.length > 1) { 
         fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; 
-        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); 
+        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
     } 
 }

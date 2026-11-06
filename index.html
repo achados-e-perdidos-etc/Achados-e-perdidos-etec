@@ -17,7 +17,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="estado-fotos.css">
-    </head>
+    <link rel="stylesheet" href="movimento.css">
+</head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
     <!-- SPLASH SCREEN COM GIF (celular = animacao.GIF | PC/paisagem = animacao_pc.GIF) -->
@@ -631,7 +632,7 @@
         // Splash só aparece 1x por sessão (igual ao comportamento anterior)
         const jaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
 
-        if (jaExibido || !splash || !gif) {
+        if (jaExibido || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !splash || !gif) {
             if (splash) esconderSplash();
             window.onload = () => {
                 document.body.classList.add('dark-theme');

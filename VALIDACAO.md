@@ -176,3 +176,19 @@ CHROMIUM_PATH=/usr/bin/chromium python tests/browser_image_upload.py
 ```
 
 Publicar os dois novos arquivos estado-fotos.js/estado-fotos.css junto com ambos os HTML, script.js, server.py, blueprints/itens.py e services/cloudinary_service.py. Não há migração de banco ou variável nova. A branch parte da proposta #22; não foi integrada à main nem publicada em produção.
+
+## Décima primeira etapa: transições compartilhadas
+
+movimento.css é carregado no portal, painel e 404. Usa propriedades visuais e keyframes CSS locais, sem observar mutações do DOM, criar timers ou alterar rotas. Há entradas de 150–240 ms para seções, menus e modais; os cards usam 180 ms e uma sequência limitada a 90 ms. Botões, links, campos e tabelas recebem transições de cor/borda/sombra e resposta de pressionamento. Hover com elevação é restrito a ponteiro preciso, evitando deslocamento de cards em telas de toque.
+
+Abas/ancestrais são animados somente por opacidade, evitando criar um containing block transformado para menus e elementos fixos. Modais/cards usam transformações pequenas com animation-fill-mode backwards, sem deixar transformações persistentes após a entrada. A classe hidden mantém seu efeito imediato, inclusive se o usuário fechar durante uma animação. Não são interceptados cliques nem aguardados eventos de animação para efetivar ações. O chat não ganha animações por mensagem, para evitar reentrada de todo o histórico quando o polling o recria. Impressão desativa efeitos CSS.
+
+prefers-reduced-motion desativa animações e transições CSS, incluindo as das etapas anteriores; o carrossel passa a usar scroll automático e o splash com GIF é ignorado antes de definir a imagem. Isso não muda a duração de operações de rede nem animações internas de bibliotecas gráficas existentes. Foco por teclado permanece visível. A coleta de objetos na página 404 conserva seu estado final sem depender da animação quando o movimento é reduzido.
+
+Validação desta etapa: 33 testes JavaScript passaram e 27 testes no Chromium (10 renderização, 5 acesso, 6 fotos e 6 movimento). Os novos casos verificam seções, menus, modais, fechamento imediato, fim sem transform persistente, sequência limitada de cards, ausência de animação nos balões do chat, foco, 404, movimento reduzido e primeiro acesso sem GIF nessa preferência. Foi inspecionada prévia de celular em 390 × 844 sem transbordamento horizontal. Sintaxe JS/inline e git diff --check passaram. APIs simuladas e nenhum dado real utilizado. O backend não mudou e seus testes Python não foram repetidos nesta etapa visual.
+
+```bash
+CHROMIUM_PATH=/usr/bin/chromium python tests/browser_site_motion.py
+```
+
+Publicar movimento.css junto com os três HTML e script.js. Não há novas dependências, variáveis ou migração de banco. A branch parte da proposta #23; permanecem pendentes o envio real de Web Push, a lista oficial de RM e a hospedagem.
