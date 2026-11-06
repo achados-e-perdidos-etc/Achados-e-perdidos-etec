@@ -93,6 +93,11 @@ def enfileirar(email, evento, *, iniciar=True):
 def notificar(email, evento):
     """Falha de notificação não transforma uma gravação já concluída em erro."""
     try:
+        from services.notificacoes_service import registrar
+        registrar(email, evento)
+    except Exception:
+        logger.warning('Não foi possível registrar aviso na central.')
+    try:
         return enfileirar(email, evento)
     except Exception:
         logger.warning('Não foi possível enfileirar notificação push.')
@@ -101,8 +106,6 @@ def notificar(email, evento):
 
 def notificar_resposta(rm):
     # Não adivinhar destinatário por RM: somente autoria autenticada de mensagem nova.
-    if not configuracao():
-        return 0
     conn = None
     try:
         conn = get_db_connection()

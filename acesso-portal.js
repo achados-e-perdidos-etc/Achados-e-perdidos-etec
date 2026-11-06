@@ -37,6 +37,7 @@ const SessaoPortal = {
         if (lembrar) localStorage.setItem('aluno_lembrar', 'true');
     },
     limpar() {
+        if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();
         for (const destino of [sessionStorage, localStorage]) {
             for (const chave of ['aluno_token', 'aluno_dados', 'aluno_lembrar', 'secretaria_token']) destino.removeItem(chave);
         }

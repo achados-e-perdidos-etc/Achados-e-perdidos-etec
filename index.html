@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="estado-fotos.css">
     <link rel="stylesheet" href="movimento.css">
+    <link rel="stylesheet" href="melhorias-portal.css">
+<link rel="stylesheet" href="acessibilidade.css">
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
@@ -163,6 +165,7 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
+                <button id="btnCentralAvisos" type="button" onclick="CentralAvisos.abrir()" aria-label="Notificações" class="relative w-10 h-10 rounded-xl bg-[#161c28] border border-white/10 text-white"><i class="fas fa-bell" aria-hidden="true"></i><span id="badgeAvisos" hidden></span></button>
                 <!-- BOTÃO DE ATUALIZAÇÃO / REFRESH RÁPIDO DO PORTAL -->
                 <button id="btnRefreshPortal" onclick="atualizarPortalAluno()" title="Atualizar Catálogo (Sem Recarregar Tela)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#161c28] border border-white/10 text-slate-300 hover:text-white hover:border-red-500/50 transition flex items-center justify-center shadow-sm active:scale-95 group">
                     <i id="iconeRefreshPortal" class="fas fa-arrows-rotate text-xs sm:text-sm text-slate-400 group-hover:text-red-400 transition-colors"></i>
@@ -179,6 +182,7 @@
                     </button>
 
                     <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-64 bg-[#121722] border border-white/15 rounded-2xl shadow-2xl p-2.5 z-50 space-y-1">
+                        <button type="button" onclick="atualizarPortalAluno(); fecharMenuNavegacao();" class="w-full text-left px-3 py-2.5 text-sm text-slate-200">Atualizar catálogo</button>
                         <button onclick="mudarAba('catalogo'); fecharMenuNavegacao();" id="menuBtnCatalogo" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition text-left">
                             <i class="fas fa-boxes text-red-500 w-4"></i> Catálogo Geral
                         </button>
@@ -190,7 +194,7 @@
                             <i class="fas fa-hand-holding-heart w-4"></i> Entregar Objeto Achado
                         </button>
                         <button onclick="abrirPainelMeusItens(); fecharMenuNavegacao();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 hover:bg-white/10 transition text-left">
-                            <i class="fas fa-user-clock w-4"></i> Meus Pedidos & Relatos
+                            <i class="fas fa-user-clock w-4"></i> Minha atividade
                         </button>
                     </div>
                 </div>
@@ -383,8 +387,8 @@
                             <i class="fas fa-user-clock"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg font-black text-white">Meus Pedidos & Relatos</h2>
-                            <p class="text-xs text-slate-400">Acompanhe suas solicitações de retirada e itens que você reportou ter perdido.</p>
+                            <h2 class="text-lg font-black text-white">Minha atividade</h2>
+                            <p class="text-xs text-slate-400">Acompanhe pedidos, relatos e objetos que você encontrou.</p>
                         </div>
                     </div>
                     <button onclick="mudarAba('catalogo')" class="text-xs text-slate-400 hover:text-white font-bold flex items-center gap-1">
@@ -393,6 +397,11 @@
                 </div>
 
                 <div class="space-y-5">
+                    <div><h3 class="text-xs font-black uppercase tracking-wider text-slate-300 mb-3">Meus cadastros (Achei algo)</h3>
+                        <button type="button" onclick="MeusCadastros.carregar()" class="mb-3 text-sm text-blue-300 underline">Atualizar cadastros</button>
+                        <p id="statusMeusCadastros" class="text-sm text-slate-300" role="status"></p><div id="listaMeusCadastros"></div>
+                        <button id="maisCadastros" type="button" class="mt-3 text-blue-300 underline" hidden onclick="MeusCadastros.carregar(true)">Ver cadastros anteriores</button>
+                    </div>
                     <div>
                         <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-2">
                             <i class="fas fa-box-open text-red-500"></i> Objetos Solicitados por Mim
@@ -477,7 +486,7 @@
 
     <!-- CHAT FLUTUANTE -->
     <div class="fixed bottom-5 right-5 z-50">
-        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shadow-2xl shadow-red-600/50 hover:scale-105 transition transform active:scale-95 ring-4 ring-red-500/20">
+        <button onclick="alternarJanelaChat()" id="btnAbrirChat" aria-label="Conversar com a secretaria" class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shadow-2xl shadow-red-600/50 hover:scale-105 transition transform active:scale-95 ring-4 ring-red-500/20">
             <i class="fas fa-comment-dots text-xl"></i>
             <span id="badgeChatWeb" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-black text-[11px] font-black rounded-full flex items-center justify-center ring-2 ring-[#090d13]">0</span>
         </button>
@@ -512,6 +521,11 @@
         </div>
     </div>
 
+    <div id="centralAvisos" class="central-avisos hidden" role="dialog" aria-modal="true" aria-labelledby="tituloAvisos">
+        <div class="avisos-painel"><div class="avisos-cabecalho"><h2 id="tituloAvisos">Suas notificações</h2><button type="button" onclick="CentralAvisos.fechar()" aria-label="Fechar notificações">✕</button></div>
+        <div class="avisos-acoes"><button type="button" onclick="CentralAvisos.carregar()">Atualizar avisos</button><button id="lerTodosAvisos" type="button" onclick="CentralAvisos.ler()">Marcar todas como lidas</button></div>
+        <p id="statusAvisos" class="avisos-status" role="status"></p><ul id="listaAvisos"></ul><button id="maisAvisos" type="button" hidden onclick="CentralAvisos.carregar(true)">Ver avisos anteriores</button></div>
+    </div>
     <!-- MODAL CONFIRMAR SOLICITAÇÃO -->
     <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 border border-white/10 shadow-2xl text-center">
@@ -595,6 +609,7 @@
     <script src="visao-formulario.js"></script>
     <script src="acesso-portal.js"></script>
     <script src="estado-fotos.js"></script>
+    <script src="rascunhos.js"></script>
     <script src="script.js"></script>
     <script src="notificacoes-push.js"></script>
     <script src="professores.js"></script>
@@ -664,5 +679,8 @@
     })();
     </script>
 
-    </body>
+    <script src="central-notificacoes.js"></script>
+    <script src="meus-cadastros.js"></script>
+    <script src="acessibilidade.js"></script>
+</body>
 </html>

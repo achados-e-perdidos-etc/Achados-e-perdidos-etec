@@ -198,3 +198,12 @@ Branch 25-envio-notificacoes, baseada na proposta #24.
 Validação: testes criptografam/assinam com chaves efêmeras reais, interceptam o transporte sem contatar provedores e decifram/verificam o payload/JWT. Fila e migrações foram exercitadas em PostgreSQL temporário, com ambas as implementações de rotas. O recebimento por um aparelho real não foi comprovado: ativação e validação com serviços reais ficam adiadas junto das demais tarefas atualmente inviáveis. Nenhum banco/credencial de produção foi usado, nenhuma notificação foi enviada a contas reais e a proposta permanece separada da main.
 
 Verificação desta etapa: 266 testes Python (incluindo 13 casos em PostgreSQL real temporário), 40 testes JavaScript e 29 testes no Chromium passaram. O transporte dos testes foi interceptado; não houve entrega a um serviço/dispositivo de produção.
+
+## Proposta 26 — melhorias solicitadas
+
+- [x] Central de notificações com histórico privado, paginação e marcação de leitura, independente da permissão push.
+- [x] Acompanhamento de objetos cadastrados por quem os encontrou; autoria por e-mail, decisão da secretaria e histórico preservado após recusa/exclusão.
+- [x] Rascunhos de texto em cadastros e mural, separados por conta, com limpeza após envio confirmado ou saída.
+- [x] Revisão de navegação por teclado, foco, rótulos, contraste e apresentação dos novos fluxos no celular.
+
+As quatro melhorias compõem uma única branch `26-melhorias-portal`, dependente da proposta 25. Acompanhamento de autoria vale para novos objetos; registros legados sem e-mail de autoria não são atribuídos por suposição. O código proposto e validado localmente ainda precisa ser integrado para chegar ao site publicado. Permanecem preservados os registros das tarefas anteriormente adiadas.

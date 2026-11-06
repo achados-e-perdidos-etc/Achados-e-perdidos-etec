@@ -105,7 +105,7 @@ class RouteTests(unittest.TestCase):
         query, params = self.cursor.execute.call_args.args
         self.assertIn('FALSE, TRUE', query)
         self.assertEqual(params[0], 'Estojo preto')
-        self.assertEqual(params[-1], '12345')
+        self.assertEqual(params[-2:], ('12345', 'aluno@aluno.cps.sp.gov.br'))
 
     def test_professor_nao_pode_se_passar_por_aluno_mesmo_com_acesso_ao_painel(self):
         for acesso in [None, {'status': 'APROVADO'}]:
@@ -128,7 +128,7 @@ class RouteTests(unittest.TestCase):
                 result = self.client.post('/api/itens/cadastrar-aluno', headers=professor,
                     json={'nome': 'Controle', 'descricao': 'Encontrado', 'rm': '99999'})
                 self.assertEqual(result.status_code, 200)
-                self.assertEqual(self.cursor.execute.call_args.args[1][-1], 'PROFESSOR')
+                self.assertEqual(self.cursor.execute.call_args.args[1][-2:], ('PROFESSOR', 'docente@etec.sp.gov.br'))
 
     def test_perfil_admin_e_rm_generico_nao_podem_solicitar_ou_publicar_com_identidade_falsa(self):
         tokens = [self.secretaria]

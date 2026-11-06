@@ -240,3 +240,25 @@ CHROMIUM_PATH=/usr/bin/chromium python tests/browser_push_delivery.py
 ```
 
 Os testes de PostgreSQL são opcionais e requerem pgserver instalado e permissão de socket local; sem ele, esse módulo é ignorado. No ambiente desta tarefa, ele estava instalado e os 13 casos rodaram. Publicar os arquivos Python/JS/HTML, dependência e migrações em conjunto. A branch 25-envio-notificacoes parte da proposta #24 e permanece sem integração à main ou publicação em produção.
+
+## Proposta 26 — Central, cadastros, rascunhos e acessibilidade
+
+Consolida quatro melhorias na branch `26-melhorias-portal`, baseada no head da proposta 25, por orientação do proprietário. Nenhuma proposta anterior foi integrada à main.
+
+- Central privada com avisos de chat, pedidos, correspondências e decisões sobre cadastros; funciona sem habilitar Web Push. Histórico paginado, contador e leitura por conta. “Marcar todas” usa o último ID exibido, preservando avisos recém-chegados.
+- Minha atividade acompanha objetos encontrados: aguardando aprovação, publicados, recusados, entregues, destinados à doação ou removidos. A autoria vem do e-mail autenticado, independentemente do RM do solicitante da retirada. O histórico sobrevive à exclusão do item.
+- Rascunhos de texto do objeto encontrado, mural e novo cadastro da secretaria ficam no sessionStorage da aba por até 24 horas, separados por conta. São removidos no envio confirmado ou na saída da conta. Não armazenam fotos, senhas ou tokens; edição de item existente não recebe um rascunho novo.
+- Navegação por teclado, cartões acionáveis com Enter/espaço, foco contido em janelas e menu da secretaria, Escape, retorno ao botão de origem, associação de rótulos, nomes de botões, avisos acessíveis, foco visível e melhorias de contraste e leitura no celular.
+
+Migrações idempotentes em `server.init_db` e `database.init_db` criam `notificacoes`, `cadastros_itens` e o campo `itens.email_cadastrador`. Um gatilho PostgreSQL acompanha as decisões na mesma transação do item, preservando o registro em caso de recusa ou remoção. A autoria de itens antigos sem e-mail registrado não é inferida pelo RM; o acompanhamento vale para novos cadastros. As projeções públicas continuam omitindo dados de autoria.
+
+Validação local: suíte Python com PostgreSQL temporário, testes JavaScript e testes Chromium com as páginas reais. A inspeção visual adicional executa Flask com PostgreSQL isolado, contas fictícias e assets reais; a auditoria automatizada usa axe-core para os critérios WCAG A/AA nas telas verificadas. A auditoria automática não substitui avaliação humana com tecnologias assistivas. Nenhum banco de produção ou serviço real de envio foi utilizado.
+
+Comandos adicionais (dependências de teste: `pytest`, `pgserver` e `playwright`; configure `CHROMIUM_PATH` se usar Chromium do sistema):
+
+```bash
+JWT_SECRET=teste-local-apenas-0123456789abcdef DATABASE_URL='' python -m pytest -q tests
+CHROMIUM_PATH=/usr/bin/chromium python -m unittest discover -s tests -p 'browser_*.py'
+```
+
+Resultado desta execução: **273 testes Python** (incluindo fluxos com PostgreSQL temporário), **40 testes JavaScript** e **38 testes Chromium** passaram. O axe-core não apontou violações nos critérios executados em 11 telas: catálogo celular, central, minha atividade, cadastro do aluno, cadastro e catálogo da secretaria, categorias, professores, dashboard, chat e login celular. Foram exercitados também falha de rede, troca de conta, rascunho expirado/descartado, upload sem confirmação falsa, histórico de recusa/remoção/doação e professor aprovado. Esses resultados descrevem os cenários locais executados, sem prometer ausência de todos os possíveis defeitos ou validar serviços externos.

@@ -1,3 +1,5 @@
+from utils.cadastros import SCHEMA_CADASTROS
+from utils.notificacoes import SCHEMA_NOTIFICACOES
 """
 ETEC Achados e Perdidos - Backend Unificado (Fase 1, 2 e 3 com IA)
 Versão Single-File: Tudo em um único arquivo para upload simples no GitHub sem pastas.
@@ -45,6 +47,10 @@ from blueprints.professores import professores_bp
 app.register_blueprint(professores_bp)
 from blueprints.Push import push_bp
 app.register_blueprint(push_bp)
+from blueprints.notificacoes import notificacoes_bp
+app.register_blueprint(notificacoes_bp)
+from blueprints.cadastros import cadastros_bp
+app.register_blueprint(cadastros_bp)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
 
@@ -248,6 +254,8 @@ def init_db():
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
+        cursor.execute(SCHEMA_NOTIFICACOES)
+        cursor.execute(SCHEMA_CADASTROS)
         cursor.execute(SCHEMA_PUSH)
         cursor.execute(SCHEMA_ENTREGAS_PUSH)
         cursor.execute(INDICE_ENTREGAS_PUSH)
@@ -662,7 +670,7 @@ def cad_item_aluno():
     urls = processar_fotos(d.get('fotos') or ([d.get('foto')] if d.get('foto') else []))
     try:
         conn = get_db_connection(); c = conn.cursor()
-        c.execute("INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto, fotos_json, status, aprovado, cadastrado_por_aluno, rm_aluno) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s);", (nome, desc, cat, data_enc, local, urls[0] if urls else '', json.dumps(urls), rm))
+        c.execute("INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto, fotos_json, status, aprovado, cadastrado_por_aluno, rm_aluno, email_cadastrador) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s, %s);", (nome, desc, cat, data_enc, local, urls[0] if urls else '', json.dumps(urls), rm, autor['email']))
         conn.commit(); c.close(); conn.close()
         return jsonify({"success": True, "message": "Item enviado para moderação!"})
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500

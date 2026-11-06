@@ -55,7 +55,7 @@ def test_solicitacao_relato_e_cadastro_ficam_com_o_autor_da_sessao(implementatio
             id INTEGER PRIMARY KEY, nome_item TEXT, descricao TEXT, categoria TEXT,
             data_encontrado TEXT, local_encontrado TEXT, foto TEXT, fotos_json TEXT,
             status TEXT, aprovado BOOLEAN, cadastrado_por_aluno BOOLEAN,
-            solicitado_por TEXT, rm_aluno TEXT, email_solicitante TEXT);
+            solicitado_por TEXT, rm_aluno TEXT, email_solicitante TEXT, email_cadastrador TEXT);
         CREATE TABLE mural_perdidos (
             id INTEGER PRIMARY KEY, nome_aluno TEXT, rm_aluno TEXT, email_aluno TEXT,
             categoria TEXT, descricao TEXT, data_registro TEXT, status TEXT);
@@ -112,6 +112,7 @@ def test_solicitacao_relato_e_cadastro_ficam_com_o_autor_da_sessao(implementatio
             row = dict(db.execute('SELECT * FROM itens WHERE id != 7').fetchone())
             assert row['nome_item'] == 'Controle branco'
             assert row['rm_aluno'] == '12345'
+            assert row['email_cadastrador'] == 'primeiro@aluno.cps.sp.gov.br'
             assert not row['aprovado']
             assert row['cadastrado_por_aluno']
             # Adivinhar o ID não permite solicitar um objeto ainda em moderação.

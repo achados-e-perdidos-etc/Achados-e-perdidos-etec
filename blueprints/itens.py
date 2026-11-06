@@ -193,10 +193,10 @@ def cadastrar_item_aluno():
             INSERT INTO itens (
                 nome_item, descricao, categoria, data_encontrado, 
                 local_encontrado, foto, fotos_json, status, aprovado, 
-                cadastrado_por_aluno, rm_aluno
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s) 
+                cadastrado_por_aluno, rm_aluno, email_cadastrador
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s, %s)
             RETURNING id;
-        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, rm))
+        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, rm, autor['email']))
         conn.commit()
         cursor.close()
         conn.close()

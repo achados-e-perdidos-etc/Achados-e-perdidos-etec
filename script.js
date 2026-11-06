@@ -194,6 +194,7 @@ async function checarSessao() {
         } catch (e) {}
 
         alunoSessao = dados;
+        if (typeof CentralAvisos !== "undefined") CentralAvisos.carregar();
         ativarWebPush();
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Olá, ${alunoSessao.nome.split(' ')[0]}!`;
@@ -441,6 +442,7 @@ function mostrarToast(mensagem, tipo = 'info') {
         <p class="text-xs font-semibold flex-grow leading-snug">${textoHTML(mensagem)}</p>
         <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white text-xs"><i class="fas fa-times"></i></button>
     `;
+    t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
     c.appendChild(t); 
     setTimeout(() => t.remove(), 4200);
 }
@@ -466,11 +468,12 @@ function mudarAba(aba) {
     document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
     document.getElementById('meusItensScreen').classList.toggle('hidden', aba !== 'meusItens');
     document.getElementById('detailScreen').classList.add('hidden');
-    if (aba === 'mural') carregarMuralPublico();
+    if (aba === 'mural') { carregarMuralPublico(); if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('mural'); }
 }
 
 async function abrirPainelMeusItens() {
     mudarAba('meusItens');
+    if (typeof MeusCadastros !== 'undefined') MeusCadastros.carregar();
     if (!alunoSessao) return;
     const headers = { 'Authorization': `Bearer ${SessaoPortal.token() || ''}` };
 
@@ -604,6 +607,7 @@ async function carregarCategoriasDinamicamente() {
                 selectAlunoCad.innerHTML = '';
                 cats.forEach(c => { selectAlunoCad.innerHTML += `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`; });
             }
+            if (typeof Rascunhos !== 'undefined') { Rascunhos.restaurar('mural'); Rascunhos.restaurar('encontrado'); }
         }
     } catch (e) {}
 }
@@ -855,6 +859,7 @@ async function enviarAvisoMural(e) {
         });
         const data = await res.json();
         if (res.ok && data.success) { 
+            if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('mural');
             document.getElementById('muralDescricao').value = ''; 
             if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
                 dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
@@ -1015,7 +1020,6 @@ function abrirModalCadastrarAluno() {
     document.getElementById('gridPreviewAluno').inert = false;
     ocultarEstadoFotos('statusCompressaoFotos');
     document.getElementById('btnAutoPreencherIAAluno').disabled = false;
-    fotosAlunoSelecionadas = [];
     renderizarGridPreviewAluno();
         const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
         if (btnIAAluno) {
@@ -1025,6 +1029,7 @@ function abrirModalCadastrarAluno() {
     const badge = document.getElementById('statusCompressaoFotos');
     if (badge) badge.classList.add('hidden');
     document.getElementById('modalCadastrarAluno').classList.remove('hidden');
+    if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('encontrado');
 }
 
 // ATUALIZADO: COMPRESSÃO AUTOMÁTICA DE IMAGENS DO CELULAR
@@ -1123,6 +1128,9 @@ async function enviarCadastroAluno(e) {
             mostrarEstadoFotos('statusCompressaoFotos', 'sucesso', 'Envio concluído!');
             mostrarToast(fotosAlunoSelecionadas.length ? "Fotos enviadas! Item aguardando moderação." : "Objeto enviado para moderação da secretaria!", "success");
             document.getElementById('modalCadastrarAluno').classList.add('hidden');
+            if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('encontrado');
+            fotosAlunoSelecionadas = [];
+            renderizarGridPreviewAluno();
             e.target.reset();
         } else {
             mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'O envio não foi concluído. Suas fotos foram mantidas para tentar novamente.');
@@ -1237,6 +1245,7 @@ async function analisarFotoAlunoComIA() {
                 descricao: document.getElementById('alunoItemDesc'),
                 categoria: document.getElementById('alunoItemCat')
             });
+            if (aplicado && typeof Rascunhos !== 'undefined') Rascunhos.salvar('encontrado');
             mostrarToast(aplicado ? 'Sugestões preenchidas. Confira a foto antes de salvar.' :
                 (r.aviso || 'Não foi possível identificar o objeto. Preencha os campos manualmente.'), aplicado ? 'success' : 'info');
         } else {

@@ -664,6 +664,9 @@
     }
   </style>
 <link rel="stylesheet" href="movimento.css">
+<link rel="stylesheet" href="melhorias-portal.css">
+<script src="rascunhos.js"></script>
+<link rel="stylesheet" href="acessibilidade.css">
 </head>
 <body>
 
@@ -1585,6 +1588,7 @@
 
     function sairSecretaria() {
       sessionStorage.removeItem('secretaria_token');
+      if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();
       localStorage.removeItem('secretaria_token');
       window.location.reload();
     }
@@ -2093,6 +2097,7 @@
       document.getElementById('formFotosStatus').innerText = "Nenhuma foto selecionada";
       fotosBase64Upload = [];
       document.getElementById('modalFormItem').classList.remove('hidden');
+      if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('secretaria');
     }
 
     function editarItemForm(id) {
@@ -2203,6 +2208,7 @@
         if (res.ok && data.success === true) {
           mostrarEstadoFotos('estadoEnvioSecretaria', 'sucesso', 'Envio concluído!');
           mostrarToast(fotosBase64Upload.length ? "✓ Fotos enviadas e item salvo!" : (id ? "Objeto atualizado com sucesso!" : "Objeto cadastrado com sucesso!"));
+          if (!id && typeof Rascunhos !== 'undefined') Rascunhos.limpar('secretaria');
           fecharModal('modalFormItem');
           await carregarItensSecretaria();
         } else {
@@ -3252,6 +3258,7 @@
             if (statusEl) statusEl.innerText = r.aviso || 'Não foi possível identificar o objeto. Preencha manualmente.';
             return;
           }
+          if (typeof Rascunhos !== 'undefined') Rascunhos.salvar('secretaria');
           ocrRmIdentificado = r.ocr_confianca === 'alta' ? (r.ocr_rm || '') : '';
           const aluno = r.aluno_correspondente;
           const statusEl = document.getElementById('formFotosStatus');
@@ -3276,6 +3283,7 @@
 </script>
 <script src="visao-formulario.js"></script>
 <script src="professores-secretaria.js"></script>
+<script src="acessibilidade.js"></script>
 </body>
 </html>
 
