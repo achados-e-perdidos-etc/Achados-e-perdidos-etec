@@ -34,8 +34,10 @@ def token_required(f):
             token = request.headers.get('x-access-token', '').strip('"\'')
         if not token:
             token = request.args.get('token', '').strip('"\'')
-        if not token and request.is_json and request.json:
-            token = str(request.json.get('token') or '').strip('"\'')
+        if not token and request.is_json:
+            dados_token = request.get_json(silent=True)
+            if isinstance(dados_token, dict):
+                token = str(dados_token.get('token') or '').strip('"\'')
 
         if not token or token.lower() in ['null', 'undefined', 'none', '']:
             return jsonify({

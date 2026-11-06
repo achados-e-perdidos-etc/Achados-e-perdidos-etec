@@ -31,6 +31,7 @@ from utils.security import consulta_publica, token_required, secretaria_required
 from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.professores import SCHEMA_ACESSO_PROFESSORES
+from utils.push import SCHEMA_PUSH
 from config import JWT_SECRET
 
 # ============================================================
@@ -40,6 +41,8 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 from blueprints.professores import professores_bp
 app.register_blueprint(professores_bp)
+from blueprints.Push import push_bp
+app.register_blueprint(push_bp)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
 
@@ -239,6 +242,7 @@ def init_db():
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
+        cursor.execute(SCHEMA_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')
@@ -473,27 +477,6 @@ def rota_ia_sem():
 # ============================================================
 # ROTAS PUSH NOTIFICATIONS
 # ============================================================
-@app.route('/api/push/public-key', methods=['OPTIONS', 'GET'])
-def get_vapid_key():
-    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
-    return jsonify({"success": True, "publicKey": VAPID_PUBLIC_KEY})
-
-@app.route('/api/push/subscribe', methods=['OPTIONS', 'POST'])
-def sub_push():
-    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
-    d = request.json or {}
-    rm, sub = str(d.get('rm') or '').strip(), d.get('subscription')
-    if not rm or not sub: return jsonify({"success": False}), 400
-    sub_j = json.dumps(sub) if isinstance(sub, (dict, list)) else str(sub)
-    try:
-        conn = get_db_connection(); c = conn.cursor()
-        c.execute("INSERT INTO push_subscriptions (rm_aluno, subscription_json) VALUES (%s, %s) ON CONFLICT (rm_aluno) DO UPDATE SET subscription_json = EXCLUDED.subscription_json;", (rm, sub_j))
-        conn.commit(); c.close(); conn.close()
-        return jsonify({"success": True})
-    except Exception:
-        logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
-        return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
-
 # ============================================================
 # ROTAS AUTENTICAÇÃO
 # ============================================================

@@ -22,7 +22,8 @@ Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram
 - [ ] Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
 - [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros. Adiado pelo usuário até obter a lista oficial da escola com e-mail institucional e matrícula; não implementar aprovação manual nesta etapa.
 - [x] Exigir sessão nas operações pessoais e obter autoria da sessão em solicitação de itens, publicação no mural e cadastro de objetos encontrados. Detalhes na sétima etapa.
-- [ ] Proteger a vinculação de notificações push à sessão; `/api/push/subscribe` ainda aceita RM enviado pelo cliente sem autenticação.
+- [x] Proteger a vinculação de notificações push à sessão; cadastro e exclusão exigem login e usam a conta por e-mail, sem escolher destinatário por RM. Detalhes na oitava etapa.
+- [ ] Implementar e validar o emissor de Web Push no servidor com VAPID real e hospedagem HTTPS. O projeto tem cadastro de assinaturas e recepção no service worker, mas ainda não foi encontrada rotina de envio Web Push no backend; notificações locais do navegador não comprovam entrega em segundo plano.
 - [x] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts no portal e painel; detalhes e limites na sexta etapa.
 - [x] Removido login compartilhado professor/professor e sessões fictícias do navegador. Professores usam conta institucional com senha individual; tokens antigos exigem novo login.
 - [x] Catálogo e mural públicos usam lista explícita de campos sem nome do autor, RM ou e-mail de alunos. Dados administrativos exigem token de secretaria; consultas pessoais filtram pelo e-mail da sessão. Conteúdo livre de descrições e imagens ainda pode conter dados pessoais e exige moderação.
@@ -120,3 +121,18 @@ Branch derivada da proposta #19. A validação do RM pela lista oficial foi adia
 - [x] Solicitar por ID também exige que o objeto já esteja aprovado para o catálogo, preservando a moderação.
 
 Validação: 134 testes Python, 21 testes JavaScript e 10 testes no Chromium passaram. Os casos novos cobrem visitantes, tokens forjados, alteração dos campos de autoria, perfis de professor com/sem aprovação e consultas de duas contas após gravações reais em SQLite temporário. Tanto o servidor unificado quanto os blueprints foram verificados. Não houve migração, alteração de conta ou acesso a produção. Esta correção vincula as operações à sessão; comprovar a titularidade e unicidade do RM continua pendente da lista oficial, sem ser considerado resolvido por esta etapa.
+
+## Oitava etapa — notificações vinculadas à conta (proposta 21)
+
+Branch numerada 21-protecao-notificacoes-push, derivada da proposta #20. A numeração das branches futuras também foi registrada em AGENTS.md por orientação do usuário.
+
+- [x] POST/DELETE /api/push/subscribe exigem sessão institucional válida; a chave pública e OPTIONS continuam públicos.
+- [x] Assinaturas pertencem ao e-mail autenticado, sem usar RM/e-mail/perfil enviados no corpo. Contas que declaram o mesmo RM não sobrescrevem dispositivos diferentes.
+- [x] Nova tabela push_dispositivos com vínculo à conta e chave única por endpoint; permite vários dispositivos por conta. Um navegador compartilhado passa para a última conta que o vinculou, e uma conta anterior não pode apagar esse novo vínculo.
+- [x] Assinaturas legadas em push_subscriptions são preservadas, mas não adotadas como vínculos autenticados. O portal recadastra a assinatura do próprio navegador após o login com permissão concedida.
+- [x] Validação de endpoint HTTPS, formato/tamanho das chaves e validade da assinatura antes do banco; erros não retornam dados de assinatura.
+- [x] Logout tenta cancelar a assinatura no navegador e excluir somente o vínculo da conta que está saindo; tarefas de cadastro anteriores ao logout são invalidadas.
+- [x] Portal registra /sw.js quando ainda não há service worker, em vez de apenas aguardar um registro inexistente.
+- [x] Backend unificado usa o mesmo blueprint de push que a versão modular; ambas as inicializações criam a nova tabela de forma idempotente.
+
+Validação: 195 testes Python, 33 testes JavaScript e 10 testes no Chromium passaram. Também foi executada uma migração de tabelas legadas em PostgreSQL real temporário, repetindo as duas inicializações e verificando múltiplos dispositivos, contas com o mesmo RM e exclusão restrita. Serviços push e credenciais de produção não foram usados. Cadastro protegido não equivale a envio real de notificações; o emissor e a entrega em dispositivos reais continuam pendentes. A validação do RM pela lista oficial permanece adiada.

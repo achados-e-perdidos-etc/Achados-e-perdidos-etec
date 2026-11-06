@@ -87,10 +87,12 @@ function tocarSomNotificacao() {
 function solicitarPermissaoNotificacao() {
     if ("Notification" in window) {
         if (Notification.permission === "granted") {
-            mostrarToast("As notificações já estão ativadas!", "success");
+            ativarWebPush();
+            mostrarToast("A permissão para notificações está ativa.", "success");
         } else if (Notification.permission !== "denied") {
             Notification.requestPermission().then(permission => {
-                if (permission === "granted") mostrarToast("Notificações ativadas com sucesso!", "success");
+                if (permission === "granted") mostrarToast("Permissão para notificações concedida.", "success");
+                if (permission === "granted") ativarWebPush();
             });
         }
     } else {
@@ -221,7 +223,7 @@ async function checarSessao() {
         } catch (e) {}
 
         alunoSessao = JSON.parse(dados);
-        ativarWebPush(alunoSessao.rm);
+        ativarWebPush();
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Olá, ${alunoSessao.nome.split(' ')[0]}!`;
         
@@ -252,14 +254,18 @@ async function checarSessao() {
 }
 
 function fazerLogoff(recarregar = true) {
+    const limpezaPush = desativarWebPush(localStorage.getItem('aluno_token'));
     localStorage.removeItem('aluno_token');
     localStorage.removeItem('aluno_dados');
     localStorage.removeItem('secretaria_token');
+    alunoSessao = null;
     if (recarregar) {
-        window.location.reload();
+        return Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])
+            .finally(() => window.location.reload());
     } else {
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
+    return limpezaPush;
 }
 
 function toggleMenuNavegacao() {
@@ -1165,55 +1171,6 @@ window.onload = () => {
         checarSessao();
     }
 };
-
-
-// ==============================================================================
-// FASE 2: WEB PUSH NOTIFICATIONS NATIVAS (SERVICE WORKER & VAPID)
-// ==============================================================================
-async function ativarWebPush(rmAluno) {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !rmAluno || rmAluno === 'PENDENTE') return;
-    try {
-        const reg = await navigator.serviceWorker.ready;
-        const subExistente = await reg.pushManager.getSubscription();
-        if (subExistente) {
-            enviarSubscricaoAoBackend(rmAluno, subExistente);
-            return;
-        }
-
-        const keyRes = await fetch(API_URL + "/api/push/public-key");
-        const keyData = await keyRes.json();
-        if (!keyData.success || !keyData.publicKey) return;
-
-        const sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
-        });
-        enviarSubscricaoAoBackend(rmAluno, sub);
-    } catch (e) {
-        console.warn("[Web Push] Aviso na subscrição push:", e);
-    }
-}
-
-async function enviarSubscricaoAoBackend(rm, sub) {
-    try {
-        await fetch(API_URL + "/api/push/subscribe", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rm: rm, subscription: sub })
-        });
-    } catch (e) {}
-}
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
 
 
 // ==============================================================================

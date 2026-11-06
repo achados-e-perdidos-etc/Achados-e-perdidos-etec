@@ -16,12 +16,14 @@ Instale `requirements.txt` em um ambiente virtual. Execute com banco desabilitad
 JWT_SECRET=teste-local-apenas-0123456789abcdef DATABASE_URL='' python -m pytest -q
 node --check script.js
 node --check seguranca-interface.js
+node --check notificacoes-push.js
 node --check sw.js
 node tests/test_portal_auth.cjs
 node tests/test_privacy_portal.cjs
 node tests/test_teacher_portal.cjs
 node tests/test_vision_form.cjs
 node tests/test_student_operations.cjs
+node tests/test_push_portal.cjs
 ```
 
 Os testes usam o cliente Flask real, banco simulado e uma tabela SQLite temporária para executar o SQL de doações. Não verificam a conexão com PostgreSQL em produção nem serviços de e-mail, imagens, IA ou push. Não inserem ou removem dados reais.
@@ -117,4 +119,20 @@ A atualização de solicitação também exige aprovado=TRUE ou o valor NULL leg
 
 Validação: 134 testes Python e 21 testes JavaScript passaram, além dos 10 testes de renderização no Chromium. Os novos casos executam as rotas reais no servidor unificado e modular, verificam rejeição antes de banco/processamento de fotos e conferem os parâmetros persistidos. Um fluxo adicional usa SQL real em SQLite temporário e duas sessões para solicitar um item, publicar um relato, cadastrar um objeto e consultar os dados pessoais sem atribuí-los à conta citada no corpo adulterado. Fotos e serviços externos foram simulados. Sintaxe Python/JavaScript e git diff --check passaram.
 
-Não exige novas variáveis nem migração de banco. O token continua contendo nome e RM informados durante o cadastro, sem validação contra registros escolares. A confirmação do vínculo, a unicidade do RM, a atualização de sessões antigas e a privacidade de conversas baseadas apenas no RM precisam da revisão de matrículas que foi adiada. A vinculação de push à sessão também permanece registrada como pendência própria. Nenhum dado de produção foi consultado ou corrigido; esta etapa não altera a autoria de registros antigos.
+Não exige novas variáveis nem migração de banco nesta sétima etapa. O token continua contendo nome e RM informados durante o cadastro, sem validação contra registros escolares. A confirmação do vínculo, a unicidade do RM, a atualização de sessões antigas e a privacidade de conversas baseadas apenas no RM precisam da revisão de matrículas que foi adiada. A vinculação de push à sessão é tratada na etapa seguinte. Nenhum dado de produção foi consultado ou corrigido; esta etapa não altera a autoria de registros antigos.
+
+## Oitava etapa: cadastro seguro de Web Push
+
+O backend unificado registra o blueprint blueprints.Push, eliminando a rota duplicada sem autenticação. POST e DELETE /api/push/subscribe usam token_required e a identidade institucional da sessão. O servidor ignora os campos de destinatário enviados no corpo. O vínculo é feito por e-mail, inclusive para professores e alunos com RM pendente; não depende da lista oficial de matrículas. A chave pública não é secreta e continua disponível sem login. Foi corrigido também o processamento de tokens em corpos JSON que não são objetos, evitando erro interno antes da rejeição de visitantes.
+
+A tabela push_dispositivos contém endpoint_hash como chave primária, email_aluno com referência a alunos(email), subscription_json e data de atualização. Cada endpoint tem um vínculo atual, permitindo vários dispositivos por conta sem unicidade pelo RM. O upsert é atômico. A exclusão exige correspondência de endpoint e e-mail autenticado e não informa se o endpoint pertence a outra pessoa. Uma assinatura de dispositivo compartilhado pode ser vinculada à nova conta autenticada; conhecer apenas o RM não permite fazer isso.
+
+SCHEMA_PUSH é aplicado nas inicializações de server.py e database.py, depois da criação de alunos. É necessário que o usuário do banco possa criar a tabela. A tabela legada push_subscriptions não é apagada nem convertida automaticamente: seus vínculos anônimos não comprovam autoria. Nenhum componente novo lê essas linhas para enviar notificações. O navegador recadastra sua assinatura após login e permissão concedida, incluindo assinaturas já existentes. Não exige nova variável de ambiente; publicar notificacoes-push.js junto com index.html, script.js e os arquivos Python novos.
+
+Os endpoints aceitam somente HTTPS na porta padrão/443, sem credenciais, fragmentos ou caracteres de controle e com limite de tamanho. As chaves exigem formato base64url e tamanhos de Web Push (auth de 16 bytes, ponto p256dh não comprimido de 65 bytes); isso valida formato, sem provar que o endpoint está ativo ou que a chave está registrada no provedor. Nenhum endpoint é contatado durante cadastro ou teste. Erros de banco retornam mensagem genérica e não registram o erro SQL que poderia incluir chaves.
+
+O portal envia Authorization e somente subscription no cadastro. Quando não há service worker registrado, registra /sw.js antes de aguardar sua ativação; o código anterior somente aguardava um registro que não criava. A recusa do servidor e falhas de rede retornam false, sem anunciar cadastro bem-sucedido. A assinatura nova só é solicitada se a permissão do navegador já foi concedida; o pedido de permissão continua no fluxo existente. Ao sair, a sessão local é limpa imediatamente, tenta-se cancelar a assinatura nativa e excluir o vínculo usando o token capturado. Há espera máxima de 1,5 segundo antes de recarregar para manter o logout disponível em falhas de rede. Operações aguardando o service worker verificam se a sessão mudou; assinaturas novas concluídas após logout são canceladas quando não há outra sessão. A limpeza de navegador/servidor é uma tentativa: falha de rede ou do navegador pode deixar registro para limpeza posterior, e uma requisição já enviada pode concluir depois do logout. Não é revogação global de JWT.
+
+Validação: 195 testes Python e 33 testes JavaScript passaram. Os casos novos executam o SQL real em SQLite isolado e verificam autenticação, persistência por e-mail, contas com o mesmo RM, vários dispositivos, troca de conta, exclusão restrita, validação de entrada, rollback e erros sem dados de assinatura. Os testes JavaScript cobrem assinatura existente/nova, registro do service worker, Authorization, permissão, recusa, falha de rede e tarefas atrasadas no logout. Os 10 testes de renderização no Chromium também passaram. Foi executada uma atualização com tabelas legadas em PostgreSQL real temporário, repetindo ambas as inicializações e exercitando as operações por conta. Sintaxe e git diff --check foram verificados. Nenhum banco ou credencial de produção foi acessado.
+
+Esta etapa protege o cadastro e a desvinculação, sem afirmar entrega de notificações em segundo plano. A revisão encontrou service worker receptor e notificações locais de página, mas não um emissor Web Push no servidor nem dependência correspondente. Implementar o envio deve usar push_dispositivos por e-mail autenticado e nunca voltar à tabela legada por RM. Entrega real ainda requer emissor, VAPID válido, site HTTPS e teste em dispositivos; o valor VAPID de exemplo não serve como credencial de produção.

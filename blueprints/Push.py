@@ -1,7 +1,8 @@
-import json
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import VAPID_PUBLIC_KEY
-from database import get_db_connection
+from utils.security import token_required, identidade_portal
+from utils.push import validar_assinatura, validar_endpoint
+from services import push_service
 
 push_bp = Blueprint('push', __name__)
 
@@ -11,32 +12,27 @@ def get_public_key():
         return jsonify({"success": True}), 200
     return jsonify({"success": True, "publicKey": VAPID_PUBLIC_KEY})
 
-@push_bp.route('/api/push/subscribe', methods=['OPTIONS', 'POST'])
+@push_bp.route('/api/push/subscribe', methods=['OPTIONS', 'POST', 'DELETE'])
+@token_required
 def salvar_subscricao():
-    if request.method == 'OPTIONS':
-        return jsonify({"success": True}), 200
-
-    dados = request.json or {}
-    rm = str(dados.get('rm') or '').strip()
-    sub_data = dados.get('subscription')
-
-    if not rm or not sub_data:
-        return jsonify({"success": False, "message": "RM e dados de assinatura são obrigatórios."}), 400
-
-    sub_json = json.dumps(sub_data) if isinstance(sub_data, (dict, list)) else str(sub_data)
-
+    conta = identidade_portal()
+    if not conta:
+        return jsonify({'success': False, 'message': 'Entre com sua conta institucional para configurar notificações.'}), 403
+    dados = request.get_json(silent=True)
+    if not isinstance(dados, dict):
+        return jsonify({'success': False, 'message': 'Envie os dados da notificação em JSON.'}), 400
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO push_subscriptions (rm_aluno, subscription_json) 
-            VALUES (%s, %s) 
-            ON CONFLICT (rm_aluno) DO UPDATE 
-            SET subscription_json = EXCLUDED.subscription_json;
-        """, (rm, sub_json))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Notificações push ativadas para este dispositivo."})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        valor = (validar_endpoint(dados.get('endpoint')) if request.method == 'DELETE'
+                 else validar_assinatura(dados.get('subscription')))
+    except ValueError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
+    try:
+        if request.method == 'DELETE':
+            push_service.remover_assinatura(conta['email'], valor)
+        else:
+            push_service.salvar_assinatura(conta['email'], valor)
+        return jsonify({'success': True})
+    except Exception:
+        # Erros SQL podem conter endpoint/chaves: não registrar seus detalhes.
+        current_app.logger.error('Falha ao atualizar vínculo de notificações push.')
+        return jsonify({'success': False, 'message': 'Não foi possível atualizar as notificações. Tente novamente.'}), 503
