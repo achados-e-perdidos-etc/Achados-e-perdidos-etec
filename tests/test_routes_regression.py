@@ -142,6 +142,39 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(self.client.delete('/api/itens/doacoes/concluir',
                                            headers=self.secretaria).status_code, 200)
 
+    def test_login_compartilhado_professor_rejeitado(self):
+        self.cursor.fetchone.return_value = None
+        result = self.client.post('/api/auth/login-aluno', json={'email': 'professor', 'senha': 'professor'})
+        self.assertEqual(result.status_code, 401)
+        self.assertNotIn('token', result.json)
+
+    def test_professor_cadastrado_usa_senha_individual(self):
+        from werkzeug.security import generate_password_hash
+        self.cursor.fetchone.return_value = {
+            'email': 'docente@cps.sp.gov.br', 'nome': 'Docente', 'rm': 'PROFESSOR',
+            'senha_hash': generate_password_hash('SenhaComMaiusculas123!')}
+        result = self.client.post('/api/auth/login-aluno', json={
+            'email': 'docente@cps.sp.gov.br', 'senha': 'SenhaComMaiusculas123!'})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json['aluno']['email'], 'docente@cps.sp.gov.br')
+        denied = self.client.post('/api/auth/login-aluno', json={
+            'email': 'docente@cps.sp.gov.br', 'senha': 'professor'})
+        self.assertEqual(denied.status_code, 401)
+        self.assertNotIn('token', denied.json)
+
+    def test_tokens_da_antiga_conta_compartilhada_sao_revogados(self):
+        import jwt
+        from datetime import datetime, timedelta, timezone
+        token = jwt.encode({'email': 'professor@cps.sp.gov.br', 'nome': 'Professor(a)',
+                            'rm': 'PROFESSOR', 'role': 'aluno',
+                            'exp': datetime.now(timezone.utc) + timedelta(days=1)},
+                           server.JWT_SECRET, algorithm='HS256')
+        result = self.client.get('/api/chat/mensagens/12345', headers={'Authorization': 'Bearer ' + token})
+        self.assertEqual(result.status_code, 401)
+        self.assertTrue(result.json['expired'])
+        self.get_db.assert_not_called()
+
+
 
 class ModularRouteTests(RouteTests):
     """Repete os contratos na implementação modular para evitar divergências."""

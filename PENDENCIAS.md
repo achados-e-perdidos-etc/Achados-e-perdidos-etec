@@ -22,10 +22,17 @@ Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram
 - [ ] Configurar segredo JWT novo na hospedagem antes da publicação; a troca invalida tokens antigos.
 - [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros.
 - [ ] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts.
-- [ ] Revisar login compartilhado de professor e acesso público a dados pessoais nas respostas de itens/mural.
+- [x] Removido login compartilhado professor/professor e sessões fictícias do navegador. Professores usam conta institucional com senha individual; tokens antigos exigem novo login.
+- [ ] Revisar acesso público a dados pessoais nas respostas de itens/mural.
 - [ ] Após a migração, substituir a URL Railway fixa no frontend e verificar também painel e aplicativo desktop.
 
-## Validação desta etapa
+## Segunda etapa — acesso de professores
+
+Branch separada baseada na proposta #14, ainda não integrada à main. Removido o atalho compartilhado no servidor e no portal; o navegador não cria sessões em falhas de rede e descarta os antigos tokens fictícios. Emissão e validação de JWT exigem auth_version=2, revogando também tokens assinados da antiga conta compartilhada. Isso exige novo login de alunos e secretaria na publicação. O envio de códigos no portal aceita também domínios CPS e ETEC.
+
+Validação: 46 testes Python e 5 testes JavaScript passaram. O acesso legítimo com senha individual continua sendo verificado pelo banco. Envio real de e-mail e comprovação do vínculo de matrícula permanecem sem validação nesta etapa.
+
+## Validação da primeira etapa
 
 40 testes passaram: 17 existentes, 22 testes de contratos de rotas nas implementações unificada/modular e um teste da configuração JWT. JavaScript e compilação Python também verificados. Integrações externas e dados reais permanecem sem teste. Consulte VALIDACAO.md.
 

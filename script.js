@@ -202,6 +202,12 @@ async function checarSessao() {
     const token = localStorage.getItem('aluno_token');
     const dados = localStorage.getItem('aluno_dados');
     
+    if (token && token.startsWith('token_prof_')) {
+        fazerLogoff(false);
+        document.getElementById('loginAlunoScreen').classList.remove('hidden');
+        return;
+    }
+
     if (token && dados) {
         try {
             const res = await fetch(`${API_URL}/api/auth/verificar`, {
@@ -344,43 +350,6 @@ function alternarTelaAuth(tela) {
 
 async function fazerLoginAluno(e) {
     e.preventDefault();
-    const emailVal = document.getElementById('loginEmailAluno').value.trim().toLowerCase();
-    const senhaVal = document.getElementById('loginSenhaAluno').value.trim().toLowerCase();
-
-    // ATALHO PROFESSOR: se escrever 'professor' em ambos os campos, entra direto!
-    if (emailVal === 'professor' && senhaVal === 'professor') {
-        const btn = document.getElementById('btnAcessoLogin');
-        btn.innerText = "Entrando..."; btn.disabled = true;
-        try {
-            const res = await fetch(API_URL + "/api/auth/login-aluno", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'professor', senha: 'professor' })
-            });
-            const data = await res.json();
-            if (data.success && data.token) {
-                localStorage.setItem('aluno_token', data.token.trim());
-                localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
-                mostrarToast("Bem-vindo(a), Professor(a)!", "success");
-                checarSessao();
-            } else {
-                const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br", role: "professor" };
-                localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
-                localStorage.setItem('aluno_dados', JSON.stringify(profDados));
-                mostrarToast("Bem-vindo(a), Professor(a)!", "success");
-                checarSessao();
-            }
-        } catch {
-            const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br", role: "professor" };
-            localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
-            localStorage.setItem('aluno_dados', JSON.stringify(profDados));
-            mostrarToast("Bem-vindo(a), Professor(a)!", "success");
-            checarSessao();
-        }
-        btn.innerText = "Entrar no Portal"; btn.disabled = false;
-        return;
-    }
-
     const btn = document.getElementById('btnAcessoLogin');
     btn.innerText = "Entrando..."; btn.disabled = true;
     try {
@@ -393,7 +362,7 @@ async function fazerLoginAluno(e) {
             })
         });
         const data = await res.json();
-        if (data.success && data.token) {
+        if (res.ok && data.success && data.token) {
             localStorage.setItem('aluno_token', data.token.trim());
             localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
             checarSessao();
@@ -408,7 +377,7 @@ async function fazerLoginAluno(e) {
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endsWith("@aluno.cps.sp.gov.br")) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!/^[A-Z0-9._%+-]+@(aluno\.cps|cps|etec)\.sp\.gov\.br$/i.test(email)) return mostrarToast("Use seu e-mail institucional CPS ou ETEC.", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {

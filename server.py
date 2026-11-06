@@ -133,11 +133,11 @@ def after_request(response):
 # ============================================================
 def gerar_token_aluno(email, nome, rm, dias_validade=30):
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
-    return jwt.encode({"email": email, "nome": nome, "rm": rm, "role": "aluno", "exp": exp}, JWT_SECRET, algorithm="HS256")
+    return jwt.encode({"email": email, "nome": nome, "rm": rm, "role": "aluno", "auth_version": 2, "exp": exp}, JWT_SECRET, algorithm="HS256")
 
 def gerar_token_secretaria(email, dias_validade=7):
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
-    return jwt.encode({"user": "secretaria", "role": "secretaria", "email": email, "exp": exp}, JWT_SECRET, algorithm="HS256")
+    return jwt.encode({"user": "secretaria", "role": "secretaria", "email": email, "auth_version": 2, "exp": exp}, JWT_SECRET, algorithm="HS256")
 
 # ============================================================
 # BANCO DE DADOS E MIGRATIONS
@@ -623,19 +623,6 @@ def log_aluno():
     d = request.json or {}
     email, senha = d.get('email', '').lower().strip(), d.get('senha', '').strip()
     
-    # ACESSO PROFESSOR: digitar 'professor' no e-mail e na senha
-    if email == 'professor' and senha.lower() == 'professor':
-        token = gerar_token_aluno("professor@cps.sp.gov.br", "Professor(a)", "PROFESSOR")
-        return jsonify({
-            "success": True,
-            "token": token,
-            "aluno": {
-                "nome": "Professor(a)",
-                "rm": "PROFESSOR",
-                "email": "professor@cps.sp.gov.br",
-                "role": "professor"
-            }
-        })
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT * FROM alunos WHERE email = %s;", (email,))

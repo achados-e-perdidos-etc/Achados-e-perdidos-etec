@@ -49,6 +49,8 @@ def token_required(f):
                 leeway=timedelta(seconds=60), 
                 options={"verify_exp": True}
             )
+            if payload.get("auth_version") != 2:
+                return jsonify({"success": False, "message": "Faça login novamente para renovar sua sessão.", "expired": True}), 401
             request.user = payload
         except jwt.ExpiredSignatureError:
             return jsonify({
@@ -103,7 +105,7 @@ def gerar_token_aluno(email, nome, rm, dias_validade=30):
     """
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
     return jwt.encode(
-        {"email": email, "nome": nome, "rm": rm, "role": "aluno", "exp": exp},
+        {"email": email, "nome": nome, "rm": rm, "role": "aluno", "auth_version": 2, "exp": exp},
         JWT_SECRET,
         algorithm="HS256"
     )
@@ -114,7 +116,7 @@ def gerar_token_secretaria(email, dias_validade=7):
     """
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
     return jwt.encode(
-        {"user": "secretaria", "role": "secretaria", "email": email, "exp": exp},
+        {"user": "secretaria", "role": "secretaria", "email": email, "auth_version": 2, "exp": exp},
         JWT_SECRET,
         algorithm="HS256"
     )
