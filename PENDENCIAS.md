@@ -207,3 +207,9 @@ Verificação desta etapa: 266 testes Python (incluindo 13 casos em PostgreSQL r
 - [x] Revisão de navegação por teclado, foco, rótulos, contraste e apresentação dos novos fluxos no celular.
 
 As quatro melhorias compõem uma única branch `26-melhorias-portal`, dependente da proposta 25. Acompanhamento de autoria vale para novos objetos; registros legados sem e-mail de autoria não são atribuídos por suposição. O código proposto e validado localmente ainda precisa ser integrado para chegar ao site publicado. Permanecem preservados os registros das tarefas anteriormente adiadas.
+
+## Proposta 27 — auditoria funcional e desktop
+
+Relatório completo em **AUDITORIA-27.md**. Logo desktop unificada com a web; correções dos IDs do histórico, confirmação de doações, timeouts e sugestões de IA. Verificação com Tkinter real em tela virtual, Flask e PostgreSQL isolado.
+
+Novas descobertas ativas, ainda abertas: **A27-01** (isolamento do chat entre contas com mesmo RM), **A27-02** (reversão de entrega mantém histórico/indicadores), **A27-03** (cadastros vazios aceitos pela API), **A27-04** (desktop síncrono e erros silenciosos), **A27-05** (células de CSV sem neutralização de fórmulas) e **A27-06** (ordenação de categorias no desktop). Essas descobertas não foram encerradas. Elas não dependem da disponibilidade da lista oficial de matrículas e não substituem os registros das tarefas anteriormente adiadas.

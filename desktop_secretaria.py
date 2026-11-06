@@ -5,8 +5,10 @@ import json
 import base64
 import io
 import os
+import sys
+from pathlib import Path
 import csv
-from PIL import Image, ImageTk, ImageDraw, ImageFont
+from PIL import Image, ImageTk, ImageDraw, ImageFont, ImageOps
 from datetime import datetime
 import qrcode
 
@@ -15,6 +17,17 @@ import qrcode
 # ==========================================
 API_URL = "https://etec-achados.up.railway.app"
 TOKEN_SECRETARIA = None
+
+def requisicao_desktop(metodo, url, **kwargs):
+    """Limita a espera em conexões interrompidas, inclusive durante login."""
+    kwargs.setdefault('timeout', (5, 25))
+    return requests.request(metodo, url, **kwargs)
+
+
+def caminho_logo_secretaria():
+    raiz = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
+    return raiz / 'logo_secretaria.png'
+
 
 # Paleta de Cores Visual Moderna
 COR_BG_GERAL = "#0d1117"
@@ -32,7 +45,7 @@ COR_BORDA = "#30363d"
 def comprimir_foto_desktop(caminho_arquivo, max_dim=1200, qualidade=75):
     try:
         with Image.open(caminho_arquivo) as img:
-            img = img.convert("RGB")
+            img = ImageOps.exif_transpose(img).convert("RGB")
             w, h = img.size
             if w > max_dim or h > max_dim:
                 if w > h:
@@ -73,6 +86,13 @@ class SecretariaApp:
         self.estilo.map("Treeview", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
         self.estilo.configure("Treeview.Heading", background=COR_BG_HEADER, foreground="#ffffff", font=("Segoe UI", 10, "bold"), relief="flat")
 
+        self.logo_secretaria = None
+        try:
+            with Image.open(caminho_logo_secretaria()) as logo:
+                self.logo_secretaria = ImageTk.PhotoImage(logo.resize((64, 64), Image.Resampling.LANCZOS))
+            self.root.iconphoto(True, self.logo_secretaria)
+        except (OSError, tk.TclError):
+            pass  # O arquivo acompanha a distribuição; ausência não impede o login.
         self.tela_login()
 
     def get_auth_headers(self):
@@ -88,9 +108,10 @@ class SecretariaApp:
 
     def tela_login(self):
         self.frame_login = tk.Frame(self.root, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
-        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=380)
+        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=420)
 
-        tk.Label(self.frame_login, text="🔐", font=("Segoe UI", 24), bg=COR_BG_CARD).pack(pady=(25, 0))
+        tk.Label(self.frame_login, image=self.logo_secretaria, text='' if self.logo_secretaria else 'Secretaria ETEC',
+                 compound='top', bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL).pack(pady=(20, 0))
         tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Segoe UI", 16, "bold"), bg=COR_BG_CARD, fg=COR_DESTAQUE).pack(pady=(5, 2))
         tk.Label(self.frame_login, text="Painel Administrativo Seguro", font=("Segoe UI", 9, "italic"), bg=COR_BG_CARD, fg=COR_VERDE).pack(pady=(0, 20))
 
@@ -124,7 +145,7 @@ class SecretariaApp:
         self.root.update()
 
         try:
-            res = requests.post(f"{API_URL}/api/login", json={"email": email, "senha": senha})
+            res = requisicao_desktop('POST', f"{API_URL}/api/login", json={"email": email, "senha": senha})
             data = res.json()
 
             if res.status_code == 200 and data.get("success"):
@@ -139,6 +160,10 @@ class SecretariaApp:
             self.btn_entrar.config(text="ENTRAR NO SISTEMA", state="normal")
 
     def construir_interface_principal(self):
+        cabecalho = tk.Frame(self.root, bg=COR_BG_HEADER)
+        cabecalho.pack(fill='x')
+        tk.Label(cabecalho, image=self.logo_secretaria, text='  SECRETARIA ETEC', compound='left',
+                 bg=COR_BG_HEADER, fg='white', font=('Segoe UI', 13, 'bold')).pack(side='left', padx=12, pady=6)
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True, padx=12, pady=12)
 
@@ -212,7 +237,7 @@ class SecretariaApp:
 
     def carregar_dashboard(self):
         try:
-            res = requests.get(f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get())
+            res = requisicao_desktop('GET', f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 data = res.json()
                 total = data.get('total_itens', 0)
@@ -245,7 +270,7 @@ class SecretariaApp:
         )
         if not file_path: return
         try:
-            res_itens = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
+            res_itens = requisicao_desktop('GET', f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
             if res_itens.status_code != 200: return messagebox.showerror("Erro", "Erro ao conectar ao servidor.")
             itens = res_itens.json()
             with open(file_path, mode='w', newline='', encoding='utf-8-sig') as arquivo_csv:
@@ -275,7 +300,7 @@ class SecretariaApp:
         
     def carregar_mural(self):
         try:
-            res = requests.get(f"{API_URL}/api/mural", headers=self.get_auth_headers_get())
+            res = requisicao_desktop('GET', f"{API_URL}/api/mural", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.tree_mural.delete(*self.tree_mural.get_children())
                 for m in res.json():
@@ -288,7 +313,7 @@ class SecretariaApp:
         item_id = self.tree_mural.item(selecionado[0], "values")[0]
         if messagebox.askyesno("Confirmar", f"Deseja apagar definitivamente o relato #{item_id}?"):
             try:
-                res = requests.delete(f"{API_URL}/api/mural/{item_id}", headers=self.get_auth_headers())
+                res = requisicao_desktop('DELETE', f"{API_URL}/api/mural/{item_id}", headers=self.get_auth_headers())
                 if res.status_code == 200: self.carregar_mural()
             except: pass
 
@@ -332,7 +357,7 @@ class SecretariaApp:
 
     def carregar_itens(self):
         try:
-            res = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
+            res = requisicao_desktop('GET', f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.itens_atuais = res.json()
                 self.aplicar_filtros_tabela()
@@ -483,7 +508,7 @@ class SecretariaApp:
                 lbl_foto_status.config(text=f"Fotos otimizadas: {len(fotos_upload_base64)} — analisando com IA...", fg="#f59e0b")
                 if fotos_upload_base64:
                     try:
-                        resposta = requests.post(
+                        resposta = requisicao_desktop('POST',
                             f"{API_URL}/api/ia/analisar-imagem",
                             json={"foto": fotos_upload_base64[0]},
                             timeout=25
@@ -495,6 +520,11 @@ class SecretariaApp:
                             messagebox.showwarning("Análise de imagem", f"A foto foi carregada, mas a IA não conseguiu analisá-la.\n\nDetalhe: {detalhe}\n\nVocê pode preencher os campos manualmente.")
                         else:
                             r = dados_ia.get("resultado") or {}
+                            if not (r.get('pode_preencher') is True and r.get('metodo') == 'gemini_vision_ocr'
+                                    and r.get('confianca_objeto') in ('alta', 'media')
+                                    and r.get('nome') and r.get('descricao')):
+                                lbl_foto_status.config(text='Foto carregada. Preencha os campos manualmente.', fg='#f59e0b')
+                                return
                             if r.get("nome"): var_nome.set(str(r["nome"])[:150])
                             if r.get("descricao"):
                                 descricao = str(r["descricao"])[:1500]
@@ -505,7 +535,7 @@ class SecretariaApp:
                                 if opcao.upper() == categoria_ia or opcao.upper().replace("É", "E") == categoria_ia.replace("É", "E"):
                                     cb_cat.set(opcao)
                                     break
-                            ocr_rm_identificado = str(r.get("ocr_rm") or "")[:20]
+                            ocr_rm_identificado = str(r.get("ocr_rm") or "")[:20] if r.get("ocr_confianca") == "alta" else ""
                             aluno = r.get("aluno_correspondente")
                             status_ia = f"IA preencheu os campos. Confira antes de salvar. Método: {r.get('metodo', 'análise visual')}."
                             if aluno: status_ia += f" Possível aluno correspondente: {aluno.get('nome', 'cadastro localizado')}."
@@ -525,9 +555,9 @@ class SecretariaApp:
             if not payload['nome'] or not payload['descricao']: return messagebox.showwarning("Aviso", "Preencha título e descrição!")
             try:
                 if item_edit:
-                    res = requests.put(f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers())
+                    res = requisicao_desktop('PUT', f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers())
                 else:
-                    res = requests.post(f"{API_URL}/api/itens", json=payload, headers=self.get_auth_headers())
+                    res = requisicao_desktop('POST', f"{API_URL}/api/itens", json=payload, headers=self.get_auth_headers())
 
                 if res.status_code == 200:
                     messagebox.showinfo("Sucesso", "Item salvo na nuvem com segurança!")
@@ -585,7 +615,7 @@ class SecretariaApp:
                 try:
                     if foto_url.startswith('http'):
                         import urllib.request
-                        with urllib.request.urlopen(foto_url) as u: raw_data = u.read()
+                        with urllib.request.urlopen(foto_url, timeout=15) as u: raw_data = u.read()
                         img = Image.open(io.BytesIO(raw_data))
                         img.thumbnail((160, 160), Image.Resampling.LANCZOS)
                         img_tk = ImageTk.PhotoImage(img)
@@ -663,11 +693,11 @@ class SecretariaApp:
     def acao_rapida(self, item_id, acao, modal=None):
         try:
             if acao == 'excluir' and messagebox.askyesno("Excluir", "Deseja excluir este item permanentemente?"):
-                res = requests.delete(f"{API_URL}/api/itens/{item_id}", headers=self.get_auth_headers())
+                res = requisicao_desktop('DELETE', f"{API_URL}/api/itens/{item_id}", headers=self.get_auth_headers())
             elif acao == 'recusar' and messagebox.askyesno("Recusar", "Deseja recusar a solicitação?"):
-                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar", headers=self.get_auth_headers())
+                res = requisicao_desktop('PUT', f"{API_URL}/api/itens/{item_id}/recusar", headers=self.get_auth_headers())
             elif acao == 'doacao':
-                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"}, headers=self.get_auth_headers())
+                res = requisicao_desktop('PUT', f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"}, headers=self.get_auth_headers())
             else: return
 
             if res.status_code == 200:
@@ -706,7 +736,7 @@ class SecretariaApp:
             n, r, t = entry_nome.get().strip(), entry_rm.get().strip(), entry_turma.get().strip() or "-"
             if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=modal_baixa)
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria Desktop"}, headers=self.get_auth_headers())
+                res = requisicao_desktop('PUT', f"{API_URL}/api/itens/{item['id']}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria Desktop"}, headers=self.get_auth_headers())
                 if res.status_code == 200:
                     messagebox.showinfo("Sucesso", "Item baixado com sucesso!", parent=modal_baixa)
                     modal_baixa.destroy()
@@ -760,14 +790,15 @@ class SecretariaApp:
         tk.Label(frame_top, text="Gerenciamento de Doações", font=("Segoe UI", 14, "bold"), bg=COR_BG_GERAL, fg="#f59e0b").pack(side="left")
         
         def concluir_doacoes():
-            if messagebox.askyesno("Confirmar Doação", "Deseja remover todos os itens doados do sistema?"):
+            if messagebox.askyesno("Confirmar Doação", "Confirmar a doação dos itens elegíveis? Os registros serão preservados."):
                 try:
-                    for child in self.tree_doacoes.get_children():
-                        requests.put(f"{API_URL}/api/itens/{self.tree_doacoes.item(child)['values'][0]}", json={"status": "DOAÇÃO FEITA"}, headers=self.get_auth_headers())
-                    requests.delete(f"{API_URL}/api/itens/doacoes/concluir", headers=self.get_auth_headers())
+                    res = requisicao_desktop('DELETE', f"{API_URL}/api/itens/doacoes/concluir", headers=self.get_auth_headers())
+                    if not res.ok or res.json().get('success') is not True:
+                        return messagebox.showerror('Doação não concluída', 'O servidor não confirmou a operação. Atualize a lista e tente novamente.')
                     messagebox.showinfo("Sucesso", "Doações concluídas!")
                     self.carregar_dados()
-                except: pass
+                except (requests.RequestException, ValueError):
+                    messagebox.showerror('Falha de conexão', 'Não foi possível confirmar a doação. Atualize a lista antes de tentar novamente.')
                 
         tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES", bg="#f59e0b", fg="#0d1117", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=concluir_doacoes).pack(side="right")
         
@@ -790,7 +821,7 @@ class SecretariaApp:
 
     def carregar_categorias(self):
         try:
-            res = requests.get(f"{API_URL}/api/categorias")
+            res = requisicao_desktop('GET', f"{API_URL}/api/categorias")
             if res.status_code == 200:
                 self.listbox_cats.delete(0, tk.END)
                 self.categorias_atuais = []
@@ -803,7 +834,7 @@ class SecretariaApp:
         nome = self.entry_cat.get().strip().upper()
         if nome:
             try:
-                res = requests.post(f"{API_URL}/api/categorias", json={"nome": nome}, headers=self.get_auth_headers())
+                res = requisicao_desktop('POST', f"{API_URL}/api/categorias", json={"nome": nome}, headers=self.get_auth_headers())
                 if res.status_code == 200:
                     self.entry_cat.delete(0, tk.END)
                     self.carregar_categorias()
@@ -814,7 +845,7 @@ class SecretariaApp:
         frame_top.pack(fill="x", pady=12, padx=12)
         
         tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg=COR_AZUL, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left")
-        tk.Button(frame_top, text="🗑️ Excluir Registro", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
+        tk.Button(frame_top, text="🗑️ Excluir objeto e histórico", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
         tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
 
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")
@@ -826,7 +857,7 @@ class SecretariaApp:
     def carregar_entregues(self):
         if not TOKEN_SECRETARIA: return
         try:
-            res = requests.get(f"{API_URL}/api/entregues", headers=self.get_auth_headers_get())
+            res = requisicao_desktop('GET', f"{API_URL}/api/entregues", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.tree_entregues.delete(*self.tree_entregues.get_children())
                 for e in res.json():
@@ -836,27 +867,27 @@ class SecretariaApp:
     def abrir_detalhes_do_historico(self, event):
         selecionado = self.tree_entregues.selection()
         if selecionado:
-            item_id = self.tree_entregues.item(selecionado[0])['values']
+            item_id = self.tree_entregues.item(selecionado[0])['values'][1]
             item = next((i for i in self.itens_atuais if str(i['id']) == str(item_id)), None)
             if item: self.abrir_modal_detalhes_item(item_direto=item)
 
     def desfazer_entrega(self):
         selecionado = self.tree_entregues.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
-        vals = self.tree_entregues.item(selecionado[0], "values")
+        vals = self.tree_entregues.item(selecionado[0], "values")[1]
         if messagebox.askyesno("Desfazer", f"Reverter entrega do item #{vals}?"):
             try:
-                res = requests.put(f"{API_URL}/api/itens/{vals}/recusar", headers=self.get_auth_headers())
+                res = requisicao_desktop('PUT', f"{API_URL}/api/itens/{vals}/recusar", headers=self.get_auth_headers())
                 if res.status_code == 200: self.carregar_dados()
             except: pass
 
     def excluir_entregue(self):
         selecionado = self.tree_entregues.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
-        vals = self.tree_entregues.item(selecionado[0], "values")
-        if messagebox.askyesno("Excluir", f"Excluir histórico do item #{vals}?"):
+        vals = self.tree_entregues.item(selecionado[0], "values")[1]
+        if messagebox.askyesno("Excluir", f"Excluir permanentemente o objeto #{vals} e seu histórico de entregas?"):
             try:
-                res = requests.delete(f"{API_URL}/api/itens/{vals}", headers=self.get_auth_headers())
+                res = requisicao_desktop('DELETE', f"{API_URL}/api/itens/{vals}", headers=self.get_auth_headers())
                 if res.status_code == 200: self.carregar_dados()
             except: pass
 
@@ -891,7 +922,7 @@ class SecretariaApp:
     def carregar_conversas(self):
         if not TOKEN_SECRETARIA: return
         try:
-            res = requests.get(f"{API_URL}/api/chat/conversas", headers=self.get_auth_headers_get())
+            res = requisicao_desktop('GET', f"{API_URL}/api/chat/conversas", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.listbox_chat.delete(0, tk.END)
                 self.mapa_conversas = []
@@ -912,7 +943,7 @@ class SecretariaApp:
     def carregar_mensagens_aluno(self):
         if not self.rm_chat_ativo: return
         try:
-            res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true", headers=self.get_auth_headers_get())
+            res = requisicao_desktop('GET', f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true", headers=self.get_auth_headers_get())
             if res.status_code == 200:
                 self.txt_mensagens.config(state="normal")
                 self.txt_mensagens.delete("1.0", tk.END)
@@ -926,7 +957,7 @@ class SecretariaApp:
     def enviar_mensagem(self):
         if not self.rm_chat_ativo or not self.entry_chat.get().strip(): return
         try:
-            res = requests.post(f"{API_URL}/api/chat/enviar", headers=self.get_auth_headers(), json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()})
+            res = requisicao_desktop('POST', f"{API_URL}/api/chat/enviar", headers=self.get_auth_headers(), json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()})
             if res.status_code == 200:
                 self.entry_chat.delete(0, tk.END)
                 self.carregar_mensagens_aluno()
