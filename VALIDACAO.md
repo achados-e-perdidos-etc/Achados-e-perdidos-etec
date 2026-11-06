@@ -19,6 +19,7 @@ node --check sw.js
 node tests/test_portal_auth.cjs
 node tests/test_privacy_portal.cjs
 node tests/test_teacher_portal.cjs
+node tests/test_vision_form.cjs
 ```
 
 Os testes usam o cliente Flask real, banco simulado e uma tabela SQLite temporária para executar o SQL de doações. Não verificam a conexão com PostgreSQL em produção nem serviços de e-mail, imagens, IA ou push. Não inserem ou removem dados reais.
@@ -65,3 +66,15 @@ O estado fica na tabela professores_acesso, criada por init_db em server.py e da
 Se o provedor usa a implementação modular, registrar auth_bp também registra as novas rotas de professores. O backend unificado registra o blueprint diretamente. Os arquivos professores.js e professores-secretaria.js precisam ser publicados junto com HTML e Python; as interfaces dependem desses arquivos novos. Para abrir o painel mantendo a sessão, portal e painel precisam estar na mesma origem. A substituição da URL Railway durante a migração de hospedagem permanece pendente.
 
 A versão verificada tem 72 testes Python e 11 testes JavaScript passando. As verificações de sintaxe incluem o JavaScript inline do painel. Envio de e-mail real, uso sob carga e hospedagem pública continuam fora desta validação. A aprovação confirma a decisão da secretaria, sem comprovar automaticamente vínculos escolares além da conta institucional.
+
+## Quinta etapa: issue #13 e análise visual
+
+Produção usa a função canônica de services.ai_vision_service, eliminando a cópia antiga de server.py. GEMINI_API_KEY ou GOOGLE_AI_API_KEY habilita o provedor e GEMINI_VISION_MODEL permite configurar um modelo disponível para a conta (o padrão existente do serviço é gemini-2.5-flash). A disponibilidade e as permissões reais do modelo não foram verificadas. Consulte as informações do provedor: https://ai.google.dev/gemini-api/docs/models e https://ai.google.dev/gemini-api/docs/deprecations .
+
+Sem chave, quota, resposta válida e análise concluída, o serviço devolve pode_preencher=false e um aviso para preenchimento manual. A estimativa local de cores não é reconhecimento de objetos e não gera título ou descrição automática. Fotos inválidas são rejeitadas antes da chamada ao provedor. MIME é determinado pelos bytes, não pela extensão ou pelo cabeçalho informado pelo cliente.
+
+A UI usa visao-formulario.js para aplicar somente respostas completas do método visual com confiança declarada alta/média. Ausência de confiança é tratada como baixa. OCR só é utilizado quando a análise do objeto e do texto atendem às condições conservadoras; isso não equivale a comprovação de identidade. Na secretaria foi corrigida a normalização de categorias e removida a inserção automática de cores estimadas na descrição. Corpos inline duplicados em tags de scripts externos foram removidos, pois os navegadores não os executam. Resultados atrasados de fotos anteriores são ignorados.
+
+Validação desta revisão: 116 testes Python e 18 JavaScript passaram. Há 44 casos de visão com PNG real em memória e provedor simulado, além de casos de formulário para fallback, baixa confiança, categorias com/sem acentos, preservação de valores manuais e troca de foto durante análise. Essa validação comprova contratos e tratamento de falhas; não comprova reconhecimento visual 100%, acesso ao modelo na conta real, OCR correto em documentos reais ou melhoria quantitativa de precisão.
+
+A pedido do usuário, se não fosse possível comprovar o funcionamento integral, a issue #13 deveria ser fechada para retomada manual. A proposta preserva melhorias verificadas, mas o encerramento será sem classificação de resolução integral. Não usar Closes #13 como declaração de precisão comprovada. Não houve mudança de hospedagem ou acesso ao banco de produção.

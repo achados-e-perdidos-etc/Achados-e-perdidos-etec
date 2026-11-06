@@ -25,6 +25,7 @@ import cloudinary
 import cloudinary.uploader
 import jwt
 from PIL import Image
+from services.ai_vision_service import analisar_imagem_com_ia
 from utils.privacy import item_publico, relato_publico
 from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat
 from utils.helpers import validar_email_institucional
@@ -359,72 +360,6 @@ def calcular_smart_match(relato, item):
         detalhes.append(f"Local compatível ({loc})")
     return min(100, score), detalhes
 
-def extrair_cores_predominantes_local(imagem_bytes):
-    try:
-        img = Image.open(io.BytesIO(imagem_bytes)).convert('RGB')
-        img.thumbnail((60, 60))
-        cont = {}
-        for r, g, b in list(img.getdata()):
-            cor = min(CORES_RGB, key=lambda it: ((r-it[1][0])**2 + (g-it[1][1])**2 + (b-it[1][2])**2)**0.5)[0]
-            cont[cor] = cont.get(cor, 0) + 1
-        return [c for c, _ in sorted(cont.items(), key=lambda x: x[1], reverse=True)[:2]]
-    except Exception: return ["cinza"]
-
-def analisar_imagem_com_ia(imagem_entrada):
-    if not imagem_entrada: return None, "Imagem não informada."
-    img_b64, img_bytes, mime = "", None, "image/jpeg"
-    if str(imagem_entrada).startswith('http'):
-        try:
-            r = requests.get(imagem_entrada, timeout=8)
-            img_bytes = r.content
-            img_b64 = base64.b64encode(img_bytes).decode('utf-8')
-            if 'png' in imagem_entrada.lower(): mime = "image/png"
-        except Exception as e: return None, str(e)
-    elif "base64," in str(imagem_entrada):
-        parts = str(imagem_entrada).split("base64,")
-        img_b64 = parts[1]
-        try: img_bytes = base64.b64decode(img_b64)
-        except: pass
-        if "image/png" in parts[0]: mime = "image/png"
-    else:
-        img_b64 = str(imagem_entrada)
-        try: img_bytes = base64.b64decode(img_b64)
-        except: pass
-
-    if GEMINI_API_KEY and img_b64:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-            prompt = """Analise a imagem para cadastro de achados e perdidos escolares. Retorne APENAS JSON válido.
-Identifique visualmente o objeto e faça OCR de qualquer texto legível em carteirinhas, documentos, cadernos, agendas ou etiquetas.
-Nunca invente dados pessoais: use string vazia quando não estiver legível e marque a confiança.
-Formato:
-{"nome":"título curto do objeto","categoria":"ROUPAS, ACESSÓRIOS, ESCOLARES, ELETRÔNICOS, MOCHILA ou OUTROS","cores":["cor1"],"descricao":"descrição visual objetiva","tags":["tag"],"ocr_texto":"texto realmente legível na imagem","ocr_nome_aluno":"","ocr_rm":"","ocr_serie":"","tipo_documento":"","ocr_confianca":"baixa|media|alta"}
-O RM pode aparecer como RM, matrícula ou registro acadêmico. Não confunda números aleatórios com RM sem evidência."""
-            resp = requests.post(url, json={
-                "contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": mime, "data": img_b64}}]}],
-                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 800, "responseMimeType": "application/json"}
-            }, headers={"Content-Type": "application/json"}, timeout=10)
-            if resp.status_code == 200:
-                raw = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
-                raw = re.sub(r'^```json\s*', '', raw)
-                raw = re.sub(r'\s*```$', '', raw).strip()
-                res = json.loads(raw)
-                res['metodo'] = 'gemini_vision_ocr'
-                for key in ('ocr_texto', 'ocr_nome_aluno', 'ocr_rm', 'ocr_serie', 'tipo_documento', 'ocr_confianca'):
-                    res[key] = str(res.get(key) or '').strip()[:1000]
-                res['cores'] = res.get('cores') if isinstance(res.get('cores'), list) else []
-                return res, None
-        except Exception as e: print(f"[Gemini] Erro: {e}")
-
-    cores = extrair_cores_predominantes_local(img_bytes) if img_bytes else []
-    cores_s = ', '.join(cores) if cores else 'não identificada'
-    return {
-        "nome": f"Item Escolar ({cores_s.title()})",
-        "categoria": "OUTROS", "cores": cores,
-        "descricao": f"Pertence escolar cor {cores_s}.",
-        "tags": cores + ["etec"], "metodo": "visao_local"
-    }, None
-
 def processar_fotos(fotos_array):
     urls = []
     if not fotos_array: return urls
@@ -499,12 +434,12 @@ def rota_ia_img():
     if not isinstance(foto, str) or len(foto) > 11_500_000:
         return jsonify({"success": False, "error": {"code": "INVALID_IMAGE", "message": "Imagem inválida ou maior que o limite permitido."}}), 413
     res, err = analisar_imagem_com_ia(foto)
-    if err: return jsonify({"success": False, "error": {"code": "VISION_ANALYSIS_FAILED", "message": "Não foi possível analisar a imagem.", "detail": str(err)[:300]}}), 500
+    if err: return jsonify({"success": False, "error": {"code": "VISION_ANALYSIS_FAILED", "message": "Não foi possível analisar a imagem.", "detail": str(err)[:300]}}), 400
     # Cruzamento de OCR com alunos cadastrados; não retorna e-mail ao navegador.
     res["aluno_correspondente"] = None
     rm_ocr = re.sub(r"[^A-Za-z0-9]", "", str(res.get("ocr_rm") or ""))[:20]
     nome_ocr = re.sub(r"\s+", " ", str(res.get("ocr_nome_aluno") or "")).strip()[:100]
-    if rm_ocr or nome_ocr:
+    if res.get("pode_preencher") and res.get("ocr_confianca") == "alta" and (rm_ocr or nome_ocr):
         conn = None
         try:
             conn = get_db_connection()

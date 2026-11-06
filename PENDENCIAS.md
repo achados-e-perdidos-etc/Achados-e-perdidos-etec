@@ -77,3 +77,18 @@ Nova branch derivada da proposta #16, conforme orientação de continuar sempre 
 - [x] Regra de branches futuras registrada em AGENTS.md.
 
 Validação: 72 testes Python e 11 testes JavaScript passaram. Também foi executado o ciclo de login, solicitação, aprovação, operação, restrição de decisões e revogação com PostgreSQL real isolado. Nenhum dado real foi acessado. A tabela professores_acesso é criada na inicialização do banco nas duas implementações. Nenhum acesso é concedido automaticamente a contas existentes.
+
+## Quinta etapa — issue #13: preenchimento pela foto
+
+Branch derivada da proposta #17. A revisão identificou uma cópia antiga da visão no servidor de produção, fallback genérico anunciado como identificação e erro na normalização de categorias no painel.
+
+- [x] O servidor unificado e o blueprint utilizam o mesmo serviço de análise; o caminho legado apenas reexporta a implementação canônica.
+- [x] Modelo configurável por GEMINI_VISION_MODEL e chave enviada em cabeçalho, fora da URL.
+- [x] Imagem validada pelos bytes reais, com limites de tamanho e resolução.
+- [x] Falha de provedor, resposta truncada/inválida ou ausência de chave não são usadas como identificação do objeto.
+- [x] Formulários só aplicam resposta completa do modelo com confiança declarada alta/média; baixa confiança e fallback preservam campos existentes.
+- [x] Categorias são comparadas por igualdade após normalização correta, sem escolher a primeira opção por correspondência vazia.
+- [x] Resultado atrasado de uma foto anterior é ignorado; OCR não confiável não é aplicado nem cruzado com alunos.
+- [ ] Validar precisão visual com credencial real e fotos representativas. Confiança declarada pelo modelo não comprova acerto.
+
+116 testes Python e 18 testes JavaScript passaram. Não houve chamada real a um provedor de visão nem medição da precisão visual. As melhorias técnicas estão preparadas em proposta separada; a issue #13 será encerrada como não planejada a pedido do usuário, sem afirmar que o reconhecimento está 100% resolvido. Os dados de produção não foram acessados.

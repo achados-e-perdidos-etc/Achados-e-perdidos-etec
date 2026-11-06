@@ -1258,6 +1258,7 @@ async function analisarFotoAlunoComIA() {
     if (!fotosAlunoSelecionadas || fotosAlunoSelecionadas.length === 0) {
         return mostrarToast("Selecione uma foto primeiro.", "info");
     }
+    const fotoAnalisada = fotosAlunoSelecionadas[0];
     const btn = document.getElementById('btnAutoPreencherIAAluno');
     if (btn) {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Analisando com IA...';
@@ -1268,26 +1269,19 @@ async function analisarFotoAlunoComIA() {
         const res = await fetch(API_URL + "/api/ia/analisar-imagem", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foto: fotosAlunoSelecionadas[0] })
+            body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
-        if (data.success && data.resultado) {
+        if (fotosAlunoSelecionadas[0] !== fotoAnalisada) return;
+        if (res.ok && data.success && data.resultado) {
             const r = data.resultado;
-            const inputNome = document.getElementById('alunoItemNome');
-            const inputDesc = document.getElementById('alunoItemDesc');
-            const selectCat = document.getElementById('alunoItemCat');
-
-            if (inputNome && r.nome) inputNome.value = r.nome;
-            if (inputDesc && r.descricao) inputDesc.value = r.descricao;
-            if (selectCat && r.categoria) {
-                for (let opt of selectCat.options) {
-                    if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                        selectCat.value = opt.value;
-                        break;
-                    }
-                }
-            }
-            mostrarToast("Campos preenchidos com IA!", "success");
+            const aplicado = aplicarSugestaoVisual(r, {
+                nome: document.getElementById('alunoItemNome'),
+                descricao: document.getElementById('alunoItemDesc'),
+                categoria: document.getElementById('alunoItemCat')
+            });
+            mostrarToast(aplicado ? 'Sugestões preenchidas. Confira a foto antes de salvar.' :
+                (r.aviso || 'Não foi possível identificar o objeto. Preencha os campos manualmente.'), aplicado ? 'success' : 'info');
         } else {
             mostrarToast(data.message || "Não foi possível analisar os detalhes.", "error");
         }
