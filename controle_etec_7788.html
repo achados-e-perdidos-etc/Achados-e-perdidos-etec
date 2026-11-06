@@ -1751,7 +1751,7 @@
         async function carregarItensSecretaria() {
       const container = document.getElementById('gridItensContainer');
       try {
-        const res = await fetch(`${API_URL}/api/itens`);
+        const res = await fetch(`${API_URL}/api/itens`, { headers: getAuthHeadersGet() });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {

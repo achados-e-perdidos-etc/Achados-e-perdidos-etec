@@ -8,12 +8,14 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
-from utils.security import secretaria_required
+from utils.privacy import item_publico, relato_publico
+from utils.security import consulta_publica, token_required, secretaria_required
 from utils.helpers import extrair_termos
 
 mural_bp = Blueprint('mural', __name__)
 
 @mural_bp.route('/api/mural', methods=['OPTIONS', 'GET', 'POST'])
+@consulta_publica
 def mural():
     """Lista todos os relatos ou cadastra um novo relato de perda com busca imediata de matches."""
     if request.method == 'OPTIONS':
@@ -26,7 +28,7 @@ def mural():
         res = cursor.fetchall()
         cursor.close()
         conn.close()
-        return jsonify(res)
+        return jsonify(res if request.user.get('role') == 'secretaria' else [relato_publico(it) for it in res])
         
     else:
         data = request.json or {}
@@ -69,17 +71,21 @@ def mural():
         return jsonify({"success": True, "matches_encontrados": matches})
 
 @mural_bp.route('/api/mural/aluno/<string:rm>', methods=['OPTIONS', 'GET'])
+@token_required
 def mural_aluno(rm):
     """Retorna os relatos cadastrados pelo estudante filtrados por seu RM."""
+    if request.user.get("role") != "secretaria" and rm != str(request.user.get("rm") or ""):
+        return jsonify({"success": False, "message": "Acesso negado."}), 403
+    filtro, valor = ("rm_aluno", rm) if request.user.get("role") == "secretaria" else ("email_aluno", request.user.get("email"))
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT id, categoria, descricao, data_registro as data, status 
             FROM mural_perdidos 
-            WHERE rm_aluno = %s 
+            WHERE {filtro} = %s
             ORDER BY id DESC;
-        """, (rm,))
+        """, (valor,))
         res = cursor.fetchall()
         cursor.close()
         conn.close()

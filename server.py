@@ -25,7 +25,8 @@ import cloudinary
 import cloudinary.uploader
 import jwt
 from PIL import Image
-from utils.security import token_required, secretaria_required, categorias_required, pode_acessar_chat
+from utils.privacy import item_publico, relato_publico
+from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, pode_acessar_chat
 from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from config import JWT_SECRET
@@ -694,6 +695,7 @@ def rotas_cat(nome=None):
         return jsonify({"success": True})
 
 @app.route('/api/itens', methods=['OPTIONS', 'GET'])
+@consulta_publica
 def get_all_itens():
     try:
         verificar_e_atualizar_itens_doacao()
@@ -711,7 +713,7 @@ def get_all_itens():
             try: it['fotos'] = json.loads(it['fotos_json']) if it.get('fotos_json') else ([it['foto']] if it.get('foto') else [])
             except: it['fotos'] = [it['foto']] if it.get('foto') else []
         c.close(); conn.close()
-        return jsonify(itens)
+        return jsonify(itens if request.user.get('role') == 'secretaria' else [item_publico(it) for it in itens])
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/pendentes', methods=['OPTIONS', 'GET'])
@@ -873,13 +875,14 @@ def sol_item():
 # ROTAS MURAL DE PERDIDOS
 # ============================================================
 @app.route('/api/mural', methods=['OPTIONS', 'GET', 'POST'])
+@consulta_publica
 def rotas_mural():
     if request.method == 'OPTIONS': return jsonify({"success": True}), 200
     if request.method == 'GET':
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT * FROM mural_perdidos ORDER BY id DESC;")
         res = c.fetchall(); c.close(); conn.close()
-        return jsonify(res)
+        return jsonify(res if request.user.get('role') == 'secretaria' else [relato_publico(it) for it in res])
     else:
         d = request.json or {}
         rm = str(d.get('rm') or '').strip().upper()
@@ -892,9 +895,13 @@ def rotas_mural():
         return jsonify({"success": True})
 
 @app.route('/api/mural/aluno/<string:rm>', methods=['OPTIONS', 'GET'])
+@token_required
 def mural_al(rm):
+    if request.user.get("role") != "secretaria" and rm != str(request.user.get("rm") or ""):
+        return jsonify({"success": False, "message": "Acesso negado."}), 403
     conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-    c.execute("SELECT id, categoria, descricao, data_registro as data, status FROM mural_perdidos WHERE rm_aluno = %s ORDER BY id DESC;", (rm,))
+    filtro, valor = ("rm_aluno", rm) if request.user.get("role") == "secretaria" else ("email_aluno", request.user.get("email"))
+    c.execute(f"SELECT id, categoria, descricao, data_registro as data, status FROM mural_perdidos WHERE {filtro} = %s ORDER BY id DESC;", (valor,))
     res = c.fetchall(); c.close(); conn.close()
     return jsonify(res)
 
@@ -1023,6 +1030,26 @@ def rotas_sm_match():
         return jsonify({"success": True, "resultados": resultados})
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
+@app.route('/api/itens/meus', methods=['OPTIONS', 'GET'])
+@token_required
+def meus_itens():
+    email = request.user.get('email')
+    if not email:
+        return jsonify({'success': False, 'message': 'Sessão sem identidade.'}), 403
+    conn = get_db_connection()
+    try:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("""SELECT id, COALESCE(nome_item, descricao) as nome, descricao as txt_descricao,
+                     categoria, data_encontrado as txt_data, local_encontrado as txt_local,
+                     foto, fotos_json, status FROM itens
+                     WHERE email_solicitante = %s AND (aprovado IS NULL OR aprovado = TRUE)
+                     ORDER BY id DESC;""", (email,))
+        rows = c.fetchall()
+        c.close()
+        return jsonify([item_publico(item) for item in rows])
+    finally:
+        conn.close()
+
 # ============================================================
 # PONTO DE ENTRADA
 # ============================================================
@@ -1030,4 +1057,3 @@ if __name__ == "__main__":
     porta = int(os.environ.get("PORT", PORT))
     print(f"🚀 Servidor ETEC iniciado na porta {porta}")
     app.run(host='0.0.0.0', port=porta)
-

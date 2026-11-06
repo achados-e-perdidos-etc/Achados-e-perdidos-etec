@@ -23,7 +23,7 @@ Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram
 - [ ] Comprovar e garantir unicidade do RM no cadastro e alteração, impedindo contas com matrícula de terceiros.
 - [ ] Revisar renderização de conteúdo informado por usuários para impedir injeção de HTML/scripts.
 - [x] Removido login compartilhado professor/professor e sessões fictícias do navegador. Professores usam conta institucional com senha individual; tokens antigos exigem novo login.
-- [ ] Revisar acesso público a dados pessoais nas respostas de itens/mural.
+- [x] Catálogo e mural públicos usam lista explícita de campos sem nome do autor, RM ou e-mail de alunos. Dados administrativos exigem token de secretaria; consultas pessoais filtram pelo e-mail da sessão. Conteúdo livre de descrições e imagens ainda pode conter dados pessoais e exige moderação.
 - [ ] Após a migração, substituir a URL Railway fixa no frontend e verificar também painel e aplicativo desktop.
 
 ## Segunda etapa — acesso de professores
@@ -57,3 +57,9 @@ Fontes consultadas em 04/11/2026:
 Configuração esperada: build `pip install -r requirements.txt`; start `gunicorn --bind 0.0.0.0:$PORT server:app`. Configurar DATABASE_URL, JWT_SECRET e credenciais das integrações no painel do provedor, nunca em arquivo público. Inspecionar todos os clientes antes de mudar a URL da API.
 
 As correções e esta lista estão preparadas para revisão em branch separada. A branch principal, a hospedagem e o banco real não foram alterados.
+
+## Terceira etapa — privacidade de catálogo e mural
+
+Branch separada a partir da proposta #15. Respostas públicas deixam de expor campos estruturados de identificação pessoal; a secretaria mantém acesso autenticado. A área Meus itens usa consulta autenticada por e-mail, sem filtrar por nome ou matrícula no navegador. Relatos por RM exigem sessão e restringem alunos ao próprio e-mail. Consultas retornam Cache-Control private, no-store e variam por cabeçalho de autenticação.
+
+Validação: 58 testes Python e 6 testes JavaScript passaram. Nenhum banco de produção foi acessado. Solicitações antigas sem email_solicitante não podem ser atribuídas com segurança só pelo nome e exigem revisão pela secretaria. Os campos de texto livre e fotografias seguem públicos por finalidade do catálogo; não foi feita anonimização automática de seus conteúdos. Hospedagem continua aguardando cadastro no provedor.

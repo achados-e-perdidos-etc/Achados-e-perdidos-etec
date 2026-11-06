@@ -175,6 +175,66 @@ class RouteTests(unittest.TestCase):
         self.get_db.assert_not_called()
 
 
+    def test_catalogo_publico_oculta_dados_pessoais_mesmo_com_token_aluno(self):
+        row = {'id': 1, 'nome': 'Estojo', 'status': 'SOLICITADO',
+               'solicitado_por': 'Nome privado', 'rm_aluno': '99999',
+               'email_solicitante': 'privado@aluno.cps.sp.gov.br', 'campo_novo_privado': 'segredo'}
+        self.cursor.fetchall.side_effect = lambda: [dict(row)]
+        with patch.object(server, 'verificar_e_atualizar_itens_doacao'):
+            for headers in [{}, self.aluno]:
+                result = self.client.get('/api/itens', headers=headers)
+                self.assertEqual(result.status_code, 200)
+                self.assertEqual(result.json[0]['nome'], 'Estojo')
+                for field in ['solicitado_por','rm_aluno','email_solicitante','campo_novo_privado']:
+                    self.assertNotIn(field, result.json[0])
+                self.assertIn('no-store', result.headers['Cache-Control'])
+
+    def test_secretaria_preserva_dados_administrativos_do_catalogo(self):
+        self.cursor.fetchall.return_value = [{'id': 1, 'solicitado_por': 'Aluno', 'rm_aluno': '12345'}]
+        with patch.object(server, 'verificar_e_atualizar_itens_doacao'):
+            result = self.client.get('/api/itens', headers=self.secretaria)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json[0]['rm_aluno'], '12345')
+        self.assertIn('no-store', result.headers['Cache-Control'])
+
+    def test_mural_publico_anonimiza_autor_e_admin_preserva_dados(self):
+        self.cursor.fetchall.return_value = [{'id':1,'descricao':'Perdi um estojo',
+            'nome_aluno':'Nome privado','rm_aluno':'99999','email_aluno':'privado@cps.sp.gov.br'}]
+        for headers in [{}, self.aluno]:
+            result = self.client.get('/api/mural', headers=headers)
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(result.json[0]['nome_aluno'], 'Aluno')
+            self.assertNotIn('rm_aluno', result.json[0])
+            self.assertNotIn('email_aluno', result.json[0])
+        result = self.client.get('/api/mural', headers=self.secretaria)
+        self.assertEqual(result.json[0]['nome_aluno'], 'Nome privado')
+        self.assertIn('no-store', result.headers['Cache-Control'])
+
+    def test_consultas_publicas_rejeitam_token_forjado(self):
+        for path in ['/api/itens','/api/mural']:
+            result = self.client.get(path, headers={'Authorization':'Bearer forjado'})
+            self.assertEqual(result.status_code, 401)
+        self.get_db.assert_not_called()
+
+    def test_meus_itens_filtra_email_assinado_sem_usar_nome_ou_rm_enviado(self):
+        self.assertEqual(self.client.get('/api/itens/meus').status_code, 401)
+        result = self.client.get('/api/itens/meus?rm=99999&email=terceiro@cps.sp.gov.br', headers=self.aluno)
+        self.assertEqual(result.status_code, 200)
+        query, params = self.cursor.execute.call_args.args
+        self.assertIn('email_solicitante = %s', query)
+        self.assertEqual(params, ('aluno@aluno.cps.sp.gov.br',))
+        self.assertIn('no-store', result.headers['Cache-Control'])
+
+    def test_relatos_pessoais_exigem_sessao_e_filtram_email(self):
+        self.assertEqual(self.client.get('/api/mural/aluno/12345').status_code, 401)
+        self.assertEqual(self.client.get('/api/mural/aluno/99999', headers=self.aluno).status_code, 403)
+        result = self.client.get('/api/mural/aluno/12345', headers=self.aluno)
+        self.assertEqual(result.status_code, 200)
+        query, params = self.cursor.execute.call_args.args
+        self.assertIn('email_aluno = %s', query)
+        self.assertEqual(params, ('aluno@aluno.cps.sp.gov.br',))
+
+
 
 class ModularRouteTests(RouteTests):
     """Repete os contratos na implementação modular para evitar divergências."""

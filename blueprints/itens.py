@@ -9,7 +9,8 @@ from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection, verificar_e_atualizar_itens_doacao
 from utils.doacoes import DOACOES_PENDENTES_SQL
-from utils.security import secretaria_required, categorias_required
+from utils.privacy import item_publico, relato_publico
+from utils.security import consulta_publica, token_required, secretaria_required, categorias_required
 from utils.helpers import extrair_termos
 from services.cloudinary_service import processar_fotos
 from services.email_service import disparar_email
@@ -72,6 +73,7 @@ def categorias(nome=None):
 # ==============================================================================
 
 @itens_bp.route('/api/itens', methods=['OPTIONS', 'GET'])
+@consulta_publica
 def get_itens():
     """Retorna a lista de todos os itens aprovados e disponíveis para o catálogo público."""
     conn = None
@@ -106,6 +108,7 @@ def get_itens():
                        local_encontrado as txt_local, 
                        foto, status, solicitado_por, rm_aluno 
                 FROM itens 
+                WHERE (aprovado IS NULL OR aprovado = TRUE)
                 ORDER BY id DESC;
             """)
             itens = cursor.fetchall()
@@ -122,7 +125,7 @@ def get_itens():
                 
         cursor.close()
         conn.close()
-        return jsonify(itens)
+        return jsonify(itens if request.user.get('role') == 'secretaria' else [item_publico(it) for it in itens])
     except Exception as e:
         if conn:
             conn.close()
@@ -435,3 +438,24 @@ def solicitar_item():
         return jsonify({"success": True, "message": "Solicitação enviada com sucesso!"})
     return jsonify({"success": False, "message": "Este item não está mais disponível."}), 400
 
+
+
+@itens_bp.route('/api/itens/meus', methods=['OPTIONS', 'GET'])
+@token_required
+def meus_itens():
+    email = request.user.get('email')
+    if not email:
+        return jsonify({'success': False, 'message': 'Sessão sem identidade.'}), 403
+    conn = get_db_connection()
+    try:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("""SELECT id, COALESCE(nome_item, descricao) as nome, descricao as txt_descricao,
+                     categoria, data_encontrado as txt_data, local_encontrado as txt_local,
+                     foto, fotos_json, status FROM itens
+                     WHERE email_solicitante = %s AND (aprovado IS NULL OR aprovado = TRUE)
+                     ORDER BY id DESC;""", (email,))
+        rows = c.fetchall()
+        c.close()
+        return jsonify([item_publico(item) for item in rows])
+    finally:
+        conn.close()

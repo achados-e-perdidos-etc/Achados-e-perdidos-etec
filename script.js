@@ -483,6 +483,7 @@ function mudarAba(aba) {
 async function abrirPainelMeusItens() {
     mudarAba('meusItens');
     if (!alunoSessao) return;
+    const headers = { 'Authorization': `Bearer ${localStorage.getItem('aluno_token') || ''}` };
 
     const listaSol = document.getElementById('listaMinhasSolicitacoes');
     const listaRel = document.getElementById('listaMeusRelatosMural');
@@ -491,10 +492,10 @@ async function abrirPainelMeusItens() {
     listaRel.innerHTML = `<p class="text-xs text-slate-500 italic">Buscando relatos...</p>`;
 
     try {
-        const resItens = await fetch(`${API_URL}/api/itens`);
+        const resItens = await fetch(`${API_URL}/api/itens/meus`, { headers });
         if (resItens.ok) {
             const itens = await resItens.json();
-            const meus = itens.filter(i => i.rm_aluno === alunoSessao.rm || i.solicitado_por === alunoSessao.nome);
+            const meus = itens;
             
             if (meus.length > 0) {
                 listaSol.innerHTML = '';
@@ -512,7 +513,7 @@ async function abrirPainelMeusItens() {
             } else listaSol.innerHTML = `<p class="text-xs text-slate-500 italic">Você ainda não solicitou nenhum item.</p>`;
         }
 
-        const resMural = await fetch(`${API_URL}/api/mural/aluno/${alunoSessao.rm}`);
+        const resMural = await fetch(`${API_URL}/api/mural/aluno/${encodeURIComponent(alunoSessao.rm)}`, { headers });
         if (resMural.ok) {
             const relatos = await resMural.json();
             if (relatos.length > 0) {

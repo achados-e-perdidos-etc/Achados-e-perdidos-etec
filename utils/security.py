@@ -4,7 +4,7 @@ Gerencia verificação de JSON Web Tokens (JWT) e hashing de senhas.
 """
 from functools import wraps
 from datetime import datetime, timedelta, timezone
-from flask import request, jsonify
+from flask import request, jsonify, make_response
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import JWT_SECRET
@@ -64,7 +64,11 @@ def token_required(f):
                 "message": "Token inválido. Faça login novamente."
             }), 401
 
-        return f(*args, **kwargs)
+        response = make_response(f(*args, **kwargs))
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.vary.add('Authorization')
+        response.vary.add('x-access-token')
+        return response
     return decorated
 
 def secretaria_required(f):
@@ -75,6 +79,23 @@ def secretaria_required(f):
         if request.user.get('role') != 'secretaria':
             return jsonify({"success": False, "message": "Acesso exclusivo da secretaria."}), 403
         return f(*args, **kwargs)
+    return decorated
+
+def consulta_publica(f):
+    """GET anônimo é público; se houver token, sua validade é obrigatória."""
+    autenticado = token_required(f)
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == 'GET':
+            if (request.headers.get('Authorization') or request.headers.get('x-access-token')
+                    or request.args.get('token')):
+                return autenticado(*args, **kwargs)
+            request.user = {}
+        response = make_response(f(*args, **kwargs))
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.vary.add('Authorization')
+        response.vary.add('x-access-token')
+        return response
     return decorated
 
 def categorias_required(f):
