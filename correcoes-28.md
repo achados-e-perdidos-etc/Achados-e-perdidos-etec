@@ -10,6 +10,22 @@ Os módulos utilizados pelos testes de compatibilidade, os dois pontos de entrad
 
 Após a limpeza, passaram **404 testes Python, 49 JavaScript e 48 Chromium — 501 no total**, sem remover testes. Também foram conferidos 56 recursos estáticos, as páginas e os aliases da secretaria, além da resposta 404. A varredura de importações não encontrou outros módulos Python sem caminho de uso pelas entradas ou pelos testes. Não houve alteração no banco de produção nem publicação em servidor.
 
+### Por que os três arquivos existiam
+
+O histórico remoto registra os três na organização modular de setembro de 2026. A versão histórica de `app.py` criava uma aplicação Flask e registrava blueprints; hoje esse arquivo importa a mesma aplicação de `server.py`. A remoção de cópias que deixaram de ser carregadas preserva as funções nos caminhos ativos abaixo.
+
+| Arquivo apagado | Finalidade original confirmada pelo conteúdo e histórico | Caminho atual a reutilizar |
+| --- | --- | --- |
+| `blueprints/ai.py` | Reunir as rotas de sugestão de dados de uma foto e comparação de descrições em um blueprint de IA. | Rotas `/api/ia/analisar-imagem` e `/api/ia/comparar-semantica` em [server.py](server.py); serviço de visão em `services/ai_vision_service.py` e comparação em `utils/helpers.py`. |
+| `blueprints/frontend.py` | Entregar o portal, painel da secretaria, logotipos, favicon e página 404. Era registrado pela antiga fábrica de aplicação. | Rotas de páginas e tratamento 404 em [server.py](server.py); os próprios HTML, imagens e recursos do jogo continuam no projeto. |
+| `blueprints/ai_vision_service.py` | Inicialmente continha processamento de fotos, extração de cores e integração de visão. Na versão anterior à exclusão, tinha apenas duas linhas para reexportar o serviço mantido em `services`, por compatibilidade. Essa reexportação já não era importada. | [services/ai_vision_service.py](services/ai_vision_service.py), que é importado diretamente pelo servidor. |
+
+Fontes históricas: [rotas de IA](https://github.com/achados-e-perdidos-etc/Achados-e-perdidos-etec/blob/a484cacbe2c30870c3421390a8d7b110695d94ae/blueprints/ai.py), [fábrica antiga que registrava o frontend](https://github.com/achados-e-perdidos-etc/Achados-e-perdidos-etec/blob/965aa87889e161cdbe5d354e6b1f12129d2a53bc/app.py) e [serviço de visão na pasta antiga](https://github.com/achados-e-perdidos-etc/Achados-e-perdidos-etec/blob/1d9282fbb21558312642e0769d3bc4061852f9f0/blueprints/ai_vision_service.py).
+
+Para próximas alterações, evolua os caminhos atuais acima. A orientação também está em `agents.md`, para evitar recriar arquivos de rotas ou de compatibilidade que a aplicação não utiliza. Uma eventual reorganização futura precisa migrar os pontos de entrada e consumidores de forma explícita, preservando os testes.
+
+Na rechecagem solicitada após a remoção, os **501 testes foram executados novamente e aprovados**: 404 Python, 49 JavaScript e 48 Chromium. A conferência adicional verificou os 56 recursos estáticos, aliases da secretaria, respostas 404 HTML/JSON, proteção da análise de imagens, chamada do serviço atual com provedor simulado e comparação de descrições. Foi confirmado que `app.py` e `server.py` expõem a mesma aplicação e que a limpeza não modificou `server.py`, `app.py`, `services/` ou `utils/`. A validação foi local, com banco temporário e integrações externas controladas.
+
 ## Aparência, buscas salvas e preferências
 
 [preferencias-e-atalhos.md](preferencias-e-atalhos.md): escolha de tema claro, escuro ou automático, com convite antes de acompanhar o sistema; dez buscas salvas por conta no navegador; filtros e apresentação lembrados; atalhos administrativos com contagens privadas; preferências e atalhos equivalentes no desktop. O [roteiro para colegas](teste-com-colegas.md) está pronto, sem alegar teste humano já realizado. Arquivos adicionados ao longo das atualizações agora usam nomes em minúsculas, com links corrigidos.
