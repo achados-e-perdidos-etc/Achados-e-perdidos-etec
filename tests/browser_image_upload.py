@@ -28,6 +28,7 @@ class UploadTests(safety.TextSafetyBrowser):
 
     def saving(self, admin=False):
         self.page.evaluate('''admin=>{
+          (admin ? UploadSecretaria : UploadAluno).enviarTodas=async fotos=>fotos;
           window._posts=0;window.fetch=async(url,opts)=>{
             if(opts?.method==='POST'||opts?.method==='PUT'){
               window._posts++;return new Promise(resolve=>window._finish=resolve);

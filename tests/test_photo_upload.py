@@ -48,7 +48,7 @@ def test_falha_do_provedor_nao_grava_no_banco_nem_expoe_erro(implementation,path
             assert not any('UPDATE ' in call.args[0] for call in db.return_value.cursor.return_value.execute.call_args_list)
             db.return_value.rollback.assert_called_once()
         else:
-            db.assert_not_called()
+            assert not any('INSERT ' in call.args[0] or 'UPDATE ' in call.args[0] for call in db.return_value.cursor.return_value.execute.call_args_list)
 
 
 @pytest.mark.parametrize('implementation',['unificado','modular'])
@@ -57,7 +57,9 @@ def test_edicao_persiste_fotos_e_omissao_preserva_anteriores(implementation,phot
     import sqlite3,json
     from tests.test_student_authorship import Connection
     db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
-    db.executescript('''CREATE TABLE itens(id INTEGER PRIMARY KEY,nome_item TEXT,descricao TEXT,categoria TEXT,data_encontrado TEXT,local_encontrado TEXT,status TEXT,aprovado BOOLEAN,foto TEXT,fotos_json TEXT);
+    db.executescript('''CREATE TABLE categorias(nome TEXT); INSERT INTO categorias VALUES ('OUTROS');
+        CREATE TABLE entregues(item_id INTEGER,cancelada_em TEXT,cancelada_por TEXT);
+        CREATE TABLE itens(id INTEGER PRIMARY KEY,nome_item TEXT,descricao TEXT,categoria TEXT,data_encontrado TEXT,local_encontrado TEXT,status TEXT,aprovado BOOLEAN,foto TEXT,fotos_json TEXT);
         INSERT INTO itens VALUES(1,'Estojo','Descrição','OUTROS','01/11/2026','Pátio','DISPONÍVEL',TRUE,'https://img.example.org/antiga.jpg','["https://img.example.org/antiga.jpg"]');''')
     app=server.app;module=server
     if implementation=='modular':

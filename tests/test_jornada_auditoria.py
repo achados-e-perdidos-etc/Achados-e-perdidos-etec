@@ -23,7 +23,7 @@ def test_jornada_aluno_secretaria_com_login_real_e_entrega(db_cadastros):
     assert client.put(f'/api/itens/{item}/aprovar',headers=sec).status_code==200
     assert client.post('/api/solicitar',headers=aluno,json={'id':item}).status_code==200
     assert client.post('/api/chat/enviar',headers=aluno,json={'mensagem':'Vou buscar o estojo'}).status_code==200
-    assert client.post('/api/chat/enviar',headers=sec,json={'rm':'12345','mensagem':'Pode vir com documento'}).status_code==200
+    assert client.post('/api/chat/enviar',headers=sec,json={'rm':'12345','email':'a@aluno.cps.sp.gov.br','mensagem':'Pode vir com documento'}).status_code==200
     assert client.put(f'/api/itens/{item}',headers=sec,json={'status':'ENTREGUE','retirado_por':'Aluno','rm_retirante':'12345'}).status_code==200
     assert client.get('/api/entregues',headers=sec).json[0]['item_id']==item
     assert client.get('/api/itens/meus',headers=aluno).json[0]['status']=='ENTREGUE'

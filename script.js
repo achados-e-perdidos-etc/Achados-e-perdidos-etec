@@ -1,3 +1,4 @@
+const UploadAluno = new UploadFotos('uploadsAluno',()=>SessaoPortal.token());
 const API_URL = "https://etec-achados.up.railway.app";
 let todosItens = [];
 let itemSelecionado = null;
@@ -1072,6 +1073,7 @@ async function prepararFotosAluno(input) {
 }
 
 function renderizarGridPreviewAluno() {
+    UploadAluno.mostrar(fotosAlunoSelecionadas);
     const container = document.getElementById('gridPreviewAluno');
     container.innerHTML = '';
     if (fotosAlunoSelecionadas.length > 0) {
@@ -1114,6 +1116,8 @@ async function enviarCadastroAluno(e) {
     };
 
     try {
+        payload.fotos = await UploadAluno.enviarTodas(fotosAlunoSelecionadas);
+        payload.foto = payload.fotos[0] || '';
         const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
             method: 'POST', 
@@ -1129,6 +1133,7 @@ async function enviarCadastroAluno(e) {
             mostrarToast(fotosAlunoSelecionadas.length ? "Fotos enviadas! Item aguardando moderação." : "Objeto enviado para moderação da secretaria!", "success");
             document.getElementById('modalCadastrarAluno').classList.add('hidden');
             if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('encontrado');
+            UploadAluno.limpar();
             fotosAlunoSelecionadas = [];
             renderizarGridPreviewAluno();
             e.target.reset();

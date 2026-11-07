@@ -667,6 +667,8 @@
 <link rel="stylesheet" href="melhorias-portal.css">
 <script src="rascunhos.js"></script>
 <link rel="stylesheet" href="acessibilidade.css">
+<script src="exportacao-segura.js"></script>
+<script src="upload-retomavel.js"></script>
 </head>
 <body>
 
@@ -955,6 +957,7 @@
 
     <!-- 5. ABA HISTÓRICO DE ENTREGAS -->
     <section id="secao-entregues" class="hidden">
+      <label><input id="incluirCanceladas" type="checkbox" onchange="carregarEntregues()"> Mostrar entregas revertidas</label>
       <h2 class="secao-titulo"><i class="fas fa-history" style="color: #06b6d4;"></i> Histórico de Entregas</h2>
       <div class="tabela-container">
         <table>
@@ -1042,7 +1045,7 @@
               <div id="chatAvatarAluno" class="avatar-circulo-chat">?</div>
               <div>
                 <div id="chatNomeAlunoAtivo" style="color: #ffffff; font-weight: 700; font-size: 13.5px; line-height: 1.2;">Selecione um aluno</div>
-                <div id="chatSubinfoAlunoAtivo" style="color: #10b981; font-size: 11px;">Nenhuma conversa selecionada</div>
+                <div title="As mensagens são mantidas por 30 dias." id="chatSubinfoAlunoAtivo" style="color: #10b981; font-size: 11px;">Nenhuma conversa selecionada</div>
               </div>
             </div>
             <div id="chatStatusConexaoBadge" style="font-size: 10px; color: #8b949e; display: flex; align-items: center; gap: 5px;">
@@ -1216,6 +1219,7 @@
           <button type="button" id="btnAutoTagIA" onclick="analisarFotoSecretariaComIA()" style="display: none; margin-top: 6px; width: 100%; background: linear-gradient(135deg, #7c3aed, #db2777); color: white; font-weight: 700; font-size: 12px; padding: 10px; border-radius: 8px; border: none; cursor: pointer; transition: opacity 0.2s;">
             <i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial
           </button>
+          <div id="uploadsSecretaria"></div>
           <div id="formFotosStatus" style="font-size: 11px; color: #8b949e; margin-top: 4px;">Nenhuma foto selecionada</div>
           <div id="estadoEnvioSecretaria" hidden></div>
         </div>
@@ -1487,7 +1491,10 @@
     let itensSec = [];
     let itensPendentesSec = [];
     let categoriasSec = [];
+    const UploadSecretaria = new UploadFotos('uploadsSecretaria',()=>tokenSecretaria);
     let chatRmAtivo = null;
+    let chatEmailAtivo = null;
+    let chatLegadoAtivo = false;
     let chatPollTimer = null;
     let html5QrScannerInstance = null;
     let fotosBase64Upload = [];
@@ -2003,9 +2010,10 @@
     /* EXPORTAR RELATÓRIO CSV */
     function exportarRelatorioCSV() {
       if (!itensSec.length) return abrirAlertaModal({ titulo: "Sem Dados", mensagem: "Não há registros no inventário para exportar a planilha.", tipo: "aviso" });
-      let csv = "\uFEFFID;Nome;Descrição;Categoria;Data;Local;Status;Solicitante;RM\n";
+      let csv = "\uFEFF" + CSVSeguro.linha(['ID','Nome','Descrição','Categoria','Data','Local','Status','Solicitante','RM']);
       itensSec.forEach(i => {
-        csv += `${i.id || ''};${(i.nome || '').replace(/;/g, ',')};${(i.txt_descricao || '').replace(/;/g, ',')};${(i.categoria || '').replace(/;/g, ',')};${(i.txt_data || '').replace(/;/g, ',')};${(i.txt_local || '').replace(/;/g, ',')};${(i.status || 'DISPONÍVEL').toUpperCase()};${(i.solicitado_por || '').replace(/;/g, ',')};${(i.rm_aluno || '').replace(/;/g, ',')}\n`;
+        csv += CSVSeguro.linha([i.id, i.nome, i.txt_descricao, i.categoria, i.txt_data, i.txt_local,
+            (i.status || 'DISPONÍVEL').toUpperCase(), i.solicitado_por, i.rm_aluno]);
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -2095,7 +2103,7 @@
       document.getElementById('formItemData').value = new Date().toLocaleDateString('pt-BR');
       document.getElementById('formItemStatus').value = 'DISPONÍVEL';
       document.getElementById('formFotosStatus').innerText = "Nenhuma foto selecionada";
-      fotosBase64Upload = [];
+      fotosBase64Upload = []; UploadSecretaria.mostrar([]);
       document.getElementById('modalFormItem').classList.remove('hidden');
       if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('secretaria');
     }
@@ -2141,6 +2149,7 @@
           if (lote !== loteFotosSecretaria) return;
         }
         if (novas.length) fotosBase64Upload = novas;
+        UploadSecretaria.mostrar(fotosBase64Upload);
         document.getElementById('formFotosStatus').innerText = `${fotosBase64Upload.length} foto(s) selecionada(s)`;
         mostrarEstadoFotos('estadoEnvioSecretaria', falhas ? 'erro' : 'prontas', falhas
           ? `${falhas} foto(s) não puderam ser abertas. Confira a seleção antes de salvar.`
@@ -2184,6 +2193,7 @@
       };
 
       try {
+        payload.fotos = await UploadSecretaria.enviarTodas(fotosBase64Upload);
         const url = id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`;
         let res;
         try {
@@ -2468,17 +2478,17 @@
 
     async function carregarEntregues() {
       try {
-        const res = await fetch(`${API_URL}/api/entregues`, { headers: getAuthHeadersGet() });
+        const res = await fetch(`${API_URL}/api/entregues${document.getElementById('incluirCanceladas')?.checked ? '?incluir_canceladas=true' : ''}`, { headers: getAuthHeadersGet() });
         if (res.ok) {
           const l = await res.json();
           document.getElementById('tabelaEntreguesBody').innerHTML = l.map(e => `
-            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td><button onclick="desfazerEntrega(${argumentoHTML(e.item_id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button></td></tr>
+            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td>${e.cancelada_em ? textoHTML('Revertida por '+e.cancelada_por+' em '+e.cancelada_em) : `<button onclick="desfazerEntrega(${argumentoHTML(e.item_id)}, ${argumentoHTML(e.id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button>`}</td></tr>
           `).join('');
         }
       } catch (e) {}
     }
 
-    async function desfazerEntrega(id) {
+    async function desfazerEntrega(id, recibo) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Reverter Entrega",
         mensagem: `Deseja reverter a entrega do pertence <strong>#${textoHTML(id)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL no catálogo.</span>`,
@@ -2489,7 +2499,8 @@
       });
       if (!ok) return;
       try {
-        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
+        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({entrega_id:recibo}) });
+        if (!res.ok) { const d=await res.json(); return mostrarToast(d.message || 'Não foi possível reverter. Atualize o histórico.'); }
         if (res.ok) { mostrarToast("Entrega revertida!"); carregarEntregues(); carregarItensSecretaria(); }
       } catch (e) {}
     }
@@ -2619,13 +2630,13 @@
         const rm = c.rm_aluno;
         const nome = c.nome_aluno || `Aluno RM ${rm}`;
         const inicial = nome.charAt(0).toUpperCase();
-        const isActive = (chatRmAtivo === rm);
+        const isActive = (chatRmAtivo === rm && chatEmailAtivo === (c.email_aluno || null));
         const naoLidas = parseInt(c.nao_lidas || 0);
         const ultimaMsg = c.ultima_mensagem || 'Toque para abrir a conversa';
         const hora = (c.ultima_msg_data || '').split(' ')[1] || (c.ultima_msg_data || '');
 
         return `
-          <div onclick="selecionarConversaAluno(${argumentoHTML(rm)}, ${argumentoHTML(nome)})" class="card-conversa-aluno ${textoHTML(isActive ? 'active' : '')}">
+          <div onclick="selecionarConversaAluno(${argumentoHTML(rm)}, ${argumentoHTML(nome)}, ${argumentoHTML(c.email_aluno || null)})" class="card-conversa-aluno ${textoHTML(isActive ? 'active' : '')}">
             <div class="avatar-circulo-chat">${textoHTML(inicial)}</div>
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
@@ -2646,8 +2657,12 @@
       renderizarListaConversasChat();
     }
 
-    async function selecionarConversaAluno(rm, nome) {
+    async function selecionarConversaAluno(rm, nome, email = null) {
       chatRmAtivo = rm;
+      chatEmailAtivo = email;
+      chatLegadoAtivo = !email;
+      document.getElementById('inputChatMsg').disabled = chatLegadoAtivo;
+      document.getElementById('inputChatMsg').placeholder = chatLegadoAtivo ? 'Histórico sem autoria: somente leitura' : 'Digite uma resposta…';
 
       // No celular: esconde a lista e exibe a conversa
       const painelLista = document.getElementById('chatPainelListaAlunos');
@@ -2659,7 +2674,7 @@
 
       // Atualiza Cabeçalho da Conversa
       document.getElementById('chatNomeAlunoAtivo').innerText = nome;
-      document.getElementById('chatSubinfoAlunoAtivo').innerText = `RM: ${rm} • Aluno ETEC`;
+      document.getElementById('chatSubinfoAlunoAtivo').innerText = `RM: ${rm} • ${email || "Histórico sem autoria — somente leitura"}`;
       document.getElementById('chatAvatarAluno').innerText = nome.charAt(0).toUpperCase();
 
       // Marca visualmente a conversa ativa na lista
@@ -2677,14 +2692,18 @@
         painelLista.classList.remove('hidden-mobile-chat');
         painelMsg.classList.add('hidden-mobile-chat');
       }
-      chatRmAtivo = null;
+      chatRmAtivo = null; chatEmailAtivo = null; chatLegadoAtivo = false;
       carregarConversasChat(false);
     }
 
     async function carregarMensagensConversa(rm, scrollFim = true) {
       if (!rm) return;
+      const email = chatEmailAtivo;
+      const legado = chatLegadoAtivo;
       try {
-        const res = await fetch(`${API_URL}/api/chat/mensagens/${encodeURIComponent(rm)}?marcar_lida=true`, { headers: getAuthHeadersGet() });
+        const caminho = legado ? `/api/chat/legado/${encodeURIComponent(rm)}` : `/api/chat/mensagens/${encodeURIComponent(rm)}?marcar_lida=true&email=${encodeURIComponent(email)}`;
+        const res = await fetch(`${API_URL}${caminho}`, { headers: getAuthHeadersGet() });
+        if (chatRmAtivo !== rm || chatEmailAtivo !== email) return;
         if (res.ok) {
           const msgs = await res.json();
           const box = document.getElementById('chatMensagensContainer');
@@ -2711,23 +2730,29 @@
       e.preventDefault();
       const inp = document.getElementById('inputChatMsg');
       const msg = inp.value.trim();
+      if (chatLegadoAtivo) return mostrarToast('Este histórico não tem autoria comprovada e é somente leitura.');
       if (!msg || !chatRmAtivo) {
         if (!chatRmAtivo) abrirAlertaModal({ titulo: "Nenhum Aluno Selecionado", mensagem: "Selecione um aluno na lista para enviar a resposta.", tipo: "aviso" });
         return;
       }
 
+      const destinoEmail = chatEmailAtivo;
+      const destinoRm = chatRmAtivo;
       try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify({
-            rm: chatRmAtivo,
+            rm: destinoRm,
+            email: destinoEmail,
             nome: 'Secretaria',
             remetente: 'SECRETARIA',
             mensagem: msg
           })
         });
+        if (!res.ok) { const data = await res.json(); throw Error(data.message || 'Não foi possível enviar a mensagem.'); }
         if (res.ok) {
+          if (chatEmailAtivo !== destinoEmail || chatRmAtivo !== destinoRm) return;
           inp.value = '';
           await carregarMensagensConversa(chatRmAtivo, true);
           carregarConversasChat(false);
@@ -3072,7 +3097,7 @@
       } else if (tipo === 'ENTREGAS') {
         subtitulo = "LIVRO OFICIAL DE REGISTRO DE BAIXAS E ENTREGAS AOS ALUNOS";
         try {
-          const res = await fetch(`${API_URL}/api/entregues`, { headers: getAuthHeadersGet() });
+          const res = await fetch(`${API_URL}/api/entregues${document.getElementById('incluirCanceladas')?.checked ? '?incluir_canceladas=true' : ''}`, { headers: getAuthHeadersGet() });
           if (res.ok) itensFiltrados = await res.json();
         } catch (e) {}
       } else if (tipo === 'DOACOES') {

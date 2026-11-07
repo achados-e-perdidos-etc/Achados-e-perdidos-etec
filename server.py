@@ -1,3 +1,8 @@
+from utils.uploads import SCHEMA_UPLOADS
+from utils.chat_retencao import SCHEMA_RETENCAO
+from utils.validacao_item import validar_item, validar_categoria
+from utils.entregas import cancelar_entregas, registrar_entrega
+from utils.entregas import SCHEMA_ENTREGAS
 from utils.cadastros import SCHEMA_CADASTROS
 from utils.notificacoes import SCHEMA_NOTIFICACOES
 """
@@ -47,6 +52,8 @@ from blueprints.professores import professores_bp
 app.register_blueprint(professores_bp)
 from blueprints.Push import push_bp
 app.register_blueprint(push_bp)
+from blueprints.uploads import uploads_bp
+app.register_blueprint(uploads_bp)
 from blueprints.notificacoes import notificacoes_bp
 app.register_blueprint(notificacoes_bp)
 from blueprints.cadastros import cadastros_bp
@@ -254,12 +261,15 @@ def init_db():
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
+        cursor.execute(SCHEMA_ENTREGAS)
         cursor.execute(SCHEMA_NOTIFICACOES)
         cursor.execute(SCHEMA_CADASTROS)
         cursor.execute(SCHEMA_PUSH)
         cursor.execute(SCHEMA_ENTREGAS_PUSH)
         cursor.execute(INDICE_ENTREGAS_PUSH)
         cursor.execute(SCHEMA_EMAIL_CHAT)
+        cursor.execute(SCHEMA_RETENCAO)
+        cursor.execute(SCHEMA_UPLOADS)
         cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
@@ -664,9 +674,11 @@ def cad_item_aluno():
     autor = identidade_portal()
     if not autor:
         return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
-    d = request.json or {}
-    nome, desc, cat = limpar_texto_entrada(d.get('nome'), 150), limpar_texto_entrada(d.get('descricao'), 2000), (limpar_texto_entrada(d.get('categoria'), 50) or 'OUTROS').upper()
-    data_enc, local, rm = (d.get('data') or datetime.now().strftime("%d/%m/%Y")).strip(), (d.get('local') or 'Não informado').strip(), autor['rm']
+    d = request.get_json(silent=True)
+    try:
+        v = validar_item(d); validar_categoria(get_db_connection, v['categoria'])
+    except ValueError as error: return jsonify(success=False,message=str(error)),400
+    nome,desc,cat,data_enc,local,rm = v['nome'],v['descricao'],v['categoria'],v['data'],v['local'],autor['rm']
     urls = processar_fotos(d.get('fotos') or ([d.get('foto')] if d.get('foto') else []))
     try:
         conn = get_db_connection(); c = conn.cursor()
@@ -689,10 +701,11 @@ def apr_item(item_id):
 @secretaria_required
 @limiter.limit('30 per minute')
 def cad_item():
-    d = request.json or {}
-    nome, desc, cat = limpar_texto_entrada(d.get('nome'), 150), limpar_texto_entrada(d.get('descricao'), 2000), (limpar_texto_entrada(d.get('categoria'), 50) or 'OUTROS').upper()
-    data_enc, local, status = (d.get('data') or datetime.now().strftime("%d/%m/%Y")).strip(), (d.get('local') or 'Não informado').strip(), (d.get('status') or 'DISPONÍVEL').strip()
-    if not desc: return jsonify({"success": False, "error": "Descrição obrigatória."}), 400
+    d = request.get_json(silent=True)
+    try:
+        v = validar_item(d); validar_categoria(get_db_connection, v['categoria'])
+    except ValueError as error: return jsonify(success=False,message=str(error)),400
+    nome,desc,cat,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
     urls = processar_fotos(d.get('fotos') or ([d.get('foto')] if d.get('foto') else []))
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
@@ -704,12 +717,13 @@ def cad_item():
         ocr_rm = re.sub(r"[^A-Za-z0-9]", "", str(d.get('ocr_rm') or ''))[:20]
         if ocr_rm:
             try:
-                c.execute("SELECT nome, rm, email FROM alunos WHERE regexp_replace(COALESCE(rm,''), '[^A-Za-z0-9]', '', 'g') = %s LIMIT 1;", (ocr_rm,))
-                aluno_ocr = c.fetchone()
+                c.execute("SELECT nome, rm, email FROM alunos WHERE regexp_replace(COALESCE(rm,''), '[^A-Za-z0-9]', '', 'g') = %s LIMIT 2;", (ocr_rm,))
+                candidatos_ocr = c.fetchall()
+                aluno_ocr = candidatos_ocr[0] if len(candidatos_ocr) == 1 else None
                 if aluno_ocr:
                     msg = f"A secretaria cadastrou um objeto que pode conter seus dados: '{nome or desc}'. Entre no ETEC Achados ou fale com a secretaria para confirmar."
-                    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, 'SECRETARIA', %s, %s);",
-                              (aluno_ocr.get('rm') or ocr_rm, aluno_ocr.get('nome') or 'Aluno', msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+                    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, 'SECRETARIA', %s, %s, %s);",
+                              (aluno_ocr.get('rm') or ocr_rm, aluno_ocr.get('nome') or 'Aluno', msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), aluno_ocr['email']))
                     if aluno_ocr.get('email'):
                         disparar_email(aluno_ocr['email'], "Possível item identificado - ETEC Achados",
                             f"<div style='font-family:Arial,sans-serif'><h2>Possível item identificado</h2><p>Olá {aluno_ocr.get('nome') or 'aluno'}, a secretaria cadastrou um objeto que pode estar associado aos seus dados: <strong>{nome or desc}</strong>.</p><p>Confirme a identificação com a secretaria.</p></div>")
@@ -725,7 +739,7 @@ def cad_item():
             for m in c.fetchall():
                 if len(termos_n.intersection(extrair_termos(m.get('descricao', '')))) >= 1:
                     if m.get('email_aluno'): destinatarios_push.add(m['email_aluno'].strip().lower())
-                    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, 'SECRETARIA', %s, %s);", (m['rm_aluno'], m['nome_aluno'], f"Possível pertence encontrado: '{nome or desc}'. Veja o catálogo!", datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+                    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, 'SECRETARIA', %s, %s, %s);", (m['rm_aluno'], m['nome_aluno'], f"Possível pertence encontrado: '{nome or desc}'. Veja o catálogo!", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), m.get("email_aluno")))
             conn.commit()
         except Exception:
             conn.rollback(); destinatarios_push.clear()
@@ -747,23 +761,22 @@ def gen_item(item_id):
             return jsonify({"success": True})
         else:
             d = request.json or {}
-            c.execute("SELECT * FROM itens WHERE id = %s;", (item_id,))
+            c.execute("SELECT * FROM itens WHERE id = %s FOR UPDATE;", (item_id,))
             it = c.fetchone()
             if not it: c.close(); conn.close(); return jsonify({"success": False}), 404
-            nome = (d.get('nome') or it.get('nome_item', '')).strip()
-            desc = (d.get('descricao') or it.get('descricao', '')).strip()
-            cat = (d.get('categoria') or it.get('categoria', 'OUTROS')).strip()
-            data_enc = (d.get('data') or it.get('data_encontrado', '')).strip()
-            local = (d.get('local') or it.get('local_encontrado', '')).strip()
-            status = (d.get('status') or it.get('status', 'DISPONÍVEL')).strip()
-
+            try:
+                v = validar_item(d,it); validar_categoria(get_db_connection,v['categoria'])
+            except ValueError as error:
+                conn.rollback();conn.close(); return jsonify(success=False,message=str(error)),400
+            nome,desc,cat,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
             urls = processar_fotos(d['fotos']) if 'fotos' in d and d['fotos'] is not None else None
             c.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s, aprovado=TRUE WHERE id=%s;", (nome, desc, cat, data_enc, local, status, item_id))
             if urls is not None:
                 c.execute('UPDATE itens SET foto=%s, fotos_json=%s WHERE id=%s;', (urls[0] if urls else '', json.dumps(urls), item_id))
-            if status.upper() == 'ENTREGUE':
-                c.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-                c.execute("INSERT INTO entregues (item_id, nome_item, retirado_por, rm_retirante, turma_curso, data_entrega, funcionario_responsavel) VALUES (%s, %s, %s, %s, %s, %s, %s);", (item_id, nome or desc, d.get('retirado_por', it.get('solicitado_por', '')), d.get('rm_retirante', it.get('rm_aluno', '')), d.get('turma_curso', '-'), d.get('data_entrega', datetime.now().strftime("%d/%m/%Y %H:%M")), d.get('funcionario_responsavel', 'Secretaria')))
+            if status == 'ENTREGUE':
+                registrar_entrega(c,item_id,nome,d,it,request.user['email'])
+            else:
+                cancelar_entregas(c,item_id,request.user['email'])
             conn.commit(); c.close(); conn.close()
             if status != it.get('status'):
                 push_delivery.notificar(it.get('email_solicitante'), 'item')
@@ -776,20 +789,8 @@ def gen_item(item_id):
 @app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
 @secretaria_required
 def rec_item(item_id):
-    try:
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT aprovado, email_solicitante FROM itens WHERE id = %s;", (item_id,))
-        it = c.fetchone()
-        if it and it.get('aprovado') is False:
-            c.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-            msg = "Item recusado e excluído."
-        else:
-            c.execute("UPDATE itens SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL WHERE id = %s;", (item_id,))
-            msg = "Item retornado para DISPONÍVEL."
-        conn.commit(); c.close(); conn.close()
-        push_delivery.notificar(it.get('email_solicitante') if it else None, 'item')
-        return jsonify({"success": True, "message": msg})
-    except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    from services.entrega_service import reverter
+    return reverter(get_db_connection,item_id)
 
 @app.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
 @secretaria_required
@@ -856,55 +857,24 @@ def del_mural(id):
 # ============================================================
 # ROTAS CHAT
 # ============================================================
-@app.route('/api/chat/enviar', methods=['OPTIONS', 'POST'])
-@token_required
-def env_chat():
-    d = request.json or {}
-    user = request.user
-    rm = str(d.get('rm') or user.get('rm') or '').strip()
-    if not pode_acessar_chat(rm):
-        return jsonify({'success': False, 'message': 'Acesso negado a esta conversa.'}), 403
-    rem = 'SECRETARIA' if user.get('role') == 'secretaria' else 'ALUNO'
-    nome = 'Secretaria' if rem == 'SECRETARIA' else user.get('nome', 'Aluno')
-    msg = limpar_texto_entrada(d.get('mensagem'), 4000)
-    if not rm or not msg: return jsonify({"success": False}), 400
-    conn = get_db_connection(); c = conn.cursor()
-    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, %s, %s, %s, %s);", (rm, nome, rem, msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), user.get('email') if rem == 'ALUNO' else None))
-    conn.commit(); c.close(); conn.close()
-    if rem == 'SECRETARIA': push_delivery.notificar_resposta(rm)
-    return jsonify({"success": True})
+from services import chat_service, chat_retencao
+app.before_request(chat_retencao.iniciar)
 
-@app.route('/api/chat/mensagens/<string:rm>', methods=['OPTIONS', 'GET'])
+@app.route('/api/chat/enviar', methods=['POST','OPTIONS'])
 @token_required
-def get_chat_msgs(rm):
-    if not pode_acessar_chat(rm):
-        return jsonify({'success': False, 'message': 'Acesso negado a esta conversa.'}), 403
-    conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-    c.execute("SELECT * FROM mensagens_chat WHERE rm_aluno = %s ORDER BY id ASC;", (rm,))
-    msgs = c.fetchall()
-    if request.args.get('marcar_lida', 'false').lower() == 'true' and msgs:
-        outro = 'ALUNO' if request.user.get('role') == 'secretaria' else 'SECRETARIA'
-        c.execute("UPDATE mensagens_chat SET lida = TRUE WHERE rm_aluno = %s AND remetente = %s AND lida = FALSE;", (rm, outro))
-        conn.commit()
-    c.close(); conn.close()
-    return jsonify(msgs)
+def env_chat(): return chat_service.enviar(get_db_connection)
 
-@app.route('/api/chat/conversas', methods=['OPTIONS', 'GET'])
+@app.route('/api/chat/mensagens/<string:rm>', methods=['GET','OPTIONS'])
+@token_required
+def get_chat_msgs(rm): return chat_service.mensagens(get_db_connection, rm)
+
+@app.route('/api/chat/legado/<string:rm>', methods=['GET','OPTIONS'])
 @secretaria_required
-def list_convs():
-    try:
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("""
-            SELECT m.rm_aluno,
-                   COALESCE((SELECT nome FROM alunos WHERE rm = m.rm_aluno LIMIT 1), 'Aluno RM ' || m.rm_aluno) as nome_aluno,
-                   (SELECT mensagem FROM mensagens_chat WHERE rm_aluno = m.rm_aluno ORDER BY id DESC LIMIT 1) as ultima_mensagem,
-                   (SELECT data_envio FROM mensagens_chat WHERE rm_aluno = m.rm_aluno ORDER BY id DESC LIMIT 1) as ultima_msg_data,
-                   COUNT(CASE WHEN m.remetente = 'ALUNO' AND m.lida = FALSE THEN 1 END) as nao_lidas
-            FROM mensagens_chat m GROUP BY m.rm_aluno ORDER BY MAX(m.id) DESC;
-        """)
-        res = c.fetchall(); c.close(); conn.close()
-        return jsonify(res)
-    except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+def get_chat_legado(rm): return chat_service.mensagens(get_db_connection, rm, legado=True)
+
+@app.route('/api/chat/conversas', methods=['GET','OPTIONS'])
+@secretaria_required
+def list_convs(): return chat_service.conversas(get_db_connection)
 
 # ============================================================
 # ROTAS RELATÓRIOS & SMART MATCH
@@ -913,7 +883,7 @@ def list_convs():
 @secretaria_required
 def rotas_entregues():
     conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-    c.execute("SELECT * FROM entregues ORDER BY id DESC;")
+    c.execute("SELECT * FROM entregues ORDER BY id DESC;" if request.args.get("incluir_canceladas") == "true" else "SELECT * FROM entregues WHERE cancelada_em IS NULL ORDER BY id DESC;")
     res = c.fetchall(); c.close(); conn.close()
     return jsonify(res)
 
@@ -926,7 +896,7 @@ def rotas_stats():
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
         total_itens = c.fetchone()['total']
-        c.execute("SELECT COUNT(*) as total FROM entregues;")
+        c.execute("SELECT COUNT(*) as total FROM entregues WHERE cancelada_em IS NULL;")
         total_entregues = c.fetchone()['total']
         c.execute(f"SELECT COUNT(*) as total FROM itens WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")
         total_doacoes = c.fetchone()['total']

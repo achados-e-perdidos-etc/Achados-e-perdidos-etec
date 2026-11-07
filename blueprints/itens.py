@@ -1,3 +1,5 @@
+from utils.validacao_item import validar_item, validar_categoria
+from utils.entregas import cancelar_entregas, registrar_entrega
 """
 Blueprint de Gestão do Catálogo de Itens e Categorias
 Rotas para listagem, cadastro (secretaria e aluno), moderação, atualização e descarte/doação.
@@ -171,13 +173,11 @@ def cadastrar_item_aluno():
     if not autor:
         return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
     data = request.json or {}
-    nome = (data.get('nome') or '').strip()
-    descricao = (data.get('descricao') or '').strip()
-    categoria = (data.get('categoria') or 'OUTROS').strip()
-    data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
-    local = (data.get('local') or 'Não informado').strip()
+    try:
+        v = validar_item(data); validar_categoria(get_db_connection,v['categoria'])
+    except ValueError as error: return jsonify(success=False,message=str(error)),400
+    nome,descricao,categoria,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
     rm = autor['rm']
-    
     lista_entrada = data.get('fotos', [])
     if not lista_entrada and data.get('foto'):
         lista_entrada = [data.get('foto')]
@@ -225,16 +225,10 @@ def cadastrar_item():
     destinatarios_push = set()
     """Cadastra um novo pertence achado diretamente pela secretaria escolar com auto-notificação de matches."""
     data = request.json or {}
-    nome = (data.get('nome') or '').strip()
-    descricao = (data.get('descricao') or '').strip()
-    categoria = (data.get('categoria') or 'OUTROS').strip()
-    data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
-    local = (data.get('local') or 'Não informado').strip()
-    status = (data.get('status') or 'DISPONÍVEL').strip()
-
-    if not descricao:
-        return jsonify({"success": False, "error": "A descrição é obrigatória."}), 400
-
+    try:
+        v = validar_item(data); validar_categoria(get_db_connection,v['categoria'])
+    except ValueError as error: return jsonify(success=False,message=str(error)),400
+    nome,descricao,categoria,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
     lista_entrada = data.get('fotos', [])
     if not lista_entrada and data.get('foto'):
         lista_entrada = [data.get('foto')]
@@ -270,8 +264,8 @@ def cadastrar_item():
                     if mural.get('email_aluno'): destinatarios_push.add(mural['email_aluno'].strip().lower())
                     msg_match = f"A secretaria registrou um objeto parecido: '{nome or descricao}'. Veja o catálogo!"
                     cursor.execute(
-                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
-                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, %s, %s, %s, %s);",
+                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), mural.get("email_aluno"))
                     )
                     if mural.get('email_aluno'):
                         disparar_email(
@@ -313,29 +307,18 @@ def gerenciar_item(item_id):
             return jsonify({"success": True, "message": "Item excluído com sucesso."})
         else:
             data = request.json or {}
-            cursor.execute("SELECT * FROM itens WHERE id = %s;", (item_id,))
+            cursor.execute("SELECT * FROM itens WHERE id = %s FOR UPDATE;", (item_id,))
             item_atual = cursor.fetchone()
             if not item_atual:
                 cursor.close()
                 conn.close()
                 return jsonify({"success": False, "message": "Item não encontrado."}), 404
 
-            nome = data.get('nome') if ('nome' in data and data.get('nome') is not None) else item_atual.get('nome_item', '')
-            descricao = data.get('descricao') if ('descricao' in data and data.get('descricao') is not None) else item_atual.get('descricao', '')
-            categoria = data.get('categoria') if ('categoria' in data and data.get('categoria') is not None) else item_atual.get('categoria', 'OUTROS')
-            data_enc = data.get('data') if ('data' in data and data.get('data') is not None) else item_atual.get('data_encontrado', '')
-            local = data.get('local') if ('local' in data and data.get('local') is not None) else item_atual.get('local_encontrado', '')
-            status = data.get('status') if ('status' in data and data.get('status') is not None) else item_atual.get('status', 'DISPONÍVEL')
-
-            nome = (str(nome) or '').strip()
-            descricao = (str(descricao) or '').strip()
-            categoria = (str(categoria) or 'OUTROS').strip()
-            data_enc = (str(data_enc) or '').strip()
-            local = (str(local) or '').strip()
-            status = (str(status) or 'DISPONÍVEL').strip()
-
-            if not descricao:
-                descricao = nome or 'Objeto'
+            try:
+                v = validar_item(data,item_atual); validar_categoria(get_db_connection,v['categoria'])
+            except ValueError as error:
+                conn.rollback();conn.close();return jsonify(success=False,message=str(error)),400
+            nome,descricao,categoria,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
 
             if 'fotos' in data and data.get('fotos') is not None:
                 fotos_rec = data.get('fotos') or []
@@ -356,21 +339,10 @@ def gerenciar_item(item_id):
                     WHERE id=%s;
                 """, (nome, descricao, categoria, data_enc, local, status, item_id))
 
-            if status.upper() == 'ENTREGUE':
-                cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-                cursor.execute("""
-                    INSERT INTO entregues (
-                        item_id, nome_item, retirado_por, rm_retirante, turma_curso, 
-                        data_entrega, funcionario_responsavel
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s);
-                """, (
-                    item_id, nome or descricao, 
-                    data.get('retirado_por', item_atual.get('solicitado_por', '')), 
-                    data.get('rm_retirante', item_atual.get('rm_aluno', '')), 
-                    data.get('turma_curso', '-'), 
-                    data.get('data_entrega', datetime.now().strftime("%d/%m/%Y %H:%M")), 
-                    data.get('funcionario_responsavel', 'Secretaria')
-                ))
+            if status == 'ENTREGUE':
+                registrar_entrega(cursor,item_id,nome,data,item_atual,request.user['email'])
+            else:
+                cancelar_entregas(cursor,item_id,request.user['email'])
 
             conn.commit()
             cursor.close()
@@ -390,38 +362,8 @@ def gerenciar_item(item_id):
 @itens_bp.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
 @secretaria_required
 def recusar_solicitacao(item_id):
-    """
-    Recusa solicitação ou cadastro:
-    - Se pendente de aprovação: exclui definitivamente o item rejeitado.
-    - Se solicitação de retirada: cancela a reserva e reverte o item para DISPONÍVEL.
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT aprovado, cadastrado_por_aluno, email_solicitante FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-        
-        if item and item.get('aprovado') is False:
-            cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-            msg = "Item pendente recusado e excluído do sistema."
-        else:
-            cursor.execute("""
-                UPDATE itens 
-                SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL 
-                WHERE id = %s;
-            """, (item_id,))
-            msg = "Solicitação cancelada. Item retornado para DISPONÍVEL."
-            
-        conn.commit()
-        cursor.close()
-        conn.close()
-        push_delivery.notificar(item.get('email_solicitante') if item else None, 'item')
-        return jsonify({"success": True, "message": msg})
-    except Exception as e:
-        if conn:
-            conn.close()
-        return jsonify({"success": False, "error": str(e)}), 500
+    from services.entrega_service import reverter
+    return reverter(get_db_connection,item_id)
 
 @itens_bp.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
 @secretaria_required

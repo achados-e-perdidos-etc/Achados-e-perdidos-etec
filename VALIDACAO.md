@@ -262,3 +262,9 @@ CHROMIUM_PATH=/usr/bin/chromium python -m unittest discover -s tests -p 'browser
 ```
 
 Resultado desta execução: **273 testes Python** (incluindo fluxos com PostgreSQL temporário), **40 testes JavaScript** e **38 testes Chromium** passaram. O axe-core não apontou violações nos critérios executados em 11 telas: catálogo celular, central, minha atividade, cadastro do aluno, cadastro e catálogo da secretaria, categorias, professores, dashboard, chat e login celular. Foram exercitados também falha de rede, troca de conta, rascunho expirado/descartado, upload sem confirmação falsa, histórico de recusa/remoção/doação e professor aprovado. Esses resultados descrevem os cenários locais executados, sem prometer ausência de todos os possíveis defeitos ou validar serviços externos.
+
+## Proposta 28 — prioridades e retomada de upload
+
+As correções e a validação estão descritas em **CORRECOES-28.md**. Foram aprovados 324 testes Python, 49 testes JavaScript e 39 testes Chromium, além de jornadas reais locais do desktop e do portal com PostgreSQL temporário. Serviços externos foram substituídos por transporte controlado.
+
+Migrações idempotentes acrescentam `mensagens_chat.criada_em`, índices de retenção/conta, `entregues.cancelada_em`/`cancelada_por` e tabelas de sessões/partes de fotos. Históricos sem autoria não são associados por RM. Mensagens legadas sem data estruturada recebem a data da migração como início da retenção. O worker de limpeza do chat e dos uploads inicia após migração, no primeiro acesso; limita lotes, coordena instâncias por trava PostgreSQL e retenta falhas temporárias. O novo cache PWA inclui as dependências do portal.

@@ -12,7 +12,7 @@ class Cursor:
         self.cursor = connection.cursor()
 
     def execute(self, query, params=()):
-        self.cursor.execute(query.replace('%s', '?'), params)
+        self.cursor.execute(query.replace('%s', '?').replace(' FOR UPDATE',''), params)
         # Consome RETURNING antes de commit, como o cursor PostgreSQL permite.
         self.rows = self.cursor.fetchall() if self.cursor.description else []
 
@@ -51,6 +51,7 @@ def test_solicitacao_relato_e_cadastro_ficam_com_o_autor_da_sessao(implementatio
     db = sqlite3.connect(':memory:')
     db.row_factory = sqlite3.Row
     db.executescript('''
+        CREATE TABLE categorias (nome TEXT); INSERT INTO categorias VALUES ('OUTROS');
         CREATE TABLE itens (
             id INTEGER PRIMARY KEY, nome_item TEXT, descricao TEXT, categoria TEXT,
             data_encontrado TEXT, local_encontrado TEXT, foto TEXT, fotos_json TEXT,

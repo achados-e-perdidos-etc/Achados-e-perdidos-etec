@@ -9,3 +9,4 @@
 .estado-fotos[data-estado="erro"] .estado-fotos-icone::after{content:'!';position:absolute;inset:0;text-align:center;font-size:12px;line-height:16px}
 @keyframes fotos-girar{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.estado-fotos-icone{animation:none}}
+.upload-arquivo{display:grid;grid-template-columns:1fr;gap:7px;padding:12px;margin:10px 0;border:1px solid #43516a;border-radius:12px;background:#152135;color:#e2e8f0;font-size:12px}.upload-arquivo progress{width:100%;height:12px;accent-color:#10b981}.upload-arquivo button{background:#334155;color:white;border:1px solid #64748b;padding:8px;border-radius:8px;font-weight:bold}

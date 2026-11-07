@@ -134,7 +134,7 @@ def test_eventos_reais_de_chat_e_status_enfileiram_para_email_correto(db_env,imp
     student={'Authorization':'Bearer '+server.gerar_token_aluno('a@aluno.cps.sp.gov.br','Aluno A','12345')}
     owner={'Authorization':'Bearer '+server.gerar_token_secretaria('secretaria@etec.sp.gov.br')}
     assert client.post('/api/chat/enviar',headers=student,json={'mensagem':'conteudo privado','email':'b@aluno.cps.sp.gov.br'}).status_code==200
-    assert client.post('/api/chat/enviar',headers=owner,json={'rm':'12345','mensagem':'resposta privada'}).status_code==200
+    assert client.post('/api/chat/enviar',headers=owner,json={'rm':'12345','email':'a@aluno.cps.sp.gov.br','mensagem':'resposta privada'}).status_code==200
     assert scalar(db_env,'SELECT count(*) FROM push_entregas')==1
     payload=scalar(db_env,'SELECT payload_json FROM push_entregas')
     assert 'privado' not in payload and 'privada' not in payload
@@ -188,6 +188,6 @@ def test_falha_de_fila_nao_desfaz_resposta_do_chat_gravada(db_env):
     with db_env() as connection:
         with connection.cursor() as c:c.execute("INSERT INTO mensagens_chat(rm_aluno,nome_aluno,remetente,mensagem,data_envio,email_aluno) VALUES ('12345','Aluno A','ALUNO','Oi','06/11/2026','a@aluno.cps.sp.gov.br')")
     with patch.object(service,'enfileirar',side_effect=RuntimeError('fila indisponível')):
-        result=server.app.test_client().post('/api/chat/enviar',headers=owner,json={'rm':'12345','mensagem':'Resposta'})
+        result=server.app.test_client().post('/api/chat/enviar',headers=owner,json={'rm':'12345','email':'a@aluno.cps.sp.gov.br','mensagem':'Resposta'})
     assert result.status_code==200
     assert scalar(db_env,"SELECT count(*) FROM mensagens_chat WHERE remetente='SECRETARIA'")==1

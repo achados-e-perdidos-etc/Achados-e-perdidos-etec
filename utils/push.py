@@ -69,7 +69,8 @@ SCHEMA_ENTREGAS_PUSH = '''CREATE TABLE IF NOT EXISTS push_entregas (
 
 INDICE_ENTREGAS_PUSH = 'CREATE INDEX IF NOT EXISTS push_entregas_agenda ON push_entregas (proxima_tentativa, id);'
 
-SCHEMA_EMAIL_CHAT = 'ALTER TABLE mensagens_chat ADD COLUMN IF NOT EXISTS email_aluno VARCHAR(150);'
+SCHEMA_EMAIL_CHAT = '''ALTER TABLE mensagens_chat ADD COLUMN IF NOT EXISTS email_aluno VARCHAR(150);
+CREATE INDEX IF NOT EXISTS mensagens_conta_id ON mensagens_chat(email_aluno,id);'''
 
 SCHEMA_LIMITE_PUSH = '''CREATE TABLE IF NOT EXISTS push_ultimo_teste (
     email_aluno VARCHAR(150) PRIMARY KEY REFERENCES alunos(email) ON DELETE CASCADE,

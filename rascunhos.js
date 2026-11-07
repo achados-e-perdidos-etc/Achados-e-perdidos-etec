@@ -66,6 +66,8 @@ const Rascunhos = {
             document.getElementById(ids[0])?.closest('form')?.reset();
         }
         if (typeof fotosAlunoSelecionadas !== 'undefined') fotosAlunoSelecionadas = [];
+        if (typeof UploadAluno !== 'undefined') UploadAluno.limpar();
+        if (typeof UploadSecretaria !== 'undefined') UploadSecretaria.limpar();
         if (typeof CentralAvisos !== 'undefined') { CentralAvisos.itens = []; CentralAvisos.sessao = null; CentralAvisos.renderizar(); document.getElementById('badgeAvisos').hidden = true; }
         if (typeof MeusCadastros !== 'undefined') { MeusCadastros.itens = []; MeusCadastros.sessao = null; document.getElementById('listaMeusCadastros').replaceChildren(); }
     },

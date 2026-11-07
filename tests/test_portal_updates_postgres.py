@@ -50,7 +50,7 @@ def test_resposta_chat_registra_sem_configurar_push(db,monkeypatch):
     client=server.app.test_client()
     assert client.post('/api/chat/enviar',headers=auth(),json={'mensagem':'Olá'}).status_code==200
     sec={'Authorization':'Bearer '+server.gerar_token_secretaria('sec@etec.sp.gov.br')}
-    assert client.post('/api/chat/enviar',headers=sec,json={'rm':'12345','mensagem':'Bom dia!'}).status_code==200
+    assert client.post('/api/chat/enviar',headers=sec,json={'rm':'12345','email':'a@aluno.cps.sp.gov.br','mensagem':'Bom dia!'}).status_code==200
     assert client.get('/api/notificacoes',headers=auth()).json['nao_lidas']==1
 
 @pytest.fixture

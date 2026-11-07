@@ -213,3 +213,9 @@ As quatro melhorias compõem uma única branch `26-melhorias-portal`, dependente
 Relatório completo em **AUDITORIA-27.md**. Logo desktop unificada com a web; correções dos IDs do histórico, confirmação de doações, timeouts e sugestões de IA. Verificação com Tkinter real em tela virtual, Flask e PostgreSQL isolado.
 
 Novas descobertas ativas, ainda abertas: **A27-01** (isolamento do chat entre contas com mesmo RM), **A27-02** (reversão de entrega mantém histórico/indicadores), **A27-03** (cadastros vazios aceitos pela API), **A27-04** (desktop síncrono e erros silenciosos), **A27-05** (células de CSV sem neutralização de fórmulas) e **A27-06** (ordenação de categorias no desktop). Essas descobertas não foram encerradas. Elas não dependem da disponibilidade da lista oficial de matrículas e não substituem os registros das tarefas anteriormente adiadas.
+
+## Proposta 28 — situação atual das prioridades
+
+As seis descobertas **A27-01 a A27-06** foram tratadas em uma única branch, com testes de regressão. Detalhes, migrações, evidências e limites em **CORRECOES-28.md**. Inclui retenção automática do chat em 30 dias e envio retomável por foto no portal/painel web. A logo desktop unificada foi preservada.
+
+O relatório da proposta 27 é o registro histórico das falhas antes das correções. As recomendações de novas funcionalidades e as tarefas anteriormente adiadas continuam separadas: não foram declaradas concluídas por esta revisão. A implementação ainda depende de integração das propostas para chegar ao site publicado.

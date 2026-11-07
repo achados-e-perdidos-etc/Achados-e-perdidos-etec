@@ -24,6 +24,7 @@ class RouteTests(unittest.TestCase):
             'secretaria@etec.sp.gov.br')}
         self.connection = MagicMock()
         self.cursor = self.connection.cursor.return_value
+        self.cursor.__enter__.return_value = self.cursor
         self.cursor.fetchall.return_value = []
         self.db_patch = patch.object(server, 'get_db_connection', return_value=self.connection)
         self.get_db = self.db_patch.start()
@@ -174,20 +175,22 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(params[:4], ('12345', 'Nome real', 'ALUNO', 'Oi'))
 
     def test_secretaria_pode_enviar_resposta_com_remetente_da_sessao(self):
+        self.cursor.fetchone.return_value={'nome':'Aluno','rm':'12345','email':'aluno@aluno.cps.sp.gov.br'}
         response = self.client.post('/api/chat/enviar', headers=self.secretaria,
-            json={'rm': '12345', 'remetente': 'ALUNO', 'mensagem': 'Resposta'})
+            json={'rm': '12345', 'email':'aluno@aluno.cps.sp.gov.br', 'remetente': 'ALUNO', 'mensagem': 'Resposta'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.cursor.execute.call_args.args[1][2], 'SECRETARIA')
 
     def test_leitura_chat_usa_sessao_para_marcar_lidas(self):
-        self.cursor.fetchall.return_value = [{'mensagem': 'Oi'}]
+        self.cursor.fetchall.return_value = [{'id':1,'mensagem': 'Oi'}]
+        self.cursor.fetchone.return_value={'nome':'Aluno','rm':'12345','email':'aluno@aluno.cps.sp.gov.br'}
         for headers, origem_falsa, esperado in [
             (self.aluno, 'SECRETARIA', 'SECRETARIA'),
             (self.secretaria, 'ALUNO', 'ALUNO')]:
-            response = self.client.get('/api/chat/mensagens/12345?marcar_lida=true&origem=' + origem_falsa,
+            response = self.client.get('/api/chat/mensagens/12345?email=aluno@aluno.cps.sp.gov.br&marcar_lida=true&origem=' + origem_falsa,
                                        headers=headers)
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(self.cursor.execute.call_args.args[1], ('12345', esperado))
+            self.assertEqual(self.cursor.execute.call_args.args[1], ('aluno@aluno.cps.sp.gov.br', esperado, 1))
 
     def test_validacao_da_rota_e_a_mesma_dos_testes(self):
         self.assertIs(server.validar_email_institucional, validar_email_institucional)
@@ -205,7 +208,7 @@ class RouteTests(unittest.TestCase):
         db.row_factory = sqlite3.Row
         db.executescript('''CREATE TABLE itens (
             id INTEGER PRIMARY KEY, status TEXT, aprovado BOOLEAN, categoria TEXT,
-            local_encontrado TEXT); CREATE TABLE entregues (id INTEGER);''')
+            local_encontrado TEXT); CREATE TABLE entregues (id INTEGER,cancelada_em TEXT);''')
         statuses = ['PARA DOAÇÃO', 'PARA DOACAO', 'DOAÇÃO', 'DOACAO',
                     'DOAÇÃO FEITA', 'DISPONÍVEL', 'ENTREGUE', 'SOLICITADO']
         for i, status in enumerate(statuses, 1):

@@ -3,7 +3,7 @@ Blueprint de Inteligência, Estatísticas (BI) e Smart Matching
 Agrupamentos analíticos para gráficos, relatórios formais e cruzamento de dados.
 """
 import json
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection, verificar_e_atualizar_itens_doacao
@@ -19,7 +19,7 @@ def get_entregues():
     """Retorna o histórico de comprovantes e pertences devolvidos."""
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
+    cursor.execute("SELECT * FROM entregues ORDER BY id DESC;" if request.args.get("incluir_canceladas") == "true" else "SELECT * FROM entregues WHERE cancelada_em IS NULL ORDER BY id DESC;")
     res = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -43,7 +43,7 @@ def estatisticas():
         cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
         total_cadastrados = cursor.fetchone()['total']
         
-        cursor.execute("SELECT COUNT(*) as total FROM entregues;")
+        cursor.execute("SELECT COUNT(*) as total FROM entregues WHERE cancelada_em IS NULL;")
         total_entregues = cursor.fetchone()['total']
         
         cursor.execute(f"SELECT COUNT(*) as total FROM itens WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")

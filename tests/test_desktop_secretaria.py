@@ -9,8 +9,21 @@ from PIL import Image
 import desktop_secretaria as desktop
 
 
+class Imediato:
+    def executar(self,funcao,args,kwargs,modal=None):
+        gen=funcao(*args,**kwargs)
+        try:
+            job=next(gen)
+            while True:
+                try:result=job.executar()
+                except Exception as error:job=gen.throw(error)
+                else:job=gen.send(result)
+        except StopIteration:return
+
+
 def app():
     obj=object.__new__(desktop.SecretariaApp)
+    obj.tarefas=Imediato()
     obj.tree_entregues=MagicMock()
     obj.tree_entregues.selection.return_value=['linha']
     obj.tree_entregues.item.return_value={'values':[91,7,'Estojo','Ana','123','DS','Hoje']}
@@ -68,3 +81,15 @@ def test_doacao_nao_anuncia_sucesso_em_recusa_ou_falha_de_rede():
         req.return_value.ok=False;commands[0]();info.assert_not_called();erro.assert_called_once()
         req.reset_mock();erro.reset_mock();req.side_effect=desktop.requests.Timeout();commands[0]()
         info.assert_not_called();erro.assert_called_once();assert req.call_count==1
+
+def test_dashboard_ordena_por_quantidade_sem_depender_de_lista_desatualizada():
+    obj=app()
+    for key in ['lbl_stat_itens','lbl_stat_entregues','lbl_stat_doacoes','lbl_taxa_devolucao','lbl_distribuicao_cats']:setattr(obj,key,MagicMock())
+    desktop.TOKEN_SECRETARIA='token-de-teste'
+    with patch.object(desktop,'requisicao_desktop') as req:
+        req.return_value.status_code=200
+        req.return_value.json.return_value={'por_categoria':[{'categoria':'OUTROS','qtd':1},{'categoria':'ACESSÓRIOS','qtd':12}]}
+        obj.carregar_dashboard()
+    texto=obj.lbl_distribuicao_cats.config.call_args.kwargs['text']
+    assert texto.index('ACESSÓRIOS: 12')<texto.index('OUTROS: 1')
+    desktop.TOKEN_SECRETARIA=None
