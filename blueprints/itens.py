@@ -1,3 +1,5 @@
+from utils.validacao_item import validar_item, validar_categoria
+from utils.entregas import cancelar_entregas, registrar_entrega
 """
 Blueprint de Gestão do Catálogo de Itens e Categorias
 Rotas para listagem, cadastro (secretaria e aluno), moderação, atualização e descarte/doação.
@@ -8,10 +10,13 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection, verificar_e_atualizar_itens_doacao
-from utils.security import token_required
+from utils.doacoes import DOACOES_PENDENTES_SQL
+from utils.privacy import item_publico, relato_publico
+from utils.security import consulta_publica, token_required, secretaria_required, categorias_required, identidade_aluno, identidade_portal
 from utils.helpers import extrair_termos
-from services.cloudinary_service import processar_fotos
+from services.cloudinary_service import processar_fotos, FalhaUploadFotos
 from services.email_service import disparar_email
+from services import push_delivery
 
 itens_bp = Blueprint('itens', __name__)
 
@@ -19,8 +24,13 @@ itens_bp = Blueprint('itens', __name__)
 # CATEGORIAS
 # ==============================================================================
 
+@itens_bp.errorhandler(FalhaUploadFotos)
+def falha_upload_fotos(error):
+    return jsonify({'success': False, 'message': str(error)}), 502
+
 @itens_bp.route('/api/categorias/<string:nome>', methods=['OPTIONS', 'DELETE'])
 @itens_bp.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST', 'DELETE'])
+@categorias_required
 def categorias(nome=None):
     """Gerencia listagem, criação e exclusão de categorias de itens."""
     if request.method == 'OPTIONS':
@@ -70,6 +80,7 @@ def categorias(nome=None):
 # ==============================================================================
 
 @itens_bp.route('/api/itens', methods=['OPTIONS', 'GET'])
+@consulta_publica
 def get_itens():
     """Retorna a lista de todos os itens aprovados e disponíveis para o catálogo público."""
     conn = None
@@ -104,6 +115,7 @@ def get_itens():
                        local_encontrado as txt_local, 
                        foto, status, solicitado_por, rm_aluno 
                 FROM itens 
+                WHERE (aprovado IS NULL OR aprovado = TRUE)
                 ORDER BY id DESC;
             """)
             itens = cursor.fetchall()
@@ -120,14 +132,14 @@ def get_itens():
                 
         cursor.close()
         conn.close()
-        return jsonify(itens)
+        return jsonify(itens if request.user.get('role') == 'secretaria' else [item_publico(it) for it in itens])
     except Exception as e:
         if conn:
             conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/pendentes', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def get_itens_pendentes():
     """Lista itens cadastrados por alunos aguardando aprovação da secretaria."""
     try:
@@ -154,16 +166,18 @@ def get_itens_pendentes():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/cadastrar-aluno', methods=['OPTIONS', 'POST'])
+@token_required
 def cadastrar_item_aluno():
     """Permite que um estudante cadastre um objeto encontrado para análise da secretaria."""
+    autor = identidade_portal()
+    if not autor:
+        return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
     data = request.json or {}
-    nome = (data.get('nome') or '').strip()
-    descricao = (data.get('descricao') or '').strip()
-    categoria = (data.get('categoria') or 'OUTROS').strip()
-    data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
-    local = (data.get('local') or 'Não informado').strip()
-    rm = (data.get('rm') or '').strip()
-    
+    try:
+        v = validar_item(data); validar_categoria(get_db_connection,v['categoria'])
+    except ValueError as error: return jsonify(success=False,message=str(error)),400
+    nome,descricao,categoria,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
+    rm = autor['rm']
     lista_entrada = data.get('fotos', [])
     if not lista_entrada and data.get('foto'):
         lista_entrada = [data.get('foto')]
@@ -179,10 +193,10 @@ def cadastrar_item_aluno():
             INSERT INTO itens (
                 nome_item, descricao, categoria, data_encontrado, 
                 local_encontrado, foto, fotos_json, status, aprovado, 
-                cadastrado_por_aluno, rm_aluno
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s) 
+                cadastrado_por_aluno, rm_aluno, email_cadastrador
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'DISPONÍVEL', FALSE, TRUE, %s, %s)
             RETURNING id;
-        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, rm))
+        ''', (nome, descricao, categoria, data_enc, local, foto_capa, fotos_json_str, rm, autor['email']))
         conn.commit()
         cursor.close()
         conn.close()
@@ -191,7 +205,7 @@ def cadastrar_item_aluno():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/<int:item_id>/aprovar', methods=['OPTIONS', 'PUT'])
-@token_required
+@secretaria_required
 def aprovar_item(item_id):
     """Aprova um item pendente, tornando-o visível no catálogo público."""
     try:
@@ -206,20 +220,15 @@ def aprovar_item(item_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens', methods=['OPTIONS', 'POST'])
-@token_required
+@secretaria_required
 def cadastrar_item():
+    destinatarios_push = set()
     """Cadastra um novo pertence achado diretamente pela secretaria escolar com auto-notificação de matches."""
     data = request.json or {}
-    nome = (data.get('nome') or '').strip()
-    descricao = (data.get('descricao') or '').strip()
-    categoria = (data.get('categoria') or 'OUTROS').strip()
-    data_enc = (data.get('data') or datetime.now().strftime("%d/%m/%Y")).strip()
-    local = (data.get('local') or 'Não informado').strip()
-    status = (data.get('status') or 'DISPONÍVEL').strip()
-
-    if not descricao:
-        return jsonify({"success": False, "error": "A descrição é obrigatória."}), 400
-
+    try:
+        v = validar_item(data); validar_categoria(get_db_connection,v['categoria'])
+    except ValueError as error: return jsonify(success=False,message=str(error)),400
+    nome,descricao,categoria,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
     lista_entrada = data.get('fotos', [])
     if not lista_entrada and data.get('foto'):
         lista_entrada = [data.get('foto')]
@@ -244,6 +253,7 @@ def cadastrar_item():
         novo_id = row['id'] if isinstance(row, dict) else row[0]
         conn.commit()
 
+        destinatarios_push = set()
         # Verifica correspondências com o mural de perdidos dos alunos
         try:
             termos_novo = extrair_termos(f"{nome} {descricao}")
@@ -251,10 +261,11 @@ def cadastrar_item():
             for mural in cursor.fetchall():
                 termos_mural = extrair_termos(mural.get('descricao', ''))
                 if len(termos_novo.intersection(termos_mural)) >= 1:
+                    if mural.get('email_aluno'): destinatarios_push.add(mural['email_aluno'].strip().lower())
                     msg_match = f"A secretaria registrou um objeto parecido: '{nome or descricao}'. Veja o catálogo!"
                     cursor.execute(
-                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio) VALUES (%s, %s, %s, %s, %s);", 
-                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, %s, %s, %s, %s);",
+                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), mural.get("email_aluno"))
                     )
                     if mural.get('email_aluno'):
                         disparar_email(
@@ -266,18 +277,21 @@ def cadastrar_item():
         except Exception:
             if conn:
                 conn.rollback()
+            destinatarios_push.clear()
 
         cursor.close()
         conn.close()
+        for destino in destinatarios_push: push_delivery.notificar(destino, 'match')
         return jsonify({"success": True, "id": novo_id, "message": "Item salvo com sucesso!"})
     except Exception as e:
         if conn:
             conn.rollback()
+            destinatarios_push.clear()
             conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @itens_bp.route('/api/itens/<int:item_id>', methods=['OPTIONS', 'PUT', 'POST', 'DELETE'])
-@token_required
+@secretaria_required
 def gerenciar_item(item_id):
     """Atualiza ou exclui um item catalogado, incluindo registro formal de entrega se status for 'ENTREGUE'."""
     conn = None
@@ -293,35 +307,24 @@ def gerenciar_item(item_id):
             return jsonify({"success": True, "message": "Item excluído com sucesso."})
         else:
             data = request.json or {}
-            cursor.execute("SELECT * FROM itens WHERE id = %s;", (item_id,))
+            cursor.execute("SELECT * FROM itens WHERE id = %s FOR UPDATE;", (item_id,))
             item_atual = cursor.fetchone()
             if not item_atual:
                 cursor.close()
                 conn.close()
                 return jsonify({"success": False, "message": "Item não encontrado."}), 404
 
-            nome = data.get('nome') if ('nome' in data and data.get('nome') is not None) else item_atual.get('nome_item', '')
-            descricao = data.get('descricao') if ('descricao' in data and data.get('descricao') is not None) else item_atual.get('descricao', '')
-            categoria = data.get('categoria') if ('categoria' in data and data.get('categoria') is not None) else item_atual.get('categoria', 'OUTROS')
-            data_enc = data.get('data') if ('data' in data and data.get('data') is not None) else item_atual.get('data_encontrado', '')
-            local = data.get('local') if ('local' in data and data.get('local') is not None) else item_atual.get('local_encontrado', '')
-            status = data.get('status') if ('status' in data and data.get('status') is not None) else item_atual.get('status', 'DISPONÍVEL')
-
-            nome = (str(nome) or '').strip()
-            descricao = (str(descricao) or '').strip()
-            categoria = (str(categoria) or 'OUTROS').strip()
-            data_enc = (str(data_enc) or '').strip()
-            local = (str(local) or '').strip()
-            status = (str(status) or 'DISPONÍVEL').strip()
-
-            if not descricao:
-                descricao = nome or 'Objeto'
+            try:
+                v = validar_item(data,item_atual); validar_categoria(get_db_connection,v['categoria'])
+            except ValueError as error:
+                conn.rollback();conn.close();return jsonify(success=False,message=str(error)),400
+            nome,descricao,categoria,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
 
             if 'fotos' in data and data.get('fotos') is not None:
                 fotos_rec = data.get('fotos') or []
                 urls = processar_fotos(fotos_rec)
-                foto_capa = urls[0] if urls else (item_atual.get('foto') or '')
-                fotos_json_str = json.dumps(urls) if urls else (item_atual.get('fotos_json') or '[]')
+                foto_capa = urls[0] if urls else ''
+                fotos_json_str = json.dumps(urls)
                 cursor.execute("""
                     UPDATE itens 
                     SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, 
@@ -336,26 +339,20 @@ def gerenciar_item(item_id):
                     WHERE id=%s;
                 """, (nome, descricao, categoria, data_enc, local, status, item_id))
 
-            if status.upper() == 'ENTREGUE':
-                cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
-                cursor.execute("""
-                    INSERT INTO entregues (
-                        item_id, nome_item, retirado_por, rm_retirante, turma_curso, 
-                        data_entrega, funcionario_responsavel
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s);
-                """, (
-                    item_id, nome or descricao, 
-                    data.get('retirado_por', item_atual.get('solicitado_por', '')), 
-                    data.get('rm_retirante', item_atual.get('rm_aluno', '')), 
-                    data.get('turma_curso', '-'), 
-                    data.get('data_entrega', datetime.now().strftime("%d/%m/%Y %H:%M")), 
-                    data.get('funcionario_responsavel', 'Secretaria')
-                ))
+            if status == 'ENTREGUE':
+                registrar_entrega(cursor,item_id,nome,data,item_atual,request.user['email'])
+            else:
+                cancelar_entregas(cursor,item_id,request.user['email'])
 
             conn.commit()
             cursor.close()
             conn.close()
+            if status != item_atual.get('status'):
+                push_delivery.notificar(item_atual.get('email_solicitante'), 'item')
             return jsonify({"success": True, "message": "Item atualizado com sucesso!"})
+    except FalhaUploadFotos as error:
+        if conn: conn.rollback(); conn.close()
+        return jsonify({'success': False, 'message': str(error)}), 502
     except Exception as e:
         if conn:
             conn.rollback()
@@ -363,67 +360,40 @@ def gerenciar_item(item_id):
         return jsonify({"success": False, "error": str(e), "message": f"Erro interno ao atualizar item: {str(e)}"}), 500
 
 @itens_bp.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
-@token_required
+@secretaria_required
 def recusar_solicitacao(item_id):
-    """
-    Recusa solicitação ou cadastro:
-    - Se pendente de aprovação: exclui definitivamente o item rejeitado.
-    - Se solicitação de retirada: cancela a reserva e reverte o item para DISPONÍVEL.
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT aprovado, cadastrado_por_aluno FROM itens WHERE id = %s;", (item_id,))
-        item = cursor.fetchone()
-        
-        if item and item.get('aprovado') is False:
-            cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
-            msg = "Item pendente recusado e excluído do sistema."
-        else:
-            cursor.execute("""
-                UPDATE itens 
-                SET status = 'DISPONÍVEL', solicitado_por = NULL, rm_aluno = NULL, email_solicitante = NULL 
-                WHERE id = %s;
-            """, (item_id,))
-            msg = "Solicitação cancelada. Item retornado para DISPONÍVEL."
-            
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": msg})
-    except Exception as e:
-        if conn:
-            conn.close()
-        return jsonify({"success": False, "error": str(e)}), 500
+    from services.entrega_service import reverter
+    return reverter(get_db_connection,item_id)
 
 @itens_bp.route('/api/itens/doacoes/concluir', methods=['OPTIONS', 'DELETE'])
-@token_required
+@secretaria_required
 def concluir_doacoes():
-    """Remove do catálogo itens cujo processo de doação já foi concluído e registrado."""
+    """Arquiva as doações pendentes, preservando o histórico dos itens."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM itens WHERE UPPER(status) = 'DOAÇÃO FEITA' OR UPPER(status) = 'DOACAO FEITA';")
+    cursor.execute(f"UPDATE itens SET status = 'DOAÇÃO FEITA' WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")
     conn.commit()
     cursor.close()
     conn.close()
     return jsonify({"success": True})
 
 @itens_bp.route('/api/solicitar', methods=['OPTIONS', 'POST'])
+@token_required
 def solicitar_item():
     """Permite ao estudante solicitar a retirada de um item disponível."""
+    aluno = identidade_aluno()
+    if not aluno:
+        return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem solicitar a retirada de itens.'}), 403
     data = request.json or {}
     item_id = data.get('id')
-    nome = data.get('nome')
-    rm = data.get('rm')
-    email_aluno = data.get('email')
+    nome, rm, email_aluno = aluno['nome'], aluno['rm'], aluno['email']
     
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE itens 
         SET status = 'SOLICITADO', solicitado_por = %s, rm_aluno = %s, email_solicitante = %s 
-        WHERE id = %s AND status = 'DISPONÍVEL';
+        WHERE id = %s AND status = 'DISPONÍVEL' AND (aprovado IS NULL OR aprovado = TRUE);
     """, (nome, rm, email_aluno, item_id))
     afetados = cursor.rowcount
     conn.commit()
@@ -432,3 +402,25 @@ def solicitar_item():
     if afetados > 0:
         return jsonify({"success": True, "message": "Solicitação enviada com sucesso!"})
     return jsonify({"success": False, "message": "Este item não está mais disponível."}), 400
+
+
+
+@itens_bp.route('/api/itens/meus', methods=['OPTIONS', 'GET'])
+@token_required
+def meus_itens():
+    email = request.user.get('email')
+    if not email:
+        return jsonify({'success': False, 'message': 'Sessão sem identidade.'}), 403
+    conn = get_db_connection()
+    try:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("""SELECT id, COALESCE(nome_item, descricao) as nome, descricao as txt_descricao,
+                     categoria, data_encontrado as txt_data, local_encontrado as txt_local,
+                     foto, fotos_json, status FROM itens
+                     WHERE email_solicitante = %s AND (aprovado IS NULL OR aprovado = TRUE)
+                     ORDER BY id DESC;""", (email,))
+        rows = c.fetchall()
+        c.close()
+        return jsonify([item_publico(item) for item in rows])
+    finally:
+        conn.close()

@@ -18,7 +18,7 @@ def rota_analisar_imagem():
 
     resultado, erro = analisar_imagem_com_ia(foto)
     if erro:
-        return jsonify({"success": False, "message": erro}), 500
+        return jsonify({"success": False, "message": erro}), 400
 
     return jsonify({
         "success": True,

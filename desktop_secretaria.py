@@ -1,3 +1,6 @@
+from desktop_tasks import Trabalho, TarefasDesktop, assincrono
+from urllib.parse import urlencode, quote
+from utils.exportacao import salvar_csv
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 import requests
@@ -5,8 +8,10 @@ import json
 import base64
 import io
 import os
+import sys
+from pathlib import Path
 import csv
-from PIL import Image, ImageTk, ImageDraw, ImageFont
+from PIL import Image, ImageTk, ImageDraw, ImageFont, ImageOps
 from datetime import datetime
 import qrcode
 
@@ -15,6 +20,27 @@ import qrcode
 # ==========================================
 API_URL = "https://etec-achados.up.railway.app"
 TOKEN_SECRETARIA = None
+
+def requisicao_desktop(metodo, url, **kwargs):
+    """Limita a espera em conexões interrompidas, inclusive durante login."""
+    kwargs.setdefault('timeout', (5, 25))
+    res = requests.request(metodo, url, **kwargs)
+    if res.status_code == 401 and url.startswith(API_URL+'/api/') and not url.endswith('/api/login') and kwargs.get('headers',{}).get('Authorization'):
+        error = requests.HTTPError('Sessão expirada.');error.sessao_expirada = True;raise error
+    if not res.ok:
+        error=requests.HTTPError(f'Operação não confirmada (HTTP {res.status_code}).')
+        try:
+            mensagem=res.json().get('message')
+            if isinstance(mensagem,str):error.mensagem_publica=mensagem[:300]
+        except (ValueError,AttributeError):pass
+        raise error
+    return res
+
+
+def caminho_logo_secretaria():
+    raiz = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
+    return raiz / 'logo_secretaria.png'
+
 
 # Paleta de Cores Visual Moderna
 COR_BG_GERAL = "#0d1117"
@@ -32,7 +58,7 @@ COR_BORDA = "#30363d"
 def comprimir_foto_desktop(caminho_arquivo, max_dim=1200, qualidade=75):
     try:
         with Image.open(caminho_arquivo) as img:
-            img = img.convert("RGB")
+            img = ImageOps.exif_transpose(img).convert("RGB")
             w, h = img.size
             if w > max_dim or h > max_dim:
                 if w > h:
@@ -50,6 +76,17 @@ def comprimir_foto_desktop(caminho_arquivo, max_dim=1200, qualidade=75):
         print(f"Erro ao comprimir imagem desktop: {e}")
         return None
 
+def baixar_miniatura(url):
+    try:
+        res = requisicao_desktop('GET',url)
+        with Image.open(io.BytesIO(res.content)) as original:
+            img = ImageOps.exif_transpose(original).convert('RGB')
+            img.thumbnail((160,160),Image.Resampling.LANCZOS)
+            return img.copy()
+    except (requests.RequestException,OSError,ValueError):
+        return None
+
+
 class SecretariaApp:
     def __init__(self, root):
         self.root = root
@@ -60,6 +97,8 @@ class SecretariaApp:
         self.itens_atuais = []
         self.categorias_atuais = []
         self.chat_timer = None
+        self.email_chat_ativo = None
+        self.chat_legado = False
         self.rm_chat_ativo = None
 
         self.estilo = ttk.Style()
@@ -73,7 +112,47 @@ class SecretariaApp:
         self.estilo.map("Treeview", background=[("selected", COR_DESTAQUE)], foreground=[("selected", "white")])
         self.estilo.configure("Treeview.Heading", background=COR_BG_HEADER, foreground="#ffffff", font=("Segoe UI", 10, "bold"), relief="flat")
 
+        self.logo_secretaria = None
+        try:
+            with Image.open(caminho_logo_secretaria()) as logo:
+                self.logo_secretaria = ImageTk.PhotoImage(logo.resize((64, 64), Image.Resampling.LANCZOS))
+            self.root.iconphoto(True, self.logo_secretaria)
+        except (OSError, tk.TclError):
+            pass  # O arquivo acompanha a distribuição; ausência não impede o login.
+        self.barra_status = tk.Frame(self.root,bg=COR_BG_HEADER)
+        self.barra_status.pack(side='bottom',fill='x')
+        self.var_status = tk.StringVar(value='Pronto para conectar.')
+        tk.Label(self.barra_status,textvariable=self.var_status,bg=COR_BG_HEADER,fg='white').pack(side='left',padx=10,pady=6)
+        self.tarefas = TarefasDesktop(self)
+        tk.Button(self.barra_status,text='Tentar novamente',command=self.tarefas.repetir).pack(side='right',padx=8)
+        self.root.protocol('WM_DELETE_WINDOW',self.fechar_aplicativo)
         self.tela_login()
+
+    def status_operacao(self,texto,erro=False):
+        self.var_status.set(texto)
+
+    def erro_operacao(self,texto):
+        self.status_operacao(texto,erro=True)
+        messagebox.showerror('Operação não confirmada',texto)
+
+    def encerrar_sessao(self,expirada=False):
+        global TOKEN_SECRETARIA
+        TOKEN_SECRETARIA = None
+        self.tarefas.invalidar()
+        if self.chat_timer:
+            self.root.after_cancel(self.chat_timer);self.chat_timer=None
+        for widget in list(self.root.winfo_children()):
+            if widget is not self.barra_status:widget.destroy()
+        self.itens_atuais=[];self.categorias_atuais=[];self.mapa_conversas=[]
+        self.rm_chat_ativo=None;self.email_chat_ativo=None
+        self.tela_login()
+        self.status_operacao('Sua sessão expirou. Entre novamente.' if expirada else 'Sessão encerrada.')
+
+    def fechar_aplicativo(self):
+        global TOKEN_SECRETARIA
+        TOKEN_SECRETARIA = None
+        if self.chat_timer:self.root.after_cancel(self.chat_timer)
+        self.tarefas.fechar();self.root.destroy()
 
     def get_auth_headers(self):
         return {
@@ -88,9 +167,10 @@ class SecretariaApp:
 
     def tela_login(self):
         self.frame_login = tk.Frame(self.root, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
-        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=380)
+        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=420)
 
-        tk.Label(self.frame_login, text="🔐", font=("Segoe UI", 24), bg=COR_BG_CARD).pack(pady=(25, 0))
+        tk.Label(self.frame_login, image=self.logo_secretaria, text='' if self.logo_secretaria else 'Secretaria ETEC',
+                 compound='top', bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL).pack(pady=(20, 0))
         tk.Label(self.frame_login, text="Acesso Restrito - Secretaria", font=("Segoe UI", 16, "bold"), bg=COR_BG_CARD, fg=COR_DESTAQUE).pack(pady=(5, 2))
         tk.Label(self.frame_login, text="Painel Administrativo Seguro", font=("Segoe UI", 9, "italic"), bg=COR_BG_CARD, fg=COR_VERDE).pack(pady=(0, 20))
 
@@ -112,6 +192,7 @@ class SecretariaApp:
         self.btn_entrar.pack(fill="x", padx=40, ipady=10)
         self.entry_email.focus()
 
+    @assincrono
     def verificar_login(self):
         global TOKEN_SECRETARIA
         email = self.entry_email.get().strip().lower()
@@ -121,14 +202,15 @@ class SecretariaApp:
             return messagebox.showerror("Erro", "Preencha o e-mail e a senha!")
 
         self.btn_entrar.config(text="CONECTANDO...", state="disabled")
-        self.root.update()
+        pass
 
         try:
-            res = requests.post(f"{API_URL}/api/login", json={"email": email, "senha": senha})
+            res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/login", json={"email": email, "senha": senha}))
             data = res.json()
 
             if res.status_code == 200 and data.get("success"):
                 TOKEN_SECRETARIA = data.get("token")
+                self.entry_senha.delete(0,tk.END)
                 self.frame_login.destroy()
                 self.construir_interface_principal()
             else:
@@ -139,6 +221,11 @@ class SecretariaApp:
             self.btn_entrar.config(text="ENTRAR NO SISTEMA", state="normal")
 
     def construir_interface_principal(self):
+        cabecalho = tk.Frame(self.root, bg=COR_BG_HEADER)
+        cabecalho.pack(fill='x')
+        tk.Button(cabecalho,text='Sair / trocar conta',command=self.encerrar_sessao).pack(side='right',padx=12)
+        tk.Label(cabecalho, image=self.logo_secretaria, text='  SECRETARIA ETEC', compound='left',
+                 bg=COR_BG_HEADER, fg='white', font=('Segoe UI', 13, 'bold')).pack(side='left', padx=12, pady=6)
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True, padx=12, pady=12)
 
@@ -155,7 +242,7 @@ class SecretariaApp:
         self.notebook.add(self.tab_categorias, text="🏷️ Categorias")
         self.notebook.add(self.tab_entregues, text="📋 Histórico Entregues")
         self.notebook.add(self.tab_doacoes, text="🎁 Doações")
-        self.notebook.add(self.tab_chat, text="💬 Chat Alunos")
+        self.notebook.add(self.tab_chat, text="💬 Chat Alunos (30 dias)")
         self.notebook.add(self.tab_mural, text="📢 Mural de Relatos")
 
         self.construir_tab_dash()
@@ -210,9 +297,10 @@ class SecretariaApp:
         tk.Button(frame_botoes, text="🔄 Atualizar Dados", bg=COR_BG_HEADER, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=8, cursor="hand2", command=self.carregar_dashboard).pack(side="left", padx=10)
         tk.Button(frame_botoes, text="📊 Exportar Relatório (CSV)", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=8, cursor="hand2", command=self.exportar_relatorio).pack(side="left", padx=10)
 
+    @assincrono
     def carregar_dashboard(self):
         try:
-            res = requests.get(f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get())
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 data = res.json()
                 total = data.get('total_itens', 0)
@@ -227,16 +315,12 @@ class SecretariaApp:
                 taxa = int((entregues / soma * 100)) if soma > 0 else 0
                 self.lbl_taxa_devolucao.config(text=f"Taxa de Devolução aos Alunos: {taxa}% ({entregues} recuperados)")
 
-                mapa_cat = {}
-                for i in self.itens_atuais:
-                    c = i.get('categoria', 'OUTROS')
-                    mapa_cat[c] = mapa_cat.get(c, 0) + 1
-                
-                ordenadas = sorted(mapa_cat.items(), key=lambda x: x, reverse=True)[:4]
+                ordenadas = sorted(((c['categoria'],int(c['qtd'])) for c in data.get('por_categoria',[])),key=lambda x:(-x[1],x[0]))[:4]
                 texto_cats = " | ".join([f"{k}: {v}" for k, v in ordenadas]) if ordenadas else "Sem dados de categorias"
                 self.lbl_distribuicao_cats.config(text=f"Categorias em destaque: {texto_cats}")
-        except: pass
+        except: raise
 
+    @assincrono
     def exportar_relatorio(self):
         if not TOKEN_SECRETARIA: return
         nome_sugerido = f"relatorio_achados_etec_{datetime.now().strftime('%Y%m')}.csv"
@@ -245,18 +329,13 @@ class SecretariaApp:
         )
         if not file_path: return
         try:
-            res_itens = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
+            res_itens = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/itens", headers=self.get_auth_headers_get()))
             if res_itens.status_code != 200: return messagebox.showerror("Erro", "Erro ao conectar ao servidor.")
             itens = res_itens.json()
-            with open(file_path, mode='w', newline='', encoding='utf-8-sig') as arquivo_csv:
-                escritor = csv.writer(arquivo_csv, delimiter=';')
-                escritor.writerow(['ID', 'Nome do Item', 'Descrição', 'Categoria', 'Data Encontrado', 'Local', 'Status', 'Solicitante / Retirado Por', 'RM Aluno'])
-                for i in itens:
-                    escritor.writerow([
-                        i.get('id', ''), i.get('nome') or i.get('txt_descricao') or '', i.get('txt_descricao', ''),
-                        i.get('categoria', ''), i.get('txt_data', ''), i.get('txt_local', ''),
-                        i.get('status', 'DISPONÍVEL').upper(), i.get('solicitado_por') or '', i.get('rm_aluno') or ''
-                    ])
+            linhas = [[i.get('id'), i.get('nome') or i.get('txt_descricao'), i.get('txt_descricao'),
+                i.get('categoria'), i.get('txt_data'), i.get('txt_local'), (i.get('status') or 'DISPONÍVEL').upper(),
+                i.get('solicitado_por'), i.get('rm_aluno')] for i in itens]
+            (yield Trabalho(salvar_csv, file_path,['ID','Nome do Item','Descrição','Categoria','Data Encontrado','Local','Status','Solicitante / Retirado Por','RM Aluno'],linhas))
             messagebox.showinfo("Sucesso", f"Planilha salva em:\n{file_path}")
         except Exception as e: messagebox.showerror("Erro", str(e))
 
@@ -273,24 +352,26 @@ class SecretariaApp:
         self.tree_mural.column("Descrição", width=420, anchor="w")
         self.tree_mural.pack(fill="both", expand=True, pady=5, padx=12)
         
+    @assincrono
     def carregar_mural(self):
         try:
-            res = requests.get(f"{API_URL}/api/mural", headers=self.get_auth_headers_get())
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/mural", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 self.tree_mural.delete(*self.tree_mural.get_children())
                 for m in res.json():
                     self.tree_mural.insert("", "end", values=(m['id'], m['nome_aluno'], m['rm_aluno'], m['categoria'], m['descricao'], m['data_registro']))
-        except: pass
+        except: raise
         
+    @assincrono
     def excluir_mural(self):
         selecionado = self.tree_mural.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um relato para excluir.")
         item_id = self.tree_mural.item(selecionado[0], "values")[0]
         if messagebox.askyesno("Confirmar", f"Deseja apagar definitivamente o relato #{item_id}?"):
             try:
-                res = requests.delete(f"{API_URL}/api/mural/{item_id}", headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'DELETE', f"{API_URL}/api/mural/{item_id}", headers=self.get_auth_headers()))
                 if res.status_code == 200: self.carregar_mural()
-            except: pass
+            except: raise
 
     def construir_tab_itens(self):
         frame_top = tk.Frame(self.tab_itens, bg=COR_BG_GERAL)
@@ -330,9 +411,10 @@ class SecretariaApp:
         self.tree_itens.bind("<Double-1>", self.abrir_modal_detalhes_item)
         tk.Label(self.tab_itens, text="💡 Dica: Dê um duplo-clique em um item da lista para visualizar fotos, editar os dados ou dar baixa.", bg=COR_BG_GERAL, fg="#8b949e", font=("Segoe UI", 9, "italic")).pack(pady=6)
 
+    @assincrono
     def carregar_itens(self):
         try:
-            res = requests.get(f"{API_URL}/api/itens", headers=self.get_auth_headers_get())
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/itens", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 self.itens_atuais = res.json()
                 self.aplicar_filtros_tabela()
@@ -422,7 +504,7 @@ class SecretariaApp:
         if messagebox.askyesno("Etiquetas Prontas", f"Folha A4 gerada com {min(len(disponiveis), 15)} etiquetas!\n\nArquivo salvo em:\n{caminho_salvar}\n\nDeseja abrir a imagem para imprimir agora?"):
             try:
                 os.startfile(caminho_salvar)
-            except: pass
+            except: raise
 
     def abrir_modal_form(self, item_edit=None):
         modal = tk.Toplevel(self.root)
@@ -470,24 +552,25 @@ class SecretariaApp:
         lbl_foto_status = tk.Label(frame_fotos, text=f"Fotos carregadas: {len(fotos_upload_base64)} (Máx 4)", bg=COR_BG_CARD, fg="#94a3b8", font=("Segoe UI", 9))
         lbl_foto_status.pack(side="right")
 
+        @assincrono
         def selecionar_fotos():
             nonlocal ocr_rm_identificado
             filenames = filedialog.askopenfilenames(title="Selecione até 4 fotos", filetypes=[("Imagens", "*.png;*.jpg;*.jpeg")])
             if filenames:
                 fotos_upload_base64.clear()
                 lbl_foto_status.config(text="Comprimindo fotos...", fg="#f59e0b")
-                modal.update()
+                pass
                 for f in filenames[:4]:
-                    enc = comprimir_foto_desktop(f, max_dim=1200, qualidade=75)
+                    enc = (yield Trabalho(comprimir_foto_desktop, f, max_dim=1200, qualidade=75))
                     if enc: fotos_upload_base64.append(enc)
                 lbl_foto_status.config(text=f"Fotos otimizadas: {len(fotos_upload_base64)} — analisando com IA...", fg="#f59e0b")
                 if fotos_upload_base64:
                     try:
-                        resposta = requests.post(
+                        resposta = (yield Trabalho(requisicao_desktop, 'POST',
                             f"{API_URL}/api/ia/analisar-imagem",
                             json={"foto": fotos_upload_base64[0]},
                             timeout=25
-                        )
+                        ))
                         dados_ia = resposta.json()
                         if not resposta.ok or not dados_ia.get("success"):
                             detalhe = dados_ia.get("error", {}).get("message") or dados_ia.get("message") or f"HTTP {resposta.status_code}"
@@ -495,6 +578,11 @@ class SecretariaApp:
                             messagebox.showwarning("Análise de imagem", f"A foto foi carregada, mas a IA não conseguiu analisá-la.\n\nDetalhe: {detalhe}\n\nVocê pode preencher os campos manualmente.")
                         else:
                             r = dados_ia.get("resultado") or {}
+                            if not (r.get('pode_preencher') is True and r.get('metodo') == 'gemini_vision_ocr'
+                                    and r.get('confianca_objeto') in ('alta', 'media')
+                                    and r.get('nome') and r.get('descricao')):
+                                lbl_foto_status.config(text='Foto carregada. Preencha os campos manualmente.', fg='#f59e0b')
+                                return
                             if r.get("nome"): var_nome.set(str(r["nome"])[:150])
                             if r.get("descricao"):
                                 descricao = str(r["descricao"])[:1500]
@@ -505,7 +593,7 @@ class SecretariaApp:
                                 if opcao.upper() == categoria_ia or opcao.upper().replace("É", "E") == categoria_ia.replace("É", "E"):
                                     cb_cat.set(opcao)
                                     break
-                            ocr_rm_identificado = str(r.get("ocr_rm") or "")[:20]
+                            ocr_rm_identificado = str(r.get("ocr_rm") or "")[:20] if r.get("ocr_confianca") == "alta" else ""
                             aluno = r.get("aluno_correspondente")
                             status_ia = f"IA preencheu os campos. Confira antes de salvar. Método: {r.get('metodo', 'análise visual')}."
                             if aluno: status_ia += f" Possível aluno correspondente: {aluno.get('nome', 'cadastro localizado')}."
@@ -516,6 +604,7 @@ class SecretariaApp:
 
         tk.Button(frame_fotos, text="📷 Selecionar Fotos", bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5, cursor="hand2", command=selecionar_fotos).pack(side="left")
 
+        @assincrono
         def salvar():
             payload = {
                 "nome": var_nome.get().strip(), "descricao": var_desc.get().strip(),
@@ -525,9 +614,9 @@ class SecretariaApp:
             if not payload['nome'] or not payload['descricao']: return messagebox.showwarning("Aviso", "Preencha título e descrição!")
             try:
                 if item_edit:
-                    res = requests.put(f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers())
+                    res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers()))
                 else:
-                    res = requests.post(f"{API_URL}/api/itens", json=payload, headers=self.get_auth_headers())
+                    res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/itens", json=payload, headers=self.get_auth_headers()))
 
                 if res.status_code == 200:
                     messagebox.showinfo("Sucesso", "Item salvo na nuvem com segurança!")
@@ -544,6 +633,7 @@ class SecretariaApp:
 
         tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg=COR_VERDE, fg="white", font=("Segoe UI", 11, "bold"), pady=12, relief="flat", cursor="hand2", command=salvar).pack(fill="x", padx=40, pady=25)
 
+    @assincrono
     def abrir_modal_detalhes_item(self, event=None, item_direto=None):
         if item_direto: item = item_direto
         else:
@@ -584,15 +674,15 @@ class SecretariaApp:
             for col, foto_url in enumerate(fotos_array):
                 try:
                     if foto_url.startswith('http'):
-                        import urllib.request
-                        with urllib.request.urlopen(foto_url) as u: raw_data = u.read()
-                        img = Image.open(io.BytesIO(raw_data))
-                        img.thumbnail((160, 160), Image.Resampling.LANCZOS)
+                        img = (yield Trabalho(baixar_miniatura, foto_url))
+                        if img is None:
+                            tk.Label(frame_fotos,text='Foto indisponível',bg=COR_BG_CARD,fg='#f87171').grid(row=0,column=col,padx=8,pady=5)
+                            continue
                         img_tk = ImageTk.PhotoImage(img)
                         lbl_img = tk.Label(frame_fotos, image=img_tk, bg=COR_BG_CARD, bd=1, relief="solid")
                         lbl_img.image = img_tk
                         lbl_img.grid(row=0, column=col, padx=8, pady=5)
-                except: pass
+                except: raise
 
         frame_acoes = tk.Frame(modal, bg=COR_BG_GERAL)
         frame_acoes.pack(fill="x", pady=20, padx=20)
@@ -660,14 +750,15 @@ class SecretariaApp:
         tk.Button(modal, text="💾 SALVAR COMO PNG", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=salvar_png).pack(fill="x", padx=30, pady=5)
         tk.Button(modal, text="🖨️ IMPRIMIR DIRETO", bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=imprimir_direto).pack(fill="x", padx=30, pady=5)
 
+    @assincrono
     def acao_rapida(self, item_id, acao, modal=None):
         try:
             if acao == 'excluir' and messagebox.askyesno("Excluir", "Deseja excluir este item permanentemente?"):
-                res = requests.delete(f"{API_URL}/api/itens/{item_id}", headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'DELETE', f"{API_URL}/api/itens/{item_id}", headers=self.get_auth_headers()))
             elif acao == 'recusar' and messagebox.askyesno("Recusar", "Deseja recusar a solicitação?"):
-                res = requests.put(f"{API_URL}/api/itens/{item_id}/recusar", headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{item_id}/recusar", headers=self.get_auth_headers()))
             elif acao == 'doacao':
-                res = requests.put(f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"}, headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{item_id}", json={"status": "PARA DOAÇÃO"}, headers=self.get_auth_headers()))
             else: return
 
             if res.status_code == 200:
@@ -702,11 +793,12 @@ class SecretariaApp:
         entry_turma = ttk.Entry(modal_baixa, font=("Segoe UI", 11))
         entry_turma.pack(padx=35, pady=(0, 20), fill="x")
 
+        @assincrono
         def confirmar():
             n, r, t = entry_nome.get().strip(), entry_rm.get().strip(), entry_turma.get().strip() or "-"
             if not n or not r: return messagebox.showwarning("Aviso", "Preencha Nome e RM", parent=modal_baixa)
             try:
-                res = requests.put(f"{API_URL}/api/itens/{item['id']}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria Desktop"}, headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{item['id']}", json={"status": "ENTREGUE", "retirado_por": n, "rm_retirante": r, "turma_curso": t, "funcionario_responsavel": "Secretaria Desktop"}, headers=self.get_auth_headers()))
                 if res.status_code == 200:
                     messagebox.showinfo("Sucesso", "Item baixado com sucesso!", parent=modal_baixa)
                     modal_baixa.destroy()
@@ -759,15 +851,17 @@ class SecretariaApp:
         frame_top.pack(fill="x", pady=12, padx=12)
         tk.Label(frame_top, text="Gerenciamento de Doações", font=("Segoe UI", 14, "bold"), bg=COR_BG_GERAL, fg="#f59e0b").pack(side="left")
         
+        @assincrono
         def concluir_doacoes():
-            if messagebox.askyesno("Confirmar Doação", "Deseja remover todos os itens doados do sistema?"):
+            if messagebox.askyesno("Confirmar Doação", "Confirmar a doação dos itens elegíveis? Os registros serão preservados."):
                 try:
-                    for child in self.tree_doacoes.get_children():
-                        requests.put(f"{API_URL}/api/itens/{self.tree_doacoes.item(child)['values'][0]}", json={"status": "DOAÇÃO FEITA"}, headers=self.get_auth_headers())
-                    requests.delete(f"{API_URL}/api/itens/doacoes/concluir", headers=self.get_auth_headers())
+                    res = (yield Trabalho(requisicao_desktop, 'DELETE', f"{API_URL}/api/itens/doacoes/concluir", headers=self.get_auth_headers()))
+                    if not res.ok or res.json().get('success') is not True:
+                        return messagebox.showerror('Doação não concluída', 'O servidor não confirmou a operação. Atualize a lista e tente novamente.')
                     messagebox.showinfo("Sucesso", "Doações concluídas!")
                     self.carregar_dados()
-                except: pass
+                except (requests.RequestException, ValueError):
+                    messagebox.showerror('Falha de conexão', 'Não foi possível confirmar a doação. Atualize a lista antes de tentar novamente.')
                 
         tk.Button(frame_top, text="🎁 CONCLUIR E LIMPAR DOAÇÕES", bg="#f59e0b", fg="#0d1117", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2", command=concluir_doacoes).pack(side="right")
         
@@ -788,77 +882,89 @@ class SecretariaApp:
         self.listbox_cats = tk.Listbox(self.tab_categorias, bg=COR_BG_CARD, fg="white", font=("Segoe UI", 11), height=15, bd=0, highlightthickness=1, highlightbackground=COR_BORDA)
         self.listbox_cats.pack(fill="x", padx=60, pady=15)
 
+    @assincrono
     def carregar_categorias(self):
         try:
-            res = requests.get(f"{API_URL}/api/categorias")
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/categorias"))
             if res.status_code == 200:
                 self.listbox_cats.delete(0, tk.END)
                 self.categorias_atuais = []
                 for c in res.json():
                     self.listbox_cats.insert(tk.END, f"   • {c['nome']}")
                     self.categorias_atuais.append(c['nome'])
-        except: pass
+        except: raise
 
+    @assincrono
     def adicionar_categoria(self):
         nome = self.entry_cat.get().strip().upper()
         if nome:
             try:
-                res = requests.post(f"{API_URL}/api/categorias", json={"nome": nome}, headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/categorias", json={"nome": nome}, headers=self.get_auth_headers()))
                 if res.status_code == 200:
                     self.entry_cat.delete(0, tk.END)
                     self.carregar_categorias()
-            except: pass
+            except: raise
 
     def construir_tab_entregues(self):
         frame_top = tk.Frame(self.tab_entregues, bg=COR_BG_GERAL)
         frame_top.pack(fill="x", pady=12, padx=12)
         
         tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg=COR_AZUL, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left")
-        tk.Button(frame_top, text="🗑️ Excluir Registro", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
+        tk.Button(frame_top, text="🗑️ Excluir objeto e histórico", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
         tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
 
+        self.incluir_canceladas=tk.BooleanVar(value=False)
+        tk.Checkbutton(frame_top,text='Mostrar revertidas',variable=self.incluir_canceladas,command=self.carregar_entregues,bg=COR_BG_GERAL,fg=COR_TEXTO_PRINCIPAL,selectcolor=COR_BG_CARD).pack(side='left')
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")
         self.tree_entregues = ttk.Treeview(self.tab_entregues, columns=colunas, show="headings", height=18)
         for col in colunas: self.tree_entregues.heading(col, text=col); self.tree_entregues.column(col, anchor="center")
         self.tree_entregues.pack(fill="both", expand=True, pady=5, padx=12)
         self.tree_entregues.bind("<Double-1>", self.abrir_detalhes_do_historico)
 
+    @assincrono
     def carregar_entregues(self):
         if not TOKEN_SECRETARIA: return
         try:
-            res = requests.get(f"{API_URL}/api/entregues", headers=self.get_auth_headers_get())
+            sufixo='?incluir_canceladas=true' if getattr(self,'incluir_canceladas',None) and self.incluir_canceladas.get() else ''
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/entregues{sufixo}", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 self.tree_entregues.delete(*self.tree_entregues.get_children())
-                for e in res.json():
-                    self.tree_entregues.insert("", "end", values=(e['id'], e['item_id'], e['nome_item'], e['retirado_por'], e['rm_retirante'], e['turma_curso'], e['data_entrega']))
-        except: pass
+                linhas=res.json();self.historico_entregues={str(e['id']):e for e in linhas}
+                for e in linhas:
+                    self.tree_entregues.insert("", "end", values=(e['id'], e['item_id'], e['nome_item']+(' [REVERTIDA]' if e.get('cancelada_em') else ''), e['retirado_por'], e['rm_retirante'], e['turma_curso'], e['data_entrega']))
+        except: raise
 
     def abrir_detalhes_do_historico(self, event):
         selecionado = self.tree_entregues.selection()
         if selecionado:
-            item_id = self.tree_entregues.item(selecionado[0])['values']
+            item_id = self.tree_entregues.item(selecionado[0])['values'][1]
             item = next((i for i in self.itens_atuais if str(i['id']) == str(item_id)), None)
             if item: self.abrir_modal_detalhes_item(item_direto=item)
 
+    @assincrono
     def desfazer_entrega(self):
         selecionado = self.tree_entregues.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
-        vals = self.tree_entregues.item(selecionado[0], "values")
+        recibo=self.tree_entregues.item(selecionado[0], "values")[0]
+        if getattr(self,"historico_entregues",{}).get(str(recibo),{}).get("cancelada_em"):
+            return messagebox.showwarning("Histórico", "Esta entrega já foi revertida.")
+        vals = self.tree_entregues.item(selecionado[0], "values")[1]
         if messagebox.askyesno("Desfazer", f"Reverter entrega do item #{vals}?"):
             try:
-                res = requests.put(f"{API_URL}/api/itens/{vals}/recusar", headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{vals}/recusar", headers=self.get_auth_headers(),json={"entrega_id":recibo}))
                 if res.status_code == 200: self.carregar_dados()
-            except: pass
+            except: raise
 
+    @assincrono
     def excluir_entregue(self):
         selecionado = self.tree_entregues.selection()
         if not selecionado: return messagebox.showwarning("Aviso", "Selecione um item.")
-        vals = self.tree_entregues.item(selecionado[0], "values")
-        if messagebox.askyesno("Excluir", f"Excluir histórico do item #{vals}?"):
+        vals = self.tree_entregues.item(selecionado[0], "values")[1]
+        if messagebox.askyesno("Excluir", f"Excluir permanentemente o objeto #{vals} e seu histórico de entregas?"):
             try:
-                res = requests.delete(f"{API_URL}/api/itens/{vals}", headers=self.get_auth_headers())
+                res = (yield Trabalho(requisicao_desktop, 'DELETE', f"{API_URL}/api/itens/{vals}", headers=self.get_auth_headers()))
                 if res.status_code == 200: self.carregar_dados()
-            except: pass
+            except: raise
 
     def construir_tab_chat(self):
         frame_esq = tk.Frame(self.tab_chat, bg=COR_BG_GERAL, width=280)
@@ -888,31 +994,38 @@ class SecretariaApp:
         tk.Button(frame_input, text="Enviar", bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15, pady=6, cursor="hand2", command=self.enviar_mensagem).pack(side="right")
         self.atualizar_chat_continuo()
 
+    @assincrono
     def carregar_conversas(self):
         if not TOKEN_SECRETARIA: return
         try:
-            res = requests.get(f"{API_URL}/api/chat/conversas", headers=self.get_auth_headers_get())
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/chat/conversas", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 self.listbox_chat.delete(0, tk.END)
                 self.mapa_conversas = []
                 for c in res.json():
                     notif = f"🔥 ({c['nao_lidas']} novas) " if c['nao_lidas'] > 0 else "   "
                     self.listbox_chat.insert(tk.END, f"{notif}{c['nome_aluno']} (RM: {c['rm_aluno']})")
-                    self.mapa_conversas.append(c['rm_aluno'])
-        except: pass
+                    self.mapa_conversas.append(c)
+        except: raise
 
     def selecionar_conversa(self, event):
         selecao = self.listbox_chat.curselection()
         if selecao:
             idx = selecao[0]
-            self.rm_chat_ativo = self.mapa_conversas[idx]
+            conta = self.mapa_conversas[idx]
+            self.rm_chat_ativo = conta['rm_aluno']
+            self.email_chat_ativo = conta.get('email_aluno')
+            self.chat_legado = not self.email_chat_ativo
+            self.entry_chat.config(state='disabled' if self.chat_legado else 'normal')
             self.lbl_chat_titulo.config(text=f"Chat com: {self.listbox_chat.get(idx)}")
             self.carregar_mensagens_aluno()
 
+    @assincrono
     def carregar_mensagens_aluno(self):
         if not self.rm_chat_ativo: return
         try:
-            res = requests.get(f"{API_URL}/api/chat/mensagens/{self.rm_chat_ativo}?marcar_lida=true&origem=SECRETARIA")
+            caminho = f"/api/chat/legado/{quote(str(self.rm_chat_ativo),safe='')}" if self.chat_legado else f"/api/chat/mensagens/{quote(str(self.rm_chat_ativo),safe='')}?{urlencode({'email':self.email_chat_ativo,'marcar_lida':'true'})}"
+            res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}{caminho}", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 self.txt_mensagens.config(state="normal")
                 self.txt_mensagens.delete("1.0", tk.END)
@@ -921,16 +1034,19 @@ class SecretariaApp:
                     self.txt_mensagens.insert(tk.END, f"[{m['data_envio']}] {remetente}:\n{m['mensagem']}\n\n")
                 self.txt_mensagens.see(tk.END)
                 self.txt_mensagens.config(state="disabled")
-        except: pass
+        except: raise
 
+    @assincrono
     def enviar_mensagem(self):
-        if not self.rm_chat_ativo or not self.entry_chat.get().strip(): return
+        if not self.rm_chat_ativo or self.chat_legado or not self.entry_chat.get().strip(): return
+        destino=self.email_chat_ativo
         try:
-            res = requests.post(f"{API_URL}/api/chat/enviar", json={"rm": self.rm_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()})
+            res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/chat/enviar", headers=self.get_auth_headers(), json={"rm": self.rm_chat_ativo, "email":self.email_chat_ativo, "nome": "Secretaria", "remetente": "SECRETARIA", "mensagem": self.entry_chat.get().strip()}))
             if res.status_code == 200:
+                if destino!=self.email_chat_ativo:return
                 self.entry_chat.delete(0, tk.END)
                 self.carregar_mensagens_aluno()
-        except: pass
+        except: raise
 
     def atualizar_chat_continuo(self):
         if TOKEN_SECRETARIA:
@@ -942,3 +1058,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = SecretariaApp(root)
     root.mainloop()
+

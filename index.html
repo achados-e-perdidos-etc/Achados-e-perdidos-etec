@@ -16,7 +16,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    </head>
+    <link rel="stylesheet" href="estado-fotos.css">
+    <link rel="stylesheet" href="movimento.css">
+    <link rel="stylesheet" href="melhorias-portal.css">
+<link rel="stylesheet" href="acessibilidade.css">
+</head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
     <!-- SPLASH SCREEN COM GIF (celular = animacao.GIF | PC/paisagem = animacao_pc.GIF) -->
@@ -34,7 +38,7 @@
     <div id="loginAlunoScreen" class="hidden fixed inset-0 z-[200] flex flex-col items-center justify-center p-4">
         <div class="dynamic-grid-background"></div>
 
-        <div class="glass-panel w-full max-w-sm rounded-3xl p-7 shadow-2xl relative z-10 overflow-hidden border border-red-500/30 glow-red">
+        <div id="loginAuthCard" class="glass-panel w-full max-w-sm rounded-3xl p-7 shadow-2xl relative z-10 overflow-hidden border border-red-500/30 glow-red">
             <div class="text-center mb-6">
                 <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-3 ring-4 ring-red-500/20">
                     <i class="fas fa-graduation-cap"></i>
@@ -44,29 +48,33 @@
             </div>
 
             
-            <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="space-y-4">
+            <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="auth-form space-y-4">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Institucional</label>
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="text" id="loginEmailAluno" required placeholder="seu.nome@aluno.cps.sp.gov.br (ou professor)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                        <input type="email" id="loginEmailAluno" autocomplete="username" required placeholder="Seu e-mail institucional CPS ou ETEC" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
                     </div>
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Senha de Acesso</label>
                     <div class="relative">
                         <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="password" id="loginSenhaAluno" required placeholder="••••••••" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                        <input type="password" id="loginSenhaAluno" autocomplete="current-password" required placeholder="••••••••" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
                     </div>
                 </div>
-                <button type="submit" id="btnAcessoLogin" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-[0.98]">Entrar no Portal</button>
+                <label class="auth-remember" for="lembrarLogin">
+                    <input type="checkbox" id="lembrarLogin" aria-describedby="lembrarLoginAjuda">
+                    <span><strong>Lembrar de mim</strong><small id="lembrarLoginAjuda">Manter meu acesso neste dispositivo.</small></span>
+                </label>
+                <button type="submit" id="btnAcessoLogin" class="auth-submit w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-[0.98]">Entrar no Portal</button>
                 <div class="flex justify-between items-center text-xs font-semibold pt-2 text-slate-400">
                     <button type="button" onclick="alternarTelaAuth('cadastro')" class="text-red-400 hover:text-red-300 transition">Criar Conta</button>
                     <button type="button" onclick="alternarTelaAuth('recuperar')" class="hover:text-white transition">Esqueceu a senha?</button>
                 </div>
             </form>
 
-            <form id="formCadastroAluno" onsubmit="confirmarCadastro(event)" class="hidden space-y-3.5">
+            <form id="formCadastroAluno" onsubmit="confirmarCadastro(event)" class="auth-form hidden space-y-3.5">
                 <div id="passo1Cadastro" class="space-y-3">
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
@@ -83,13 +91,14 @@
                         <input type="text" id="cadNome" required placeholder="Nome Completo" class="col-span-2 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                         <input type="text" id="cadRM" required placeholder="Seu RM" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                     </div>
-                    <input type="password" id="cadSenha" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
-                    <button type="submit" id="btnConfirmarCad" class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Finalizar Cadastro</button>
+                    <input type="password" id="cadSenha" autocomplete="new-password" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
+                    <label class="auth-remember auth-remember-compact" for="lembrarCadastro"><input type="checkbox" id="lembrarCadastro"><span><strong>Lembrar de mim neste dispositivo</strong></span></label>
+                    <button type="submit" id="btnConfirmarCad" class="auth-submit w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Finalizar Cadastro</button>
                 </div>
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-semibold text-slate-400 hover:text-white pt-1">Voltar ao Login</button>
             </form>
 
-            <form id="formRecuperarAluno" onsubmit="confirmarRedefinicao(event)" class="hidden space-y-3.5">
+            <form id="formRecuperarAluno" onsubmit="confirmarRedefinicao(event)" class="auth-form hidden space-y-3.5">
                 <div id="passo1Recuperar" class="space-y-3">
                     <input type="email" id="recEmailAluno" required placeholder="E-mail Institucional" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
                     <button type="button" id="btnEnviarCodigoRec" onclick="enviarCodigoAuth('recEmailAluno', 'btnEnviarCodigoRec', 'passo2Recuperar', 'passo1Recuperar')" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition">Enviar Código de Redefinição</button>
@@ -101,6 +110,22 @@
                 </div>
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-semibold text-slate-400 hover:text-white pt-1">Voltar ao Login</button>
             </form>
+            <div id="authTransition" class="auth-transition" hidden role="status" aria-live="polite" aria-atomic="true" tabindex="-1">
+                <span class="auth-transition-eyebrow">ETEC · ACHADOS E PERDIDOS</span>
+                <div class="auth-orbit" aria-hidden="true">
+                    <span class="auth-orbit-halo"></span><span class="auth-orbit-ring auth-orbit-ring-outer"></span><span class="auth-orbit-ring auth-orbit-ring-inner"></span>
+                    <span class="auth-orbit-spark auth-orbit-spark-one"></span><span class="auth-orbit-spark auth-orbit-spark-two"></span>
+                    <div class="auth-orbit-core">
+                        <svg class="auth-glyph-search" width="36" height="36" viewBox="0 0 32 32" fill="none"><circle cx="14" cy="14" r="8" stroke="currentColor" stroke-width="2.4"/><path d="m20 20 7 7M10 14h8M14 10v8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+                        <svg class="auth-glyph-check" width="38" height="38" viewBox="0 0 32 32" fill="none"><path d="m7 16 6 6L25 10" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                </div>
+                <h3 id="authTransitionTitulo">Seu portal está logo ali</h3>
+                <p id="authTransitionTexto">Conferindo seus dados para abrir seu portal.</p>
+                <div class="auth-progress" aria-hidden="true"><span></span></div>
+                <span id="authTransitionEtapa" class="auth-transition-step">Conectando você</span>
+                <div class="auth-transition-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            </div>
         </div>
     </div>
 
@@ -140,6 +165,7 @@
             </div>
 
             <div class="flex items-center space-x-2 shrink-0">
+                <button id="btnCentralAvisos" type="button" onclick="CentralAvisos.abrir()" aria-label="Notificações" class="relative w-10 h-10 rounded-xl bg-[#161c28] border border-white/10 text-white"><i class="fas fa-bell" aria-hidden="true"></i><span id="badgeAvisos" hidden></span></button>
                 <!-- BOTÃO DE ATUALIZAÇÃO / REFRESH RÁPIDO DO PORTAL -->
                 <button id="btnRefreshPortal" onclick="atualizarPortalAluno()" title="Atualizar Catálogo (Sem Recarregar Tela)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#161c28] border border-white/10 text-slate-300 hover:text-white hover:border-red-500/50 transition flex items-center justify-center shadow-sm active:scale-95 group">
                     <i id="iconeRefreshPortal" class="fas fa-arrows-rotate text-xs sm:text-sm text-slate-400 group-hover:text-red-400 transition-colors"></i>
@@ -156,6 +182,7 @@
                     </button>
 
                     <div id="menuNavegacaoDropdown" class="hidden absolute right-0 mt-2 w-64 bg-[#121722] border border-white/15 rounded-2xl shadow-2xl p-2.5 z-50 space-y-1">
+                        <button type="button" onclick="atualizarPortalAluno(); fecharMenuNavegacao();" class="w-full text-left px-3 py-2.5 text-sm text-slate-200">Atualizar catálogo</button>
                         <button onclick="mudarAba('catalogo'); fecharMenuNavegacao();" id="menuBtnCatalogo" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition text-left">
                             <i class="fas fa-boxes text-red-500 w-4"></i> Catálogo Geral
                         </button>
@@ -167,7 +194,7 @@
                             <i class="fas fa-hand-holding-heart w-4"></i> Entregar Objeto Achado
                         </button>
                         <button onclick="abrirPainelMeusItens(); fecharMenuNavegacao();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-blue-400 hover:bg-white/10 transition text-left">
-                            <i class="fas fa-user-clock w-4"></i> Meus Pedidos & Relatos
+                            <i class="fas fa-user-clock w-4"></i> Minha atividade
                         </button>
                     </div>
                 </div>
@@ -198,6 +225,9 @@
                                 <span>Ativar Notificações</span>
                                 <i class="fas fa-bell text-emerald-400 text-xs"></i>
                             </button>
+                            <button type="button" id="btnTestarPush" onclick="testarNotificacaoPush()" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-slate-200 transition disabled:opacity-50">
+                                <span>Testar Notificações</span><i class="fas fa-paper-plane text-emerald-400 text-xs"></i>
+                            </button>
                             <button onclick="fazerLogoff()" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 font-bold text-xs hover:bg-red-600 hover:text-white transition mt-2">
                                 <i class="fas fa-sign-out-alt text-xs"></i> Sair da Conta
                             </button>
@@ -209,6 +239,14 @@
     </header>
 
     <main class="max-w-5xl mx-auto w-full p-4 flex-grow space-y-6">
+
+        <section id="acessoProfessor" class="hidden glass-panel rounded-2xl p-5 space-y-3">
+            <h2 class="font-bold text-white">Ajudar a secretaria</h2>
+            <p id="statusAcessoProfessor" class="text-sm text-slate-300" aria-live="polite">Consultando seu acesso...</p>
+            <button id="btnSolicitarAcessoProfessor" type="button" onclick="solicitarAcessoProfessor()" class="rounded-xl bg-red-600 text-white px-4 py-2 disabled:opacity-50">Solicitar acesso ao painel</button>
+            <button id="btnAbrirPainelProfessor" type="button" onclick="abrirPainelProfessor()" class="hidden rounded-xl bg-emerald-600 text-white px-4 py-2">Abrir painel da secretaria</button>
+            <button type="button" onclick="atualizarAcessoProfessor()" class="text-sm text-slate-300 underline">Atualizar status</button>
+        </section>
 
         <!-- DASHBOARD HERO BANNER -->
         <section class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10 glow-red relative overflow-hidden">
@@ -349,8 +387,8 @@
                             <i class="fas fa-user-clock"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg font-black text-white">Meus Pedidos & Relatos</h2>
-                            <p class="text-xs text-slate-400">Acompanhe suas solicitações de retirada e itens que você reportou ter perdido.</p>
+                            <h2 class="text-lg font-black text-white">Minha atividade</h2>
+                            <p class="text-xs text-slate-400">Acompanhe pedidos, relatos e objetos que você encontrou.</p>
                         </div>
                     </div>
                     <button onclick="mudarAba('catalogo')" class="text-xs text-slate-400 hover:text-white font-bold flex items-center gap-1">
@@ -359,6 +397,11 @@
                 </div>
 
                 <div class="space-y-5">
+                    <div><h3 class="text-xs font-black uppercase tracking-wider text-slate-300 mb-3">Meus cadastros (Achei algo)</h3>
+                        <button type="button" onclick="MeusCadastros.carregar()" class="mb-3 text-sm text-blue-300 underline">Atualizar cadastros</button>
+                        <p id="statusMeusCadastros" class="text-sm text-slate-300" role="status"></p><div id="listaMeusCadastros"></div>
+                        <button id="maisCadastros" type="button" class="mt-3 text-blue-300 underline" hidden onclick="MeusCadastros.carregar(true)">Ver cadastros anteriores</button>
+                    </div>
                     <div>
                         <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-2">
                             <i class="fas fa-box-open text-red-500"></i> Objetos Solicitados por Mim
@@ -443,7 +486,7 @@
 
     <!-- CHAT FLUTUANTE -->
     <div class="fixed bottom-5 right-5 z-50">
-        <button onclick="alternarJanelaChat()" id="btnAbrirChat" class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shadow-2xl shadow-red-600/50 hover:scale-105 transition transform active:scale-95 ring-4 ring-red-500/20">
+        <button onclick="alternarJanelaChat()" id="btnAbrirChat" aria-label="Conversar com a secretaria" class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shadow-2xl shadow-red-600/50 hover:scale-105 transition transform active:scale-95 ring-4 ring-red-500/20">
             <i class="fas fa-comment-dots text-xl"></i>
             <span id="badgeChatWeb" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-black text-[11px] font-black rounded-full flex items-center justify-center ring-2 ring-[#090d13]">0</span>
         </button>
@@ -465,6 +508,7 @@
                 <button onclick="alternarJanelaChat()" class="text-slate-400 hover:text-white p-1 transition"><i class="fas fa-times text-sm"></i></button>
             </div>
 
+            <p class="text-xs text-slate-300 px-4 py-2">As mensagens são apagadas após 30 dias.</p>
             <div id="chatMensagens" class="flex-1 space-y-3 overflow-y-auto p-4 scrollbar-thin"></div>
 
             <div class="border-t border-white/10 p-3 bg-black/20">
@@ -478,6 +522,11 @@
         </div>
     </div>
 
+    <div id="centralAvisos" class="central-avisos hidden" role="dialog" aria-modal="true" aria-labelledby="tituloAvisos">
+        <div class="avisos-painel"><div class="avisos-cabecalho"><h2 id="tituloAvisos">Suas notificações</h2><button type="button" onclick="CentralAvisos.fechar()" aria-label="Fechar notificações">✕</button></div>
+        <div class="avisos-acoes"><button type="button" onclick="CentralAvisos.carregar()">Atualizar avisos</button><button id="lerTodosAvisos" type="button" onclick="CentralAvisos.ler()">Marcar todas como lidas</button></div>
+        <p id="statusAvisos" class="avisos-status" role="status"></p><ul id="listaAvisos"></ul><button id="maisAvisos" type="button" hidden onclick="CentralAvisos.carregar(true)">Ver avisos anteriores</button></div>
+    </div>
     <!-- MODAL CONFIRMAR SOLICITAÇÃO -->
     <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 border border-white/10 shadow-2xl text-center">
@@ -527,9 +576,10 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fotos do Objeto (Até 4 fotos):</label>
-                        <span id="statusCompressaoFotos" class="text-[10px] text-emerald-400 font-bold hidden"><i class="fas fa-check"></i> Fotos otimizadas</span>
                     </div>
                     <input type="file" id="alunoItemFoto" accept="image/*" multiple onchange="prepararFotosAluno(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
+                    <div id="statusCompressaoFotos" hidden></div>
+                    <div id="uploadsAluno"></div>
                     <div id="gridPreviewAluno" class="mt-2.5 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
                     <!-- BOTÃO AUTO-PREENCHIMENTO COM IA -->
                     <button type="button" id="btnAutoPreencherIAAluno" onclick="analisarFotoAlunoComIA()" class="hidden w-full mt-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md active:scale-98">
@@ -557,7 +607,15 @@
         </div>
     </div>
 
+    <script src="seguranca-interface.js"></script>
+    <script src="visao-formulario.js"></script>
+    <script src="acesso-portal.js"></script>
+    <script src="estado-fotos.js"></script>
+    <script src="rascunhos.js"></script>
+    <script src="upload-retomavel.js"></script>
     <script src="script.js"></script>
+    <script src="notificacoes-push.js"></script>
+    <script src="professores.js"></script>
 
     <!-- ==========================================================================
          SPLASH COM GIF (substitui o vídeo animacao.mp4)
@@ -595,7 +653,7 @@
         // Splash só aparece 1x por sessão (igual ao comportamento anterior)
         const jaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
 
-        if (jaExibido || !splash || !gif) {
+        if (jaExibido || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !splash || !gif) {
             if (splash) esconderSplash();
             window.onload = () => {
                 document.body.classList.add('dark-theme');
@@ -624,5 +682,8 @@
     })();
     </script>
 
-    </body>
+    <script src="central-notificacoes.js"></script>
+    <script src="meus-cadastros.js"></script>
+    <script src="acessibilidade.js"></script>
+</body>
 </html>

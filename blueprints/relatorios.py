@@ -3,29 +3,30 @@ Blueprint de Inteligência, Estatísticas (BI) e Smart Matching
 Agrupamentos analíticos para gráficos, relatórios formais e cruzamento de dados.
 """
 import json
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection, verificar_e_atualizar_itens_doacao
-from utils.security import token_required
+from utils.doacoes import DOACOES_PENDENTES_SQL
+from utils.security import secretaria_required, categorias_required
 from utils.smart_match import calcular_smart_match
 
 relatorios_bp = Blueprint('relatorios', __name__)
 
 @relatorios_bp.route('/api/entregues', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def get_entregues():
     """Retorna o histórico de comprovantes e pertences devolvidos."""
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT * FROM entregues ORDER BY id DESC;")
+    cursor.execute("SELECT * FROM entregues ORDER BY id DESC;" if request.args.get("incluir_canceladas") == "true" else "SELECT * FROM entregues WHERE cancelada_em IS NULL ORDER BY id DESC;")
     res = cursor.fetchall()
     cursor.close()
     conn.close()
     return jsonify(res)
 
 @relatorios_bp.route('/api/estatisticas', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def estatisticas():
     """
     Retorna métricas consolidadas de BI para os gráficos do Chart.js:
@@ -42,10 +43,10 @@ def estatisticas():
         cursor.execute("SELECT COUNT(*) as total FROM itens WHERE aprovado = TRUE;")
         total_cadastrados = cursor.fetchone()['total']
         
-        cursor.execute("SELECT COUNT(*) as total FROM entregues;")
+        cursor.execute("SELECT COUNT(*) as total FROM entregues WHERE cancelada_em IS NULL;")
         total_entregues = cursor.fetchone()['total']
         
-        cursor.execute("SELECT COUNT(*) as total FROM itens WHERE (status LIKE 'DOAÇÃO%' OR status LIKE 'DOACAO%') AND aprovado = TRUE;")
+        cursor.execute(f"SELECT COUNT(*) as total FROM itens WHERE {DOACOES_PENDENTES_SQL} AND aprovado = TRUE;")
         total_doacoes = cursor.fetchone()['total']
         
         cursor.execute("SELECT COUNT(*) as total FROM itens WHERE status = 'DISPONÍVEL' AND aprovado = TRUE;")
@@ -98,7 +99,7 @@ def estatisticas():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @relatorios_bp.route('/api/smart-match', methods=['OPTIONS', 'GET'])
-@token_required
+@secretaria_required
 def smart_match_api():
     """
     Motor analítico do Smart Match:
@@ -157,3 +158,4 @@ def smart_match_api():
         if conn:
             conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
+

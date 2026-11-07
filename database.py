@@ -1,3 +1,10 @@
+from utils.uploads import SCHEMA_UPLOADS
+from utils.chat_retencao import SCHEMA_RETENCAO
+from utils.entregas import SCHEMA_ENTREGAS
+from utils.cadastros import SCHEMA_CADASTROS
+from utils.notificacoes import SCHEMA_NOTIFICACOES
+from utils.professores import SCHEMA_ACESSO_PROFESSORES
+from utils.push import SCHEMA_PUSH, SCHEMA_ENTREGAS_PUSH, SCHEMA_EMAIL_CHAT, SCHEMA_LIMITE_PUSH, INDICE_ENTREGAS_PUSH
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -110,6 +117,17 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
+        cursor.execute(SCHEMA_ACESSO_PROFESSORES)
+        cursor.execute(SCHEMA_ENTREGAS)
+        cursor.execute(SCHEMA_NOTIFICACOES)
+        cursor.execute(SCHEMA_CADASTROS)
+        cursor.execute(SCHEMA_PUSH)
+        cursor.execute(SCHEMA_ENTREGAS_PUSH)
+        cursor.execute(INDICE_ENTREGAS_PUSH)
+        cursor.execute(SCHEMA_EMAIL_CHAT)
+        cursor.execute(SCHEMA_RETENCAO)
+        cursor.execute(SCHEMA_UPLOADS)
+        cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')

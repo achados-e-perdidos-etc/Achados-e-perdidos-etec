@@ -2,13 +2,32 @@
 // SERVICE WORKER - ETEC ACHADOS E PERDIDOS (VERSÃO 2.0 PWA & WEB PUSH)
 // ==============================================================================
 
-const CACHE_NAME = 'etec-achados-v2';
+const CACHE_NAME = 'etec-achados-v28-404';
 
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/style.css',
     '/script.js',
+    '/seguranca-interface.js',
+    '/visao-formulario.js',
+    '/acesso-portal.js',
+    '/estado-fotos.js',
+    '/estado-fotos.css',
+    '/notificacoes-push.js',
+    '/professores.js',
+    '/central-notificacoes.js',
+    '/meus-cadastros.js',
+    '/rascunhos.js',
+    '/movimento.css',
+    '/melhorias-portal.css',
+    '/acessibilidade.js',
+    '/acessibilidade.css',
+    '/upload-retomavel.js',
+    '/404.html',
+    '/jogo-404.css',
+    '/jogo-404.js',
+
     '/logo.png',
     '/logo_secretaria.png',
     '/manifest.json',
@@ -57,6 +76,14 @@ self.addEventListener('fetch', (e) => {
 // ==============================================================================
 // RECEBIMENTO DE NOTIFICAÇÕES WEB PUSH (TELA DE BLOQUEIO / SISTEMA OPERACIONAL)
 // ==============================================================================
+function urlNotificacao(valor) {
+    try {
+        const url = new URL(valor || '/', self.location.origin);
+        if (url.origin === self.location.origin && !url.username && !url.password) return url.href;
+    } catch (error) {}
+    return self.location.origin + '/';
+}
+
 self.addEventListener('push', (event) => {
     let payload = {
         title: 'ETEC Achados e Perdidos',
@@ -75,21 +102,22 @@ self.addEventListener('push', (event) => {
     }
 
     const options = {
-        body: payload.body,
-        icon: payload.icon || '/icon-192.png',
+        body: typeof payload.body === 'string' ? payload.body.slice(0, 320) : 'Abra o portal para conferir.',
+        icon: '/icon-192.png',
         badge: '/icon-192.png',
+        tag: typeof payload.tag === 'string' ? payload.tag.slice(0, 100) : undefined,
         vibrate: [150, 50, 150],
         data: {
-            url: payload.url || '/'
+            url: urlNotificacao(payload.url)
         },
         actions: [
-            { action: 'abrir', title: 'Ver Pertence' },
+            { action: 'abrir', title: 'Abrir portal' },
             { action: 'fechar', title: 'Dispensar' }
         ]
     };
 
     event.waitUntil(
-        self.registration.showNotification(payload.title, options)
+        self.registration.showNotification(typeof payload.title === 'string' ? payload.title.slice(0, 100) : 'ETEC Achados e Perdidos', options)
     );
 });
 
@@ -98,13 +126,13 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     if (event.action === 'fechar') return;
 
-    const urlAlvo = event.notification.data?.url || '/';
+    const urlAlvo = urlNotificacao(event.notification.data?.url);
 
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {
             for (let client of windowClients) {
                 if ('focus' in client) {
-                    client.navigate(urlAlvo);
+                    await client.navigate(urlAlvo);
                     return client.focus();
                 }
             }

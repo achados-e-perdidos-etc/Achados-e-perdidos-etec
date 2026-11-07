@@ -19,136 +19,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Chart.js para Dashboard e Gráficos de Inteligência (BI) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js">
-    async function analisarFotoSecretariaComIA() {
-      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
-        return alert("Selecione uma foto primeiro.");
-      }
-      const btn = document.getElementById('btnAutoTagIA');
-      if (btn) {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
-        btn.disabled = true;
-      }
-      try {
-        const res = await fetch("/api/ia/analisar-imagem", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ foto: fotosBase64Upload[0] })
-        });
-        const data = await res.json();
-        if (data.success && data.resultado) {
-          const r = data.resultado;
-          if (r.nome) document.getElementById('formItemNome').value = r.nome;
-          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
-          if (r.categoria) {
-            const sel = document.getElementById('formItemCategoria');
-            for (let opt of sel.options) {
-              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                sel.value = opt.value;
-                break;
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Erro ao chamar IA:", err);
-      } finally {
-        if (btn) {
-          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
-          btn.disabled = false;
-        }
-      }
-    }
-
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- QRCode.js para Base64 instantâneo -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
-    async function analisarFotoSecretariaComIA() {
-      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
-        return alert("Selecione uma foto primeiro.");
-      }
-      const btn = document.getElementById('btnAutoTagIA');
-      if (btn) {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
-        btn.disabled = true;
-      }
-      try {
-        const res = await fetch("/api/ia/analisar-imagem", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ foto: fotosBase64Upload[0] })
-        });
-        const data = await res.json();
-        if (data.success && data.resultado) {
-          const r = data.resultado;
-          if (r.nome) document.getElementById('formItemNome').value = r.nome;
-          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
-          if (r.categoria) {
-            const sel = document.getElementById('formItemCategoria');
-            for (let opt of sel.options) {
-              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                sel.value = opt.value;
-                break;
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Erro ao chamar IA:", err);
-      } finally {
-        if (btn) {
-          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
-          btn.disabled = false;
-        }
-      }
-    }
-
-</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <!-- Leitor Html5-QRCode para Câmera -->
-  <script src="https://unpkg.com/html5-qrcode">
-    async function analisarFotoSecretariaComIA() {
-      if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
-        return alert("Selecione uma foto primeiro.");
-      }
-      const btn = document.getElementById('btnAutoTagIA');
-      if (btn) {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
-        btn.disabled = true;
-      }
-      try {
-        const res = await fetch("/api/ia/analisar-imagem", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ foto: fotosBase64Upload[0] })
-        });
-        const data = await res.json();
-        if (data.success && data.resultado) {
-          const r = data.resultado;
-          if (r.nome) document.getElementById('formItemNome').value = r.nome;
-          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
-          if (r.categoria) {
-            const sel = document.getElementById('formItemCategoria');
-            for (let opt of sel.options) {
-              if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                sel.value = opt.value;
-                break;
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Erro ao chamar IA:", err);
-      } finally {
-        if (btn) {
-          btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial';
-          btn.disabled = false;
-        }
-      }
-    }
-
-</script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
     /* ==========================================================================
@@ -786,6 +663,12 @@
       z-index: 100000;
     }
   </style>
+<link rel="stylesheet" href="movimento.css">
+<link rel="stylesheet" href="melhorias-portal.css">
+<script src="rascunhos.js"></script>
+<link rel="stylesheet" href="acessibilidade.css">
+<script src="exportacao-segura.js"></script>
+<script src="upload-retomavel.js"></script>
 </head>
 <body>
 
@@ -873,6 +756,10 @@
       <button onclick="trocarAba('categorias')" class="item-menu" id="menuAba-categorias">
         <i class="fas fa-folder-open" style="color: #eab308;"></i>
         <span>Categorias</span>
+      </button>
+
+      <button onclick="trocarAba('professores')" class="item-menu hidden" id="menuAba-professores">
+        <i class="fas fa-user-shield"></i><span>Acesso de Professores</span>
       </button>
 
       <button onclick="trocarAba('dashboard')" class="item-menu" id="menuAba-dashboard">
@@ -992,6 +879,13 @@
     </section>
 
     <!-- 4. ABA DASHBOARD (INDICADORES & BI) -->
+    <section id="secao-professores" class="hidden">
+      <h2 class="secao-titulo">Acesso de Professores</h2>
+      <p>Professores aprovados podem atender alunos e gerenciar itens no painel. Apenas a secretaria titular pode aprovar, recusar ou revogar acessos.</p>
+      <button type="button" onclick="carregarSolicitacoesProfessores()" class="btn-novo-item">Atualizar solicitações</button>
+      <div id="listaAcessosProfessores" aria-live="polite"></div>
+    </section>
+
     <section id="secao-dashboard" class="hidden">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
         <h2 class="secao-titulo" style="margin-bottom: 0;"><i class="fas fa-chart-pie" style="color: #3b82f6;"></i> Inteligência & Indicadores</h2>
@@ -1063,6 +957,7 @@
 
     <!-- 5. ABA HISTÓRICO DE ENTREGAS -->
     <section id="secao-entregues" class="hidden">
+      <label><input id="incluirCanceladas" type="checkbox" onchange="carregarEntregues()"> Mostrar entregas revertidas</label>
       <h2 class="secao-titulo"><i class="fas fa-history" style="color: #06b6d4;"></i> Histórico de Entregas</h2>
       <div class="tabela-container">
         <table>
@@ -1150,7 +1045,7 @@
               <div id="chatAvatarAluno" class="avatar-circulo-chat">?</div>
               <div>
                 <div id="chatNomeAlunoAtivo" style="color: #ffffff; font-weight: 700; font-size: 13.5px; line-height: 1.2;">Selecione um aluno</div>
-                <div id="chatSubinfoAlunoAtivo" style="color: #10b981; font-size: 11px;">Nenhuma conversa selecionada</div>
+                <div title="As mensagens são mantidas por 30 dias." id="chatSubinfoAlunoAtivo" style="color: #10b981; font-size: 11px;">Nenhuma conversa selecionada</div>
               </div>
             </div>
             <div id="chatStatusConexaoBadge" style="font-size: 10px; color: #8b949e; display: flex; align-items: center; gap: 5px;">
@@ -1324,7 +1219,9 @@
           <button type="button" id="btnAutoTagIA" onclick="analisarFotoSecretariaComIA()" style="display: none; margin-top: 6px; width: 100%; background: linear-gradient(135deg, #7c3aed, #db2777); color: white; font-weight: 700; font-size: 12px; padding: 10px; border-radius: 8px; border: none; cursor: pointer; transition: opacity 0.2s;">
             <i class="fas fa-wand-magic-sparkles"></i> ✨ Preencher Dados com Inteligência Artificial
           </button>
+          <div id="uploadsSecretaria"></div>
           <div id="formFotosStatus" style="font-size: 11px; color: #8b949e; margin-top: 4px;">Nenhuma foto selecionada</div>
+          <div id="estadoEnvioSecretaria" hidden></div>
         </div>
         <button type="submit" id="btnSalvarItem" class="btn-novo-item" style="background: #059669; margin-top: 10px;">Gravar no Banco</button>
       </form>
@@ -1434,6 +1331,9 @@
 
   <div id="toast" class="hidden"></div>
 
+  <script src="seguranca-interface.js"></script>
+  <link rel="stylesheet" href="estado-fotos.css">
+  <script src="estado-fotos.js"></script>
   <!-- JAVASCRIPT DO SISTEMA -->
   <script>
     /* ==========================================================================
@@ -1443,7 +1343,7 @@
       return new Promise((resolve) => {
         const modal = document.getElementById('modalConfirmacao');
         document.getElementById('confirmTitulo').innerText = titulo;
-        document.getElementById('confirmMensagem').innerHTML = mensagem;
+        definirTextoFormatado(document.getElementById('confirmMensagem'), mensagem);
 
         const iconeEl = document.getElementById('confirmIcone');
         iconeEl.className = `fas ${icone}`;
@@ -1473,7 +1373,7 @@
       return new Promise((resolve) => {
         const modal = document.getElementById('modalAlertaBonito');
         document.getElementById('alertaTitulo').innerText = titulo;
-        document.getElementById('alertaMensagem').innerHTML = mensagem;
+        definirTextoFormatado(document.getElementById('alertaMensagem'), mensagem);
 
         let icone = 'fa-info-circle';
         let cor = '#3b82f6';
@@ -1532,7 +1432,7 @@
         document.getElementById('erroOnde').innerText = ultimoRelatorioErro.onde;
         document.getElementById('erroComunicacao').innerText = ultimoRelatorioErro.comunicacao;
         document.getElementById('erroMensagem').innerText = `${ultimoRelatorioErro.mensagem}${ultimoRelatorioErro.detalhes ? '\n\n[Traceback / Detalhes]:\n' + ultimoRelatorioErro.detalhes : ''}`;
-        document.getElementById('erroSolucao').innerHTML = ultimoRelatorioErro.solucao;
+        definirTextoFormatado(document.getElementById('erroSolucao'), ultimoRelatorioErro.solucao);
         modal.classList.remove('hidden');
       } else {
         alert(`❌ ERRO: ${ultimoRelatorioErro.operacao}\n\n📍 Onde: ${ultimoRelatorioErro.onde}\n📡 Info: ${ultimoRelatorioErro.comunicacao}\n🔍 Detalhes: ${ultimoRelatorioErro.mensagem}\n💡 Causa: ${ultimoRelatorioErro.causa}`);
@@ -1591,10 +1491,16 @@
     let itensSec = [];
     let itensPendentesSec = [];
     let categoriasSec = [];
+    const UploadSecretaria = new UploadFotos('uploadsSecretaria',()=>tokenSecretaria);
     let chatRmAtivo = null;
+    let chatEmailAtivo = null;
+    let chatLegadoAtivo = false;
     let chatPollTimer = null;
     let html5QrScannerInstance = null;
     let fotosBase64Upload = [];
+    let loteFotosSecretaria = 0;
+    let preparandoFotosSecretaria = false;
+    let envioItemSecretaria = false;
     let ocrRmIdentificado = '';
     let filtroStatusAtual = 'TODOS';
     let comprovanteDadosTexto = '';
@@ -1622,7 +1528,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const salvo = localStorage.getItem('secretaria_token');
+      const salvo = sessionStorage.getItem('secretaria_token') || localStorage.getItem('secretaria_token');
       if (salvo) {
         tokenSecretaria = salvo;
         document.getElementById('loginScreen').classList.add('hidden');
@@ -1688,6 +1594,8 @@
     }
 
     function sairSecretaria() {
+      sessionStorage.removeItem('secretaria_token');
+      if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();
       localStorage.removeItem('secretaria_token');
       window.location.reload();
     }
@@ -1704,7 +1612,7 @@
       toggleMenuHamburger();
       if (abaId === 'dashboard') carregarDashboard();
       if (abaId === 'mural') carregarMural();
-      ['itens', 'pendentes', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat'].forEach(id => {
+      ['itens', 'pendentes', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat', 'professores'].forEach(id => {
         const el = document.getElementById(`secao-${id}`);
         if (el) el.classList.add('hidden');
         const btn = document.getElementById(`menuAba-${id}`);
@@ -1723,10 +1631,12 @@
       if (abaId === 'doacoes') renderizarDoacoes();
       if (abaId === 'mural') carregarMural();
       if (abaId === 'chat') carregarConversasChat();
+      if (abaId === 'professores') carregarSolicitacoesProfessores();
     }
 
     /* CARREGAMENTO DE DADOS */
     async function carregarTudo() {
+      if (!await verificarSessaoPainel()) return;
       await carregarCategorias();
       await carregarItensSecretaria();
       iniciarPollingChat();
@@ -1740,7 +1650,7 @@
           
           const sel = document.getElementById('formItemCategoria');
           if (sel) {
-            sel.innerHTML = categoriasSec.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            sel.innerHTML = categoriasSec.map(c => `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`).join('');
           }
           
           // Filtro de categorias removido da barra de busca a pedido do usuário
@@ -1751,7 +1661,7 @@
         async function carregarItensSecretaria() {
       const container = document.getElementById('gridItensContainer');
       try {
-        const res = await fetch(`${API_URL}/api/itens`);
+        const res = await fetch(`${API_URL}/api/itens`, { headers: getAuthHeadersGet() });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -1764,7 +1674,7 @@
           }
         } else {
           console.error("HTTP error:", res.status);
-          if (container) container.innerHTML = `<div class="text-center py-8" style="color: #ef4444;">Falha ao buscar itens (Status ${res.status}). Verifique o servidor.</div>`;
+          if (container) container.innerHTML = `<div class="text-center py-8" style="color: #ef4444;">Falha ao buscar itens (Status ${textoHTML(res.status)}). Verifique o servidor.</div>`;
         }
       } catch (e) {
         console.error("Network error:", e);
@@ -1824,20 +1734,20 @@
 
         const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
         const fotoHtml = fotoUrl 
-          ? `<div class="item-foto-thumb"><img src="${fotoUrl}" alt="Foto" loading="lazy"></div>`
+          ? `<div class="item-foto-thumb"><img src="${imagemHTML(fotoUrl)}" alt="Foto" loading="lazy"></div>`
           : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
 
         return `
-          <div class="item-card" onclick="abrirDetalhesItem(${item.id})">
+          <div class="item-card" onclick="abrirDetalhesItem(${argumentoHTML(item.id)})">
             ${fotoHtml}
             <div class="item-info">
               <div class="item-badges">
-                <span class="badge-cat">${item.categoria || 'OUTROS'}</span>
-                <span class="badge-status ${statusCls}">${st}</span>
+                <span class="badge-cat">${textoHTML(item.categoria || 'OUTROS')}</span>
+                <span class="badge-status ${textoHTML(statusCls)}">${textoHTML(st)}</span>
               </div>
-              <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Sem Título'}</div>
+              <div class="item-titulo truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao || 'Sem Título')}</div>
               <div class="item-local-data truncate">
-                <i class="fas fa-map-marker-alt"></i> ${item.txt_local || 'Local não informado'}
+                <i class="fas fa-map-marker-alt"></i> ${textoHTML(item.txt_local || 'Local não informado')}
               </div>
             </div>
           </div>
@@ -1861,11 +1771,11 @@
         const st = (d.status || 'PARA DOAÇÃO').toUpperCase();
         return `
           <tr>
-            <td>#${d.id}</td>
-            <td><strong>${nome}</strong></td>
-            <td>${d.categoria || 'OUTROS'}</td>
-            <td><span class="badge-status status-doacao">${st}</span></td>
-            <td>${d.txt_data || '-'}</td>
+            <td>#${textoHTML(d.id)}</td>
+            <td><strong>${textoHTML(nome)}</strong></td>
+            <td>${textoHTML(d.categoria || 'OUTROS')}</td>
+            <td><span class="badge-status status-doacao">${textoHTML(st)}</span></td>
+            <td>${textoHTML(d.txt_data || '-')}</td>
           </tr>
         `;
       }).join('');
@@ -1878,7 +1788,7 @@
       }
       const ok = await abrirConfirmacaoModal({
         titulo: "Concluir Doações",
-        mensagem: `Deseja concluir a doação e arquivar os <strong>${doacoes.length} item(ns)</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens passarão para o status DOAÇÃO FEITA e sairão do catálogo ativo.</span>`,
+        mensagem: `Deseja concluir a doação e arquivar os <strong>${textoHTML(doacoes.length)} item(ns)</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens passarão para o status DOAÇÃO FEITA e sairão do catálogo ativo.</span>`,
         icone: "fa-gift",
         corIcone: "#a855f7",
         textoConfirmar: "Sim, Concluir",
@@ -1917,7 +1827,7 @@
           container.innerHTML = itensPendentesSec.map(item => {
             const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
             const fotoHtml = fotoUrl 
-              ? `<div class="item-foto-thumb"><img src="${fotoUrl}" alt="Foto"></div>`
+              ? `<div class="item-foto-thumb"><img src="${imagemHTML(fotoUrl)}" alt="Foto"></div>`
               : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
 
             return `
@@ -1925,16 +1835,16 @@
                 ${fotoHtml}
                 <div class="item-info">
                   <div class="item-badges">
-                    <span class="badge-cat">${item.categoria || 'OUTROS'}</span>
+                    <span class="badge-cat">${textoHTML(item.categoria || 'OUTROS')}</span>
                     <span class="badge-status status-pendente">PENDENTE</span>
                   </div>
-                  <div class="item-titulo truncate">#${item.id} - ${item.nome || item.txt_descricao || 'Objeto'}</div>
-                  <div class="item-local-data">Aluno RM: ${item.rm_aluno || '-'} | Local: ${item.txt_local || '-'}</div>
+                  <div class="item-titulo truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao || 'Objeto')}</div>
+                  <div class="item-local-data">Aluno RM: ${textoHTML(item.rm_aluno || '-')} | Local: ${textoHTML(item.txt_local || '-')}</div>
                   <div style="display: flex; gap: 8px; margin-top: 8px;">
-                    <button onclick="aprovarItemAluno(${item.id})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
+                    <button onclick="aprovarItemAluno(${argumentoHTML(item.id)})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
                       <i class="fas fa-check"></i> Aprovar
                     </button>
-                    <button onclick="recusarCadastroAluno(${item.id})" class="btn-acao" style="background: #dc2626; padding: 6px 12px; font-size: 11px;">
+                    <button onclick="recusarCadastroAluno(${argumentoHTML(item.id)})" class="btn-acao" style="background: #dc2626; padding: 6px 12px; font-size: 11px;">
                       <i class="fas fa-trash"></i> Recusar
                     </button>
                   </div>
@@ -2033,12 +1943,12 @@
 
         htmlCards.push(`
           <div class="etiqueta-box">
-            <div class="tag-cat">${cat}</div>
+            <div class="tag-cat">${textoHTML(cat)}</div>
             <div class="qr-container">
-              <img src="${qrBase64}" alt="QR #${item.id}" />
+              <img src="${imagemHTML(qrBase64)}" alt="QR #${textoHTML(item.id)}" />
             </div>
-            <div class="titulo-item">#${item.id} - ${nome}</div>
-            <div class="local-item">${data} | ${local}</div>
+            <div class="titulo-item">#${textoHTML(item.id)} - ${textoHTML(nome)}</div>
+            <div class="local-item">${textoHTML(data)} | ${textoHTML(local)}</div>
           </div>
         `);
       }
@@ -2100,9 +2010,10 @@
     /* EXPORTAR RELATÓRIO CSV */
     function exportarRelatorioCSV() {
       if (!itensSec.length) return abrirAlertaModal({ titulo: "Sem Dados", mensagem: "Não há registros no inventário para exportar a planilha.", tipo: "aviso" });
-      let csv = "\uFEFFID;Nome;Descrição;Categoria;Data;Local;Status;Solicitante;RM\n";
+      let csv = "\uFEFF" + CSVSeguro.linha(['ID','Nome','Descrição','Categoria','Data','Local','Status','Solicitante','RM']);
       itensSec.forEach(i => {
-        csv += `${i.id || ''};${(i.nome || '').replace(/;/g, ',')};${(i.txt_descricao || '').replace(/;/g, ',')};${(i.categoria || '').replace(/;/g, ',')};${(i.txt_data || '').replace(/;/g, ',')};${(i.txt_local || '').replace(/;/g, ',')};${(i.status || 'DISPONÍVEL').toUpperCase()};${(i.solicitado_por || '').replace(/;/g, ',')};${(i.rm_aluno || '').replace(/;/g, ',')}\n`;
+        csv += CSVSeguro.linha([i.id, i.nome, i.txt_descricao, i.categoria, i.txt_data, i.txt_local,
+            (i.status || 'DISPONÍVEL').toUpperCase(), i.solicitado_por, i.rm_aluno]);
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -2144,32 +2055,32 @@
       const st = (item.status || 'DISPONÍVEL').toUpperCase();
       
       let info = `
-        <div><strong>Categoria:</strong> ${item.categoria || 'OUTROS'}</div>
-        <div><strong>Status:</strong> ${st}</div>
-        <div><strong>Local:</strong> ${item.txt_local || '-'}</div>
-        <div><strong>Data:</strong> ${item.txt_data || '-'}</div>
-        <div><strong>Descrição:</strong> ${item.txt_descricao || '-'}</div>
+        <div><strong>Categoria:</strong> ${textoHTML(item.categoria || 'OUTROS')}</div>
+        <div><strong>Status:</strong> ${textoHTML(st)}</div>
+        <div><strong>Local:</strong> ${textoHTML(item.txt_local || '-')}</div>
+        <div><strong>Data:</strong> ${textoHTML(item.txt_data || '-')}</div>
+        <div><strong>Descrição:</strong> ${textoHTML(item.txt_descricao || '-')}</div>
       `;
       if (item.solicitado_por) {
-        info += `<div style="color: #f59e0b; margin-top: 4px;"><strong>Solicitado por:</strong> ${item.solicitado_por} (RM: ${item.rm_aluno || '-'})</div>`;
+        info += `<div style="color: #f59e0b; margin-top: 4px;"><strong>Solicitado por:</strong> ${textoHTML(item.solicitado_por)} (RM: ${textoHTML(item.rm_aluno || '-')})</div>`;
       }
       document.getElementById('detalhesInfoCard').innerHTML = info;
 
       const galeria = document.getElementById('detalhesGaleriaFotos');
       const fotos = (item.fotos && item.fotos.length) ? item.fotos : (item.foto ? [item.foto] : []);
       galeria.innerHTML = fotos.length
-        ? fotos.map(f => `<img src="${f}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #30363d; cursor: pointer;" onclick="window.open('${f}', '_blank')">`).join('')
+        ? fotos.map(f => `<img src="${imagemHTML(f)}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #30363d; cursor: pointer;" onclick="abrirImagemSegura(${argumentoHTML(f)})">`).join('')
         : `<span style="font-size: 11px; color: #8b949e;">Sem fotos.</span>`;
 
-      let btns = `<button onclick="editarItemForm(${item.id})" class="btn-acao" style="background: #d97706;"><i class="fas fa-edit"></i> Editar</button>`;
-      if (st === 'SOLICITADO') btns += `<button onclick="recusarSolicitacao(${item.id})" class="btn-acao" style="background: #b45309;"><i class="fas fa-ban"></i> Recusar</button>`;
+      let btns = `<button onclick="editarItemForm(${argumentoHTML(item.id)})" class="btn-acao" style="background: #d97706;"><i class="fas fa-edit"></i> Editar</button>`;
+      if (st === 'SOLICITADO') btns += `<button onclick="recusarSolicitacao(${argumentoHTML(item.id)})" class="btn-acao" style="background: #b45309;"><i class="fas fa-ban"></i> Recusar</button>`;
       if (st !== 'ENTREGUE' && !st.includes('DOAÇÃO FEITA') && !st.includes('DOACAO FEITA')) {
-        btns += `<button onclick="abrirModalBaixa(${item.id})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
+        btns += `<button onclick="abrirModalBaixa(${argumentoHTML(item.id)})" class="btn-acao" style="background: #059669;"><i class="fas fa-check"></i> Dar Baixa</button>`;
       }
       if (!isStatusDoacao(st) && st !== 'ENTREGUE') {
-        btns += `<button onclick="marcarItemDoacao(${item.id})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
+        btns += `<button onclick="marcarItemDoacao(${argumentoHTML(item.id)})" class="btn-acao" style="background: #7c3aed;"><i class="fas fa-gift"></i> Doação</button>`;
       }
-      btns += `<button onclick="excluirItem(${item.id})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
+      btns += `<button onclick="excluirItem(${argumentoHTML(item.id)})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
 
       document.getElementById('detalhesBotoesAcao').innerHTML = btns;
       document.getElementById('modalDetalhesItem').classList.remove('hidden');
@@ -2177,6 +2088,13 @@
 
     /* CADASTRO E EDIÇÃO */
     function abrirModalCadastrar() {
+      if (envioItemSecretaria) return;
+      loteFotosSecretaria++; preparandoFotosSecretaria = false;
+      document.getElementById('formItemFotosInput').disabled = false;
+      document.getElementById('formItemFotosInput').value = '';
+      document.getElementById('btnSalvarItem').disabled = false;
+      ocultarEstadoFotos('estadoEnvioSecretaria');
+      document.getElementById('btnAutoTagIA').disabled = false;
       document.getElementById('formItemId').value = '';
       document.getElementById('modalFormTitulo').innerText = "Cadastrar Novo Objeto";
       document.getElementById('formItemNome').value = '';
@@ -2185,11 +2103,19 @@
       document.getElementById('formItemData').value = new Date().toLocaleDateString('pt-BR');
       document.getElementById('formItemStatus').value = 'DISPONÍVEL';
       document.getElementById('formFotosStatus').innerText = "Nenhuma foto selecionada";
-      fotosBase64Upload = [];
+      fotosBase64Upload = []; UploadSecretaria.mostrar([]);
       document.getElementById('modalFormItem').classList.remove('hidden');
+      if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('secretaria');
     }
 
     function editarItemForm(id) {
+      if (envioItemSecretaria) return;
+      loteFotosSecretaria++; preparandoFotosSecretaria = false;
+      document.getElementById('formItemFotosInput').disabled = false;
+      document.getElementById('formItemFotosInput').value = '';
+      document.getElementById('btnSalvarItem').disabled = false;
+      ocultarEstadoFotos('estadoEnvioSecretaria');
+      document.getElementById('btnAutoTagIA').disabled = false;
       fecharModal('modalDetalhesItem');
       const item = itensSec.find(i => String(i.id) === String(id));
       if (!item) return;
@@ -2208,46 +2134,47 @@
       document.getElementById('modalFormItem').classList.remove('hidden');
     }
 
-    function processarFotosInput(input) {
-      const files = Array.from(input.files).slice(0, 4);
-      if (!files.length) return;
-      fotosBase64Upload = [];
-      const statusEl = document.getElementById('formFotosStatus');
-      statusEl.innerText = "Comprimindo fotos...";
-      let count = 0;
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let w = img.width, h = img.height;
-            const maxDim = 1200;
-            if (w > maxDim || h > maxDim) {
-              if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-              else { w = Math.round((w * maxDim) / h); h = maxDim; }
-            }
-            canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            fotosBase64Upload.push(canvas.toDataURL('image/jpeg', 0.75));
-            count++;
-            if (count === files.length) {
-              statusEl.innerText = `${fotosBase64Upload.length} foto(s) otimizada(s) — analisando com IA...`;
-              const aiBtn = document.getElementById('btnAutoTagIA');
-              if (aiBtn) aiBtn.style.display = 'block';
-              // Fast Drop: analisa automaticamente a primeira foto após a compressão.
-              analisarFotoSecretariaComIA();
-            }
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
+    async function processarFotosInput(input) {
+      if (envioItemSecretaria || !input.files?.length) return;
+      const lote = ++loteFotosSecretaria;
+      const files = Array.from(input.files).slice(0, 4), novas = [];
+      preparandoFotosSecretaria = true; input.disabled = true;
+      document.getElementById('btnSalvarItem').disabled = true;
+      document.getElementById('btnAutoTagIA').disabled = true;
+      let falhas = 0;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          mostrarEstadoFotos('estadoEnvioSecretaria', 'preparando', `Preparando foto ${i + 1} de ${files.length}…`);
+          try { novas.push(await comprimirImagem(files[i])); } catch (error) { falhas++; }
+          if (lote !== loteFotosSecretaria) return;
+        }
+        if (novas.length) fotosBase64Upload = novas;
+        UploadSecretaria.mostrar(fotosBase64Upload);
+        document.getElementById('formFotosStatus').innerText = `${fotosBase64Upload.length} foto(s) selecionada(s)`;
+        mostrarEstadoFotos('estadoEnvioSecretaria', falhas ? 'erro' : 'prontas', falhas
+          ? `${falhas} foto(s) não puderam ser abertas. Confira a seleção antes de salvar.`
+          : `${novas.length} foto(s) prontas. O envio acontece ao salvar o item.`);
+        if (novas.length) {
+          document.getElementById('btnAutoTagIA').style.display = 'block';
+          analisarFotoSecretariaComIA();
+        }
+      } finally {
+        if (lote === loteFotosSecretaria) {
+          preparandoFotosSecretaria = false; input.disabled = false; input.value = '';
+          document.getElementById('btnSalvarItem').disabled = false;
+          document.getElementById('btnAutoTagIA').disabled = false;
+        }
+      }
     }
 
-        async function salvarItemForm(e) {
+    async function salvarItemForm(e) {
       e.preventDefault();
+      if (envioItemSecretaria) return;
+      if (preparandoFotosSecretaria) return mostrarToast('Aguarde a preparação das fotos.');
+      envioItemSecretaria = true;
+      document.getElementById('formItemFotosInput').disabled = true;
+      document.getElementById('btnAutoTagIA').disabled = true;
+      mostrarEstadoFotos('estadoEnvioSecretaria', 'enviando', fotosBase64Upload.length ? 'Enviando fotos e salvando o item…' : 'Salvando o item…');
       const id = document.getElementById('formItemId').value;
       const btn = document.getElementById('btnSalvarItem');
       btn.disabled = true;
@@ -2266,6 +2193,7 @@
       };
 
       try {
+        payload.fotos = await UploadSecretaria.enviarTodas(fotosBase64Upload);
         const url = id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`;
         let res;
         try {
@@ -2275,6 +2203,7 @@
             body: JSON.stringify(payload)
           });
         } catch (errPut) {
+          if (!id) throw errPut;
           console.warn("PUT bloqueado por operadora ou rede móvel. Tentando fallback via POST...", errPut);
           res = await fetch(url, {
             method: 'POST',
@@ -2286,11 +2215,14 @@
         let data = {};
         try { data = await res.json(); } catch(e) {}
 
-        if (res.ok && data.success !== false) {
-          mostrarToast(id ? "Objeto atualizado com sucesso!" : "Objeto cadastrado com sucesso!");
+        if (res.ok && data.success === true) {
+          mostrarEstadoFotos('estadoEnvioSecretaria', 'sucesso', 'Envio concluído!');
+          mostrarToast(fotosBase64Upload.length ? "✓ Fotos enviadas e item salvo!" : (id ? "Objeto atualizado com sucesso!" : "Objeto cadastrado com sucesso!"));
+          if (!id && typeof Rascunhos !== 'undefined') Rascunhos.limpar('secretaria');
           fecharModal('modalFormItem');
           await carregarItensSecretaria();
         } else {
+          mostrarEstadoFotos('estadoEnvioSecretaria', 'erro', 'O envio não foi concluído. Suas fotos foram mantidas para tentar novamente.');
           if (res.status === 401 || data.expired) {
             exibirErroDetalhado({
               operacao: "Sessão Administrativa Expirada",
@@ -2314,6 +2246,7 @@
           });
         }
       } catch (err) {
+        mostrarEstadoFotos('estadoEnvioSecretaria', 'erro', 'Falha de conexão. Suas fotos foram mantidas para tentar novamente.');
         console.error("Erro fatal ao salvar:", err);
         exibirErroDetalhado({
           operacao: id ? `Erro de Conexão ao Salvar Item #${id}` : "Erro de Conexão ao Cadastrar Item",
@@ -2325,6 +2258,9 @@
           solucao: "Verifique sua conexão Wi-Fi/4G e aguarde 20 segundos se o Railway estiver fazendo deploy."
         });
       } finally {
+        envioItemSecretaria = false;
+        document.getElementById('formItemFotosInput').disabled = false;
+        document.getElementById('btnAutoTagIA').disabled = false;
         btn.disabled = false;
         btn.innerHTML = "Gravar no Banco";
       }
@@ -2371,11 +2307,11 @@
           const nomeObj = item ? (item.nome || item.txt_descricao || 'Objeto') : 'Objeto';
           
           document.getElementById('comprovanteDadosBox').innerHTML = `
-            <div><strong>Aluno(a):</strong> ${nome}</div>
-            <div><strong>RM:</strong> ${rm} | <strong>Turma:</strong> ${turma}</div>
+            <div><strong>Aluno(a):</strong> ${textoHTML(nome)}</div>
+            <div><strong>RM:</strong> ${textoHTML(rm)} | <strong>Turma:</strong> ${textoHTML(turma)}</div>
             <hr style="margin: 6px 0; border: none; border-top: 1px dashed #d1d5db;">
-            <div><strong>Objeto #${id}:</strong> ${nomeObj}</div>
-            <div><strong>Data da Entrega:</strong> ${dataHora}</div>
+            <div><strong>Objeto #${textoHTML(id)}:</strong> ${textoHTML(nomeObj)}</div>
+            <div><strong>Data da Entrega:</strong> ${textoHTML(dataHora)}</div>
           `;
           comprovanteDadosTexto = `ETEC - TERMO DE RETIRADA\nAluno: ${nome} (RM: ${rm})\nTurma: ${turma}\nItem #${id}: ${nomeObj}\nData: ${dataHora}`;
           document.getElementById('modalComprovante').classList.remove('hidden');
@@ -2398,7 +2334,7 @@
     async function recusarSolicitacao(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Recusar Solicitação",
-        mensagem: `Deseja recusar a solicitação do item <strong>#${id}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL para outros alunos.</span>`,
+        mensagem: `Deseja recusar a solicitação do item <strong>#${textoHTML(id)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL para outros alunos.</span>`,
         icone: "fa-times-circle",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Recusar",
@@ -2414,7 +2350,7 @@
     async function marcarItemDoacao(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Destinar para Doação",
-        mensagem: `Deseja marcar o pertence <strong>#${id}</strong> para DOAÇÃO?`,
+        mensagem: `Deseja marcar o pertence <strong>#${textoHTML(id)}</strong> para DOAÇÃO?`,
         icone: "fa-gift",
         corIcone: "#a855f7",
         textoConfirmar: "Sim, Destinar",
@@ -2438,7 +2374,7 @@
     async function excluirItem(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Excluir Objeto Permanentemente",
-        mensagem: `Tem certeza que deseja apagar o item <strong>#${id}</strong> do banco de dados?<br><span style="font-size: 11px; color: #ef4444;">Esta ação é irreversível.</span>`,
+        mensagem: `Tem certeza que deseja apagar o item <strong>#${textoHTML(id)}</strong> do banco de dados?<br><span style="font-size: 11px; color: #ef4444;">Esta ação é irreversível.</span>`,
         icone: "fa-trash-alt",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Excluir",
@@ -2454,7 +2390,7 @@
     /* CATEGORIAS / DASHBOARD / ENTREGUES / MURAL / CHAT */
     function renderizarCategorias() {
       document.getElementById('tabelaCategoriasBody').innerHTML = categoriasSec.map(c => `
-        <tr><td><strong>${c.nome}</strong></td><td style="text-align: center;"><button onclick="removerCategoria('${c.nome}')" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
+        <tr><td><strong>${textoHTML(c.nome)}</strong></td><td style="text-align: center;"><button onclick="removerCategoria(${argumentoHTML(c.nome)})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
       `).join('');
     }
 
@@ -2463,7 +2399,7 @@
     async function removerCategoria(nome) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Excluir Categoria",
-        mensagem: `Deseja realmente excluir a categoria <strong>${nome}</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens já cadastrados continuarão seguros no sistema.</span>`,
+        mensagem: `Deseja realmente excluir a categoria <strong>${textoHTML(nome)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">Os itens já cadastrados continuarão seguros no sistema.</span>`,
         icone: "fa-trash-alt",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Excluir",
@@ -2542,20 +2478,20 @@
 
     async function carregarEntregues() {
       try {
-        const res = await fetch(`${API_URL}/api/entregues`, { headers: getAuthHeadersGet() });
+        const res = await fetch(`${API_URL}/api/entregues${document.getElementById('incluirCanceladas')?.checked ? '?incluir_canceladas=true' : ''}`, { headers: getAuthHeadersGet() });
         if (res.ok) {
           const l = await res.json();
           document.getElementById('tabelaEntreguesBody').innerHTML = l.map(e => `
-            <tr><td>#${e.item_id}</td><td><strong>${e.nome_item}</strong></td><td>${e.retirado_por}</td><td>${e.rm_retirante}</td><td>${e.data_entrega}</td><td><button onclick="desfazerEntrega(${e.item_id})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button></td></tr>
+            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td>${e.cancelada_em ? textoHTML('Revertida por '+e.cancelada_por+' em '+e.cancelada_em) : `<button onclick="desfazerEntrega(${argumentoHTML(e.item_id)}, ${argumentoHTML(e.id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button>`}</td></tr>
           `).join('');
         }
       } catch (e) {}
     }
 
-    async function desfazerEntrega(id) {
+    async function desfazerEntrega(id, recibo) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Reverter Entrega",
-        mensagem: `Deseja reverter a entrega do pertence <strong>#${id}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL no catálogo.</span>`,
+        mensagem: `Deseja reverter a entrega do pertence <strong>#${textoHTML(id)}</strong>?<br><span style="font-size: 11px; color: #8b949e;">O item voltará ao status DISPONÍVEL no catálogo.</span>`,
         icone: "fa-undo",
         corIcone: "#f59e0b",
         textoConfirmar: "Sim, Reverter",
@@ -2563,7 +2499,8 @@
       });
       if (!ok) return;
       try {
-        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders() });
+        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({entrega_id:recibo}) });
+        if (!res.ok) { const d=await res.json(); return mostrarToast(d.message || 'Não foi possível reverter. Atualize o histórico.'); }
         if (res.ok) { mostrarToast("Entrega revertida!"); carregarEntregues(); carregarItensSecretaria(); }
       } catch (e) {}
     }
@@ -2574,7 +2511,7 @@
         if (res.ok) {
           const mural = await res.json();
           document.getElementById('tabelaMuralBody').innerHTML = mural.map(m => `
-            <tr><td><strong>${m.nome_aluno}</strong></td><td>${m.rm_aluno}</td><td>${m.descricao}</td><td>${m.data_registro}</td><td><button onclick="excluirRelatoMural(${m.id})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
+            <tr><td><strong>${textoHTML(m.nome_aluno)}</strong></td><td>${textoHTML(m.rm_aluno)}</td><td>${textoHTML(m.descricao)}</td><td>${textoHTML(m.data_registro)}</td><td><button onclick="excluirRelatoMural(${argumentoHTML(m.id)})" style="background: none; border: none; color: #f87171; cursor: pointer;"><i class="fas fa-trash"></i></button></td></tr>
           `).join('');
         }
       } catch (e) {}
@@ -2583,7 +2520,7 @@
     async function excluirRelatoMural(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Apagar Relato do Mural",
-        mensagem: `Deseja remover o relato <strong>#${id}</strong> do mural de perdidos?`,
+        mensagem: `Deseja remover o relato <strong>#${textoHTML(id)}</strong> do mural de perdidos?`,
         icone: "fa-trash-alt",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Remover",
@@ -2600,7 +2537,7 @@
     async function recusarCadastroAluno(id) {
       const ok = await abrirConfirmacaoModal({
         titulo: "Recusar Item de Aluno",
-        mensagem: `Deseja realmente recusar e descartar o item <strong>#${id}</strong> cadastrado pelo aluno?<br><span style="font-size: 11px; color: #8b949e;">O item será removido das pendências e não entrará no catálogo.</span>`,
+        mensagem: `Deseja realmente recusar e descartar o item <strong>#${textoHTML(id)}</strong> cadastrado pelo aluno?<br><span style="font-size: 11px; color: #8b949e;">O item será removido das pendências e não entrará no catálogo.</span>`,
         icone: "fa-times-circle",
         corIcone: "#ef4444",
         textoConfirmar: "Sim, Recusar",
@@ -2693,22 +2630,22 @@
         const rm = c.rm_aluno;
         const nome = c.nome_aluno || `Aluno RM ${rm}`;
         const inicial = nome.charAt(0).toUpperCase();
-        const isActive = (chatRmAtivo === rm);
+        const isActive = (chatRmAtivo === rm && chatEmailAtivo === (c.email_aluno || null));
         const naoLidas = parseInt(c.nao_lidas || 0);
         const ultimaMsg = c.ultima_mensagem || 'Toque para abrir a conversa';
         const hora = (c.ultima_msg_data || '').split(' ')[1] || (c.ultima_msg_data || '');
 
         return `
-          <div onclick="selecionarConversaAluno('${rm}', '${nome.replace(/'/g, "\\'")}')" class="card-conversa-aluno ${isActive ? 'active' : ''}">
-            <div class="avatar-circulo-chat">${inicial}</div>
+          <div onclick="selecionarConversaAluno(${argumentoHTML(rm)}, ${argumentoHTML(nome)}, ${argumentoHTML(c.email_aluno || null)})" class="card-conversa-aluno ${textoHTML(isActive ? 'active' : '')}">
+            <div class="avatar-circulo-chat">${textoHTML(inicial)}</div>
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <div style="color: #ffffff; font-weight: 700; font-size: 12.5px;" class="truncate">${nome}</div>
-                <div style="font-size: 10px; color: #8b949e; white-space: nowrap;">${hora}</div>
+                <div style="color: #ffffff; font-weight: 700; font-size: 12.5px;" class="truncate">${textoHTML(nome)}</div>
+                <div style="font-size: 10px; color: #8b949e; white-space: nowrap;">${textoHTML(hora)}</div>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-                <div style="font-size: 11px; color: #8b949e;" class="truncate">${ultimaMsg}</div>
-                ${naoLidas > 0 ? `<span style="background: #10b981; color: #ffffff; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800;">${naoLidas}</span>` : ''}
+                <div style="font-size: 11px; color: #8b949e;" class="truncate">${textoHTML(ultimaMsg)}</div>
+                ${naoLidas > 0 ? `<span style="background: #10b981; color: #ffffff; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800;">${textoHTML(naoLidas)}</span>` : ''}
               </div>
             </div>
           </div>
@@ -2720,8 +2657,12 @@
       renderizarListaConversasChat();
     }
 
-    async function selecionarConversaAluno(rm, nome) {
+    async function selecionarConversaAluno(rm, nome, email = null) {
       chatRmAtivo = rm;
+      chatEmailAtivo = email;
+      chatLegadoAtivo = !email;
+      document.getElementById('inputChatMsg').disabled = chatLegadoAtivo;
+      document.getElementById('inputChatMsg').placeholder = chatLegadoAtivo ? 'Histórico sem autoria: somente leitura' : 'Digite uma resposta…';
 
       // No celular: esconde a lista e exibe a conversa
       const painelLista = document.getElementById('chatPainelListaAlunos');
@@ -2733,7 +2674,7 @@
 
       // Atualiza Cabeçalho da Conversa
       document.getElementById('chatNomeAlunoAtivo').innerText = nome;
-      document.getElementById('chatSubinfoAlunoAtivo').innerText = `RM: ${rm} • Aluno ETEC`;
+      document.getElementById('chatSubinfoAlunoAtivo').innerText = `RM: ${rm} • ${email || "Histórico sem autoria — somente leitura"}`;
       document.getElementById('chatAvatarAluno').innerText = nome.charAt(0).toUpperCase();
 
       // Marca visualmente a conversa ativa na lista
@@ -2751,14 +2692,18 @@
         painelLista.classList.remove('hidden-mobile-chat');
         painelMsg.classList.add('hidden-mobile-chat');
       }
-      chatRmAtivo = null;
+      chatRmAtivo = null; chatEmailAtivo = null; chatLegadoAtivo = false;
       carregarConversasChat(false);
     }
 
     async function carregarMensagensConversa(rm, scrollFim = true) {
       if (!rm) return;
+      const email = chatEmailAtivo;
+      const legado = chatLegadoAtivo;
       try {
-        const res = await fetch(`${API_URL}/api/chat/mensagens/${rm}?marcar_lida=true&origem=SECRETARIA`);
+        const caminho = legado ? `/api/chat/legado/${encodeURIComponent(rm)}` : `/api/chat/mensagens/${encodeURIComponent(rm)}?marcar_lida=true&email=${encodeURIComponent(email)}`;
+        const res = await fetch(`${API_URL}${caminho}`, { headers: getAuthHeadersGet() });
+        if (chatRmAtivo !== rm || chatEmailAtivo !== email) return;
         if (res.ok) {
           const msgs = await res.json();
           const box = document.getElementById('chatMensagensContainer');
@@ -2768,9 +2713,9 @@
           }
 
           box.innerHTML = msgs.map(m => `
-            <div class="msg-balao ${m.remetente === 'SECRETARIA' ? 'msg-secretaria' : 'msg-aluno'}">
-              <div style="font-size: 9.5px; opacity: 0.8; margin-bottom: 2px;">${m.remetente === 'SECRETARIA' ? 'Secretaria ETEC' : (m.nome_aluno || 'Aluno')} • ${m.data_envio || ''}</div>
-              <div style="word-break: break-word;">${m.mensagem}</div>
+            <div class="msg-balao ${textoHTML(m.remetente === 'SECRETARIA' ? 'msg-secretaria' : 'msg-aluno')}">
+              <div style="font-size: 9.5px; opacity: 0.8; margin-bottom: 2px;">${textoHTML(m.remetente === 'SECRETARIA' ? 'Secretaria ETEC' : (m.nome_aluno || 'Aluno'))} • ${textoHTML(m.data_envio || '')}</div>
+              <div style="word-break: break-word;">${textoHTML(m.mensagem)}</div>
             </div>
           `).join('');
 
@@ -2785,23 +2730,29 @@
       e.preventDefault();
       const inp = document.getElementById('inputChatMsg');
       const msg = inp.value.trim();
+      if (chatLegadoAtivo) return mostrarToast('Este histórico não tem autoria comprovada e é somente leitura.');
       if (!msg || !chatRmAtivo) {
         if (!chatRmAtivo) abrirAlertaModal({ titulo: "Nenhum Aluno Selecionado", mensagem: "Selecione um aluno na lista para enviar a resposta.", tipo: "aviso" });
         return;
       }
 
+      const destinoEmail = chatEmailAtivo;
+      const destinoRm = chatRmAtivo;
       try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
-            rm: chatRmAtivo,
+            rm: destinoRm,
+            email: destinoEmail,
             nome: 'Secretaria',
             remetente: 'SECRETARIA',
             mensagem: msg
           })
         });
+        if (!res.ok) { const data = await res.json(); throw Error(data.message || 'Não foi possível enviar a mensagem.'); }
         if (res.ok) {
+          if (chatEmailAtivo !== destinoEmail || chatRmAtivo !== destinoRm) return;
           inp.value = '';
           await carregarMensagensConversa(chatRmAtivo, true);
           carregarConversasChat(false);
@@ -3020,22 +2971,22 @@
               const corBadge = top.score >= 70 ? '#10b981' : '#f59e0b';
               const bgBadge = top.score >= 70 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)';
               badgeMatch = `
-                <button onclick="abrirModalComparacaoMatch(${m.id})" style="background: ${bgBadge}; border: 1px solid ${corBadge}; color: ${corBadge}; padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                  <i class="fas fa-magic"></i> ${matchesDeste.length} Match (${top.score}%)
+                <button onclick="abrirModalComparacaoMatch(${argumentoHTML(m.id)})" style="background: ${textoHTML(bgBadge)}; border: 1px solid ${textoHTML(corBadge)}; color: ${textoHTML(corBadge)}; padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                  <i class="fas fa-magic"></i> ${textoHTML(matchesDeste.length)} Match (${textoHTML(top.score)}%)
                 </button>
               `;
             }
 
             return `
               <tr>
-                <td><strong>${m.nome_aluno}</strong></td>
-                <td>${m.rm_aluno}</td>
-                <td><span class="badge-categoria" style="font-size: 10px;">${m.categoria || 'OUTROS'}</span></td>
-                <td style="max-width: 250px; line-height: 1.3;">${m.descricao}</td>
+                <td><strong>${textoHTML(m.nome_aluno)}</strong></td>
+                <td>${textoHTML(m.rm_aluno)}</td>
+                <td><span class="badge-categoria" style="font-size: 10px;">${textoHTML(m.categoria || 'OUTROS')}</span></td>
+                <td style="max-width: 250px; line-height: 1.3;">${textoHTML(m.descricao)}</td>
                 <td>${badgeMatch}</td>
-                <td style="white-space: nowrap; font-size: 11px; color: #8b949e;">${m.data_registro || '-'}</td>
+                <td style="white-space: nowrap; font-size: 11px; color: #8b949e;">${textoHTML(m.data_registro || '-')}</td>
                 <td>
-                  <button onclick="excluirRelatoMural(${m.id})" style="background: none; border: none; color: #f87171; cursor: pointer; padding: 6px;" title="Apagar relato">
+                  <button onclick="excluirRelatoMural(${argumentoHTML(m.id)})" style="background: none; border: none; color: #f87171; cursor: pointer; padding: 6px;" title="Apagar relato">
                     <i class="fas fa-trash"></i>
                   </button>
                 </td>
@@ -3066,11 +3017,11 @@
 
       document.getElementById('smartMatchRelatoBox').innerHTML = `
         <div style="font-size: 11px; color: #a855f7; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Relato Oficial do Aluno</div>
-        <div style="font-size: 13.5px; color: #ffffff; font-weight: 700;">${relato.nome_aluno} <span style="font-size: 12px; color: #8b949e; font-weight: normal;">(RM: ${relato.rm_aluno})</span></div>
+        <div style="font-size: 13.5px; color: #ffffff; font-weight: 700;">${textoHTML(relato.nome_aluno)} <span style="font-size: 12px; color: #8b949e; font-weight: normal;">(RM: ${textoHTML(relato.rm_aluno)})</span></div>
         <div style="font-size: 12px; color: #c9d1d9; margin-top: 4px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px; border: 1px solid #30363d;">
-          "${relato.descricao}"
+          "${textoHTML(relato.descricao)}"
         </div>
-        <div style="font-size: 11px; color: #8b949e; margin-top: 5px;">Categoria: <strong>${relato.categoria}</strong> | Registrado em: ${relato.data_registro}</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 5px;">Categoria: <strong>${textoHTML(relato.categoria)}</strong> | Registrado em: ${textoHTML(relato.data_registro)}</div>
       `;
 
       const container = document.getElementById('smartMatchItensContainer');
@@ -3086,22 +3037,22 @@
           return `
             <div style="background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; display: flex; gap: 12px; align-items: center;">
               <div style="width: 60px; height: 60px; border-radius: 8px; background: #0d1117; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-                ${foto ? `<img src="${foto}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-box text-slate-600"></i>`}
+                ${foto ? `<img src="${imagemHTML(foto)}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-box text-slate-600"></i>`}
               </div>
               <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-                  <div style="font-weight: 700; color: #ffffff; font-size: 13px;" class="truncate">#${item.id} - ${item.nome || item.txt_descricao}</div>
-                  <span style="background: ${bgBadge}; color: ${corBadge}; border: 1px solid ${corBadge}; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap;">
-                    ${m.score}% Compatível
+                  <div style="font-weight: 700; color: #ffffff; font-size: 13px;" class="truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao)}</div>
+                  <span style="background: ${textoHTML(bgBadge)}; color: ${textoHTML(corBadge)}; border: 1px solid ${textoHTML(corBadge)}; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap;">
+                    ${textoHTML(m.score)}% Compatível
                   </span>
                 </div>
-                <div style="font-size: 11px; color: #8b949e; margin-top: 2px;">Local: ${item.txt_local || 'Indefinido'} | Data: ${item.txt_data || '-'}</div>
+                <div style="font-size: 11px; color: #8b949e; margin-top: 2px;">Local: ${textoHTML(item.txt_local || 'Indefinido')} | Data: ${textoHTML(item.txt_data || '-')}</div>
                 <div style="font-size: 10.5px; color: #34d399; margin-top: 4px;">
-                  ${m.motivos.map(mot => `<span style="background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; margin-right: 4px;">✓ ${mot}</span>`).join('')}
+                  ${m.motivos.map(mot => `<span style="background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; margin-right: 4px;">✓ ${textoHTML(mot)}</span>`).join('')}
                 </div>
               </div>
               <div style="flex-shrink: 0;">
-                <button onclick="prepararBaixaPorMatch(${item.id}, '${relato.nome_aluno.replace(/'/g, "\\'")}', '${relato.rm_aluno}')" class="btn-acao" style="background: #10b981; padding: 7px 11px; font-size: 11px;" title="Vincular e Entregar">
+                <button onclick="prepararBaixaPorMatch(${argumentoHTML(item.id)}, ${argumentoHTML(relato.nome_aluno)}, ${argumentoHTML(relato.rm_aluno)})" class="btn-acao" style="background: #10b981; padding: 7px 11px; font-size: 11px;" title="Vincular e Entregar">
                   <i class="fas fa-check"></i> Dar Baixa
                 </button>
               </div>
@@ -3146,7 +3097,7 @@
       } else if (tipo === 'ENTREGAS') {
         subtitulo = "LIVRO OFICIAL DE REGISTRO DE BAIXAS E ENTREGAS AOS ALUNOS";
         try {
-          const res = await fetch(`${API_URL}/api/entregues`, { headers: getAuthHeadersGet() });
+          const res = await fetch(`${API_URL}/api/entregues${document.getElementById('incluirCanceladas')?.checked ? '?incluir_canceladas=true' : ''}`, { headers: getAuthHeadersGet() });
           if (res.ok) itensFiltrados = await res.json();
         } catch (e) {}
       } else if (tipo === 'DOACOES') {
@@ -3161,25 +3112,25 @@
       let linhasTabela = '';
       if (tipo === 'ENTREGAS') {
         linhasTabela = itensFiltrados.map((it, idx) => `
-          <tr style="border-bottom: 1px solid #e5e7eb; ${idx % 2 === 0 ? 'background: #f9fafb;' : ''}">
-            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${it.item_id || it.id || '-'}</td>
-            <td style="padding: 7px 9px; font-weight: bold;">${it.nome_item || it.nome || '-'}</td>
-            <td style="padding: 7px 9px;">${it.retirado_por || '-'}</td>
-            <td style="padding: 7px 9px; font-family: monospace;">${it.rm_retirante || '-'}</td>
-            <td style="padding: 7px 9px;">${it.turma_curso || '-'}</td>
-            <td style="padding: 7px 9px;">${it.data_entrega || '-'}</td>
-            <td style="padding: 7px 9px;">${it.funcionario_responsavel || 'Secretaria'}</td>
+          <tr style="border-bottom: 1px solid #e5e7eb; ${textoHTML(idx % 2 === 0 ? 'background: #f9fafb;' : '')}">
+            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${textoHTML(it.item_id || it.id || '-')}</td>
+            <td style="padding: 7px 9px; font-weight: bold;">${textoHTML(it.nome_item || it.nome || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.retirado_por || '-')}</td>
+            <td style="padding: 7px 9px; font-family: monospace;">${textoHTML(it.rm_retirante || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.turma_curso || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.data_entrega || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.funcionario_responsavel || 'Secretaria')}</td>
           </tr>
         `).join('');
       } else {
         linhasTabela = itensFiltrados.map((it, idx) => `
-          <tr style="border-bottom: 1px solid #e5e7eb; ${idx % 2 === 0 ? 'background: #f9fafb;' : ''}">
-            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${it.id}</td>
-            <td style="padding: 7px 9px; font-weight: bold;">${it.nome || it.txt_descricao || '-'}</td>
-            <td style="padding: 7px 9px;">${it.categoria || 'OUTROS'}</td>
-            <td style="padding: 7px 9px;">${it.txt_local || 'Indefinido'}</td>
-            <td style="padding: 7px 9px;">${it.txt_data || '-'}</td>
-            <td style="padding: 7px 9px; font-weight: bold; font-size: 10px;">${(it.status || 'DISPONÍVEL').toUpperCase()}</td>
+          <tr style="border-bottom: 1px solid #e5e7eb; ${textoHTML(idx % 2 === 0 ? 'background: #f9fafb;' : '')}">
+            <td style="padding: 7px 9px; font-weight: bold; font-family: monospace;">#${textoHTML(it.id)}</td>
+            <td style="padding: 7px 9px; font-weight: bold;">${textoHTML(it.nome || it.txt_descricao || '-')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.categoria || 'OUTROS')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.txt_local || 'Indefinido')}</td>
+            <td style="padding: 7px 9px;">${textoHTML(it.txt_data || '-')}</td>
+            <td style="padding: 7px 9px; font-weight: bold; font-size: 10px;">${textoHTML((it.status || 'DISPONÍVEL').toUpperCase())}</td>
           </tr>
         `).join('');
       }
@@ -3211,7 +3162,7 @@
         <html lang="pt-BR">
         <head>
           <meta charset="UTF-8">
-          <title>${tituloDocumento} - ${protocolo}</title>
+          <title>${textoHTML(tituloDocumento)} - ${textoHTML(protocolo)}</title>
           <style>
             @page { size: A4; margin: 12mm 15mm 15mm 15mm; }
             * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; color: #111827; }
@@ -3249,21 +3200,21 @@
               <p>Núcleo de Gestão Escolar & Secretaria Administrativa</p>
             </div>
             <div style="text-align: right; font-size: 10px; color: #6b7280;">
-              <div><strong>Protocolo:</strong> ${protocolo}</div>
-              <div><strong>Data:</strong> ${dataHora}</div>
+              <div><strong>Protocolo:</strong> ${textoHTML(protocolo)}</div>
+              <div><strong>Data:</strong> ${textoHTML(dataHora)}</div>
             </div>
           </div>
 
           <div style="text-align: center; margin-bottom: 14px;">
-            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: #111827;">${tituloDocumento}</h3>
-            <p style="font-size: 12px; color: #dc2626; font-weight: 700; margin-top: 2px;">${subtitulo}</p>
+            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: #111827;">${textoHTML(tituloDocumento)}</h3>
+            <p style="font-size: 12px; color: #dc2626; font-weight: 700; margin-top: 2px;">${textoHTML(subtitulo)}</p>
           </div>
 
           <div class="meta-box">
             <div><strong>Unidade Escolar:</strong> ETEC Profº José Ignácio Azevedo Filho</div>
             <div><strong>Emissão:</strong> Secretaria Acadêmica / Gestão de Pertences</div>
-            <div><strong>Total de Registros Constantes:</strong> ${itensFiltrados.length} item(ns)</div>
-            <div><strong>Código de Autenticidade:</strong> ${protocolo}</div>
+            <div><strong>Total de Registros Constantes:</strong> ${textoHTML(itensFiltrados.length)} item(ns)</div>
+            <div><strong>Código de Autenticidade:</strong> ${textoHTML(protocolo)}</div>
           </div>
 
           <table class="tabela-relatorio">
@@ -3304,6 +3255,8 @@
       if (!fotosBase64Upload || fotosBase64Upload.length === 0) {
         return alert("Selecione uma foto primeiro.");
       }
+      const fotoAnalisada = fotosBase64Upload[0];
+      ocrRmIdentificado = '';
       const btn = document.getElementById('btnAutoTagIA');
       if (btn) {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando objeto com Inteligência Artificial...';
@@ -3313,27 +3266,25 @@
         const res = await fetch("/api/ia/analisar-imagem", {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ foto: fotosBase64Upload[0] })
+          body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
+        if (envioItemSecretaria || fotosBase64Upload[0] !== fotoAnalisada) return;
         if (!res.ok) throw new Error((data.error && data.error.message) || data.message || `HTTP ${res.status}`);
         if (data.success && data.resultado) {
           const r = data.resultado;
-          if (r.nome) document.getElementById('formItemNome').value = r.nome;
-          if (r.descricao) document.getElementById('formItemDescricao').value = r.descricao;
-          if (r.categoria) {
-            const sel = document.getElementById('formItemCategoria');
-            const alvo = String(r.categoria).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase();
-            for (let opt of sel.options) {
-              const atual = opt.value.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase();
-              if (atual === alvo || atual.includes(alvo) || alvo.includes(atual)) { sel.value = opt.value; break; }
-            }
+          const aplicado = aplicarSugestaoVisual(r, {
+            nome: document.getElementById('formItemNome'),
+            descricao: document.getElementById('formItemDescricao'),
+            categoria: document.getElementById('formItemCategoria')
+          });
+          if (!aplicado) {
+            const statusEl = document.getElementById('formFotosStatus');
+            if (statusEl) statusEl.innerText = r.aviso || 'Não foi possível identificar o objeto. Preencha manualmente.';
+            return;
           }
-          ocrRmIdentificado = r.ocr_rm || '';
-          if (r.cores && r.cores.length) {
-            const descEl = document.getElementById('formItemDescricao');
-            if (descEl && !descEl.value.toLowerCase().includes('cor predominante')) descEl.value += ` Cor predominante: ${r.cores.join(', ')}.`;
-          }
+          if (typeof Rascunhos !== 'undefined') Rascunhos.salvar('secretaria');
+          ocrRmIdentificado = r.ocr_confianca === 'alta' ? (r.ocr_rm || '') : '';
           const aluno = r.aluno_correspondente;
           const statusEl = document.getElementById('formFotosStatus');
           if (statusEl) statusEl.innerText = aluno
@@ -3355,6 +3306,10 @@
     }
 
 </script>
+<script src="visao-formulario.js"></script>
+<script src="professores-secretaria.js"></script>
+<script src="acessibilidade.js"></script>
 </body>
 </html>
+
 

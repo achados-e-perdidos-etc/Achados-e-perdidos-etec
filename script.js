@@ -1,3 +1,4 @@
+const UploadAluno = new UploadFotos('uploadsAluno',()=>SessaoPortal.token());
 const API_URL = "https://etec-achados.up.railway.app";
 let todosItens = [];
 let itemSelecionado = null;
@@ -12,42 +13,13 @@ let chatTimerPolling = null;
 let ultimaQtdMensagens = 0;
 let alunoSessao = null;
 let fotosAlunoSelecionadas = [];
+let loteFotosAluno = 0;
+let preparandoFotosAluno = false;
+let envioCadastroAluno = false;
 
 // ============================================================
 // NOVO: COMPRESSOR INTELIGENTE DE FOTOS NO NAVEGADOR (HTML5 CANVAS)
 // ============================================================
-function comprimirImagem(arquivo, maxDim = 1200, qualidade = 0.75) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                let w = img.width;
-                let h = img.height;
-                if (w > maxDim || h > maxDim) {
-                    if (w > h) {
-                        h = Math.round((h * maxDim) / w);
-                        w = maxDim;
-                    } else {
-                        w = Math.round((w * maxDim) / h);
-                        h = maxDim;
-                    }
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', qualidade));
-            };
-            img.onerror = reject;
-            img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(arquivo);
-    });
-}
-
 // ============================================================
 // DETECÇÃO DE CONEXÃO (ONLINE / OFFLINE)
 // ============================================================
@@ -87,10 +59,12 @@ function tocarSomNotificacao() {
 function solicitarPermissaoNotificacao() {
     if ("Notification" in window) {
         if (Notification.permission === "granted") {
-            mostrarToast("As notificações já estão ativadas!", "success");
+            ativarWebPush();
+            mostrarToast("A permissão para notificações está ativa.", "success");
         } else if (Notification.permission !== "denied") {
             Notification.requestPermission().then(permission => {
-                if (permission === "granted") mostrarToast("Notificações ativadas com sucesso!", "success");
+                if (permission === "granted") mostrarToast("Permissão para notificações concedida.", "success");
+                if (permission === "granted") ativarWebPush();
             });
         }
     } else {
@@ -199,9 +173,15 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
 }
 
 async function checarSessao() {
-    const token = localStorage.getItem('aluno_token');
-    const dados = localStorage.getItem('aluno_dados');
+    const token = SessaoPortal.token();
+    const dados = SessaoPortal.dados();
     
+    if (token && token.startsWith('token_prof_')) {
+        fazerLogoff(false);
+        document.getElementById('loginAlunoScreen').classList.remove('hidden');
+        return;
+    }
+
     if (token && dados) {
         try {
             const res = await fetch(`${API_URL}/api/auth/verificar`, {
@@ -214,8 +194,9 @@ async function checarSessao() {
             }
         } catch (e) {}
 
-        alunoSessao = JSON.parse(dados);
-        ativarWebPush(alunoSessao.rm);
+        alunoSessao = dados;
+        if (typeof CentralAvisos !== "undefined") CentralAvisos.carregar();
+        ativarWebPush();
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Olá, ${alunoSessao.nome.split(' ')[0]}!`;
         
@@ -224,7 +205,7 @@ async function checarSessao() {
         document.getElementById('perfilRM').innerText = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor') ? 'PROFESSOR (Apenas Cadastro)' : (alunoSessao.rm || 'N/A');
 
         // AJUSTES ESPECÍFICOS PARA PROFESSOR:
-        const ehProf = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor');
+        const ehProf = /@(etec|cps)\.sp\.gov\.br$/i.test(alunoSessao.email || '') || alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor';
         const bPerdi = document.getElementById('btnPerdiBanner');
         if (bPerdi) bPerdi.classList.toggle('hidden', ehProf);
         const mMural = document.getElementById('menuBtnMural');
@@ -233,6 +214,7 @@ async function checarSessao() {
             document.getElementById('lblBemVindo').innerText = "Olá, Professor(a)!";
         }
 
+        atualizarAcessoProfessor();
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
         
@@ -240,18 +222,22 @@ async function checarSessao() {
             setTimeout(solicitarPermissaoNotificacao, 3000);
         }
     } else {
+        if (token) SessaoPortal.limpar();
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
 }
 
 function fazerLogoff(recarregar = true) {
-    localStorage.removeItem('aluno_token');
-    localStorage.removeItem('aluno_dados');
+    const limpezaPush = desativarWebPush(SessaoPortal.token());
+    SessaoPortal.limpar();
+    alunoSessao = null;
     if (recarregar) {
-        window.location.reload();
+        return Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])
+            .finally(() => window.location.reload());
     } else {
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
+    return limpezaPush;
 }
 
 function toggleMenuNavegacao() {
@@ -334,6 +320,7 @@ window.addEventListener('click', (e) => {
 });
 
 function alternarTelaAuth(tela) {
+    if (authOcupada) return;
     document.getElementById('formLoginAluno').classList.add('hidden');
     document.getElementById('formCadastroAluno').classList.add('hidden');
     document.getElementById('formRecuperarAluno').classList.add('hidden');
@@ -344,45 +331,9 @@ function alternarTelaAuth(tela) {
 
 async function fazerLoginAluno(e) {
     e.preventDefault();
-    const emailVal = document.getElementById('loginEmailAluno').value.trim().toLowerCase();
-    const senhaVal = document.getElementById('loginSenhaAluno').value.trim().toLowerCase();
-
-    // ATALHO PROFESSOR: se escrever 'professor' em ambos os campos, entra direto!
-    if (emailVal === 'professor' && senhaVal === 'professor') {
-        const btn = document.getElementById('btnAcessoLogin');
-        btn.innerText = "Entrando..."; btn.disabled = true;
-        try {
-            const res = await fetch(API_URL + "/api/auth/login-aluno", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'professor', senha: 'professor' })
-            });
-            const data = await res.json();
-            if (data.success && data.token) {
-                localStorage.setItem('aluno_token', data.token.trim());
-                localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
-                mostrarToast("Bem-vindo(a), Professor(a)!", "success");
-                checarSessao();
-            } else {
-                const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br", role: "professor" };
-                localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
-                localStorage.setItem('aluno_dados', JSON.stringify(profDados));
-                mostrarToast("Bem-vindo(a), Professor(a)!", "success");
-                checarSessao();
-            }
-        } catch {
-            const profDados = { nome: "Professor(a)", rm: "PROFESSOR", email: "professor@cps.sp.gov.br", role: "professor" };
-            localStorage.setItem('aluno_token', 'token_prof_' + Date.now());
-            localStorage.setItem('aluno_dados', JSON.stringify(profDados));
-            mostrarToast("Bem-vindo(a), Professor(a)!", "success");
-            checarSessao();
-        }
-        btn.innerText = "Entrar no Portal"; btn.disabled = false;
-        return;
-    }
-
-    const btn = document.getElementById('btnAcessoLogin');
-    btn.innerText = "Entrando..."; btn.disabled = true;
+    if (!iniciarAnimacaoAuth('login')) return;
+    const lembrar = document.getElementById('lembrarLogin').checked;
+    let sucesso = false;
     try {
         const res = await fetch(API_URL + "/api/auth/login-aluno", {
             method: 'POST', 
@@ -393,22 +344,23 @@ async function fazerLoginAluno(e) {
             })
         });
         const data = await res.json();
-        if (data.success && data.token) {
-            localStorage.setItem('aluno_token', data.token.trim());
-            localStorage.setItem('aluno_dados', JSON.stringify(data.aluno));
-            checarSessao();
+        if (res.ok && data.success && data.token) {
+            SessaoPortal.salvar(data.token, data.aluno, lembrar);
+            document.getElementById('loginSenhaAluno').value = '';
+            await confirmarAnimacaoAuth('login');
+            await checarSessao();
+            sucesso = true;
         } else {
             mostrarToast(data.message || "Erro no login.", "error");
         }
     } catch { 
         mostrarToast("Erro ao conectar com o servidor.", "error"); 
-    }
-    btn.innerText = "Entrar no Portal"; btn.disabled = false;
+    } finally { encerrarAnimacaoAuth(sucesso); }
 }
 
 async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const email = document.getElementById(idEmail).value.trim();
-    if (!email.endsWith("@aluno.cps.sp.gov.br")) return mostrarToast("Use um e-mail @aluno.cps.sp.gov.br", "error");
+    if (!/^[A-Z0-9._%+-]+@(aluno\.cps|cps|etec)\.sp\.gov\.br$/i.test(email)) return mostrarToast("Use seu e-mail institucional CPS ou ETEC.", "error");
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
@@ -429,6 +381,9 @@ async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
 
 async function confirmarCadastro(e) {
     e.preventDefault();
+    if (!iniciarAnimacaoAuth('cadastro')) return;
+    const lembrar = document.getElementById('lembrarCadastro').checked;
+    let sucesso = false;
     const payload = { 
         email: document.getElementById('cadEmailAluno').value.trim(), 
         codigo: document.getElementById('cadCodigo').value.trim(), 
@@ -443,13 +398,16 @@ async function confirmarCadastro(e) {
             body: JSON.stringify(payload) 
         });
         const data = await res.json();
-        if (data.success && data.token) {
-            localStorage.setItem('aluno_token', data.token.trim()); 
-            localStorage.setItem('aluno_dados', JSON.stringify(data.aluno)); 
+        if (res.ok && data.success && data.token) {
+            SessaoPortal.salvar(data.token, data.aluno, lembrar);
+            document.getElementById('cadSenha').value = '';
+            await confirmarAnimacaoAuth('cadastro');
             mostrarToast("Conta criada com sucesso!", "success");
-            checarSessao();
+            await checarSessao();
+            sucesso = true;
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro ao finalizar cadastro.", "error"); }
+    finally { encerrarAnimacaoAuth(sucesso); }
 }
 
 async function confirmarRedefinicao(e) {
@@ -481,10 +439,11 @@ function mostrarToast(mensagem, tipo = 'info') {
     
     t.className = `glass-panel text-white px-4 py-3 rounded-2xl flex items-center gap-3 toast-enter pointer-events-auto shadow-2xl border border-white/10 min-w-[280px] max-w-sm`;
     t.innerHTML = `
-        <i class="fas ${icone} ${corIcone} text-base shrink-0"></i>
-        <p class="text-xs font-semibold flex-grow leading-snug">${mensagem}</p>
+        <i class="fas ${textoHTML(icone)} ${textoHTML(corIcone)} text-base shrink-0"></i>
+        <p class="text-xs font-semibold flex-grow leading-snug">${textoHTML(mensagem)}</p>
         <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white text-xs"><i class="fas fa-times"></i></button>
     `;
+    t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
     c.appendChild(t); 
     setTimeout(() => t.remove(), 4200);
 }
@@ -497,7 +456,9 @@ function fecharZoomImagem(e) {
     if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect(); 
 }
 function abrirZoomImagem(src) { 
-    document.getElementById('imgZoomConteudo').src = src; 
+    const url = urlImagemSegura(src);
+    if (!url) return;
+    document.getElementById('imgZoomConteudo').src = url;
     document.getElementById('modalZoomImagem').classList.add('ativo'); 
     document.body.style.overflow = 'hidden'; 
 }
@@ -508,12 +469,14 @@ function mudarAba(aba) {
     document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
     document.getElementById('meusItensScreen').classList.toggle('hidden', aba !== 'meusItens');
     document.getElementById('detailScreen').classList.add('hidden');
-    if (aba === 'mural') carregarMuralPublico();
+    if (aba === 'mural') { carregarMuralPublico(); if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('mural'); }
 }
 
 async function abrirPainelMeusItens() {
     mudarAba('meusItens');
+    if (typeof MeusCadastros !== 'undefined') MeusCadastros.carregar();
     if (!alunoSessao) return;
+    const headers = { 'Authorization': `Bearer ${SessaoPortal.token() || ''}` };
 
     const listaSol = document.getElementById('listaMinhasSolicitacoes');
     const listaRel = document.getElementById('listaMeusRelatosMural');
@@ -522,10 +485,10 @@ async function abrirPainelMeusItens() {
     listaRel.innerHTML = `<p class="text-xs text-slate-500 italic">Buscando relatos...</p>`;
 
     try {
-        const resItens = await fetch(`${API_URL}/api/itens`);
+        const resItens = await fetch(`${API_URL}/api/itens/meus`, { headers });
         if (resItens.ok) {
             const itens = await resItens.json();
-            const meus = itens.filter(i => i.rm_aluno === alunoSessao.rm || i.solicitado_por === alunoSessao.nome);
+            const meus = itens;
             
             if (meus.length > 0) {
                 listaSol.innerHTML = '';
@@ -534,16 +497,16 @@ async function abrirPainelMeusItens() {
                     listaSol.innerHTML += `
                         <div class="glass-panel rounded-2xl p-4 flex justify-between items-center gap-3 border border-white/5">
                             <div>
-                                <p class="text-xs font-bold text-white">${i.nome || i.txt_descricao}</p>
-                                <p class="text-[10px] text-slate-400 mt-0.5">Status: <span class="font-bold text-amber-400 uppercase">${st}</span></p>
+                                <p class="text-xs font-bold text-white">${textoHTML(i.nome || i.txt_descricao)}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Status: <span class="font-bold text-amber-400 uppercase">${textoHTML(st)}</span></p>
                             </div>
-                            <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")})' class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition">VER</button>
+                            <button onclick="abrirDetalhes(${argumentoHTML(i)})" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition">VER</button>
                         </div>`;
                 });
             } else listaSol.innerHTML = `<p class="text-xs text-slate-500 italic">Você ainda não solicitou nenhum item.</p>`;
         }
 
-        const resMural = await fetch(`${API_URL}/api/mural/aluno/${alunoSessao.rm}`);
+        const resMural = await fetch(`${API_URL}/api/mural/aluno/${encodeURIComponent(alunoSessao.rm)}`, { headers });
         if (resMural.ok) {
             const relatos = await resMural.json();
             if (relatos.length > 0) {
@@ -565,9 +528,9 @@ async function abrirPainelMeusItens() {
                         htmlMatchBadge = `
                             <div class="mt-2.5 pt-2.5 border-t border-white/5 flex items-center justify-between">
                                 <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
-                                    <i class="fas fa-magic"></i> Encontramos item compatível (${top.score}%)
+                                    <i class="fas fa-magic"></i> Encontramos item compatível (${textoHTML(top.score)}%)
                                 </span>
-                                <button onclick='abrirDetalhes(${JSON.stringify(top.item).replace(/'/g, "&apos;")})' class="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 transition">
+                                <button onclick="abrirDetalhes(${argumentoHTML(top.item)})" class="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 transition">
                                     Ver Objeto
                                 </button>
                             </div>
@@ -578,8 +541,8 @@ async function abrirPainelMeusItens() {
                         <div class="glass-panel rounded-2xl p-4 border border-white/5">
                             <div class="flex justify-between items-center gap-3">
                                 <div>
-                                    <p class="text-xs font-bold text-white"><span class="text-amber-400">[${r.categoria}]</span> ${r.descricao}</p>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Data do registro: ${r.data || 'Recente'}</p>
+                                    <p class="text-xs font-bold text-white"><span class="text-amber-400">[${textoHTML(r.categoria)}]</span> ${textoHTML(r.descricao)}</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Data do registro: ${textoHTML(r.data || 'Recente')}</p>
                                 </div>
                                 <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider shrink-0">ATIVO</span>
                             </div>
@@ -632,19 +595,20 @@ async function carregarCategoriasDinamicamente() {
                 containerChips.innerHTML = '';
                 cats.forEach(c => {
                     containerChips.innerHTML += `
-                        <button id="chipCat_${c.nome}" onclick="selecionarFiltroCategoria('${c.nome}', '${c.nome}')" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white/5 text-slate-300 border-white/10 hover:bg-white/10">
-                            ${c.nome}
+                        <button id="chipCat_${textoHTML(c.nome)}" onclick="selecionarFiltroCategoria(${argumentoHTML(c.nome)}, ${argumentoHTML(c.nome)})" class="category-chip px-3.5 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white/5 text-slate-300 border-white/10 hover:bg-white/10">
+                            ${textoHTML(c.nome)}
                         </button>`;
                 });
             }
             if (selectMural) {
                 selectMural.innerHTML = '';
-                cats.forEach(c => { selectMural.innerHTML += `<option value="${c.nome}">${c.nome}</option>`; });
+                cats.forEach(c => { selectMural.innerHTML += `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`; });
             }
             if (selectAlunoCad) {
                 selectAlunoCad.innerHTML = '';
-                cats.forEach(c => { selectAlunoCad.innerHTML += `<option value="${c.nome}">${c.nome}</option>`; });
+                cats.forEach(c => { selectAlunoCad.innerHTML += `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`; });
             }
+            if (typeof Rascunhos !== 'undefined') { Rascunhos.restaurar('mural'); Rascunhos.restaurar('encontrado'); }
         }
     } catch (e) {}
 }
@@ -719,27 +683,27 @@ function renderizarItens() {
         }
 
         grid.innerHTML += `
-            <div onclick='abrirDetalhes(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="interactive-card glass-panel rounded-3xl p-4 cursor-pointer flex flex-col justify-between group border border-white/10">
+            <div onclick="abrirDetalhes(${argumentoHTML(item)})" class="interactive-card glass-panel rounded-3xl p-4 cursor-pointer flex flex-col justify-between group border border-white/10">
                 <div>
                     <div class="relative w-full h-44 rounded-2xl overflow-hidden mb-3.5 bg-black/40 border border-white/5">
-                        ${imagemSrc ? `<img src="${imagemSrc}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex flex-col justify-center items-center text-slate-600"><i class="fas fa-box text-3xl mb-1"></i><span class="text-[10px] font-bold">Sem imagem</span></div>`}
+                        ${imagemSrc ? `<img src="${imagemHTML(imagemSrc)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex flex-col justify-center items-center text-slate-600"><i class="fas fa-box text-3xl mb-1"></i><span class="text-[10px] font-bold">Sem imagem</span></div>`}
                         <div class="absolute top-2.5 left-2.5">
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/10 shadow-sm">${item.categoria}</span>
+                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/10 shadow-sm">${textoHTML(item.categoria)}</span>
                         </div>
                         <div class="absolute top-2.5 right-2.5">
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border shadow-sm ${badgeCor}">
-                                ${st}
+                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border shadow-sm ${textoHTML(badgeCor)}">
+                                ${textoHTML(st)}
                             </span>
                         </div>
-                        ${fotosArray.length > 1 ? `<div class="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md border border-white/10"><i class="fas fa-images mr-1"></i>${fotosArray.length}</div>` : ''}
+                        ${fotosArray.length > 1 ? `<div class="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md border border-white/10"><i class="fas fa-images mr-1"></i>${textoHTML(fotosArray.length)}</div>` : ''}
                     </div>
 
-                    <h4 class="font-extrabold text-sm text-white truncate tracking-tight">${item.nome || item.txt_descricao}</h4>
-                    <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-snug">${item.txt_descricao}</p>
+                    <h4 class="font-extrabold text-sm text-white truncate tracking-tight">${textoHTML(item.nome || item.txt_descricao)}</h4>
+                    <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-snug">${textoHTML(item.txt_descricao)}</p>
                 </div>
 
                 <div class="pt-3 mt-3 border-t border-white/5 flex justify-between items-center text-[11px] text-slate-400">
-                    <span class="truncate max-w-[150px]"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${item.txt_local}</span>
+                    <span class="truncate max-w-[150px]"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${textoHTML(item.txt_local)}</span>
                     <span class="font-bold text-slate-300 flex items-center gap-1">Ver <i class="fas fa-chevron-right text-[9px] text-red-500"></i></span>
                 </div>
             </div>
@@ -792,7 +756,7 @@ function abrirDetalhes(item) {
     if(fotosAtuais.length > 0) {
         document.getElementById('detailPlaceholder').classList.add('hidden');
         fotosAtuais.forEach(f => {
-            cont.innerHTML += `<div class="w-full h-full flex-shrink-0 snap-center flex justify-center items-center p-2"><img src="${f}" onclick="abrirZoomImagem('${f}')" class="max-h-full max-w-full object-contain rounded-xl cursor-zoom-in"></div>`;
+            cont.innerHTML += `<div class="w-full h-full flex-shrink-0 snap-center flex justify-center items-center p-2"><img src="${imagemHTML(f)}" onclick="abrirZoomImagem(${argumentoHTML(urlImagemSegura(f))})" class="max-h-full max-w-full object-contain rounded-xl cursor-zoom-in"></div>`;
         });
         if (fotosAtuais.length > 1) {
             counterEl.classList.remove('hidden');
@@ -835,7 +799,7 @@ function navegarFotos(dir) {
     const c = document.getElementById('carouselContainer'); 
     if(fotosAtuais.length > 1) { 
         fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; 
-        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: 'smooth' }); 
+        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
     } 
 }
@@ -854,19 +818,14 @@ async function enviarNovo() {
     const btn = document.getElementById('btnNovo'); 
     btn.disabled = true; btn.innerText = "Processando...";
     try {
-        const token = localStorage.getItem('aluno_token');
+        const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/solicitar`, { 
             method: 'POST', 
             headers: { 
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             }, 
-            body: JSON.stringify({ 
-                id: itemSelecionado.id, 
-                nome: alunoSessao.nome, 
-                rm: alunoSessao.rm, 
-                email: alunoSessao.email 
-            }) 
+            body: JSON.stringify({ id: itemSelecionado.id })
         });
         const data = await res.json();
         if(res.ok && data.success) { 
@@ -887,7 +846,7 @@ async function enviarAvisoMural(e) {
     const btn = document.getElementById('btnPublicarMural'); 
     btn.disabled = true;
     try {
-        const token = localStorage.getItem('aluno_token');
+        const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/mural`, { 
             method: 'POST', 
             headers: { 
@@ -895,15 +854,13 @@ async function enviarAvisoMural(e) {
                 'Authorization': `Bearer ${token}` 
             }, 
             body: JSON.stringify({ 
-                nome: alunoSessao.nome, 
-                rm: alunoSessao.rm, 
-                email: alunoSessao.email, 
                 categoria: document.getElementById('muralCategoria').value, 
                 descricao: document.getElementById('muralDescricao').value.trim() 
             }) 
         });
         const data = await res.json();
         if (res.ok && data.success) { 
+            if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('mural');
             document.getElementById('muralDescricao').value = ''; 
             if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
                 dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
@@ -931,11 +888,11 @@ async function carregarMuralPublico() {
             container.innerHTML = mural.map(m => `
                 <div class="glass-panel rounded-2xl p-4 border border-white/5 space-y-2">
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">${m.categoria}</span>
-                        <span class="text-[10px] text-slate-500">${m.data_registro || ''}</span>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">${textoHTML(m.categoria)}</span>
+                        <span class="text-[10px] text-slate-500">${textoHTML(m.data_registro || '')}</span>
                     </div>
-                    <p class="text-xs text-slate-200 font-medium">"${m.descricao}"</p>
-                    <p class="text-[10px] text-slate-400 font-bold"><i class="fas fa-user text-slate-500 mr-1"></i>${m.nome_aluno}</p>
+                    <p class="text-xs text-slate-200 font-medium">"${textoHTML(m.descricao)}"</p>
+                    <p class="text-[10px] text-slate-400 font-bold"><i class="fas fa-user text-slate-500 mr-1"></i>${textoHTML(m.nome_aluno)}</p>
                 </div>
             `).join('');
         }
@@ -949,10 +906,10 @@ function exibirMatchesImediatos(itens) {
         lst.innerHTML += `
             <div class="glass-panel p-3 rounded-2xl flex justify-between items-center gap-3 border border-white/5">
                 <div>
-                    <p class="text-xs font-bold text-white">${i.nome || i.txt_descricao}</p>
-                    <span class="text-[9px] uppercase font-bold text-emerald-400">${i.categoria}</span>
+                    <p class="text-xs font-bold text-white">${textoHTML(i.nome || i.txt_descricao)}</p>
+                    <span class="text-[9px] uppercase font-bold text-emerald-400">${textoHTML(i.categoria)}</span>
                 </div>
-                <button onclick='abrirDetalhes(${JSON.stringify(i).replace(/'/g, "&apos;")}); document.getElementById("modalMatchImediato").classList.add("hidden");' class="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs">VER</button>
+                <button onclick="abrirDetalhes(${argumentoHTML(i)}); document.getElementById('modalMatchImediato').classList.add('hidden');" class="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs">VER</button>
             </div>`;
     });
     document.getElementById('modalMatchImediato').classList.remove('hidden');
@@ -1003,7 +960,9 @@ function abrirChatComItem() {
 async function atualizarMensagensChat() {
     if(!alunoSessao) return;
     try {
-        const res = await fetch(`${API_URL}/api/chat/mensagens/${alunoSessao.rm}?marcar_lida=true&origem=ALUNO`);
+        const res = await fetch(`${API_URL}/api/chat/mensagens/${encodeURIComponent(alunoSessao.rm)}?marcar_lida=true`, {
+            headers: { 'Authorization': `Bearer ${SessaoPortal.token() || ''}` }
+        });
         if(!res.ok) return;
         const msgs = await res.json();
         const c = document.getElementById('chatMensagens');
@@ -1022,11 +981,11 @@ async function atualizarMensagensChat() {
             msgs.forEach(m => { 
                 const eu = m.remetente === 'ALUNO'; 
                 c.innerHTML += `
-                    <div class="flex w-full ${eu ? 'justify-end' : 'justify-start'}">
-                        <div class="flex items-end gap-2 max-w-[85%] ${eu ? 'flex-row-reverse' : 'flex-row'}">
+                    <div class="flex w-full ${textoHTML(eu ? 'justify-end' : 'justify-start')}">
+                        <div class="flex items-end gap-2 max-w-[85%] ${textoHTML(eu ? 'flex-row-reverse' : 'flex-row')}">
                             ${!eu ? `<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 shadow-md text-white"><i class="fas fa-shield-alt text-[10px]"></i></div>` : ''}
-                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${eu ? 'rounded-tr-sm bg-gradient-to-r from-red-600 to-rose-600 text-white' : 'rounded-tl-sm border border-white/10 bg-[#161c28] text-slate-200'}">
-                                ${m.mensagem}
+                            <div class="rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${textoHTML(eu ? 'rounded-tr-sm bg-gradient-to-r from-red-600 to-rose-600 text-white' : 'rounded-tl-sm border border-white/10 bg-[#161c28] text-slate-200')}">
+                                ${textoHTML(m.mensagem)}
                             </div>
                         </div>
                     </div>`; 
@@ -1043,7 +1002,7 @@ async function enviarMensagemChat(e) {
     try {
         const res = await fetch(`${API_URL}/api/chat/enviar`, { 
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SessaoPortal.token() || ''}` },
             body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt }) 
         });
         if(res.ok) {
@@ -1054,7 +1013,14 @@ async function enviarMensagemChat(e) {
 }
 
 function abrirModalCadastrarAluno() {
-    fotosAlunoSelecionadas = [];
+    if (envioCadastroAluno) return;
+    loteFotosAluno++; preparandoFotosAluno = false;
+    document.getElementById('alunoItemFoto').disabled = false;
+    document.getElementById('alunoItemFoto').value = '';
+    document.getElementById('btnSalvarAlunoItem').disabled = false;
+    document.getElementById('gridPreviewAluno').inert = false;
+    ocultarEstadoFotos('statusCompressaoFotos');
+    document.getElementById('btnAutoPreencherIAAluno').disabled = false;
     renderizarGridPreviewAluno();
         const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
         if (btnIAAluno) {
@@ -1064,47 +1030,50 @@ function abrirModalCadastrarAluno() {
     const badge = document.getElementById('statusCompressaoFotos');
     if (badge) badge.classList.add('hidden');
     document.getElementById('modalCadastrarAluno').classList.remove('hidden');
+    if (typeof Rascunhos !== 'undefined') Rascunhos.restaurar('encontrado');
 }
 
 // ATUALIZADO: COMPRESSÃO AUTOMÁTICA DE IMAGENS DO CELULAR
 async function prepararFotosAluno(input) {
-    if (input.files && input.files.length > 0) {
-        const badge = document.getElementById('statusCompressaoFotos');
-        if (badge) {
-            badge.innerText = "Comprimindo fotos...";
-            badge.className = "text-[10px] text-amber-400 font-bold";
-            badge.classList.remove('hidden');
-        }
-
-        const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
-        for (const file of arquivos) {
+    if (envioCadastroAluno || !input.files?.length) return;
+    const lote = ++loteFotosAluno;
+    const arquivos = Array.from(input.files).slice(0, 4 - fotosAlunoSelecionadas.length);
+    if (!arquivos.length) {
+        mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'Limite de 4 fotos. Remova uma antes de adicionar outra.');
+        input.value = ''; return;
+    }
+    preparandoFotosAluno = true; input.disabled = true;
+    document.getElementById('btnSalvarAlunoItem').disabled = true;
+    document.getElementById('btnAutoPreencherIAAluno').disabled = true;
+    document.getElementById('gridPreviewAluno').inert = true;
+    let falhas = 0;
+    try {
+        for (let i = 0; i < arquivos.length; i++) {
+            mostrarEstadoFotos('statusCompressaoFotos', 'preparando', `Preparando foto ${i + 1} de ${arquivos.length}…`);
             try {
-                // Comprime a foto para no máximo 1200px e qualidade 75%
-                const fotoComprimida = await comprimirImagem(file, 1200, 0.75);
-                if (fotosAlunoSelecionadas.length < 4) {
-                    fotosAlunoSelecionadas.push(fotoComprimida);
-                }
-            } catch (err) {
-                console.warn("Erro ao comprimir, usando original:", err);
-            }
+                const foto = await comprimirImagem(arquivos[i]);
+                if (lote !== loteFotosAluno) return;
+                fotosAlunoSelecionadas.push(foto);
+            } catch (error) { falhas++; }
+            if (lote !== loteFotosAluno) return;
         }
-
         renderizarGridPreviewAluno();
-        const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
-        if (btnIAAluno) {
-            if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
-            else btnIAAluno.classList.add('hidden');
-        }
-        input.value = '';
-
-        if (badge) {
-            badge.innerText = "✓ Fotos otimizadas";
-            badge.className = "text-[10px] text-emerald-400 font-bold";
+        document.getElementById('btnAutoPreencherIAAluno').classList.toggle('hidden', !fotosAlunoSelecionadas.length);
+        mostrarEstadoFotos('statusCompressaoFotos', falhas ? 'erro' : 'prontas', falhas
+            ? `${falhas} foto(s) não puderam ser abertas. As demais foram preservadas; tente selecionar novamente.`
+            : `${fotosAlunoSelecionadas.length} foto(s) prontas. O envio acontece ao salvar o item.`);
+    } finally {
+        if (lote === loteFotosAluno) {
+            preparandoFotosAluno = false; input.disabled = false; input.value = '';
+            document.getElementById('btnSalvarAlunoItem').disabled = false;
+            document.getElementById('btnAutoPreencherIAAluno').disabled = false;
+            document.getElementById('gridPreviewAluno').inert = false;
         }
     }
 }
 
 function renderizarGridPreviewAluno() {
+    UploadAluno.mostrar(fotosAlunoSelecionadas);
     const container = document.getElementById('gridPreviewAluno');
     container.innerHTML = '';
     if (fotosAlunoSelecionadas.length > 0) {
@@ -1112,8 +1081,8 @@ function renderizarGridPreviewAluno() {
         fotosAlunoSelecionadas.forEach((f, i) => {
             container.innerHTML += `
                 <div class="relative w-20 h-20 shrink-0">
-                    <img src="${f}" class="w-full h-full object-cover rounded-xl border border-white/10">
-                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${i}, 1); renderizarGridPreviewAluno();
+                    <img src="${imagemHTML(f)}" class="w-full h-full object-cover rounded-xl border border-white/10">
+                    <button type="button" onclick="fotosAlunoSelecionadas.splice(${textoHTML(i)}, 1); renderizarGridPreviewAluno();
         const btnIAAluno = document.getElementById('btnAutoPreencherIAAluno');
         if (btnIAAluno) {
             if (fotosAlunoSelecionadas && fotosAlunoSelecionadas.length > 0) btnIAAluno.classList.remove('hidden');
@@ -1126,6 +1095,13 @@ function renderizarGridPreviewAluno() {
 
 async function enviarCadastroAluno(e) {
     e.preventDefault();
+    if (envioCadastroAluno) return;
+    if (preparandoFotosAluno) return mostrarToast('Aguarde a preparação das fotos.', 'info');
+    envioCadastroAluno = true;
+    document.getElementById('alunoItemFoto').disabled = true;
+    document.getElementById('gridPreviewAluno').inert = true;
+    document.getElementById('btnAutoPreencherIAAluno').disabled = true;
+    mostrarEstadoFotos('statusCompressaoFotos', 'enviando', fotosAlunoSelecionadas.length ? 'Enviando fotos e salvando o item…' : 'Salvando o item…');
     const btn = document.getElementById('btnSalvarAlunoItem');
     btn.innerText = "Enviando..."; btn.disabled = true;
 
@@ -1135,13 +1111,14 @@ async function enviarCadastroAluno(e) {
         categoria: document.getElementById('alunoItemCat').value,
         local: document.getElementById('alunoItemLocal').value.trim(),
         data: new Date().toLocaleDateString('pt-BR'),
-        rm: alunoSessao.rm,
         fotos: fotosAlunoSelecionadas,
         foto: fotosAlunoSelecionadas[0] || ""
     };
 
     try {
-        const token = localStorage.getItem('aluno_token');
+        payload.fotos = await UploadAluno.enviarTodas(fotosAlunoSelecionadas);
+        payload.foto = payload.fotos[0] || '';
+        const token = SessaoPortal.token();
         const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
             method: 'POST', 
             headers: { 
@@ -1151,13 +1128,29 @@ async function enviarCadastroAluno(e) {
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) {
-            mostrarToast("Objeto enviado para moderação da secretaria!", "success");
+        if (res.ok && data.success) {
+            mostrarEstadoFotos('statusCompressaoFotos', 'sucesso', 'Envio concluído!');
+            mostrarToast(fotosAlunoSelecionadas.length ? "Fotos enviadas! Item aguardando moderação." : "Objeto enviado para moderação da secretaria!", "success");
             document.getElementById('modalCadastrarAluno').classList.add('hidden');
+            if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('encontrado');
+            UploadAluno.limpar();
+            fotosAlunoSelecionadas = [];
+            renderizarGridPreviewAluno();
             e.target.reset();
-        } else mostrarToast(data.message, "error");
-    } catch { mostrarToast("Erro ao conectar.", "error"); }
-    btn.innerText = "Enviar para Moderação da Secretaria"; btn.disabled = false;
+        } else {
+            mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'O envio não foi concluído. Suas fotos foram mantidas para tentar novamente.');
+            mostrarToast(data.message || 'Não foi possível salvar.', 'error');
+        }
+    } catch {
+        mostrarEstadoFotos('statusCompressaoFotos', 'erro', 'Falha de conexão. Suas fotos foram mantidas para tentar novamente.');
+        mostrarToast('Erro ao conectar.', 'error');
+    } finally {
+        envioCadastroAluno = false;
+        document.getElementById('alunoItemFoto').disabled = false;
+        document.getElementById('gridPreviewAluno').inert = false;
+        document.getElementById('btnAutoPreencherIAAluno').disabled = false;
+        btn.innerText = 'Enviar para Moderação da Secretaria'; btn.disabled = false;
+    }
 }
 
 window.onload = () => { 
@@ -1201,55 +1194,6 @@ window.onload = () => {
 
 
 // ==============================================================================
-// FASE 2: WEB PUSH NOTIFICATIONS NATIVAS (SERVICE WORKER & VAPID)
-// ==============================================================================
-async function ativarWebPush(rmAluno) {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !rmAluno || rmAluno === 'PENDENTE') return;
-    try {
-        const reg = await navigator.serviceWorker.ready;
-        const subExistente = await reg.pushManager.getSubscription();
-        if (subExistente) {
-            enviarSubscricaoAoBackend(rmAluno, subExistente);
-            return;
-        }
-
-        const keyRes = await fetch(API_URL + "/api/push/public-key");
-        const keyData = await keyRes.json();
-        if (!keyData.success || !keyData.publicKey) return;
-
-        const sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
-        });
-        enviarSubscricaoAoBackend(rmAluno, sub);
-    } catch (e) {
-        console.warn("[Web Push] Aviso na subscrição push:", e);
-    }
-}
-
-async function enviarSubscricaoAoBackend(rm, sub) {
-    try {
-        await fetch(API_URL + "/api/push/subscribe", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rm: rm, subscription: sub })
-        });
-    } catch (e) {}
-}
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
-
-// ==============================================================================
 // REFRESH INTELIGENTE DO PORTAL DO ALUNO (SEM RECARREGAR PÁGINA E SEM SPLASH)
 // ==============================================================================
 async function atualizarPortalAluno() {
@@ -1284,6 +1228,7 @@ async function analisarFotoAlunoComIA() {
     if (!fotosAlunoSelecionadas || fotosAlunoSelecionadas.length === 0) {
         return mostrarToast("Selecione uma foto primeiro.", "info");
     }
+    const fotoAnalisada = fotosAlunoSelecionadas[0];
     const btn = document.getElementById('btnAutoPreencherIAAluno');
     if (btn) {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Analisando com IA...';
@@ -1294,26 +1239,20 @@ async function analisarFotoAlunoComIA() {
         const res = await fetch(API_URL + "/api/ia/analisar-imagem", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ foto: fotosAlunoSelecionadas[0] })
+            body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
-        if (data.success && data.resultado) {
+        if (envioCadastroAluno || fotosAlunoSelecionadas[0] !== fotoAnalisada) return;
+        if (res.ok && data.success && data.resultado) {
             const r = data.resultado;
-            const inputNome = document.getElementById('alunoItemNome');
-            const inputDesc = document.getElementById('alunoItemDesc');
-            const selectCat = document.getElementById('alunoItemCat');
-
-            if (inputNome && r.nome) inputNome.value = r.nome;
-            if (inputDesc && r.descricao) inputDesc.value = r.descricao;
-            if (selectCat && r.categoria) {
-                for (let opt of selectCat.options) {
-                    if (opt.value.toUpperCase() === r.categoria.toUpperCase()) {
-                        selectCat.value = opt.value;
-                        break;
-                    }
-                }
-            }
-            mostrarToast("Campos preenchidos com IA!", "success");
+            const aplicado = aplicarSugestaoVisual(r, {
+                nome: document.getElementById('alunoItemNome'),
+                descricao: document.getElementById('alunoItemDesc'),
+                categoria: document.getElementById('alunoItemCat')
+            });
+            if (aplicado && typeof Rascunhos !== 'undefined') Rascunhos.salvar('encontrado');
+            mostrarToast(aplicado ? 'Sugestões preenchidas. Confira a foto antes de salvar.' :
+                (r.aviso || 'Não foi possível identificar o objeto. Preencha os campos manualmente.'), aplicado ? 'success' : 'info');
         } else {
             mostrarToast(data.message || "Não foi possível analisar os detalhes.", "error");
         }
@@ -1326,3 +1265,4 @@ async function analisarFotoAlunoComIA() {
         }
     }
 }
+
