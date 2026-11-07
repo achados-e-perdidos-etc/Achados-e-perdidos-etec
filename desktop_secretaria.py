@@ -1,5 +1,8 @@
 from desktop_tasks import Trabalho, TarefasDesktop, assincrono
 from desktop_moderacao import ModeracaoDesktop
+from desktop_ferramentas import FerramentasDesktop,baixar_foto_original
+from desktop_formulario import FormularioDesktop
+from utils.ferramentas import filtrar_itens
 from urllib.parse import urlencode, quote
 from utils.exportacao import salvar_csv
 from utils.comprovantes import abrir_impressao_desktop
@@ -91,7 +94,7 @@ def baixar_miniatura(url):
         return None
 
 
-class SecretariaApp(ModeracaoDesktop):
+class SecretariaApp(ModeracaoDesktop,FerramentasDesktop,FormularioDesktop):
     def __init__(self, root):
         self.root = root
         self.root.title("ETEC - Painel da Secretaria")
@@ -100,6 +103,7 @@ class SecretariaApp(ModeracaoDesktop):
         
         self.itens_atuais = []
         self.categorias_atuais = []
+        self.uploads_abertos=[];self.cameras=[];self.rascunho_item=None
         self.perfil_painel = {}
         self.impressoes_temporarias=[]
         self.chat_timer = None
@@ -146,6 +150,7 @@ class SecretariaApp(ModeracaoDesktop):
         TOKEN_SECRETARIA = None
         self.tarefas.invalidar()
         self.limpar_impressoes()
+        self.limpar_recursos_paridade()
         if self.chat_timer:
             self.root.after_cancel(self.chat_timer);self.chat_timer=None
         for widget in list(self.root.winfo_children()):
@@ -159,7 +164,7 @@ class SecretariaApp(ModeracaoDesktop):
         global TOKEN_SECRETARIA
         TOKEN_SECRETARIA = None
         if self.chat_timer:self.root.after_cancel(self.chat_timer)
-        self.tarefas.fechar();self.limpar_impressoes();self.root.destroy()
+        self.tarefas.fechar();self.limpar_impressoes();self.limpar_recursos_paridade();self.root.destroy()
 
     def chamar_api(self,metodo,caminho,**kwargs):
         return requisicao_desktop(metodo,API_URL+caminho,**kwargs)
@@ -180,7 +185,7 @@ class SecretariaApp(ModeracaoDesktop):
 
     def tela_login(self):
         self.frame_login = tk.Frame(self.root, bg=COR_BG_CARD, highlightbackground=COR_BORDA, highlightthickness=1)
-        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=420)
+        self.frame_login.place(relx=0.5, rely=0.5, anchor="center", width=440, height=450)
 
         tk.Label(self.frame_login, image=self.logo_secretaria, text='' if self.logo_secretaria else 'Secretaria ETEC',
                  compound='top', bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL).pack(pady=(20, 0))
@@ -196,7 +201,9 @@ class SecretariaApp(ModeracaoDesktop):
 
         tk.Label(frame_inputs, text="Senha de Acesso:", font=("Segoe UI", 9, "bold"), bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL).pack(anchor="w", pady=(0, 2))
         self.entry_senha = tk.Entry(frame_inputs, font=("Segoe UI", 11), show="*", bg=COR_BG_GERAL, fg="white", insertbackground="white", relief="flat", highlightbackground=COR_BORDA, highlightcolor=COR_DESTAQUE, highlightthickness=1)
-        self.entry_senha.pack(fill="x", pady=(0, 20), ipady=6)
+        self.entry_senha.pack(fill="x", pady=(0, 8), ipady=6)
+        visivel=tk.BooleanVar(value=False)
+        tk.Checkbutton(frame_inputs,text='Mostrar senha',variable=visivel,command=lambda:self.entry_senha.configure(show='' if visivel.get() else '*'),bg=COR_BG_CARD,fg=COR_TEXTO_PRINCIPAL,selectcolor=COR_BG_GERAL).pack(anchor='w',pady=(0,12))
 
         self.entry_email.bind("<Return>", lambda e: self.entry_senha.focus())
         self.entry_senha.bind("<Return>", lambda e: self.verificar_login())
@@ -277,6 +284,7 @@ class SecretariaApp(ModeracaoDesktop):
         self.tab_professores=None
         if 'gerir_acessos' in self.perfil_painel.get('permissoes',[]):
             self.tab_professores=tk.Frame(self.notebook,bg=COR_BG_GERAL);self.notebook.add(self.tab_professores,text='Professores');self.construir_tab_professores()
+        self.construir_ferramentas()
         self.notebook.bind('<<NotebookTabChanged>>',self.aba_equipe_alterada)
         self.carregar_dados()
 
@@ -333,6 +341,7 @@ class SecretariaApp(ModeracaoDesktop):
             res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/estatisticas", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
                 data = res.json()
+                self.atualizar_graficos(data)
                 total = data.get('total_itens', 0)
                 entregues = data.get('total_entregues', 0)
                 doacoes = data.get('total_doacoes', 0)
@@ -350,24 +359,8 @@ class SecretariaApp(ModeracaoDesktop):
                 self.lbl_distribuicao_cats.config(text=f"Categorias em destaque: {texto_cats}")
         except: raise
 
-    @assincrono
     def exportar_relatorio(self):
-        if not TOKEN_SECRETARIA: return
-        nome_sugerido = f"relatorio_achados_etec_{datetime.now().strftime('%Y%m')}.csv"
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv", initialfile=nome_sugerido, title="Salvar Relatório", filetypes=[("Arquivo CSV", "*.csv")]
-        )
-        if not file_path: return
-        try:
-            res_itens = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/itens", headers=self.get_auth_headers_get()))
-            if res_itens.status_code != 200: return messagebox.showerror("Erro", "Erro ao conectar ao servidor.")
-            itens = res_itens.json()
-            linhas = [[i.get('id'), i.get('nome') or i.get('txt_descricao'), i.get('txt_descricao'),
-                i.get('categoria'), i.get('txt_data'), i.get('txt_local'), (i.get('status') or 'DISPONÍVEL').upper(),
-                i.get('solicitado_por'), i.get('rm_aluno')] for i in itens]
-            (yield Trabalho(salvar_csv, file_path,['ID','Nome do Item','Descrição','Categoria','Data Encontrado','Local','Status','Solicitante / Retirado Por','RM Aluno'],linhas))
-            messagebox.showinfo("Sucesso", f"Planilha salva em:\n{file_path}")
-        except Exception as e: messagebox.showerror("Erro", str(e))
+        return self.abrir_relatorios()
 
     def construir_tab_mural(self):
         frame_top = tk.Frame(self.tab_mural, bg=COR_BG_GERAL)
@@ -451,21 +444,18 @@ class SecretariaApp(ModeracaoDesktop):
         except Exception as e: messagebox.showerror("Erro de Conexão", f"Não foi possível carregar os itens: {e}")
 
     def buscar_por_id_direto(self):
-        id_buscado = self.entry_busca.get().strip()
-        if not id_buscado: return self.aplicar_filtros_tabela()
-        if not id_buscado.isdigit(): return messagebox.showwarning("Aviso", "Apenas números no campo de ID.")
-        item = next((i for i in self.itens_atuais if str(i['id']) == id_buscado), None)
-        if item:
-            self.entry_busca.delete(0, tk.END)
-            self.aplicar_filtros_tabela()
-            self.abrir_modal_detalhes_item(item_direto=item)
-        else: messagebox.showinfo("Não encontrado", f"ID #{id_buscado} não localizado.")
+        valor=self.entry_busca.get().strip()
+        if not valor:return self.aplicar_filtros_tabela()
+        self.abrir_objeto_por_etiqueta(valor)
 
     def aplicar_filtros_tabela(self):
         status_filtro = self.combo_filtro_status.get().upper()
         self.tree_itens.delete(*self.tree_itens.get_children())
         self.tree_doacoes.delete(*self.tree_doacoes.get_children())
 
+        try:filtrados=filtrar_itens(self.itens_atuais,self.filtros_documento())
+        except ValueError as error:self.status_operacao(str(error),erro=True);return
+        ids_filtrados={i['id'] for i in filtrados}
         for i in self.itens_atuais:
             st = (i.get('status') or 'DISPONÍVEL').upper()
             nome_exibicao = i.get('nome') or i.get('txt_descricao') or "Sem Título"
@@ -473,6 +463,7 @@ class SecretariaApp(ModeracaoDesktop):
             if st in ['PARA DOAÇÃO', 'DOAÇÃO FEITA']:
                 self.tree_doacoes.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, i.get('txt_data', '')))
 
+            if i['id'] not in ids_filtrados:continue
             if status_filtro != "TODOS" and st != status_filtro: continue
             if status_filtro == "TODOS" and st in ['ENTREGUE', 'DOAÇÃO FEITA']: continue 
             solicitante = i.get('solicitado_por')
@@ -480,192 +471,10 @@ class SecretariaApp(ModeracaoDesktop):
             self.tree_itens.insert("", "end", values=(i['id'], nome_exibicao, i.get('categoria', 'OUTROS'), st, i.get('txt_local', ''), solicitante_str))
 
     def gerar_folha_etiquetas_a4(self):
-        disponiveis = [i for i in self.itens_atuais if (i.get('status') or 'DISPONÍVEL').upper() == 'DISPONÍVEL']
-        if not disponiveis:
-            return messagebox.showinfo("Aviso", "Não há itens disponíveis no catálogo para gerar etiquetas.")
+        self.etiquetas_lote_desktop()
 
-        a4_w, a4_h = 1240, 1754
-        folha = Image.new('RGB', (a4_w, a4_h), color='white')
-        draw = ImageDraw.Draw(folha)
-
-        try:
-            fonte_tit = ImageFont.truetype("arial.ttf", 26)
-            fonte_sub = ImageFont.truetype("arial.ttf", 16)
-            fonte_tag = ImageFont.truetype("arial.ttf", 14)
-        except:
-            fonte_tit = ImageFont.load_default()
-            fonte_sub = ImageFont.load_default()
-            fonte_tag = ImageFont.load_default()
-
-        draw.text((60, 40), "ETEC ACHADOS E PERDIDOS - FOLHA DE ETIQUETAS QR", fill='black', font=fonte_tit)
-        draw.text((60, 75), f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')} | Total: {len(disponiveis)} itens", fill='#4b5563', font=fonte_sub)
-
-        cols, rows = 3, 5
-        margem_x, margem_y = 60, 110
-        cell_w = (a4_w - (margem_x * 2)) // cols
-        cell_h = (a4_h - margem_y - 60) // rows
-
-        for idx, item in enumerate(disponiveis[:cols * rows]):
-            c = idx % cols
-            r = idx // cols
-            x = margem_x + (c * cell_w)
-            y = margem_y + (r * cell_h)
-
-            draw.rectangle([x, y, x + cell_w - 12, y + cell_h - 12], outline='#9ca3af', width=2)
-
-            qr = qrcode.QRCode(version=1, box_size=3, border=1)
-            qr.add_data(f"ETEC-ITEM-{item['id']}")
-            qr.make(fit=True)
-            img_qr = qr.make_image(fill_color="black", back_color="white").convert('RGB')
-
-            folha.paste(img_qr, (x + 15, y + 15))
-
-            nome_curto = (item.get('nome') or item.get('txt_descricao') or '')[:20]
-            cat_nome = item.get('categoria', 'OUTROS')
-
-            draw.text((x + 150, y + 25), f"ITEM #{item['id']}", fill='#dc2626', font=fonte_tit)
-            draw.text((x + 150, y + 60), f"[{cat_nome}]", fill='#1e293b', font=fonte_tag)
-            draw.text((x + 150, y + 85), nome_curto, fill='black', font=fonte_sub)
-            draw.text((x + 15, y + cell_h - 35), f"Local: {item.get('txt_local', '')[:30]}", fill='#64748b', font=fonte_tag)
-
-        caminho_salvar = os.path.abspath(f"folha_etiquetas_etec_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
-        folha.save(caminho_salvar)
-
-        if messagebox.askyesno("Etiquetas Prontas", f"Folha A4 gerada com {min(len(disponiveis), 15)} etiquetas!\n\nArquivo salvo em:\n{caminho_salvar}\n\nDeseja abrir a imagem para imprimir agora?"):
-            try:
-                os.startfile(caminho_salvar)
-            except: raise
-
-    def abrir_modal_form(self, item_edit=None):
-        modal = tk.Toplevel(self.root)
-        modal.title("Novo Item" if not item_edit else f"Editar Item #{item_edit['id']}")
-        modal.geometry("520x680")
-        modal.configure(bg=COR_BG_CARD)
-        modal.transient(self.root)
-        modal.grab_set()
-
-        cor_titulo = COR_DESTAQUE if item_edit else "#38bdf8"
-        tk.Label(modal, text="CADASTRAR NOVO OBJETO" if not item_edit else "EDITAR OBJETO", font=("Segoe UI", 15, "bold"), bg=COR_BG_CARD, fg=cor_titulo).pack(pady=20)
-
-        var_nome = tk.StringVar(value=item_edit.get('nome', '') if item_edit else "")
-        var_desc = tk.StringVar(value=item_edit.get('txt_descricao', '') if item_edit else "")
-        var_data = tk.StringVar(value=item_edit.get('txt_data', datetime.now().strftime("%d/%m/%Y")) if item_edit else datetime.now().strftime("%d/%m/%Y"))
-        var_local = tk.StringVar(value=item_edit.get('txt_local', '') if item_edit else "")
-        
-        fotos_atuais = item_edit['fotos'] if item_edit and item_edit.get('fotos') else ([item_edit['foto']] if item_edit and item_edit.get('foto') else [])
-        fotos_upload_base64 = fotos_atuais.copy()
-        ocr_rm_identificado = ''
-
-        def criar_campo(label, var, widget_type="entry", values=None):
-            frame = tk.Frame(modal, bg=COR_BG_CARD)
-            frame.pack(fill="x", padx=40, pady=6)
-            tk.Label(frame, text=label, bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL, font=("Segoe UI", 9, "bold")).pack(anchor="w")
-            if widget_type == "entry":
-                w = ttk.Entry(frame, textvariable=var, font=("Segoe UI", 11))
-                w.pack(fill="x", pady=3)
-                return w
-            else:
-                w = ttk.Combobox(frame, values=values, state="readonly", font=("Segoe UI", 10))
-                if var: w.set(var)
-                w.pack(fill="x", pady=3)
-                return w
-
-        criar_campo("Nome / Título Curto:", var_nome)
-        criar_campo("Descrição Detalhada:", var_desc)
-        cb_cat = criar_campo("Categoria:", item_edit.get('categoria', 'OUTROS') if item_edit else "OUTROS", "combo", self.categorias_atuais)
-        criar_campo("Data Encontrado:", var_data)
-        criar_campo("Local Encontrado:", var_local)
-        cb_status = criar_campo("Status:", item_edit.get('status', 'DISPONÍVEL') if item_edit else "DISPONÍVEL", "combo", ["DISPONÍVEL", "SOLICITADO", "ENTREGUE", "PARA DOAÇÃO"])
-
-        frame_fotos = tk.Frame(modal, bg=COR_BG_CARD)
-        frame_fotos.pack(fill="x", padx=40, pady=10)
-        lbl_foto_status = tk.Label(frame_fotos, text=f"Fotos carregadas: {len(fotos_upload_base64)} (Máx 4)", bg=COR_BG_CARD, fg="#94a3b8", font=("Segoe UI", 9))
-        lbl_foto_status.pack(side="right")
-
-        @assincrono
-        def selecionar_fotos():
-            nonlocal ocr_rm_identificado
-            filenames = filedialog.askopenfilenames(title="Selecione até 4 fotos", filetypes=[("Imagens", "*.png;*.jpg;*.jpeg")])
-            if filenames:
-                fotos_upload_base64.clear()
-                lbl_foto_status.config(text="Comprimindo fotos...", fg="#f59e0b")
-                pass
-                for f in filenames[:4]:
-                    enc = (yield Trabalho(comprimir_foto_desktop, f, max_dim=1200, qualidade=75))
-                    if enc: fotos_upload_base64.append(enc)
-                lbl_foto_status.config(text=f"Fotos otimizadas: {len(fotos_upload_base64)} — analisando com IA...", fg="#f59e0b")
-                if fotos_upload_base64:
-                    try:
-                        resposta = (yield Trabalho(requisicao_desktop, 'POST',
-                            f"{API_URL}/api/ia/analisar-imagem",
-                            json={"foto": fotos_upload_base64[0]},headers=self.get_auth_headers(),
-                            timeout=25
-                        ))
-                        dados_ia = resposta.json()
-                        if not resposta.ok or not dados_ia.get("success"):
-                            detalhe = dados_ia.get("error", {}).get("message") or dados_ia.get("message") or f"HTTP {resposta.status_code}"
-                            lbl_foto_status.config(text=f"IA indisponível: {detalhe}", fg="#f87171")
-                            messagebox.showwarning("Análise de imagem", f"A foto foi carregada, mas a IA não conseguiu analisá-la.\n\nDetalhe: {detalhe}\n\nVocê pode preencher os campos manualmente.")
-                        else:
-                            r = dados_ia.get("resultado") or {}
-                            if not (r.get('pode_preencher') is True and r.get('metodo') == 'gemini_vision_ocr'
-                                    and r.get('confianca_objeto') in ('alta', 'media')
-                                    and r.get('nome') and r.get('descricao')):
-                                lbl_foto_status.config(text='Foto carregada. Preencha os campos manualmente.', fg='#f59e0b')
-                                return
-                            if r.get("nome"): var_nome.set(str(r["nome"])[:150])
-                            if r.get("descricao"):
-                                descricao = str(r["descricao"])[:1500]
-                                if r.get("cores"): descricao += " Cor predominante: " + ", ".join(map(str, r["cores"][:3])) + "."
-                                var_desc.set(descricao)
-                            categoria_ia = str(r.get("categoria") or "").strip().upper()
-                            for opcao in self.categorias_atuais:
-                                if opcao.upper() == categoria_ia or opcao.upper().replace("É", "E") == categoria_ia.replace("É", "E"):
-                                    cb_cat.set(opcao)
-                                    break
-                            ocr_rm_identificado = str(r.get("ocr_rm") or "")[:20] if r.get("ocr_confianca") == "alta" else ""
-                            aluno = r.get("aluno_correspondente")
-                            status_ia = f"IA preencheu os campos. Confira antes de salvar. Método: {r.get('metodo', 'análise visual')}."
-                            if aluno: status_ia += f" Possível aluno correspondente: {aluno.get('nome', 'cadastro localizado')}."
-                            lbl_foto_status.config(text=status_ia, fg=COR_VERDE)
-                    except Exception as exc:
-                        lbl_foto_status.config(text=f"Falha na IA: {type(exc).__name__}: {exc}", fg="#f87171")
-                        messagebox.showwarning("Análise de imagem", f"Não foi possível analisar a foto.\n\nEtapa: POST /api/ia/analisar-imagem\nErro: {type(exc).__name__}: {exc}\n\nO cadastro manual continua disponível.")
-
-        tk.Button(frame_fotos, text="📷 Selecionar Fotos", bg="#374151", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=5, cursor="hand2", command=selecionar_fotos).pack(side="left")
-
-        @assincrono
-        def salvar():
-            payload = {
-                "nome": var_nome.get().strip(), "descricao": var_desc.get().strip(),
-                "categoria": cb_cat.get(), "data": var_data.get().strip(),
-                "local": var_local.get().strip(), "status": cb_status.get(), "fotos": fotos_upload_base64, "ocr_rm": ocr_rm_identificado
-            }
-            if not payload['nome'] or not payload['descricao']: return messagebox.showwarning("Aviso", "Preencha título e descrição!")
-            try:
-                if item_edit:payload['id']=item_edit['id'];payload['versao']=item_edit.get('versao')
-                permitir,duplicado=yield from self.revisar_duplicidade_desktop(payload)
-                if not permitir:return
-                payload['confirmar_duplicado']=duplicado
-                if item_edit:
-                    res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers()))
-                else:
-                    res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/itens", json=payload, headers=self.get_auth_headers()))
-
-                if res.status_code == 200:
-                    messagebox.showinfo("Sucesso", "Item salvo na nuvem com segurança!")
-                    modal.destroy()
-                    self.carregar_itens()
-                    self.carregar_dashboard()
-                else:
-                    try:
-                        detalhe = res.json().get("error") or res.json().get("message") or res.text[:500]
-                    except Exception:
-                        detalhe = res.text[:500]
-                    messagebox.showerror("Erro ao salvar item", f"Etapa: POST/PUT /api/itens\nHTTP {res.status_code}\nDetalhe: {detalhe}")
-            except Exception as e: messagebox.showerror("Erro", str(e))
-
-        tk.Button(modal, text="💾 GRAVAR NO BANCO NUVEM", bg=COR_VERDE, fg="white", font=("Segoe UI", 11, "bold"), pady=12, relief="flat", cursor="hand2", command=salvar).pack(fill="x", padx=40, pady=25)
+    def abrir_modal_form(self,item_edit=None):
+        return self.abrir_formulario_paridade(item_edit)
 
     @assincrono
     def abrir_modal_detalhes_item(self, event=None, item_direto=None):
@@ -707,16 +516,12 @@ class SecretariaApp(ModeracaoDesktop):
         else:
             for col, foto_url in enumerate(fotos_array):
                 try:
-                    if foto_url.startswith('http'):
-                        img = (yield Trabalho(baixar_miniatura, foto_url))
-                        if img is None:
-                            tk.Label(frame_fotos,text='Foto indisponível',bg=COR_BG_CARD,fg='#f87171').grid(row=0,column=col,padx=8,pady=5)
-                            continue
-                        img_tk = ImageTk.PhotoImage(img)
-                        lbl_img = tk.Label(frame_fotos, image=img_tk, bg=COR_BG_CARD, bd=1, relief="solid")
-                        lbl_img.image = img_tk
-                        lbl_img.grid(row=0, column=col, padx=8, pady=5)
-                except: raise
+                    img=yield Trabalho(baixar_miniatura if foto_url.startswith('http') else baixar_foto_original,foto_url)
+                    if img is None:raise ValueError('Foto indisponível')
+                    img.thumbnail((160,160));img_tk=ImageTk.PhotoImage(img,master=modal)
+                    lbl_img=tk.Label(frame_fotos,image=img_tk,bg=COR_BG_CARD,bd=1,relief='solid',cursor='hand2');lbl_img.image=img_tk
+                    lbl_img.bind('<Button-1>',lambda e,url=foto_url:self.ampliar_foto_desktop(url));lbl_img.grid(row=0,column=col,padx=8,pady=5)
+                except (ValueError,OSError,requests.RequestException):tk.Label(frame_fotos,text='Foto indisponível',bg=COR_BG_CARD,fg='#f87171').grid(row=0,column=col,padx=8,pady=5)
 
         frame_acoes = tk.Frame(modal, bg=COR_BG_GERAL)
         frame_acoes.pack(fill="x", pady=20, padx=20)
@@ -733,57 +538,8 @@ class SecretariaApp(ModeracaoDesktop):
         if st not in ['PARA DOAÇÃO', 'DOAÇÃO FEITA', 'ENTREGUE']: btn("🎁 Doação", "#9333ea", lambda: self.acao_rapida(item['id'], 'doacao', modal))
         btn("🗑️ Excluir", COR_DESTAQUE, lambda: self.acao_rapida(item['id'], 'excluir', modal))
 
-    def abrir_modal_etiqueta_qr(self, item):
-        modal = tk.Toplevel(self.root)
-        modal.title("Impressão de Etiqueta QR")
-        modal.geometry("360x470")
-        modal.configure(bg=COR_BG_CARD)
-        modal.transient(self.root)
-        modal.grab_set()
-
-        tk.Label(modal, text=f"Etiqueta do Item #{item['id']}", font=("Segoe UI", 14, "bold"), bg=COR_BG_CARD, fg="#f87171").pack(pady=15)
-        
-        payload = f"ETEC-ITEM-{item['id']}"
-        qr = qrcode.QRCode(version=1, box_size=8, border=1)
-        qr.add_data(payload)
-        qr.make(fit=True)
-        img_qr = qr.make_image(fill_color="black", back_color="white").convert('RGB')
-        
-        largura, altura = img_qr.size
-        etiqueta_img = Image.new('RGB', (largura, altura + 30), color='white')
-        etiqueta_img.paste(img_qr, (0, 0))
-        
-        draw = ImageDraw.Draw(etiqueta_img)
-        texto = f"ID: {item['id']}"
-        try: fonte = ImageFont.truetype("arial.ttf", 20)
-        except: fonte = ImageFont.load_default()
-            
-        bbox = draw.textbbox((0, 0), texto, font=fonte)
-        w_texto = bbox - bbox[0]
-        x_texto = (largura - w_texto) / 2
-        draw.text((x_texto, altura), texto, fill="black", font=fonte)
-
-        preview = etiqueta_img.copy()
-        preview.thumbnail((190, 190), Image.Resampling.LANCZOS)
-        preview_tk = ImageTk.PhotoImage(preview)
-        lbl_preview = tk.Label(modal, image=preview_tk, bg=COR_BG_CARD, bd=1, relief="solid")
-        lbl_preview.image = preview_tk
-        lbl_preview.pack(pady=10)
-
-        def salvar_png():
-            path = filedialog.asksaveasfilename(defaultextension=".png", initialfile=f"qr_etec_{item['id']}.png", title="Salvar Imagem da Etiqueta", filetypes=[("Imagem PNG", "*.png")])
-            if path:
-                etiqueta_img.save(path)
-                messagebox.showinfo("Sucesso", f"Etiqueta salva em: {path}", parent=modal)
-
-        def imprimir_direto():
-            temp_path = os.path.abspath(f"temp_etiqueta_qr_{item['id']}.png")
-            etiqueta_img.save(temp_path)
-            try: os.startfile(temp_path, "print")
-            except Exception as e: messagebox.showerror("Erro", f"Erro na impressão direta: {e}", parent=modal)
-
-        tk.Button(modal, text="💾 SALVAR COMO PNG", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=salvar_png).pack(fill="x", padx=30, pady=5)
-        tk.Button(modal, text="🖨️ IMPRIMIR DIRETO", bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2", command=imprimir_direto).pack(fill="x", padx=30, pady=5)
+    def abrir_modal_etiqueta_qr(self,item):
+        return self.etiqueta_desktop(item)
 
     @assincrono
     def acao_rapida(self, item_id, acao, modal=None):
@@ -839,14 +595,14 @@ class SecretariaApp(ModeracaoDesktop):
                     modal_baixa.destroy()
                     self.carregar_dados()
                     nome_obj = item.get('nome') or item.get('txt_descricao') or 'Sem Título'
-                    self.abrir_tela_comprovante(item['id'], nome_obj, item.get('txt_descricao') or '', item.get('txt_local') or '', n, r, t)
+                    self.abrir_tela_comprovante(item['id'], nome_obj, item.get('txt_descricao') or '', item.get('txt_local') or '', n, r, t,comprovante_id=res.json().get('comprovante_id'))
                 else: messagebox.showerror("Erro", "Acesso Negado.", parent=modal_baixa)
             except Exception as e: messagebox.showerror("Erro", str(e), parent=modal_baixa)
 
         tk.Button(modal_baixa, text="Confirmar e Gerar Comprovante", bg=COR_VERDE, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=10, cursor="hand2", command=confirmar).pack(fill="x", padx=35)
         entry_nome.focus()
 
-    def abrir_tela_comprovante(self, item_id, nome_item, desc_item, local_item, retirado_por, rm, turma):
+    def abrir_tela_comprovante(self, item_id, nome_item, desc_item, local_item, retirado_por, rm, turma,comprovante_id=None):
         top_comp = tk.Toplevel(self.root)
         top_comp.title("Comprovante de Retirada")
         top_comp.geometry("650x700")
@@ -880,7 +636,7 @@ class SecretariaApp(ModeracaoDesktop):
         b_frame.pack(fill="x", padx=30, pady=(0, 20))
         tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(0, 5))
         dados={'item_id':item_id,'nome_item':nome_item,'retirado_por':retirado_por,'rm_retirante':rm,'turma_curso':turma,'data_entrega':data_atual,'funcionario_responsavel':self.perfil_painel.get('email') or 'Secretaria Desktop'}
-        tk.Button(b_frame,text='Imprimir comprovante',command=lambda:self.imprimir_comprovante_desktop(dados),bg=COR_VERDE,fg='white',font=('Segoe UI',10,'bold'),relief='flat',pady=8,cursor='hand2').pack(side='left',fill='x',expand=True,padx=5)
+        tk.Button(b_frame,text='Imprimir comprovante',command=lambda:self.imprimir_comprovante_desktop(dados,recibo=comprovante_id),bg=COR_VERDE,fg='white',font=('Segoe UI',10,'bold'),relief='flat',pady=8,cursor='hand2').pack(side='left',fill='x',expand=True,padx=5)
         tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(5, 0))
 
     def limpar_impressoes(self):
@@ -888,7 +644,11 @@ class SecretariaApp(ModeracaoDesktop):
         self.impressoes_temporarias=[]
 
     @assincrono
-    def imprimir_comprovante_desktop(self,dados,assinatura=None):
+    def imprimir_comprovante_desktop(self,dados,assinatura=None,recibo=None):
+        if recibo:
+            res=yield Trabalho(self.chamar_api,'GET',f'/api/retiradas/comprovantes/{recibo}',headers=self.get_auth_headers_get());dados=res.json()['comprovante']
+            if dados.get('tem_assinatura'):
+                res=yield Trabalho(self.chamar_api,'GET',f'/api/retiradas/comprovantes/{recibo}/assinatura',headers=self.get_auth_headers_get());assinatura=res.content
         pasta=yield Trabalho(abrir_impressao_desktop,dados,assinatura)
         self.impressoes_temporarias.append(pasta)
         self.status_operacao('Comprovante aberto no navegador. Clique em Imprimir comprovante e escolha a impressora.')
@@ -972,7 +732,7 @@ class SecretariaApp(ModeracaoDesktop):
         frame_top.pack(fill="x", pady=12, padx=12)
         
         tk.Button(frame_top, text="🔄 Atualizar Histórico", command=self.carregar_entregues, bg=COR_AZUL, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="left")
-        tk.Button(frame_top, text="🗑️ Excluir objeto e histórico", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
+        tk.Button(frame_top, text="🗑️ Excluir objeto", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
         tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
 
         tk.Button(frame_top,text='Comprovante / Imprimir',command=self.imprimir_comprovante_historico,bg=COR_VERDE,fg='white',relief='flat',padx=10,pady=6).pack(side='left',padx=8)
@@ -1063,12 +823,8 @@ class SecretariaApp(ModeracaoDesktop):
         try:
             res = (yield Trabalho(requisicao_desktop, 'GET', f"{API_URL}/api/chat/conversas", headers=self.get_auth_headers_get()))
             if res.status_code == 200:
-                self.listbox_chat.delete(0, tk.END)
-                self.mapa_conversas = []
-                for c in res.json():
-                    notif = f"🔥 ({c['nao_lidas']} novas) " if c['nao_lidas'] > 0 else "   "
-                    self.listbox_chat.insert(tk.END, f"{notif}{c['nome_aluno']} (RM: {c['rm_aluno']})")
-                    self.mapa_conversas.append(c)
+                self.conversas_atuais=res.json()
+                self.filtrar_conversas()
         except: raise
 
     def selecionar_conversa(self, event):

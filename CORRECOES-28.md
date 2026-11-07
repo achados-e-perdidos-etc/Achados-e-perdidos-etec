@@ -2,6 +2,10 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Paridade dos painéis e comprovante personalizado
+
+Matriz e validações em [PARIDADE-SECRETARIA.md](PARIDADE-SECRETARIA.md). Os painéis administrativos passam a oferecer os mesmos recursos de relatórios, etiquetas, filtros, mural, câmera, fotos e retirada com aceite, respeitando papéis. O comprovante compartilha um modelo A4 com logo, cores do portal e ilustrações de objetos. Validação cumulativa: **396 Python, 49 JavaScript e 48 Chromium — 493 testes aprovados**. Serviços externos/hardware e Windows seguem com os limites de validação descritos no documento.
+
 ## Comprovantes com impressão
 
 [COMPROVANTES-IMPRESSAO.md](COMPROVANTES-IMPRESSAO.md): opção de impressora/PDF na baixa manual, no histórico e na confirmação por código. Folha A4 somente com o comprovante, aceite quando existente e identificação de entrega revertida. Desktop abre a versão local para imprimir, preservando os dados do histórico e removendo temporários ao sair.

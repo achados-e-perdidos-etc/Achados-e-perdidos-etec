@@ -299,8 +299,11 @@ def gerenciar_item(item_id):
             if item_atual.get('aprovado') is False:
                 cursor.execute('UPDATE itens SET motivo_recusa=NULL,recusado_em=NULL WHERE id=%s',(item_id,))
             registrar_revisao(cursor,item_id,data)
+            comprovante_id=None
             if status == 'ENTREGUE':
                 registrar_entrega(cursor,item_id,nome,data,item_atual,request.user['email'])
+                cursor.execute('SELECT id FROM entregues WHERE item_id=%s AND cancelada_em IS NULL ORDER BY id DESC LIMIT 1',(item_id,))
+                comprovante_id=cursor.fetchone()['id']
             else:
                 cancelar_entregas(cursor,item_id,request.user['email'])
 
@@ -309,7 +312,7 @@ def gerenciar_item(item_id):
             conn.close()
             if status != item_atual.get('status'):
                 push_delivery.notificar(item_atual.get('email_solicitante'), 'item')
-            return jsonify({"success": True, "message": "Item atualizado com sucesso!"})
+            return jsonify(success=True,comprovante_id=comprovante_id,message="Item atualizado com sucesso!")
     except FalhaUploadFotos as error:
         if conn: conn.rollback(); conn.close()
         return jsonify({'success': False, 'message': str(error)}), error.status_code

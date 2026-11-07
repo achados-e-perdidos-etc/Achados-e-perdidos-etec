@@ -29,17 +29,14 @@ const ComprovantesEntrega = {
         try{
             const token=EvolucaoUI.token(),data=await EvolucaoUI.request('/api/retiradas/comprovantes/'+Number(id));if(!d.isConnected)return;
             const registro=data.comprovante,folha=EvolucaoUI.node('article',undefined,'comprovante-papel');
-            folha.append(EvolucaoUI.node('h2','ETEC · Achados e Perdidos'),EvolucaoUI.node('h3','Comprovante de entrega #'+registro.id));
-            const campos=[['Objeto','#'+registro.item_id+' · '+registro.nome_item],['Recebido por',registro.retirado_por],['RM',registro.rm_retirante],['Turma / curso',registro.turma_curso||'Não informada'],['Entrega registrada em',registro.data_entrega],['Responsável',registro.funcionario_responsavel],['Forma de registro',registro.metodo==='CODIGO'?'Código e aceite presencial':'Registro pela secretaria']];
-            const dl=document.createElement('dl');for(const [nome,valor] of campos){const box=document.createElement('div');box.append(EvolucaoUI.node('dt',nome),EvolucaoUI.node('dd',String(valor||'Não informado')));dl.append(box);}folha.append(dl);
-            if(registro.cancelada_em)folha.append(EvolucaoUI.node('p','ENTREGA REVERTIDA em '+registro.cancelada_em+' por '+registro.cancelada_por+'. Este registro não representa uma entrega ativa.','comprovante-revertido'));
+            folha.innerHTML=data.corpo_html;
             d.append(folha);
             if(registro.tem_assinatura){
                 const res=await fetch(API_URL+'/api/retiradas/comprovantes/'+Number(id)+'/assinatura',{headers:{Authorization:'Bearer '+token}});
                 if(!res.ok||res.headers.get('Content-Type')?.split(';')[0]!=='image/jpeg')throw Error('O aceite não pôde ser carregado. Reabra o comprovante antes de imprimir.');
                 const blob=await res.blob();if(!d.isConnected||token!==EvolucaoUI.token())return;
-                url=URL.createObjectURL(blob);const img=document.createElement('img');img.src=url;img.alt='Assinatura ou aceite registrado no recebimento';folha.append(EvolucaoUI.node('h3','Aceite de recebimento'),img);await img.decode();
-            }else folha.append(EvolucaoUI.node('p','Este registro não possui assinatura digitalizada.'));
+                url=URL.createObjectURL(blob);const img=document.createElement('img');img.src=url;img.alt='Assinatura ou aceite registrado no recebimento';img.className='comp-assinatura';folha.querySelector('[data-aceite]').append(img);await img.decode();
+            }
             if(!d.isConnected||token!==EvolucaoUI.token())return;
             const print=EvolucaoUI.node('button','Imprimir comprovante','ev-action');print.type='button';print.onclick=()=>this.imprimir(folha);d.append(print);
             status.textContent='Escolha a impressora na janela de impressão, ou use Salvar como PDF.';

@@ -169,7 +169,7 @@ class TextSafetyBrowser(unittest.TestCase):
         self.page.locator("#matchItensLista button").evaluate("el=>el.click()")
         self.assertEqual(self.page.evaluate("window._selected"), item)
         self.open(admin=True)
-        self.page.evaluate("p=>{itensSec=[{id:7,nome:p,status:'DISPONÍVEL'}]; listaMuralGlobal=[{id:3,nome_aluno:p,rm_aluno:p,descricao:p,categoria:p}]; calcularSmartMatchCliente=()=>({score:80,motivos:[p]}); abrirModalComparacaoMatch(3);}", PAYLOAD)
+        self.page.evaluate("p=>{itensSec=[{id:7,nome:p,status:'DISPONÍVEL'}]; listaMuralGlobal=[{id:3,nome_aluno:p,rm_aluno:p,descricao:p,categoria:p}]; PainelParidade.matches.set(3,[{item:itensSec[0],score:80,motivos:[p]}]); abrirModalComparacaoMatch(3);}", PAYLOAD)
         self.assert_safe("#smartMatchRelatoBox")
         self.assert_safe("#smartMatchItensContainer")
         self.assertIn(PAYLOAD, self.page.locator("#smartMatchItensContainer").text_content())
@@ -177,23 +177,21 @@ class TextSafetyBrowser(unittest.TestCase):
         self.page.locator("#smartMatchItensContainer button").evaluate("el=>el.click()")
         self.assertEqual(self.page.evaluate("window._match"), [7, PAYLOAD, PAYLOAD])
 
-    def test_reports_escape_fields_in_print_document(self):
+    def test_reports_use_authenticated_shared_document_and_render_literal_text(self):
+        from html import escape
         self.open(admin=True)
-        self.page.evaluate("p=>{itensSec=[{id:7,nome:p,categoria:p,txt_local:p,txt_data:p,status:'DISPONÍVEL'}]; window.open=()=>({document:{open(){},write(s){window._printed=s},close(){}}});}", PAYLOAD)
-        self.page.evaluate("document.getElementById('tipoRelatorioPDF').value='INVENTARIO'")
-        self.page.evaluate("gerarRelatorioPDFOficial()")
-        self.page.evaluate("()=>{const frame=document.createElement('iframe'); frame.id='reportTest'; frame.srcdoc=window._printed; document.body.append(frame)}")
-        frame = self.page.frame_locator("#reportTest")
-        self.assertEqual(frame.locator("tbody img,tbody svg,tbody script").count(), 0)
-        self.assertIn(PAYLOAD, frame.locator("tbody").text_content())
-        # O relatório de entregas usa campos de aluno e responsável distintos.
-        self.fixture([dict(item_id=7, nome_item=PAYLOAD, retirado_por=PAYLOAD, rm_retirante=PAYLOAD,
-                           turma_curso=PAYLOAD, data_entrega=PAYLOAD, funcionario_responsavel=PAYLOAD)])
-        self.page.evaluate("document.getElementById('tipoRelatorioPDF').value='ENTREGAS'")
-        self.page.evaluate("gerarRelatorioPDFOficial()")
-        self.page.evaluate("document.getElementById('reportTest').srcdoc=window._printed")
-        self.assertEqual(frame.locator("tbody img,tbody svg,tbody script").count(), 0)
-        self.assertEqual(frame.locator("tbody").text_content().count(PAYLOAD), 6)
+        self.page.evaluate("""()=>{tokenSecretaria='teste';window._docCalls=[];window.open=()=>({document:{body:{},open(){},write(s){window._printed=s},close(){}},close(){}});window.fetch=async(url,opts)=>{window._docCalls.push([url,opts]);return {ok:true,json:async()=>({success:true,html:window._htmlFixture})};};}""")
+        for tipo,repeticoes in [('INVENTARIO',1),('ENTREGAS',6)]:
+            # Conteúdo renderizado pelo servidor é recebido pronto; valores de banco são escapados lá.
+            self.page.evaluate('html=>window._htmlFixture=html','<table><tbody><tr>'+''.join('<td>'+escape(PAYLOAD)+'</td>' for _ in range(repeticoes))+'</tr></tbody></table>')
+            self.page.evaluate('tipo=>document.getElementById("tipoRelatorioPDF").value=tipo',tipo)
+            self.page.evaluate('gerarRelatorioPDFOficial()')
+            self.page.evaluate("()=>{let frame=document.getElementById('reportTest');if(!frame){frame=document.createElement('iframe');frame.id='reportTest';document.body.append(frame);}frame.srcdoc=window._printed;}")
+            frame=self.page.frame_locator('#reportTest')
+            self.assertEqual(frame.locator('tbody img,tbody svg,tbody script').count(),0)
+            self.assertEqual(frame.locator('tbody').text_content().count(PAYLOAD),repeticoes)
+            self.assertIn('tipo='+tipo,self.page.evaluate('window._docCalls.at(-1)[0]'))
+            self.assertEqual(self.page.evaluate('window._docCalls.at(-1)[1].headers.Authorization'),'Bearer teste')
 
     def test_image_protocols_and_context_encoding(self):
         self.open()

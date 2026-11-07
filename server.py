@@ -63,6 +63,8 @@ from blueprints.catalogo import catalogo_bp
 from blueprints.moderacao import moderacao_bp
 app.register_blueprint(catalogo_bp)
 app.register_blueprint(moderacao_bp)
+from blueprints.ferramentas import ferramentas_bp
+app.register_blueprint(ferramentas_bp)
 from blueprints.notificacoes import notificacoes_bp
 app.register_blueprint(notificacoes_bp)
 from blueprints.cadastros import cadastros_bp
@@ -742,14 +744,17 @@ def gen_item(item_id):
             if it.get('aprovado') is False:
                 c.execute('UPDATE itens SET motivo_recusa=NULL,recusado_em=NULL WHERE id=%s',(item_id,))
             registrar_revisao(c,item_id,d)
+            comprovante_id=None
             if status == 'ENTREGUE':
                 registrar_entrega(c,item_id,nome,d,it,request.user['email'])
+                c.execute('SELECT id FROM entregues WHERE item_id=%s AND cancelada_em IS NULL ORDER BY id DESC LIMIT 1',(item_id,))
+                comprovante_id=c.fetchone()['id']
             else:
                 cancelar_entregas(c,item_id,request.user['email'])
             conn.commit(); c.close(); conn.close()
             if status != it.get('status'):
                 push_delivery.notificar(it.get('email_solicitante'), 'item')
-            return jsonify({"success": True})
+            return jsonify(success=True,comprovante_id=comprovante_id)
     except FalhaUploadFotos as error:
         if conn: conn.rollback(); conn.close()
         return jsonify({'success': False, 'message': str(error)}), error.status_code

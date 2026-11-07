@@ -128,7 +128,8 @@ def consultar_recibo(recibo):
         row=c.fetchone()
         if not row:return jsonify(success=False,message='Comprovante não encontrado.'),404
         if row.get('cancelada_em'):row['cancelada_em']=row['cancelada_em'].isoformat()
-        return jsonify(success=True,comprovante=row)
+        from utils.comprovantes import corpo_comprovante
+        return jsonify(success=True,comprovante=row,corpo_html=corpo_comprovante(row,aguardar_assinatura=row['tem_assinatura']))
     except Exception:return falha()
     finally:
         if conn:conn.close()

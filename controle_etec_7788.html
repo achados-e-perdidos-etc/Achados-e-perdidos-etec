@@ -671,6 +671,7 @@
 <link rel="stylesheet" href="/catalogo-moderacao.css">
 <link rel="stylesheet" href="/experiencia.css">
 <link rel="stylesheet" href="/comprovantes.css">
+<link rel="stylesheet" href="/ferramentas-secretaria.css">
 </head>
 <body class="secretaria-experiencia">
 
@@ -1127,8 +1128,8 @@
           <i class="fas fa-file-invoice"></i>
         </div>
         <div>
-          <h3 class="modal-titulo" style="color: #10b981; margin: 0;">Relatório Oficial ETEC</h3>
-          <p style="font-size: 11px; color: #8b949e; margin-top: 2px;">Documento timbrado A4 para auditoria e gestão escolar</p>
+          <h3 class="modal-titulo" style="color: #10b981; margin: 0;">Relatórios da secretaria</h3>
+          <p style="font-size: 11px; color: #8b949e; margin-top: 2px;">Documento A4 com a identidade visual do portal</p>
         </div>
       </div>
 
@@ -1143,12 +1144,12 @@
       </div>
 
       <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: #8b949e; line-height: 1.4;">
-        <strong style="color: #c9d1d9;">Padrão Oficial do Documento:</strong>
+        <strong style="color: #c9d1d9;">O documento inclui:</strong>
         <ul style="margin: 6px 0 0 16px;">
           <li>Cabeçalho institucional Centro Paula Souza / ETEC</li>
-          <li>Protocolo digital único de autenticidade</li>
+          <li>Relação dos dados registrados no sistema</li>
           <li>Tabela detalhada zebrada em alta resolução</li>
-          <li>Termo de encerramento com linhas para assinatura</li>
+          <li>Mesmos dados e filtros do aplicativo desktop</li>
         </ul>
       </div>
 
@@ -1701,7 +1702,7 @@
         const st = (item.status || 'DISPONÍVEL').toUpperCase();
         
         // 1. Filtro por Pílula de Status
-        if (filtroStatusAtual === 'DOACOES' || filtroStatusAtual === 'PARA DOAÇÃO' || filtroStatusAtual === 'DOAÇÃO') {
+        if (filtroStatusAtual === 'DOACOES') {
           if (!isStatusDoacao(st)) return false;
         } else if (filtroStatusAtual !== 'TODOS') {
           if (st !== filtroStatusAtual) return false;
@@ -1711,8 +1712,9 @@
           if (st === 'ENTREGUE' || stNorm === 'DOACAO FEITA') return false;
         }
 
+        if(typeof PainelParidade!=='undefined'&&!PainelParidade.corresponde(item))return false;
         // 3. Filtro pelo Texto de Busca (ID, Nome, Descrição, Local)
-        if (termo) {
+        if (termo && typeof PainelParidade==='undefined') {
           const matchId = String(item.id).includes(termo);
           const matchNome = (item.nome || '').toLowerCase().includes(termo);
           const matchDesc = (item.txt_descricao || '').toLowerCase().includes(termo);
@@ -1984,9 +1986,8 @@
       html5QrScannerInstance.render(msg => {
         html5QrScannerInstance.clear();
         fecharModal('modalScanner');
-        const match = msg.match(/\d+/);
-        if (match) abrirDetalhesItem(parseInt(match[0]));
-        else abrirAlertaModal({ titulo: "QR Code Inválido", mensagem: "O código lido não corresponde a uma etiqueta válida: " + msg, tipo: "aviso" });
+        try{abrirDetalhesItem(PainelParidade.id(msg));}
+        catch(error){mostrarToast(error.message);}
       }, () => {});
     }
 
@@ -2088,7 +2089,7 @@
     async function processarFotosInput(input) {
       if (envioItemSecretaria || !input.files?.length) return;
       const lote = ++loteFotosSecretaria;
-      const files = Array.from(input.files).slice(0, 4), novas = [];
+      const files = Array.from(input.files).slice(0, Math.max(0,4-fotosBase64Upload.length)), novas = [];
       preparandoFotosSecretaria = true; input.disabled = true;
       document.getElementById('btnSalvarItem').disabled = true;
       document.getElementById('btnAutoTagIA').disabled = true;
@@ -2099,7 +2100,8 @@
           try { novas.push(await comprimirImagem(files[i])); } catch (error) { falhas++; }
           if (lote !== loteFotosSecretaria) return;
         }
-        if (novas.length) fotosBase64Upload = novas;
+        if (novas.length) fotosBase64Upload = [...fotosBase64Upload,...novas];
+        if(typeof PainelParidade!=='undefined')PainelParidade.fotosForm();
         UploadSecretaria.mostrar(fotosBase64Upload);
         document.getElementById('formFotosStatus').innerText = `${fotosBase64Upload.length} foto(s) selecionada(s)`;
         mostrarEstadoFotos('estadoEnvioSecretaria', falhas ? 'erro' : 'prontas', falhas
@@ -2256,9 +2258,11 @@
           })
         });
 
-        if (res.ok) {
+        const resposta=await res.json();
+        if (res.ok && resposta.success) {
           fecharModal('modalDarBaixa');
           carregarItensSecretaria();
+          if(resposta.comprovante_id){ComprovantesEntrega.abrirRegistro(resposta.comprovante_id);return;}
           const dataHora = new Date().toLocaleString('pt-BR');
           const nomeObj = item ? (item.nome || item.txt_descricao || 'Objeto') : 'Objeto';
           
@@ -2857,7 +2861,9 @@
     async function carregarMural() {
       const tbody = document.getElementById('tabelaMuralBody');
       try {
-        const res = await fetch(`${API_URL}/api/mural`, { headers: getAuthHeadersGet() });
+        const [res,comparacao] = await Promise.all([fetch(`${API_URL}/api/mural`,{headers:getAuthHeadersGet()}),fetch(`${API_URL}/api/smart-match`,{headers:getAuthHeadersGet()})]);
+        const dados=await comparacao.json();if(!comparacao.ok||!dados.success)throw Error('Comparação indisponível');
+        PainelParidade.matches=new Map(dados.resultados.map(r=>[Number(r.relato.id),r.matches]));
         if (res.ok) {
           listaMuralGlobal = await res.json();
           if (!Array.isArray(listaMuralGlobal) || !listaMuralGlobal.length) {
@@ -2866,18 +2872,7 @@
           }
 
           tbody.innerHTML = listaMuralGlobal.map(m => {
-            // Calcular matches contra itensSec disponíveis
-            const matchesDeste = [];
-            (itensSec || []).forEach(item => {
-              const st = (item.status || 'DISPONÍVEL').toUpperCase();
-              if (st === 'DISPONÍVEL' || st === 'SOLICITADO') {
-                const resMatch = calcularSmartMatchCliente(m, item);
-                if (resMatch.score >= 45) {
-                  matchesDeste.push({ item, score: resMatch.score, motivos: resMatch.motivos });
-                }
-              }
-            });
-            matchesDeste.sort((a, b) => b.score - a.score);
+            const matchesDeste=PainelParidade.matches.get(Number(m.id))||[];
 
             let badgeMatch = `<span style="color: #6b7280; font-size: 11px;">Sem match direto</span>`;
             if (matchesDeste.length > 0) {
@@ -2917,17 +2912,7 @@
       const relato = listaMuralGlobal.find(m => String(m.id) === String(muralId));
       if (!relato) return;
 
-      const matches = [];
-      (itensSec || []).forEach(item => {
-        const st = (item.status || 'DISPONÍVEL').toUpperCase();
-        if (st === 'DISPONÍVEL' || st === 'SOLICITADO') {
-          const res = calcularSmartMatchCliente(relato, item);
-          if (res.score >= 45) {
-            matches.push({ item, score: res.score, motivos: res.motivos });
-          }
-        }
-      });
-      matches.sort((a, b) => b.score - a.score);
+      const matches=PainelParidade.matches.get(Number(muralId))||[];
 
       document.getElementById('smartMatchRelatoBox').innerHTML = `
         <div style="font-size: 11px; color: #a855f7; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Relato Oficial do Aluno</div>
@@ -3228,6 +3213,7 @@
 <script src="/moderacao-interface.js"></script>
 <script src="/experiencia.js"></script>
 <script src="/comprovantes.js"></script>
+<script src="/ferramentas-secretaria.js"></script>
 </body>
 </html>
 

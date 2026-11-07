@@ -47,7 +47,7 @@ class TarefasDesktop:
             modal.protocol('WM_DELETE_WINDOW',lambda:None)
             def bloquear(pai):
                 for widget in pai.winfo_children():
-                    if widget.winfo_class() in {'Entry','TEntry','TCombobox','Button','Text'}:
+                    if widget.winfo_class() in {'Entry','TEntry','TCombobox','Button','TButton','Checkbutton','TCheckbutton','Text'}:
                         estado=widget.cget('state');job['widgets'].append((widget,estado));widget.configure(state='disabled')
                     bloquear(widget)
             bloquear(modal)

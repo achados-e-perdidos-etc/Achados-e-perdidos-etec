@@ -1,7 +1,7 @@
 /* Navegação por teclado compartilhada entre portal e secretaria. */
 const Acessibilidade = {
     ativo: null, retorno: new WeakMap(), inertes: new Map(), agendado: false,
-    seletor: '.modal-overlay, #modalErroDetalhado, #centralAvisos, #modalNovo, #modalCadastrarAluno, #modalMatchImediato, #modalZoomImagem, #loginAlunoScreen, #loginScreen, #menuLateral.aberto',
+    seletor: '.modal-overlay, #modalErroDetalhado, #centralAvisos, #modalNovo, #modalCadastrarAluno, #modalMatchImediato, #modalZoomImagem, #loginAlunoScreen, #loginScreen, #menuLateral.aberto, dialog[open]',
     visivel(el) { return !!el && !el.hidden && !el.classList.contains('hidden') && getComputedStyle(el).visibility !== 'hidden' && el.getClientRects().length > 0; },
     focaveis(el) { return Array.from(el.querySelectorAll('button,a[href],input,select,textarea,[tabindex="0"]')).filter(x => !x.disabled && !x.closest('[inert]') && this.visivel(x)); },
     preparar() {
@@ -61,7 +61,7 @@ const Acessibilidade = {
     sincronizar() {
         this.preparar();
         const lista = Array.from(document.querySelectorAll(this.seletor)).filter(el => this.visivel(el));
-        lista.sort((a,b) => (parseInt(getComputedStyle(a).zIndex)||0) - (parseInt(getComputedStyle(b).zIndex)||0));
+        lista.sort((a,b) => (a.tagName==='DIALOG'?100000:(parseInt(getComputedStyle(a).zIndex)||0)) - (b.tagName==='DIALOG'?100000:(parseInt(getComputedStyle(b).zIndex)||0)));
         const topo = lista.at(-1) || null;
         if (topo === this.ativo) return;
         const anterior = this.ativo;
@@ -81,6 +81,7 @@ const Acessibilidade = {
     fechar() {
         const el = this.ativo;
         if (!el || ['loginAlunoScreen','loginScreen'].includes(el.id)) return;
+        if(el.tagName==='DIALOG'){el.close();return;}
         if (el.id === 'modalCadastrarAluno' && typeof envioCadastroAluno !== 'undefined' && envioCadastroAluno) return;
         if (el.id === 'modalFormItem' && typeof envioItemSecretaria !== 'undefined' && envioItemSecretaria) return;
         if (el.id === 'menuLateral') { toggleMenuHamburger(); return; }
