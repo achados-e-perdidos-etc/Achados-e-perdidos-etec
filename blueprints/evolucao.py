@@ -116,6 +116,24 @@ def confirmar(item_id):
         if conn: conn.close()
 
 
+@evolucao_bp.route('/api/retiradas/comprovantes/<int:recibo>', methods=['GET', 'OPTIONS'])
+@secretaria_required
+def consultar_recibo(recibo):
+    conn = None
+    try:
+        conn=get_db_connection();c=conn.cursor(cursor_factory=RealDictCursor)
+        c.execute('''SELECT id,item_id,nome_item,retirado_por,rm_retirante,turma_curso,data_entrega,
+         funcionario_responsavel,metodo,cancelada_em,cancelada_por,
+         (assinatura IS NOT NULL) AS tem_assinatura FROM entregues WHERE id=%s''',(recibo,))
+        row=c.fetchone()
+        if not row:return jsonify(success=False,message='Comprovante não encontrado.'),404
+        if row.get('cancelada_em'):row['cancelada_em']=row['cancelada_em'].isoformat()
+        return jsonify(success=True,comprovante=row)
+    except Exception:return falha()
+    finally:
+        if conn:conn.close()
+
+
 @evolucao_bp.route('/api/retiradas/comprovantes/<int:recibo>/assinatura', methods=['GET', 'OPTIONS'])
 @secretaria_required
 def assinatura_recibo(recibo):

@@ -2,6 +2,12 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Comprovantes com impressão
+
+[COMPROVANTES-IMPRESSAO.md](COMPROVANTES-IMPRESSAO.md): opção de impressora/PDF na baixa manual, no histórico e na confirmação por código. Folha A4 somente com o comprovante, aceite quando existente e identificação de entrega revertida. Desktop abre a versão local para imprimir, preservando os dados do histórico e removendo temporários ao sair.
+
+Validação cumulativa atual: **378 testes Python, 49 JavaScript e 48 Chromium — 475 aprovados**. PDF fictício A4 de uma página em `/workspace/comprovantes-evidencias`. Equipamento físico não foi utilizado.
+
 ## Revisão de experiência, catálogo e moderação
 
 Etapa atual em [EXPERIENCIA-E-CATALOGO.md](EXPERIENCIA-E-CATALOGO.md): navegação visível e responsiva, orientações de retirada e análise, login mais claro, filtros removíveis, feedback fiel à resposta do servidor e correções de sobreposição/foco/offline. Inclui catálogo paginado, fotos sob demanda, busca sem acentos com filtros combinados, recusa com motivo e correção pelo autor, histórico ampliado, aviso de duplicidade e moderação/gestão de professores no desktop.

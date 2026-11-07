@@ -91,4 +91,16 @@ def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeyp
         assert not app.pendentes_desktop or app.var_status.get()
         assert server.app.test_client().get('/api/moderacao/cadastros',headers={'Authorization':'Bearer '+desktop.TOKEN_SECRETARIA}).status_code==403
         assert not errors
-    finally:app.tarefas.fechar()
+        # O comprovante do aplicativo abre impressão no navegador, sem enviar à impressora durante o teste.
+        monkeypatch.setattr('utils.comprovantes.webbrowser.open',lambda *a,**k:True)
+        app.abrir_tela_comprovante(7,'Estojo azul','Estojo','Sala','Aluno Teste','12345','DS')
+        def filhos(widget):
+            for filho in widget.winfo_children():yield filho;yield from filhos(filho)
+        botao=next(w for w in filhos(tela) if w.winfo_class()=='Button' and w.cget('text')=='Imprimir comprovante')
+        botao.invoke();aguardar()
+        assert len(app.impressoes_temporarias)==1
+        arquivo=Path(app.impressoes_temporarias[0].name)/'comprovante.html'
+        assert arquivo.exists() and 'Estojo azul' in arquivo.read_text()
+        app.encerrar_sessao();assert not arquivo.exists()
+        assert not errors
+    finally:app.tarefas.fechar();app.limpar_impressoes()

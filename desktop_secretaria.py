@@ -2,6 +2,7 @@ from desktop_tasks import Trabalho, TarefasDesktop, assincrono
 from desktop_moderacao import ModeracaoDesktop
 from urllib.parse import urlencode, quote
 from utils.exportacao import salvar_csv
+from utils.comprovantes import abrir_impressao_desktop
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 import requests
@@ -100,6 +101,7 @@ class SecretariaApp(ModeracaoDesktop):
         self.itens_atuais = []
         self.categorias_atuais = []
         self.perfil_painel = {}
+        self.impressoes_temporarias=[]
         self.chat_timer = None
         self.email_chat_ativo = None
         self.chat_legado = False
@@ -143,6 +145,7 @@ class SecretariaApp(ModeracaoDesktop):
         global TOKEN_SECRETARIA
         TOKEN_SECRETARIA = None
         self.tarefas.invalidar()
+        self.limpar_impressoes()
         if self.chat_timer:
             self.root.after_cancel(self.chat_timer);self.chat_timer=None
         for widget in list(self.root.winfo_children()):
@@ -156,7 +159,7 @@ class SecretariaApp(ModeracaoDesktop):
         global TOKEN_SECRETARIA
         TOKEN_SECRETARIA = None
         if self.chat_timer:self.root.after_cancel(self.chat_timer)
-        self.tarefas.fechar();self.root.destroy()
+        self.tarefas.fechar();self.limpar_impressoes();self.root.destroy()
 
     def chamar_api(self,metodo,caminho,**kwargs):
         return requisicao_desktop(metodo,API_URL+caminho,**kwargs)
@@ -876,7 +879,34 @@ class SecretariaApp(ModeracaoDesktop):
         b_frame = tk.Frame(top_comp, bg="#e5e7eb")
         b_frame.pack(fill="x", padx=30, pady=(0, 20))
         tk.Button(b_frame, text="📥 BAIXAR TXT", command=baixar_comprovante_txt, bg=COR_AZUL, fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(0, 5))
+        dados={'item_id':item_id,'nome_item':nome_item,'retirado_por':retirado_por,'rm_retirante':rm,'turma_curso':turma,'data_entrega':data_atual,'funcionario_responsavel':self.perfil_painel.get('email') or 'Secretaria Desktop'}
+        tk.Button(b_frame,text='Imprimir comprovante',command=lambda:self.imprimir_comprovante_desktop(dados),bg=COR_VERDE,fg='white',font=('Segoe UI',10,'bold'),relief='flat',pady=8,cursor='hand2').pack(side='left',fill='x',expand=True,padx=5)
         tk.Button(b_frame, text="Fechar", command=top_comp.destroy, bg="#475569", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=8, cursor="hand2").pack(side="left", fill="x", expand=True, padx=(5, 0))
+
+    def limpar_impressoes(self):
+        for pasta in getattr(self,'impressoes_temporarias',[]):pasta.cleanup()
+        self.impressoes_temporarias=[]
+
+    @assincrono
+    def imprimir_comprovante_desktop(self,dados,assinatura=None):
+        pasta=yield Trabalho(abrir_impressao_desktop,dados,assinatura)
+        self.impressoes_temporarias.append(pasta)
+        self.status_operacao('Comprovante aberto no navegador. Clique em Imprimir comprovante e escolha a impressora.')
+
+    @assincrono
+    def imprimir_comprovante_historico(self):
+        selecionado=self.tree_entregues.selection()
+        if not selecionado:return messagebox.showinfo('Selecione uma entrega','Escolha uma entrega para imprimir o comprovante.')
+        recibo=self.tree_entregues.item(selecionado[0])['values'][0]
+        res=yield Trabalho(requisicao_desktop,'GET',f'{API_URL}/api/retiradas/comprovantes/{recibo}',headers=self.get_auth_headers_get())
+        dados=res.json()['comprovante'];assinatura=None
+        if dados.get('tem_assinatura'):
+            res=yield Trabalho(requisicao_desktop,'GET',f'{API_URL}/api/retiradas/comprovantes/{recibo}/assinatura',headers=self.get_auth_headers_get())
+            if res.headers.get('Content-Type','').split(';')[0]!='image/jpeg':raise ValueError('O aceite não pôde ser carregado. Atualize o histórico e tente novamente.')
+            assinatura=res.content
+        pasta=yield Trabalho(abrir_impressao_desktop,dados,assinatura)
+        self.impressoes_temporarias.append(pasta)
+        self.status_operacao('Comprovante aberto no navegador. Escolha a impressora ou Salvar como PDF.')
 
     def construir_tab_doacoes(self):
         frame_top = tk.Frame(self.tab_doacoes, bg=COR_BG_GERAL)
@@ -945,6 +975,7 @@ class SecretariaApp(ModeracaoDesktop):
         tk.Button(frame_top, text="🗑️ Excluir objeto e histórico", command=self.excluir_entregue, bg=COR_DESTAQUE, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right", padx=(10, 0))
         tk.Button(frame_top, text="↩️ Desfazer Entrega", command=self.desfazer_entrega, bg="#d97706", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=12, pady=6, cursor="hand2").pack(side="right")
 
+        tk.Button(frame_top,text='Comprovante / Imprimir',command=self.imprimir_comprovante_historico,bg=COR_VERDE,fg='white',relief='flat',padx=10,pady=6).pack(side='left',padx=8)
         self.incluir_canceladas=tk.BooleanVar(value=False)
         tk.Checkbutton(frame_top,text='Mostrar revertidas',variable=self.incluir_canceladas,command=self.carregar_entregues,bg=COR_BG_GERAL,fg=COR_TEXTO_PRINCIPAL,selectcolor=COR_BG_CARD).pack(side='left')
         colunas = ("Recibo", "ID Item", "Item", "Retirado Por", "RM", "Turma", "Data")

@@ -68,22 +68,14 @@ const RetiradaSecretaria = {
                 const data=await EvolucaoUI.request('/api/retiradas/'+Number(id.value)+'/confirmar',body);
                 if(!d.isConnected)return;
                 status.textContent=data.message;submit.hidden=true;clear.disabled=true;
+                if(data.comprovante_id){const print=EvolucaoUI.node('button','Comprovante / Imprimir','ev-action');print.type='button';print.onclick=()=>ComprovantesEntrega.abrirRegistro(data.comprovante_id);d.append(print);}
                 id.disabled=code.disabled=check.disabled=true;canvas.style.pointerEvents='none';
                 if(typeof carregarItensSecretaria==='function')carregarItensSecretaria();
             } catch(error){if(d.isConnected)status.textContent=error.message;}
             finally{busy=false;submit.disabled=false;if(!submit.hidden){id.disabled=code.disabled=check.disabled=clear.disabled=accept.disabled=typed.disabled=false;canvas.style.pointerEvents='';}}
         };
     },
-    async verAssinatura(id) {
-        const d=EvolucaoUI.dialog('Comprovante de recebimento'),status=EvolucaoUI.node('p','Carregando registro privado…');status.setAttribute('role','status');d.append(status);
-        try{
-            const token=EvolucaoUI.token(),res=await fetch(API_URL+'/api/retiradas/comprovantes/'+Number(id)+'/assinatura',{headers:{Authorization:'Bearer '+token}});
-            if(!res.ok||res.headers.get('Content-Type')?.split(';')[0]!=='image/jpeg')throw Error('Registro indisponível ou sessão expirada.');
-            const blob=await res.blob();if(!d.isConnected||token!==EvolucaoUI.token())return;
-            const url=URL.createObjectURL(blob),img=document.createElement('img');img.src=url;img.alt='Assinatura ou aceite registrado no recebimento';img.style.width='100%';d.append(img);status.textContent='Acesso restrito à equipe autorizada.';
-            d.addEventListener('close',()=>URL.revokeObjectURL(url),{once:true});
-        }catch(error){status.textContent=error.message;}
-    },
+    async verAssinatura(id) { return ComprovantesEntrega.abrirRegistro(id); },
     historico(itemId = null) {
         const d=EvolucaoUI.dialog('Ocorrências do objeto'),form=document.createElement('form'),id=EvolucaoUI.field(form,'Número do objeto','number');id.min=1;id.required=true;if(itemId)id.value=itemId;
         const btn=EvolucaoUI.node('button','Consultar');btn.type='submit';form.append(btn);d.append(form);

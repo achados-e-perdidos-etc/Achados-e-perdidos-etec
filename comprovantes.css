@@ -1,0 +1,14 @@
+#areaImpressaoComprovante{display:none}
+.comprovante-papel{color:#182230;background:white;border:1px solid #d9dee7;border-radius:12px;padding:24px;overflow-wrap:anywhere;font:14px/1.65 system-ui,sans-serif}
+.comprovante-papel h2{font-size:21px;font-weight:750;margin:0 0 6px;color:#182230}.comprovante-papel h3{font-size:16px;font-weight:650;margin:12px 0;color:#182230}
+.comprovante-papel dl{margin:18px 0}.comprovante-papel dl>div{padding:9px 0;border-bottom:1px solid #e1e5eb;break-inside:avoid}.comprovante-papel dt{font-size:11px;color:#475569;font-weight:700}.comprovante-papel dd{margin:2px 0 0;white-space:pre-wrap}
+.comprovante-papel img{max-width:100%;max-height:180px;object-fit:contain;display:block;border:1px solid #d9dee7}.comprovante-papel p{font-size:12px;margin:12px 0}.comprovante-revertido{border:2px solid #991b1b;padding:12px;font-weight:750;color:#991b1b}
+@media print{
+ @page{size:A4;margin:15mm}
+ body.imprimindo-comprovante{margin:0!important;padding:0!important;background:white!important;color:black!important;display:block!important;min-height:0!important}
+ body.imprimindo-comprovante>*{display:none!important}
+ body.imprimindo-comprovante>#areaImpressaoComprovante{display:block!important;border:0!important;border-radius:0!important;padding:0!important;width:auto!important;max-width:none!important;font-size:11pt;visibility:visible!important}
+ #areaImpressaoComprovante>*{max-width:none!important;box-shadow:none!important;border:0!important;padding:0!important;background:white!important;color:black!important;max-height:none!important;overflow:visible!important;position:static!important}
+ #areaImpressaoComprovante button{display:none!important}
+ #areaImpressaoComprovante img{max-height:45mm;break-inside:avoid}
+}

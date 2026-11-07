@@ -670,6 +670,7 @@
 <link rel="stylesheet" href="/evolucao-interface.css">
 <link rel="stylesheet" href="/catalogo-moderacao.css">
 <link rel="stylesheet" href="/experiencia.css">
+<link rel="stylesheet" href="/comprovantes.css">
 </head>
 <body class="secretaria-experiencia">
 
@@ -1267,7 +1268,7 @@
       </div>
       <div style="display: flex; gap: 8px; margin-top: 14px;">
         <button onclick="baixarComprovanteTexto()" class="btn-acao btn-scanner" style="flex: 1;"><i class="fas fa-download"></i> Baixar TXT</button>
-        <button onclick="window.print()" class="btn-acao btn-etiquetas" style="flex: 1;"><i class="fas fa-print"></i> Imprimir</button>
+        <button onclick="ComprovantesEntrega.imprimir(document.querySelector('#modalComprovante .modal-box'))" class="btn-acao btn-etiquetas" style="flex: 1;"><i class="fas fa-print"></i> Imprimir</button>
       </div>
     </div>
   </div>
@@ -2437,7 +2438,7 @@
         if (res.ok) {
           const l = await res.json();
           document.getElementById('tabelaEntreguesBody').innerHTML = l.map(e => `
-            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td>${e.metodo === 'CODIGO' ? `<button class="ev-action" onclick="RetiradaSecretaria.verAssinatura(${argumentoHTML(e.id)})">Ver aceite</button>` : ''}${e.cancelada_em ? textoHTML('Revertida por '+e.cancelada_por+' em '+e.cancelada_em) : `<button onclick="desfazerEntrega(${argumentoHTML(e.item_id)}, ${argumentoHTML(e.id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button>`}</td></tr>
+            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td><button class="ev-action" onclick="ComprovantesEntrega.abrirRegistro(${argumentoHTML(e.id)})">Comprovante / Imprimir</button>${e.metodo === 'CODIGO' ? `<button class="ev-action" onclick="RetiradaSecretaria.verAssinatura(${argumentoHTML(e.id)})">Ver aceite</button>` : ''}${e.cancelada_em ? textoHTML('Revertida por '+e.cancelada_por+' em '+e.cancelada_em) : `<button onclick="desfazerEntrega(${argumentoHTML(e.item_id)}, ${argumentoHTML(e.id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button>`}</td></tr>
           `).join('');
         }
       } catch (e) {}
@@ -3226,6 +3227,7 @@
 <script src="/evolucao-interface.js"></script>
 <script src="/moderacao-interface.js"></script>
 <script src="/experiencia.js"></script>
+<script src="/comprovantes.js"></script>
 </body>
 </html>
 
