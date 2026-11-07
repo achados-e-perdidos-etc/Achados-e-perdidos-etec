@@ -1,6 +1,8 @@
 """Autoria imutável e situação de cadastros, inclusive após exclusão do item."""
 SCHEMA_CADASTROS = '''
 ALTER TABLE itens ADD COLUMN IF NOT EXISTS email_cadastrador VARCHAR(150);
+ALTER TABLE itens ADD COLUMN IF NOT EXISTS motivo_recusa TEXT;
+ALTER TABLE itens ADD COLUMN IF NOT EXISTS recusado_em TIMESTAMPTZ;
 CREATE TABLE IF NOT EXISTS cadastros_itens (
     id BIGSERIAL PRIMARY KEY,
     item_id INTEGER UNIQUE REFERENCES itens(id) ON DELETE SET NULL,
@@ -10,6 +12,7 @@ CREATE TABLE IF NOT EXISTS cadastros_itens (
     enviado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE cadastros_itens ADD COLUMN IF NOT EXISTS motivo_recusa TEXT;
 CREATE INDEX IF NOT EXISTS cadastros_conta_id ON cadastros_itens(email_aluno,id DESC);
 CREATE OR REPLACE FUNCTION acompanhar_cadastro_item() RETURNS TRIGGER AS $$
 DECLARE estado TEXT; anterior TEXT;
@@ -28,7 +31,8 @@ BEGIN
         NEW.email_cadastrador := OLD.email_cadastrador;
     END IF;
     IF NEW.email_cadastrador IS NULL THEN RETURN NEW; END IF;
-    estado := CASE WHEN NEW.aprovado IS FALSE THEN 'AGUARDANDO'
+    estado := CASE WHEN NEW.aprovado IS FALSE AND NEW.recusado_em IS NOT NULL THEN 'RECUSADO'
+        WHEN NEW.aprovado IS FALSE THEN 'AGUARDANDO'
         WHEN UPPER(NEW.status) = 'ENTREGUE' THEN 'ENTREGUE'
         WHEN UPPER(NEW.status) = 'DOAÇÃO FEITA' THEN 'DOADO'
         WHEN UPPER(NEW.status) = 'PARA DOAÇÃO' THEN 'PARA DOAÇÃO'
@@ -39,10 +43,10 @@ BEGIN
             (NEW.email_cadastrador,'cadastro','Seu cadastro foi atualizado',
             'Consulte Minha atividade para acompanhar a situação do objeto.');
     END IF;
-    INSERT INTO cadastros_itens (item_id,email_aluno,nome,categoria,situacao)
-        VALUES (NEW.id, NEW.email_cadastrador, COALESCE(NEW.nome_item,NEW.descricao,''),NEW.categoria,estado)
+    INSERT INTO cadastros_itens (item_id,email_aluno,nome,categoria,situacao,motivo_recusa)
+        VALUES (NEW.id, NEW.email_cadastrador, COALESCE(NEW.nome_item,NEW.descricao,''),NEW.categoria,estado,NEW.motivo_recusa)
         ON CONFLICT (item_id) DO UPDATE SET nome=EXCLUDED.nome,categoria=EXCLUDED.categoria,
-            situacao=EXCLUDED.situacao,atualizado_em=CURRENT_TIMESTAMP;
+            situacao=EXCLUDED.situacao,motivo_recusa=EXCLUDED.motivo_recusa,atualizado_em=CURRENT_TIMESTAMP;
     RETURN NEW;
 END; $$ LANGUAGE plpgsql;
 -- AFTER INSERT porque a FK do histórico exige que o item já exista.

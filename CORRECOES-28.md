@@ -2,6 +2,12 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Revisão de experiência, catálogo e moderação
+
+Etapa atual em [EXPERIENCIA-E-CATALOGO.md](EXPERIENCIA-E-CATALOGO.md): navegação visível e responsiva, orientações de retirada e análise, login mais claro, filtros removíveis, feedback fiel à resposta do servidor e correções de sobreposição/foco/offline. Inclui catálogo paginado, fotos sob demanda, busca sem acentos com filtros combinados, recusa com motivo e correção pelo autor, histórico ampliado, aviso de duplicidade e moderação/gestão de professores no desktop.
+
+Validação cumulativa atual: **373 testes Python, 49 JavaScript e 48 Chromium aprovados — 470 testes**. Inclui nove jornadas Flask/PostgreSQL/Chromium e fluxo Tkinter real em Linux/Xvfb. Capturas em `/workspace/experiencia-evidencias`. Resultados abaixo são históricos de cada etapa.
+
 ## Ampliação de segurança, retirada e PWA
 
 Avaliação e implementação das novas ideias em [EVOLUCAO-SEGURANCA-PWA.md](EVOLUCAO-SEGURANCA-PWA.md): papéis explícitos, auditoria transacional, fotos verificadas e normalizadas no servidor, retirada com código e aceite privado, revisão visual, alertas deduplicados e fila offline por conta. A tabela de decisões explica as alternativas descartadas e os limites dos recursos externos.

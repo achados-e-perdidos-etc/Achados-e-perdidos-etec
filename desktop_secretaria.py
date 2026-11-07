@@ -1,4 +1,5 @@
 from desktop_tasks import Trabalho, TarefasDesktop, assincrono
+from desktop_moderacao import ModeracaoDesktop
 from urllib.parse import urlencode, quote
 from utils.exportacao import salvar_csv
 import tkinter as tk
@@ -18,17 +19,19 @@ import qrcode
 # ==========================================
 # CONFIGURAÇÕES DA API E JWT
 # ==========================================
-API_URL = "https://etec-achados.up.railway.app"
+API_URL = os.environ.get("ETEC_API_URL", "https://etec-achados.up.railway.app").rstrip("/")
 TOKEN_SECRETARIA = None
 
 def requisicao_desktop(metodo, url, **kwargs):
     """Limita a espera em conexões interrompidas, inclusive durante login."""
+    permitir_falha_login=kwargs.pop('permitir_falha_login',False)
     kwargs.setdefault('timeout', (5, 25))
     res = requests.request(metodo, url, **kwargs)
     if res.status_code == 401 and url.startswith(API_URL+'/api/') and not url.endswith('/api/login') and kwargs.get('headers',{}).get('Authorization'):
         error = requests.HTTPError('Sessão expirada.');error.sessao_expirada = True;raise error
+    if permitir_falha_login and res.status_code==401 and url.endswith(('/api/login','/api/auth/login-aluno')):return res
     if not res.ok:
-        error=requests.HTTPError(f'Operação não confirmada (HTTP {res.status_code}).')
+        error=requests.HTTPError(f'Operação não confirmada (HTTP {res.status_code}).',response=res)
         try:
             mensagem=res.json().get('message')
             if isinstance(mensagem,str):error.mensagem_publica=mensagem[:300]
@@ -87,7 +90,7 @@ def baixar_miniatura(url):
         return None
 
 
-class SecretariaApp:
+class SecretariaApp(ModeracaoDesktop):
     def __init__(self, root):
         self.root = root
         self.root.title("ETEC - Painel da Secretaria")
@@ -96,6 +99,7 @@ class SecretariaApp:
         
         self.itens_atuais = []
         self.categorias_atuais = []
+        self.perfil_painel = {}
         self.chat_timer = None
         self.email_chat_ativo = None
         self.chat_legado = False
@@ -154,6 +158,12 @@ class SecretariaApp:
         if self.chat_timer:self.root.after_cancel(self.chat_timer)
         self.tarefas.fechar();self.root.destroy()
 
+    def chamar_api(self,metodo,caminho,**kwargs):
+        return requisicao_desktop(metodo,API_URL+caminho,**kwargs)
+
+    def baixar_imagem(self,url):
+        return baixar_miniatura(url)
+
     def get_auth_headers(self):
         return {
             "Content-Type": "application/json",
@@ -205,11 +215,19 @@ class SecretariaApp:
         pass
 
         try:
-            res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/login", json={"email": email, "senha": senha}))
+            res = (yield Trabalho(requisicao_desktop, 'POST', f"{API_URL}/api/login", json={"email": email, "senha": senha},permitir_falha_login=True))
+            if res.status_code==401:
+                res=(yield Trabalho(requisicao_desktop,'POST',f"{API_URL}/api/auth/login-aluno",json={"email":email,"senha":senha},permitir_falha_login=True))
             data = res.json()
 
             if res.status_code == 200 and data.get("success"):
-                TOKEN_SECRETARIA = data.get("token")
+                candidato=data.get('token')
+                verificacao=yield Trabalho(requisicao_desktop,'GET',f"{API_URL}/api/auth/verificar",headers={'Authorization':'Bearer '+str(candidato)})
+                perfil=verificacao.json().get('user') or {}
+                if perfil.get('role')!='secretaria':
+                    messagebox.showerror('Acesso não autorizado','Sua conta não tem autorização da escola para operar a secretaria.');return
+                self.perfil_painel=perfil
+                TOKEN_SECRETARIA = candidato
                 self.entry_senha.delete(0,tk.END)
                 self.frame_login.destroy()
                 self.construir_interface_principal()
@@ -238,12 +256,12 @@ class SecretariaApp:
         self.tab_mural = tk.Frame(self.notebook, bg=COR_BG_GERAL)
 
         self.notebook.add(self.tab_dash, text="📊 Dashboard")
-        self.notebook.add(self.tab_itens, text="📦 Estoque / Gerenciar")
+        self.notebook.add(self.tab_itens, text="📦 Estoque")
         self.notebook.add(self.tab_categorias, text="🏷️ Categorias")
-        self.notebook.add(self.tab_entregues, text="📋 Histórico Entregues")
+        self.notebook.add(self.tab_entregues, text="📋 Entregas")
         self.notebook.add(self.tab_doacoes, text="🎁 Doações")
-        self.notebook.add(self.tab_chat, text="💬 Chat Alunos (30 dias)")
-        self.notebook.add(self.tab_mural, text="📢 Mural de Relatos")
+        self.notebook.add(self.tab_chat, text="💬 Chat")
+        self.notebook.add(self.tab_mural, text="📢 Mural")
 
         self.construir_tab_dash()
         self.construir_tab_itens()
@@ -252,8 +270,17 @@ class SecretariaApp:
         self.construir_tab_doacoes()
         self.construir_tab_chat()
         self.construir_tab_mural()
-
+        self.tab_moderacao=tk.Frame(self.notebook,bg=COR_BG_GERAL);self.notebook.add(self.tab_moderacao,text='Moderação');self.construir_tab_moderacao()
+        self.tab_professores=None
+        if 'gerir_acessos' in self.perfil_painel.get('permissoes',[]):
+            self.tab_professores=tk.Frame(self.notebook,bg=COR_BG_GERAL);self.notebook.add(self.tab_professores,text='Professores');self.construir_tab_professores()
+        self.notebook.bind('<<NotebookTabChanged>>',self.aba_equipe_alterada)
         self.carregar_dados()
+
+    def aba_equipe_alterada(self,event=None):
+        selecionada=self.notebook.select()
+        if selecionada==str(self.tab_moderacao):self.carregar_moderacao()
+        elif self.tab_professores is not None and selecionada==str(self.tab_professores):self.carregar_professores()
 
     def carregar_dados(self):
         self.carregar_categorias()
@@ -568,7 +595,7 @@ class SecretariaApp:
                     try:
                         resposta = (yield Trabalho(requisicao_desktop, 'POST',
                             f"{API_URL}/api/ia/analisar-imagem",
-                            json={"foto": fotos_upload_base64[0]},
+                            json={"foto": fotos_upload_base64[0]},headers=self.get_auth_headers(),
                             timeout=25
                         ))
                         dados_ia = resposta.json()
@@ -613,6 +640,10 @@ class SecretariaApp:
             }
             if not payload['nome'] or not payload['descricao']: return messagebox.showwarning("Aviso", "Preencha título e descrição!")
             try:
+                if item_edit:payload['id']=item_edit['id'];payload['versao']=item_edit.get('versao')
+                permitir,duplicado=yield from self.revisar_duplicidade_desktop(payload)
+                if not permitir:return
+                payload['confirmar_duplicado']=duplicado
                 if item_edit:
                     res = (yield Trabalho(requisicao_desktop, 'PUT', f"{API_URL}/api/itens/{item_edit['id']}", json=payload, headers=self.get_auth_headers()))
                 else:
@@ -690,6 +721,7 @@ class SecretariaApp:
         def btn(txt, cor, cmd):
             tk.Button(frame_acoes, text=txt, bg=cor, fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=8, cursor="hand2", command=cmd).pack(side="left", padx=4, fill="x", expand=True)
 
+        btn("Histórico", COR_AZUL, lambda:self.abrir_historico_objeto(item['id']))
         btn("🖨️ Etiqueta", COR_AZUL, lambda: self.abrir_modal_etiqueta_qr(item))
         btn("✏️ Editar", "#d97706", lambda: [modal.destroy(), self.abrir_modal_form(item)])
         

@@ -8,7 +8,7 @@ def reverter(conectar, item_id):
     conn = None
     try:
         conn = conectar();c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute('SELECT aprovado,email_solicitante FROM itens WHERE id=%s FOR UPDATE;', (item_id,))
+        c.execute('SELECT * FROM itens WHERE id=%s FOR UPDATE;', (item_id,))
         item = c.fetchone()
         if not item: return jsonify(success=False,message='Item não encontrado.'),404
         dados=request.get_json(silent=True) or {}
@@ -18,11 +18,13 @@ def reverter(conectar, item_id):
                 return jsonify(success=False,message='Comprovante inválido.'),400
             c.execute('SELECT 1 FROM entregues WHERE id=%s AND item_id=%s AND cancelada_em IS NULL',(int(recibo),item_id))
             if not c.fetchone():return jsonify(success=False,message='Esta entrega já mudou. Atualize o histórico.'),409
-        cancelar_entregas(c,item_id,request.user['email'])
         if item['aprovado'] is False:
-            c.execute('DELETE FROM itens WHERE id=%s;', (item_id,))
-            mensagem = 'Cadastro recusado.'
+            from services.moderacao_service import recusar_com_cursor
+            erro=recusar_com_cursor(c,item_id,item,dados)
+            if erro:return erro
+            mensagem = 'Cadastro devolvido para correção, com motivo registrado.'
         else:
+            cancelar_entregas(c,item_id,request.user['email'])
             c.execute("UPDATE itens SET status='DISPONÍVEL',solicitado_por=NULL,rm_aluno=NULL,email_solicitante=NULL WHERE id=%s;", (item_id,))
             mensagem = 'Item disponível. Entregas anteriores foram preservadas como canceladas.'
         conn.commit()

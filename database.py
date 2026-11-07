@@ -1,3 +1,4 @@
+from utils.catalogo import SCHEMA_CATALOGO
 from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
 from utils.uploads import SCHEMA_UPLOADS
 from utils.chat_retencao import SCHEMA_RETENCAO
@@ -24,25 +25,15 @@ def verificar_e_atualizar_itens_doacao(forcar=False):
     agora = datetime.now()
     if not forcar and ULTIMA_VERIFICACAO_DOACOES and (agora - ULTIMA_VERIFICACAO_DOACOES).total_seconds() < 3600:
         return
-    ULTIMA_VERIFICACAO_DOACOES = agora
 
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, data_encontrado FROM itens WHERE UPPER(status) = 'DISPONÍVEL';")
-        itens = cursor.fetchall()
-        ids_para_doacao = []
-        for item in itens:
-            dias = calcular_dias_passados(item.get('data_encontrado'))
-            if dias >= 90:
-                ids_para_doacao.append(item['id'])
-        
-        if ids_para_doacao:
-            cursor.execute("SELECT set_config('etec.ator_id','sistema:doacoes',false),set_config('etec.perfil','sistema',false)")
-            cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = ANY(%s);", (ids_para_doacao,))
-            conn.commit()
-            print(f"[Doações 90 Dias] {len(ids_para_doacao)} item(ns) atualizado(s) para 'PARA DOAÇÃO'.")
+        cursor.execute("SELECT set_config('etec.ator_id','sistema:doacoes',false),set_config('etec.perfil','sistema',false)")
+        cursor.execute("UPDATE itens SET status='PARA DOAÇÃO' WHERE status='DISPONÍVEL' AND aprovado IS NOT FALSE AND etec_data(data_encontrado)<=CURRENT_DATE-90;")
+        conn.commit()
+        ULTIMA_VERIFICACAO_DOACOES = agora
         cursor.close()
         conn.close()
     except Exception as e:
@@ -130,6 +121,7 @@ def init_db():
         cursor.execute(SCHEMA_RETENCAO)
         cursor.execute(SCHEMA_UPLOADS)
         cursor.execute(SCHEMA_EVOLUCAO)
+        cursor.execute(SCHEMA_CATALOGO)
         cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL

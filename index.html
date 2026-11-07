@@ -18,8 +18,10 @@
     <link rel="stylesheet" href="melhorias-portal.css">
 <link rel="stylesheet" href="acessibilidade.css">
 <link rel="stylesheet" href="/evolucao-interface.css">
+<link rel="stylesheet" href="/catalogo-moderacao.css">
+<link rel="stylesheet" href="/experiencia.css">
 </head>
-<body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
+<body class="portal-experiencia dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
     <!-- SPLASH SCREEN COM GIF (celular = animacao.GIF | PC/paisagem = animacao_pc.GIF) -->
     <div id="splashScreenAnimacao" class="fixed inset-0 z-[300] bg-black flex items-center justify-center transition-opacity duration-700">
@@ -38,14 +40,14 @@
 
         <div id="loginAuthCard" class="glass-panel w-full max-w-sm rounded-3xl p-7 shadow-2xl relative z-10 overflow-hidden border border-red-500/30 glow-red">
             <div class="text-center mb-6">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white text-2xl mx-auto shadow-lg shadow-red-600/30 mb-3 ring-4 ring-red-500/20">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <h2 class="text-xl font-extrabold text-white tracking-tight">Portal do Aluno</h2>
-                <p class="text-xs text-slate-400 mt-1 font-medium">Use seu e-mail institucional @aluno.cps.sp.gov.br</p>
+                <img src="logo.png" alt="ETEC Achados e Perdidos" class="ux-auth-logo" width="64" height="64">
+                <p class="ux-eyebrow">ACHADOS E PERDIDOS</p>
+                <h2 id="authTitulo" class="text-xl font-extrabold text-white tracking-tight">Vamos encontrar o que é seu.</h2>
+                <p id="authDescricao" class="ux-auth-description">Entre com sua conta institucional de aluno ou professor.</p>
             </div>
 
             
+            <p id="authFeedback" class="ux-feedback" role="status" hidden></p>
             <form id="formLoginAluno" onsubmit="fazerLoginAluno(event)" class="auth-form space-y-4">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Institucional</label>
@@ -58,7 +60,7 @@
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Senha de Acesso</label>
                     <div class="relative">
                         <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="password" id="loginSenhaAluno" autocomplete="current-password" required placeholder="••••••••" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                        <input type="password" id="loginSenhaAluno" autocomplete="current-password" aria-describedby="authContaAjuda" required placeholder="••••••••" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
                     </div>
                 </div>
                 <label class="auth-remember" for="lembrarLogin">
@@ -76,7 +78,7 @@
                 <div id="passo1Cadastro" class="space-y-3">
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="email" id="cadEmailAluno" required placeholder="E-mail @aluno.cps.sp.gov.br" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500">
+                        <input type="email" id="cadEmailAluno" required autocomplete="email" placeholder="Seu e-mail institucional" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500">
                     </div>
                     <button type="button" id="btnEnviarCodigoCad" onclick="enviarCodigoAuth('cadEmailAluno', 'btnEnviarCodigoCad', 'passo2Cadastro', 'passo1Cadastro')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition">Enviar Código</button>
                 </div>
@@ -84,10 +86,10 @@
                     <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
                         <p class="text-[11px] text-amber-400 font-bold">Código enviado! Verifique seu e-mail institucional.</p>
                     </div>
-                    <input type="text" id="cadCodigo" required placeholder="Código (6 dígitos)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
+                    <input type="text" id="cadCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="Código (6 dígitos)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
                     <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="cadNome" required placeholder="Nome Completo" class="col-span-2 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
-                        <input type="text" id="cadRM" required placeholder="Seu RM" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
+                        <input type="text" id="cadNome" autocomplete="name" required placeholder="Nome Completo" class="col-span-2 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
+                        <input type="text" id="cadRM" inputmode="numeric" required placeholder="Seu RM" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                     </div>
                     <input type="password" id="cadSenha" autocomplete="new-password" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <label class="auth-remember auth-remember-compact" for="lembrarCadastro"><input type="checkbox" id="lembrarCadastro"><span><strong>Lembrar de mim neste dispositivo</strong></span></label>
@@ -98,16 +100,18 @@
 
             <form id="formRecuperarAluno" onsubmit="confirmarRedefinicao(event)" class="auth-form hidden space-y-3.5">
                 <div id="passo1Recuperar" class="space-y-3">
-                    <input type="email" id="recEmailAluno" required placeholder="E-mail Institucional" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
+                    <input type="email" id="recEmailAluno" autocomplete="email" required placeholder="E-mail Institucional" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-red-500">
                     <button type="button" id="btnEnviarCodigoRec" onclick="enviarCodigoAuth('recEmailAluno', 'btnEnviarCodigoRec', 'passo2Recuperar', 'passo1Recuperar')" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition">Enviar Código de Redefinição</button>
                 </div>
                 <div id="passo2Recuperar" class="hidden space-y-3">
-                    <input type="text" id="recCodigo" required placeholder="Código recebido" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
-                    <input type="password" id="recSenha" required placeholder="Nova Senha" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
+                    <input type="text" id="recCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="Código recebido" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
+                    <input type="password" id="recSenha" autocomplete="new-password" required placeholder="Nova Senha" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <button type="submit" id="btnConfirmarRec" class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Atualizar Senha</button>
                 </div>
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-semibold text-slate-400 hover:text-white pt-1">Voltar ao Login</button>
             </form>
+            <p id="authContaAjuda" class="ux-account-help">Alunos: @aluno.cps.sp.gov.br<br>Professores: @etec.sp.gov.br ou @cps.sp.gov.br</p>
+            <p class="ux-shared-device">Em um computador da escola, deixe “Lembrar de mim” desmarcado.</p>
             <div id="authTransition" class="auth-transition" hidden role="status" aria-live="polite" aria-atomic="true" tabindex="-1">
                 <span class="auth-transition-eyebrow">ETEC · ACHADOS E PERDIDOS</span>
                 <div class="auth-orbit" aria-hidden="true">
@@ -151,12 +155,12 @@
             <div class="flex items-center space-x-3 min-w-0">
                 <div class="relative">
                     <img id="siteLogo" src="logo.png" alt="Logo" class="w-10 h-10 shrink-0 object-cover rounded-full ring-2 ring-red-500/40 shadow-md">
-                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#111620]"></span>
+
                 </div>
                 <div class="min-w-0">
                     <div class="flex items-center gap-2">
                         <h1 class="font-extrabold text-base text-white tracking-tight leading-tight truncate">ETEC ACHADOS</h1>
-                        <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-600/20 text-red-400 border border-red-500/30">Oficial</span>
+                        <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-600/20 text-red-400 border border-red-500/30">Comunidade escolar</span>
                     </div>
                     <p id="lblBemVindo" class="text-xs text-slate-400 truncate font-medium">Olá, Aluno!</p>
                 </div>
@@ -236,6 +240,13 @@
         </div>
     </header>
 
+    <nav class="ux-nav" aria-label="Navegação principal">
+        <div class="ux-nav-inner">
+            <button type="button" data-ux-aba="catalogo" aria-current="page" onclick="mudarAba('catalogo')"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><span>Objetos encontrados</span></button>
+            <button type="button" data-ux-aba="mural" onclick="mudarAba('mural')"><i class="fas fa-bullhorn" aria-hidden="true"></i><span>Perdi algo</span></button>
+            <button type="button" data-ux-aba="meusItens" onclick="abrirPainelMeusItens()"><i class="fas fa-user-clock" aria-hidden="true"></i><span>Minha atividade</span></button>
+        </div>
+    </nav>
     <main class="max-w-5xl mx-auto w-full p-4 flex-grow space-y-6">
 
         <section id="acessoProfessor" class="hidden glass-panel rounded-2xl p-5 space-y-3">
@@ -247,11 +258,12 @@
         </section>
 
         <!-- DASHBOARD HERO BANNER -->
-        <section class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10 glow-red relative overflow-hidden">
+        <section id="portalBoasVindas" class="ux-hero glass-panel rounded-3xl p-5 sm:p-6 border border-white/10 relative overflow-hidden">
             <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div class="space-y-1">
-                    <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Achados e Perdidos da ETEC</h2>
-                    <p class="text-xs sm:text-sm text-slate-400 max-w-xl">Encontre objetos esquecidos na escola ou registre pertences perdidos. Todo item entregue na secretaria fica catalogado aqui.</p>
+                    <p class="ux-eyebrow">PEQUENOS CUIDADOS. GRANDES REENCONTROS.</p>
+                    <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Seu pertence pode estar aqui.</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 max-w-xl">Procure entre os objetos publicados pela secretaria. Encontrou algo na escola? Ajude a devolver a quem perdeu.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 w-full md:w-auto">
                     <button id="btnPerdiBanner" onclick="mudarAba('mural')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 font-bold text-xs uppercase tracking-wider transition">
@@ -264,21 +276,28 @@
             </div>
         </section>
 
+        <details class="ux-como-funciona">
+            <summary><span><i class="fas fa-circle-info" aria-hidden="true"></i> Como funciona a devolução?</span><span class="ux-disclosure-hint">Ver etapas <i class="fas fa-chevron-down" aria-hidden="true"></i></span></summary>
+            <ol><li><span>01</span><div><strong>Procure seu objeto</strong><p>Confira fotos, local e data. Se ainda não encontrou, registre o que perdeu no mural.</p></div></li><li><span>02</span><div><strong>Reconheceu? Solicite a retirada</strong><p>Abra o objeto disponível e faça o pedido pela sua conta.</p></div></li><li><span>03</span><div><strong>Retire com a secretaria</strong><p>Leve seu RM, documento e o código de retirada. A equipe confere a propriedade antes da entrega.</p></div></li></ol>
+        </details>
+
         <!-- ABA 1: CATÁLOGO DE OBJETOS -->
-        <section id="catalogScreen" class="space-y-5">
+        <section id="catalogScreen" class="space-y-5" aria-labelledby="catalogoTitulo">
+            <div class="ux-section-heading"><div><p class="ux-eyebrow">EXPLORE O CATÁLOGO</p><h2 id="catalogoTitulo" tabindex="-1">Objetos encontrados</h2></div><span class="ux-review-note"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Publicados pela secretaria</span></div>
             <div class="glass-panel rounded-2xl p-4 border border-white/10 space-y-3.5 relative z-30">
+                <label for="searchInput" class="ux-search-label">O que você está procurando?</label>
                 <!-- LINHA DE BUSCA + BOTÃO DE FILTRO -->
                 <div class="flex items-center gap-2.5 w-full">
                     <div class="relative flex-1">
                         <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                        <input type="text" id="searchInput" oninput="filtrarPorPalavraChave()" placeholder="Buscar por nome, descrição ou local..." class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-inner">
-                        <button id="btnClearSearch" onclick="limparBusca()" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition"><i class="fas fa-times text-xs"></i></button>
+                        <input type="search" id="searchInput" maxlength="120" autocomplete="off" aria-describedby="buscaAjuda" oninput="filtrarPorPalavraChave()" placeholder="Ex.: garrafa azul, estojo, calculadora…" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-red-500 transition shadow-inner">
+                        <button id="btnClearSearch" aria-label="Limpar busca" onclick="limparBusca()" class="hidden absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition"><i class="fas fa-times text-xs"></i></button>
                     </div>
 
                     <!-- BOTÃO DE FILTRO DE CATEGORIAS -->
                     <button 
                         type="button" 
-                        id="btnToggleFiltros" 
+                        id="btnToggleFiltros" aria-controls="categoryChipsContainer" aria-expanded="false"
                         onclick="togglePainelCategorias()" 
                         title="Filtrar por Categorias" 
                         class="w-12 h-12 rounded-xl bg-[#141a26] border border-white/15 text-slate-300 hover:text-white hover:border-red-500/50 flex items-center justify-center transition shrink-0 shadow-md active:scale-95"
@@ -287,6 +306,7 @@
                     </button>
                 </div>
 
+                <p id="buscaAjuda" class="ux-field-help">Busque por nome, cor, marca ou local. Combine os filtros para refinar.</p>
                 <!-- PAINEL RETRÁTIL DE CATEGORIAS -->
                 <div id="categoryChipsContainer" class="hidden pt-3 border-t border-white/10 transition-all duration-200">
                     <div class="flex items-center justify-between mb-2 px-0.5">
@@ -465,7 +485,7 @@
                         <p id="detailLocal" class="text-xs font-bold text-white mt-0.5 truncate"></p>
                     </div>
                     <div class="p-3 rounded-xl bg-white/5 border border-white/5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Data de Registro</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Data em que foi encontrado</span>
                         <p id="detailDate" class="text-xs font-bold text-white mt-0.5 truncate"></p>
                     </div>
                 </div>
@@ -483,7 +503,7 @@
     </main>
 
     <!-- CHAT FLUTUANTE -->
-    <div class="fixed bottom-5 right-5 z-50">
+    <div id="chatFlutuante" class="fixed bottom-5 right-5 z-50">
         <button onclick="alternarJanelaChat()" id="btnAbrirChat" aria-label="Conversar com a secretaria" class="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shadow-2xl shadow-red-600/50 hover:scale-105 transition transform active:scale-95 ring-4 ring-red-500/20">
             <i class="fas fa-comment-dots text-xl"></i>
             <span id="badgeChatWeb" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-black text-[11px] font-black rounded-full flex items-center justify-center ring-2 ring-[#090d13]">0</span>
@@ -525,14 +545,15 @@
         <div class="avisos-acoes"><button type="button" onclick="CentralAvisos.carregar()">Atualizar avisos</button><button id="lerTodosAvisos" type="button" onclick="CentralAvisos.ler()">Marcar todas como lidas</button></div>
         <p id="statusAvisos" class="avisos-status" role="status"></p><ul id="listaAvisos"></ul><button id="maisAvisos" type="button" hidden onclick="CentralAvisos.carregar(true)">Ver avisos anteriores</button></div>
     </div>
+    <footer class="ux-footer"><img src="logo.png" alt="" width="26" height="26"><p>Um cuidado de toda a comunidade escolar.<span>A retirada dos objetos é feita presencialmente com a secretaria.</span></p></footer>
     <!-- MODAL CONFIRMAR SOLICITAÇÃO -->
     <div id="modalNovo" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 border border-white/10 shadow-2xl text-center">
             <div class="w-14 h-14 rounded-2xl bg-red-600/20 text-red-500 flex items-center justify-center text-2xl mx-auto border border-red-500/30">
                 <i class="fas fa-question"></i>
             </div>
-            <h3 class="font-extrabold text-white text-lg">Confirmar Solicitação?</h3>
-            <p class="text-xs text-slate-400">Após confirmar, dirija-se à secretaria com seu RM e documento para validação e retirada física do item.</p>
+            <h3 class="font-extrabold text-white text-lg">Reconheceu este objeto?</h3>
+            <p class="text-xs text-slate-400">O pedido gera um código de retirada. Leve seu RM e documento à secretaria: a equipe precisa conferir se o objeto é seu antes de entregar.</p>
             <div class="flex gap-2 pt-2">
                 <button onclick="document.getElementById('modalNovo').classList.add('hidden')" class="w-1/2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition">Cancelar</button>
                 <button id="btnNovo" onclick="enviarNovo()" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Sim, é meu!</button>
@@ -546,11 +567,11 @@
             <div class="flex justify-between items-center border-b border-white/10 pb-3">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-hand-holding-heart text-emerald-400 text-lg"></i>
-                    <h3 class="font-black text-white text-base">Entregar Objeto Encontrado</h3>
+                    <h3 class="font-black text-white text-base">Cadastrar objeto encontrado</h3>
                 </div>
                 <button onclick="document.getElementById('modalCadastrarAluno').classList.add('hidden')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            <p class="text-xs text-slate-400">Você achou um objeto na ETEC? Cadastre os detalhes abaixo e entregue-o na secretaria. O item aparecerá no catálogo após aprovação!</p>
+            <p class="text-xs text-slate-400">Preencha os detalhes e entregue o objeto na secretaria. Seu cadastro passa por análise antes de aparecer no catálogo. Acompanhe a decisão em Minha atividade.</p>
             
             <form onsubmit="enviarCadastroAluno(event)" class="space-y-3">
                 <div>
@@ -570,12 +591,14 @@
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Local Onde Achou</label>
                         <input type="text" id="alunoItemLocal" required placeholder="Ex: Pátio / Bloco B" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 transition">
                     </div>
+                    <div class="ev-field"><label for="alunoItemData">Data em que encontrou</label><input type="date" id="alunoItemData" required></div>
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-1">
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fotos do Objeto (Até 4 fotos):</label>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fotos do objeto · opcionais, até 4</label>
                     </div>
                     <input type="file" id="alunoItemFoto" accept="image/*" multiple onchange="prepararFotosAluno(this)" class="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2 text-white text-xs cursor-pointer">
+                    <p class="ux-field-help">Mostre o objeto com boa iluminação. Evite incluir rostos, documentos e dados pessoais na foto.</p>
                     <div id="statusCompressaoFotos" hidden></div>
                     <div id="uploadsAluno"></div>
                     <div id="gridPreviewAluno" class="mt-2.5 flex gap-2 overflow-x-auto scrollbar-none hidden pb-1"></div>
@@ -586,7 +609,7 @@
                     </button>
                 </div>
                 <button type="submit" id="btnSalvarAlunoItem" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 transition">
-                    Enviar para Moderação da Secretaria
+                    Enviar para análise da secretaria
                 </button>
             </form>
         </div>
@@ -685,5 +708,8 @@
     <script src="acessibilidade.js"></script>
 <script src="/evolucao-interface.js"></script>
 <script src="/fila-offline.js"></script>
+<script src="/catalogo-portal.js"></script>
+<script src="/moderacao-interface.js"></script>
+<script src="/experiencia.js"></script>
 </body>
 </html>

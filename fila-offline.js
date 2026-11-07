@@ -123,9 +123,10 @@ const FilaOffline = {
             form.addEventListener('submit',async event=>{
                 if(navigator.onLine)return;
                 event.preventDefault();event.stopImmediatePropagation();
+                if(tipo==='encontrado'&&typeof CorrecaoCadastro!=='undefined'&&CorrecaoCadastro.atual){mostrarToast('Conecte-se para reenviar esta correção com a versão atual do cadastro.','info');return;}
                 if(!check.checked){mostrarToast('Marque a opção de guardar offline ou aguarde a conexão.','info');return;}
                 if(typeof preparandoFotosAluno!=='undefined'&&preparandoFotosAluno){mostrarToast('Aguarde a preparação das fotos.','info');return;}
-                const payload=tipo==='mural'?{categoria:document.getElementById('muralCategoria').value,descricao:input.value.trim()}:{nome:input.value.trim(),descricao:document.getElementById('alunoItemDesc').value.trim(),categoria:document.getElementById('alunoItemCat').value,local:document.getElementById('alunoItemLocal').value.trim(),data:new Date().toLocaleDateString('pt-BR'),fotos:[...fotosAlunoSelecionadas]};
+                const payload=tipo==='mural'?{categoria:document.getElementById('muralCategoria').value,descricao:input.value.trim()}:{nome:input.value.trim(),descricao:document.getElementById('alunoItemDesc').value.trim(),categoria:document.getElementById('alunoItemCat').value,local:document.getElementById('alunoItemLocal').value.trim(),data:document.getElementById('alunoItemData')?.value||new Date().toLocaleDateString('pt-BR'),fotos:[...fotosAlunoSelecionadas]};
                 try{await this.guardar(tipo,payload);Rascunhos.limpar(tipo);form.reset();if(tipo==='encontrado'){fotosAlunoSelecionadas=[];UploadAluno.limpar();renderizarGridPreviewAluno();document.getElementById('modalCadastrarAluno').classList.add('hidden');}mostrarToast('Guardado no dispositivo. Ainda não foi enviado à escola.','info');}
                 catch(error){mostrarToast(error.message,'error');}
             },true);

@@ -30,6 +30,7 @@ class UploadTests(safety.TextSafetyBrowser):
         self.page.evaluate('''admin=>{
           (admin ? UploadSecretaria : UploadAluno).enviarTodas=async fotos=>fotos;
           window._posts=0;window.fetch=async(url,opts)=>{
+            if(String(url).endsWith('/api/itens/duplicados'))return {ok:true,json:async()=>({success:true,duplicados:[]})};
             if(opts?.method==='POST'||opts?.method==='PUT'){
               window._posts++;return new Promise(resolve=>window._finish=resolve);
             }return {ok:true,json:async()=>[]};

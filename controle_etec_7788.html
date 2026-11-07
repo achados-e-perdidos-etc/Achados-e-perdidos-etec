@@ -668,8 +668,10 @@
 <script src="exportacao-segura.js"></script>
 <script src="upload-retomavel.js"></script>
 <link rel="stylesheet" href="/evolucao-interface.css">
+<link rel="stylesheet" href="/catalogo-moderacao.css">
+<link rel="stylesheet" href="/experiencia.css">
 </head>
-<body>
+<body class="secretaria-experiencia">
 
   <!-- TELA DE LOGIN -->
   <div id="loginScreen">
@@ -679,7 +681,7 @@
         <i class="fas fa-lock" style="display: none;"></i>
       </div>
       <h2>Secretaria ETEC</h2>
-      <p>Acesso Restrito - controle_etec_7788</p>
+      <p>Acesso da secretaria e de professores autorizados.</p>
       
       <div id="loginErroMsg" class="alerta-erro hidden"></div>
 
@@ -749,7 +751,7 @@
 
       <button onclick="trocarAba('pendentes')" class="item-menu" id="menuAba-pendentes">
         <i class="fas fa-clipboard-check" style="color: #f59e0b;"></i>
-        <span>Itens Pendentes Alunos</span>
+        <span>Cadastros para análise</span>
       </button>
 
       <button onclick="trocarAba('categorias')" class="item-menu" id="menuAba-categorias">
@@ -857,8 +859,8 @@
 
     <!-- 2. ABA ITENS PENDENTES DE ALUNOS -->
     <section id="secao-pendentes" class="hidden">
-      <h2 class="secao-titulo"><i class="fas fa-clipboard-check" style="color: #f59e0b;"></i> Itens Cadastrados por Alunos</h2>
-      <p style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">Objetos encontrados por alunos aguardando validação da secretaria.</p>
+      <h2 class="secao-titulo"><i class="fas fa-clipboard-check" style="color: #f59e0b;"></i> Cadastros para análise</h2>
+      <p style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">Confira as fotos e os detalhes antes de publicar. Se precisar de ajustes, envie um motivo ao aluno para que ele corrija o mesmo cadastro.</p>
       <div id="gridItensPendentesContainer" class="grid-itens"></div>
     </section>
 
@@ -1608,7 +1610,7 @@
     }
 
     function trocarAba(abaId) {
-      toggleMenuHamburger();
+      if(document.getElementById('menuLateral').classList.contains('aberto'))toggleMenuHamburger();
       if (abaId === 'dashboard') carregarDashboard();
       if (abaId === 'mural') carregarMural();
       ['itens', 'pendentes', 'categorias', 'dashboard', 'entregues', 'doacoes', 'mural', 'chat', 'professores'].forEach(id => {
@@ -1812,61 +1814,8 @@
     }
 
     /* ITENS PENDENTES DE ALUNOS */
-    async function carregarItensPendentes() {
-      const container = document.getElementById('gridItensPendentesContainer');
-      container.innerHTML = `<div class="text-center py-6" style="color: #8b949e;">Carregando pendências...</div>`;
-      try {
-        const res = await fetch(`${API_URL}/api/itens/pendentes`, { headers: getAuthHeadersGet() });
-        if (res.ok) {
-          itensPendentesSec = await res.json();
-          if (!itensPendentesSec.length) {
-            container.innerHTML = `<div class="text-center py-8" style="color: #10b981; font-weight: 600;">Nenhum item pendente de aprovação!</div>`;
-            return;
-          }
-          container.innerHTML = itensPendentesSec.map(item => {
-            const fotoUrl = (item.fotos && item.fotos[0]) ? item.fotos[0] : item.foto;
-            const fotoHtml = fotoUrl 
-              ? `<div class="item-foto-thumb"><img src="${imagemHTML(fotoUrl)}" alt="Foto"></div>`
-              : `<div class="item-foto-thumb"><i class="fas fa-box"></i></div>`;
-
-            return `
-              <div class="item-card" style="border-left: 3px solid #f59e0b;">
-                ${fotoHtml}
-                <div class="item-info">
-                  <div class="item-badges">
-                    <span class="badge-cat">${textoHTML(item.categoria || 'OUTROS')}</span>
-                    <span class="badge-status status-pendente">PENDENTE</span>
-                  </div>
-                  <div class="item-titulo truncate">#${textoHTML(item.id)} - ${textoHTML(item.nome || item.txt_descricao || 'Objeto')}</div>
-                  <div class="item-local-data">Aluno RM: ${textoHTML(item.rm_aluno || '-')} | Local: ${textoHTML(item.txt_local || '-')}</div>
-                  <div style="display: flex; gap: 8px; margin-top: 8px;">
-                    <button onclick="aprovarItemAluno(${argumentoHTML(item.id)})" class="btn-acao" style="background: #059669; padding: 6px 12px; font-size: 11px;">
-                      <i class="fas fa-check"></i> Aprovar
-                    </button>
-                    <button onclick="recusarCadastroAluno(${argumentoHTML(item.id)})" class="btn-acao" style="background: #dc2626; padding: 6px 12px; font-size: 11px;">
-                      <i class="fas fa-trash"></i> Recusar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('');
-        }
-      } catch (e) {
-        container.innerHTML = `<div class="text-center py-6" style="color: #ef4444;">Erro ao carregar pendências.</div>`;
-      }
-    }
-
-    async function aprovarItemAluno(id) {
-      try {
-        const res = await fetch(`${API_URL}/api/itens/${id}/aprovar`, { method: 'PUT', headers: getAuthHeaders() });
-        if (res.ok) {
-          mostrarToast("Item aprovado no catálogo!");
-          carregarItensPendentes();
-          carregarItensSecretaria();
-        }
-      } catch (e) {}
-    }
+    async function carregarItensPendentes() { return ModeracaoUI.carregar(); }
+    async function aprovarItemAluno(id) { const item=itensPendentesSec.find(i=>Number(i.id)===Number(id));if(item)return ModeracaoUI.aprovar(item); }
 
     /* GERAÇÃO DE ETIQUETAS A4 COM QR CODE (FOTO 3) */
     async function gerarFolhaEtiquetasA4() {
@@ -2082,6 +2031,8 @@
       btns += `<button onclick="excluirItem(${argumentoHTML(item.id)})" class="btn-acao" style="background: #dc2626;"><i class="fas fa-trash"></i> Excluir</button>`;
 
       document.getElementById('detalhesBotoesAcao').innerHTML = btns;
+      document.querySelector('#modalDetalhesItem .mod-history')?.remove();
+      const history=document.createElement('button');history.type='button';history.className='ev-action mod-history';history.textContent='Histórico completo';history.onclick=()=>RetiradaSecretaria.historico(item.id);document.getElementById('modalDetalhesItem').querySelector('.modal-box').append(history);
       document.getElementById('modalDetalhesItem').classList.remove('hidden');
     }
 
@@ -2192,6 +2143,11 @@
       };
 
       try {
+        if (typeof ModeracaoUI !== 'undefined') {
+          const revisao={...payload,...(id?{id:Number(id)}:{})};
+          if (!await ModeracaoUI.duplicidade(revisao)) return;
+          payload.confirmar_duplicado=revisao.confirmar_duplicado;
+        }
         payload.fotos = await UploadSecretaria.enviarTodas(fotosBase64Upload);
         const url = id ? `${API_URL}/api/itens/${id}` : `${API_URL}/api/itens`;
         let res;
@@ -2533,49 +2489,7 @@
     }
 
     /* FUNÇÃO RECUSAR CADASTRO PENDENTE DE ALUNO */
-    async function recusarCadastroAluno(id) {
-      const ok = await abrirConfirmacaoModal({
-        titulo: "Recusar Item de Aluno",
-        mensagem: `Deseja realmente recusar e descartar o item <strong>#${textoHTML(id)}</strong> cadastrado pelo aluno?<br><span style="font-size: 11px; color: #8b949e;">O item será removido das pendências e não entrará no catálogo.</span>`,
-        icone: "fa-times-circle",
-        corIcone: "#ef4444",
-        textoConfirmar: "Sim, Recusar",
-        corConfirmar: "#ef4444"
-      });
-      if (!ok) return;
-
-      try {
-        const res = await fetch(`${API_URL}/api/itens/${id}/recusar`, {
-          method: 'PUT',
-          headers: getAuthHeaders()
-        });
-        if (res.ok) {
-          mostrarToast("Item recusado e removido das pendências!");
-          await carregarItensPendentes();
-          await carregarItensSecretaria();
-        } else {
-          let errData = {};
-          try { errData = await res.json(); } catch(e) {}
-          exibirErroDetalhado({
-            operacao: `Recusar Item Pendente #${id}`,
-            onde: "recusarCadastroAluno() -> Resposta da API",
-            comunicacao: `PUT ${API_URL}/api/itens/${id}/recusar (HTTP ${res.status})`,
-            mensagem: errData.message || errData.error || `HTTP ${res.status}`,
-            detalhes: errData.traceback || JSON.stringify(errData),
-            causa: "O servidor rejeitou a recusa do item.",
-            solucao: "Verifique se a sessão administrativa está ativa."
-          });
-        }
-      } catch (err) {
-        exibirErroDetalhado({
-          operacao: `Erro de Conexão ao Recusar Item #${id}`,
-          onde: "recusarCadastroAluno() -> Bloco catch",
-          comunicacao: `PUT ${API_URL}/api/itens/${id}/recusar`,
-          mensagem: err.message || "Erro de rede",
-          causa: "Falha de comunicação com o servidor Railway."
-        });
-      }
-    }
+    async function recusarCadastroAluno(id) { const item=itensPendentesSec.find(i=>Number(i.id)===Number(id));if(item)return ModeracaoUI.recusar(item); }
 
     /* ==========================================================================
        CHAT DE ATENDIMENTO MULTI-ALUNO
@@ -3310,6 +3224,8 @@
 <script src="professores-secretaria.js"></script>
 <script src="acessibilidade.js"></script>
 <script src="/evolucao-interface.js"></script>
+<script src="/moderacao-interface.js"></script>
+<script src="/experiencia.js"></script>
 </body>
 </html>
 

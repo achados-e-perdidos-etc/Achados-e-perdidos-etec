@@ -143,6 +143,12 @@ def ocorrencias(item_id):
         conn=get_db_connection();c=conn.cursor(cursor_factory=RealDictCursor)
         c.execute('SELECT * FROM ocorrencias_itens WHERE item_id=%s AND id<%s ORDER BY id DESC LIMIT 51',(item_id,antes))
         rows=c.fetchall()
+        nomes={'nome':'Título','descricao':'Descrição','categoria':'Categoria','local':'Local','data':'Data encontrada',
+          'status':'Situação','aprovado':'Aprovação','fotos':'Fotos','motivo_recusa':'Motivo da recusa','revisao':'Conferência de duplicidade'}
+        for row in rows[:50]:
+            antes=row.get('anterior') or {};depois=row.get('atual') or {}
+            row['alteracoes']=[dict(campo=nome,chave=chave,antes=antes.get(chave),depois=depois.get(chave))
+              for chave,nome in nomes.items() if antes.get(chave)!=depois.get(chave)]
         return jsonify(success=True,ocorrencias=rows[:50],tem_mais=len(rows)>50)
     except Exception:return falha()
     finally:

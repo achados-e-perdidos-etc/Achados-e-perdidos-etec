@@ -2,7 +2,7 @@
 const Rascunhos = {
     prefixo: 'etec-rascunho-v1:', ttl: 24 * 60 * 60 * 1000,
     formularios: {
-        encontrado: ['alunoItemNome', 'alunoItemDesc', 'alunoItemCat', 'alunoItemLocal'],
+        encontrado: ['alunoItemNome', 'alunoItemDesc', 'alunoItemCat', 'alunoItemLocal', 'alunoItemData'],
         mural: ['muralCategoria', 'muralDescricao'],
         secretaria: ['formItemNome', 'formItemDescricao', 'formItemCategoria', 'formItemLocal', 'formItemData', 'formItemStatus']
     },
@@ -16,7 +16,7 @@ const Rascunhos = {
         } catch (_) { return null; }
     },
     chave(tipo) { const email = this.conta(); return email ? `${this.prefixo}${encodeURIComponent(email)}:${tipo}` : null; },
-    editando(tipo) { return tipo === 'secretaria' && !!document.getElementById('formItemId')?.value; },
+    editando(tipo) { return (tipo === 'secretaria' && !!document.getElementById('formItemId')?.value) || (tipo==='encontrado' && typeof CorrecaoCadastro!=='undefined' && !!CorrecaoCadastro.atual); },
     avisar(tipo, texto) { const el = document.getElementById('rascunho-' + tipo); if (el) el.textContent = texto; },
     salvar(tipo) {
         if (this.editando(tipo)) return;
@@ -24,7 +24,7 @@ const Rascunhos = {
         try {
             const campos = {};
             for (const id of this.formularios[tipo]) campos[id] = (document.getElementById(id)?.value || '').slice(0, 4000);
-            const preenchido = Object.entries(campos).some(([id, value]) => value.trim() && !['alunoItemCat','muralCategoria','formItemCategoria','formItemData','formItemStatus'].includes(id));
+            const preenchido = Object.entries(campos).some(([id, value]) => value.trim() && !['alunoItemCat','muralCategoria','formItemCategoria','formItemData','formItemStatus','alunoItemData'].includes(id));
             if (!preenchido) { sessionStorage.removeItem(chave); this.avisar(tipo,'Rascunho vazio.'); return; }
             sessionStorage.setItem(chave, JSON.stringify({salvo: Date.now(), campos}));
             this.avisar(tipo, 'Rascunho salvo nesta aba. Fotos precisam ser selecionadas novamente após recarregar.');
@@ -56,7 +56,7 @@ const Rascunhos = {
         this.limpar(tipo);
         for (const id of this.formularios[tipo]) {
             const campo = document.getElementById(id);
-            if (campo && !['SELECT'].includes(campo.tagName) && id !== 'formItemData') campo.value = '';
+            if (campo && !['SELECT'].includes(campo.tagName) && !['formItemData','alunoItemData'].includes(id)) campo.value = '';
         }
         this.avisar(tipo,'Rascunho descartado.');
     },

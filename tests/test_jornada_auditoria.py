@@ -20,7 +20,7 @@ def test_jornada_aluno_secretaria_com_login_real_e_entrega(db_cadastros):
     item=scalar(db_cadastros,'SELECT MAX(id) FROM itens')
     assert not any(i['id']==item for i in client.get('/api/itens').json)
     assert client.put(f'/api/itens/{item}/aprovar',headers=aluno).status_code==403
-    assert client.put(f'/api/itens/{item}/aprovar',headers=sec).status_code==200
+    assert client.put(f'/api/itens/{item}/aprovar',headers=sec,json={'versao':1}).status_code==200
     assert client.post('/api/solicitar',headers=aluno,json={'id':item}).status_code==200
     assert client.post('/api/chat/enviar',headers=aluno,json={'mensagem':'Vou buscar o estojo'}).status_code==200
     assert client.post('/api/chat/enviar',headers=sec,json={'rm':'12345','email':'a@aluno.cps.sp.gov.br','mensagem':'Pode vir com documento'}).status_code==200

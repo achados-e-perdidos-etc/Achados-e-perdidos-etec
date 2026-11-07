@@ -80,7 +80,8 @@ class RouteTests(unittest.TestCase):
         self.get_db.assert_not_called()
 
     def test_secretaria_pode_aprovar_item(self):
-        response = self.client.put('/api/itens/1/aprovar', headers=self.secretaria, json={})
+        self.cursor.fetchone.return_value={'id':1,'versao':1,'aprovado':False,'nome_item':'Estojo','descricao':'Estojo preto','categoria':'OUTROS','data_encontrado':'06/11/2026'}
+        response = self.client.put('/api/itens/1/aprovar', headers=self.secretaria, json={'versao':1})
         self.assertEqual(response.status_code, 200)
         self.connection.commit.assert_called_once()
 

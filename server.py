@@ -1,3 +1,4 @@
+from utils.catalogo import SCHEMA_CATALOGO
 from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
 from utils.uploads import SCHEMA_UPLOADS
 from utils.chat_retencao import SCHEMA_RETENCAO
@@ -58,6 +59,10 @@ from blueprints.uploads import uploads_bp
 app.register_blueprint(uploads_bp)
 from blueprints.evolucao import evolucao_bp
 app.register_blueprint(evolucao_bp)
+from blueprints.catalogo import catalogo_bp
+from blueprints.moderacao import moderacao_bp
+app.register_blueprint(catalogo_bp)
+app.register_blueprint(moderacao_bp)
 from blueprints.notificacoes import notificacoes_bp
 app.register_blueprint(notificacoes_bp)
 from blueprints.cadastros import cadastros_bp
@@ -206,19 +211,14 @@ def verificar_e_atualizar_itens_doacao(forcar=False):
     agora = datetime.now()
     if not forcar and ULTIMA_VERIFICACAO_DOACOES and (agora - ULTIMA_VERIFICACAO_DOACOES).total_seconds() < 3600:
         return
-    ULTIMA_VERIFICACAO_DOACOES = agora
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, data_encontrado FROM itens WHERE UPPER(status) = 'DISPONÍVEL';")
-        itens = cursor.fetchall()
-        ids_para_doacao = [i['id'] for i in itens if calcular_dias_passados(i.get('data_encontrado')) >= 90]
-        if ids_para_doacao:
-            cursor.execute("SELECT set_config('etec.ator_id','sistema:doacoes',false),set_config('etec.perfil','sistema',false)")
-            cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = ANY(%s);", (ids_para_doacao,))
-            conn.commit()
-            print(f"[Doações 90 Dias] {len(ids_para_doacao)} item(ns) atualizado(s) para 'PARA DOAÇÃO'.")
+        cursor.execute("SELECT set_config('etec.ator_id','sistema:doacoes',false),set_config('etec.perfil','sistema',false)")
+        cursor.execute("UPDATE itens SET status='PARA DOAÇÃO' WHERE status='DISPONÍVEL' AND aprovado IS NOT FALSE AND etec_data(data_encontrado)<=CURRENT_DATE-90;")
+        conn.commit()
+        ULTIMA_VERIFICACAO_DOACOES = agora
         cursor.close(); conn.close()
     except Exception as e:
         print(f"[Doações 90 Dias] Aviso: {e}")
@@ -288,6 +288,7 @@ def init_db():
         cursor.execute(SCHEMA_RETENCAO)
         cursor.execute(SCHEMA_UPLOADS)
         cursor.execute(SCHEMA_EVOLUCAO)
+        cursor.execute(SCHEMA_CATALOGO)
         cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
@@ -651,16 +652,8 @@ def get_all_itens():
 @app.route('/api/itens/pendentes', methods=['OPTIONS', 'GET'])
 @secretaria_required
 def get_pend():
-    try:
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT id, nome_item as nome, descricao as txt_descricao, categoria, data_encontrado as txt_data, local_encontrado as txt_local, foto, fotos_json, status, rm_aluno FROM itens WHERE aprovado = FALSE ORDER BY id DESC;")
-        itens = c.fetchall()
-        for it in itens:
-            try: it['fotos'] = json.loads(it['fotos_json']) if it.get('fotos_json') else []
-            except: it['fotos'] = []
-        c.close(); conn.close()
-        return jsonify(itens)
-    except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    from blueprints.moderacao import listar
+    return listar(get_db_connection)
 
 @app.route('/api/itens/cadastrar-aluno', methods=['OPTIONS', 'POST'])
 @token_required
@@ -688,12 +681,8 @@ def cad_item_aluno():
 @app.route('/api/itens/<int:item_id>/aprovar', methods=['OPTIONS', 'PUT'])
 @secretaria_required
 def apr_item(item_id):
-    try:
-        conn = get_db_connection(); c = conn.cursor()
-        c.execute("UPDATE itens SET aprovado = TRUE WHERE id = %s;", (item_id,))
-        conn.commit(); c.close(); conn.close()
-        return jsonify({"success": True})
-    except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    from services.moderacao_service import aprovar
+    return aprovar(get_db_connection,item_id)
 
 @app.route('/api/itens', methods=['OPTIONS', 'POST'])
 @secretaria_required
@@ -704,11 +693,15 @@ def cad_item():
         v = validar_item(d); validar_categoria(get_db_connection, v['categoria'])
     except ValueError as error: return jsonify(success=False,message=str(error)),400
     nome,desc,cat,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
+    from services.moderacao_service import publicar_conferido,registrar_revisao
+    aviso=publicar_conferido(get_db_connection,{**d,**v})
+    if aviso:return aviso
     urls = processar_fotos(d.get('fotos') or ([d.get('foto')] if d.get('foto') else []))
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("INSERT INTO itens (nome_item, descricao, categoria, data_encontrado, local_encontrado, foto, fotos_json, status, aprovado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE) RETURNING id;", (nome, desc, cat, data_enc, local, urls[0] if urls else '', json.dumps(urls), status))
         nid = c.fetchone()['id']
+        registrar_revisao(c,nid,d)
         conn.commit()
 
         c.close(); conn.close()
@@ -735,10 +728,20 @@ def gen_item(item_id):
             except ValueError as error:
                 conn.rollback();conn.close(); return jsonify(success=False,message=str(error)),400
             nome,desc,cat,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
-            urls = processar_fotos(d['fotos'], existentes=json.loads(it.get('fotos_json') or '[]') + ([it['foto']] if it.get('foto') else [])) if 'fotos' in d and d['fotos'] is not None else None
+            from services.moderacao_service import conferir_versao,aviso_duplicado,registrar_revisao
+            if it.get('aprovado') is False:
+                try:conferir_versao(d,it)
+                except ValueError as error:return jsonify(success=False,message=str(error)),409
+            if it.get('aprovado') is False or any(v[k]!=it.get(col) for k,col in [('nome','nome_item'),('categoria','categoria'),('data','data_encontrado')]):
+                aviso=aviso_duplicado(c,{**d,**v},item_id)
+                if aviso:return aviso
+            urls = processar_fotos(d['fotos'], existentes=item_publico(it)['fotos']) if 'fotos' in d and d['fotos'] is not None else None
             c.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s, aprovado=TRUE WHERE id=%s;", (nome, desc, cat, data_enc, local, status, item_id))
             if urls is not None:
                 c.execute('UPDATE itens SET foto=%s, fotos_json=%s WHERE id=%s;', (urls[0] if urls else '', json.dumps(urls), item_id))
+            if it.get('aprovado') is False:
+                c.execute('UPDATE itens SET motivo_recusa=NULL,recusado_em=NULL WHERE id=%s',(item_id,))
+            registrar_revisao(c,item_id,d)
             if status == 'ENTREGUE':
                 registrar_entrega(c,item_id,nome,d,it,request.user['email'])
             else:
@@ -751,6 +754,8 @@ def gen_item(item_id):
         if conn: conn.rollback(); conn.close()
         return jsonify({'success': False, 'message': str(error)}), error.status_code
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
 @secretaria_required

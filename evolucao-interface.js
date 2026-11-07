@@ -12,9 +12,9 @@ const EvolucaoUI = {
         const l=this.node('label',label,'ev-field'),input=document.createElement('input');input.type=type;if(type==='checkbox')l.classList.add('ev-check');l.append(input);form.append(l);return input;
     },
     token() { return typeof SessaoPortal!=='undefined'?SessaoPortal.token():typeof tokenSecretaria!=='undefined'?tokenSecretaria:null; },
-    async request(path,body) {
+    async request(path,body,method) {
         const token=this.token();if(!token)throw Error('Entre novamente para continuar.');
-        const res=await fetch(API_URL+path,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+        const res=await fetch(API_URL+path,{method:method||(body===undefined?'GET':'POST'),headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
         const data=await res.json();if(token!==this.token())throw Error('A conta mudou. Reabra esta tela.');
         if(!res.ok||!data.success)throw Error(data.message||'Não foi possível concluir.');return data;
     }
@@ -84,8 +84,8 @@ const RetiradaSecretaria = {
             d.addEventListener('close',()=>URL.revokeObjectURL(url),{once:true});
         }catch(error){status.textContent=error.message;}
     },
-    historico() {
-        const d=EvolucaoUI.dialog('Ocorrências do objeto'),form=document.createElement('form'),id=EvolucaoUI.field(form,'Número do objeto','number');id.min=1;id.required=true;
+    historico(itemId = null) {
+        const d=EvolucaoUI.dialog('Ocorrências do objeto'),form=document.createElement('form'),id=EvolucaoUI.field(form,'Número do objeto','number');id.min=1;id.required=true;if(itemId)id.value=itemId;
         const btn=EvolucaoUI.node('button','Consultar');btn.type='submit';form.append(btn);d.append(form);
         const status=EvolucaoUI.node('p','Somente a equipe autorizada pode consultar este histórico.');status.setAttribute('role','status');const list=document.createElement('div');d.append(status,list);
         const more=EvolucaoUI.node('button','Ver ocorrências anteriores');more.hidden=true;d.append(more);let last=null,active=null,busy=false;
@@ -96,15 +96,19 @@ const RetiradaSecretaria = {
             try {
                 const data=await EvolucaoUI.request('/api/itens/'+active+'/ocorrencias'+(next?'?antes='+last:''));if(!d.isConnected)return;
                 for(const row of data.ocorrencias){const card=EvolucaoUI.node('article',undefined,'ev-log');
-                    card.append(EvolucaoUI.node('strong',({INSERT:'Cadastro',UPDATE:'Alteração',DELETE:'Exclusão'})[row.acao]||row.acao));
+                    card.append(EvolucaoUI.node('strong',({INSERT:'Cadastro',UPDATE:'Alteração',DELETE:'Exclusão',REV_DUPLIC:'Duplicidade conferida'})[row.acao]||row.acao));
                     const perfil=({administrador_geral:'Administração',moderador:'Moderação',aluno:'Aluno',sistema:'Automático'})[row.perfil]||row.perfil;
                     card.append(EvolucaoUI.node('p',row.ator_id+' · '+perfil+' · '+new Date(row.criada_em).toLocaleString('pt-BR')));
                     const descrever=valor=>valor ? [valor.status,valor.aprovado?'Aprovado':'Aguardando aprovação',valor.nome,valor.categoria,valor.local].filter(Boolean).join(' · ') : 'Sem registro';
-                    card.append(EvolucaoUI.node('p','Antes: '+descrever(row.anterior)),EvolucaoUI.node('p','Depois: '+descrever(row.atual)));list.append(card);last=row.id;}
+                    if(Array.isArray(row.alteracoes)&&row.alteracoes.length){for(const change of row.alteracoes){
+                        const format=value=>{if(value===null||value===undefined)return 'Não informado';if(change.chave==='aprovado')return value?'Aprovado':'Em moderação';if(change.chave==='fotos'){try{const fotos=JSON.parse(value);return Array.isArray(fotos)?fotos.length+' foto(s)':String(value);}catch(_){return value?'Foto registrada':'Sem foto';}}return String(value);};
+                        card.append(EvolucaoUI.node('p',change.campo+': '+format(change.antes)+' → '+format(change.depois),'mod-historico-alteracao'));
+                    }}else card.append(EvolucaoUI.node('p','Antes: '+descrever(row.anterior)),EvolucaoUI.node('p','Depois: '+descrever(row.atual)));
+                    list.append(card);last=row.id;}
                 status.textContent=list.children.length?'Histórico preservado, inclusive após excluir o objeto.':'Nenhuma ocorrência registrada para esse número.';more.hidden=!data.tem_mais;
             }catch(error){status.textContent=error.message;}
             finally{busy=false;btn.disabled=more.disabled=false;}
-        };form.onsubmit=e=>{e.preventDefault();load(false);};more.onclick=()=>load(true);
+        };form.onsubmit=e=>{e.preventDefault();load(false);};more.onclick=()=>load(true);if(itemId)load(false);
     }
 };
 

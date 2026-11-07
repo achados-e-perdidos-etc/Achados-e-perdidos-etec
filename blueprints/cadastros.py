@@ -17,7 +17,7 @@ def meus_cadastros():
     try:
         conn = get_db_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as c:
-            c.execute('''SELECT id,nome,categoria,situacao,enviado_em,atualizado_em FROM cadastros_itens
+            c.execute('''SELECT id,item_id,nome,categoria,situacao,motivo_recusa,enviado_em,atualizado_em FROM cadastros_itens
                 WHERE email_aluno=%s AND (%s::bigint IS NULL OR id<%s) ORDER BY id DESC LIMIT 31;''',
                 (conta['email'],antes,antes))
             rows = c.fetchall()

@@ -64,10 +64,14 @@ def test_edicao_persiste_fotos_e_omissao_preserva_anteriores(implementation,phot
     import sqlite3,json
     from tests.test_student_authorship import Connection
     db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
+    from utils.catalogo import normalizar,data_encontrada
+    db.create_function('etec_normalizar',1,normalizar)
+    db.create_function('etec_data',1,lambda v:data_encontrada(v).isoformat() if data_encontrada(v) else None)
     db.executescript('''CREATE TABLE categorias(nome TEXT); INSERT INTO categorias VALUES ('OUTROS');
         CREATE TABLE entregues(item_id INTEGER,cancelada_em TEXT,cancelada_por TEXT);
         CREATE TABLE itens(id INTEGER PRIMARY KEY,nome_item TEXT,descricao TEXT,categoria TEXT,data_encontrado TEXT,local_encontrado TEXT,status TEXT,aprovado BOOLEAN,foto TEXT,fotos_json TEXT);
-        INSERT INTO itens VALUES(1,'Estojo','Descrição','OUTROS','01/11/2026','Pátio','DISPONÍVEL',TRUE,'https://img.example.org/antiga.jpg','["https://img.example.org/antiga.jpg"]');''')
+        ALTER TABLE itens ADD COLUMN recusado_em TEXT;
+        INSERT INTO itens(id,nome_item,descricao,categoria,data_encontrado,local_encontrado,status,aprovado,foto,fotos_json) VALUES(1,'Estojo','Descrição','OUTROS','01/11/2026','Pátio','DISPONÍVEL',TRUE,'https://img.example.org/antiga.jpg','["https://img.example.org/antiga.jpg"]');''')
     app=server.app;module=server
     if implementation=='modular':
         from flask import Flask

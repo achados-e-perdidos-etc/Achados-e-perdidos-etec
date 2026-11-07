@@ -5,6 +5,7 @@ const Acessibilidade = {
     visivel(el) { return !!el && !el.hidden && !el.classList.contains('hidden') && getComputedStyle(el).visibility !== 'hidden' && el.getClientRects().length > 0; },
     focaveis(el) { return Array.from(el.querySelectorAll('button,a[href],input,select,textarea,[tabindex="0"]')).filter(x => !x.disabled && !x.closest('[inert]') && this.visivel(x)); },
     preparar() {
+        for(const icon of document.querySelectorAll('i.fas,i.far,i.fab,i.fa-solid,i.fa-regular'))icon.setAttribute('aria-hidden','true');
         for (const el of document.querySelectorAll(this.seletor)) {
             el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true'); el.tabIndex = -1;
             const titulo = el.querySelector('h2,h3');
@@ -51,7 +52,7 @@ const Acessibilidade = {
         for (const [id, nome] of [['menuNavegacaoDropdown','Navegação do portal'],['perfilMenu','Sua conta'],['dropdownStatusMenu','Filtro por situação'],['menuLateral','Navegação da secretaria']]) {
             const menu = document.getElementById(id); if (!menu) continue;
             if (id === 'menuLateral') { const aberto = menu.classList.contains('aberto'); menu.inert = !aberto; menu.setAttribute('aria-hidden',String(!aberto)); }
-            const btn = id === 'menuLateral' ? document.getElementById('btnHamburger') : menu.previousElementSibling;
+            const btn = id === 'menuLateral' ? document.getElementById('btnHamburger') : id === 'dropdownStatusMenu' ? document.getElementById('btnDropdownStatus') : menu.previousElementSibling;
             if (!btn || btn.tagName !== 'BUTTON') continue;
             btn.setAttribute('aria-controls', id); btn.setAttribute('aria-expanded', String(id === 'menuLateral' ? menu.classList.contains('aberto') : this.visivel(menu)));
             menu.setAttribute('aria-label',nome);

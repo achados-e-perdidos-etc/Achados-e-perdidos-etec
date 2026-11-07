@@ -125,7 +125,7 @@ function calcularSmartMatchAluno(relato, item) {
     }
     const termosRelato = extrair(relato.descricao).filter(p => p.length >= 3 && !stopwords.has(p));
     const termosItem = new Set(extrair(`${item.nome || ''} ${item.txt_descricao || ''}`).filter(p => p.length >= 3 && !stopwords.has(p)));
-    
+
     const comuns = termosRelato.filter(t => termosItem.has(t));
     if (termosRelato.length > 0 && comuns.length > 0) {
         const pct = comuns.length / Math.max(1, termosRelato.length);
@@ -155,6 +155,7 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
     }
 
     // Se já estiver explicitamente como doação no banco de dados
+    if (st === 'DOAÇÃO FEITA') return st;
     if (st.includes('DOAÇÃO') || st.includes('DOACAO')) {
         return 'PARA DOAÇÃO';
     }
@@ -175,7 +176,7 @@ function normalizarStatus(itemOuStatus, dataItem = null) {
 async function checarSessao() {
     const token = SessaoPortal.token();
     const dados = SessaoPortal.dados();
-    
+
     if (token && token.startsWith('token_prof_')) {
         fazerLogoff(false);
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
@@ -199,7 +200,7 @@ async function checarSessao() {
         ativarWebPush();
         document.getElementById('loginAlunoScreen').classList.add('hidden');
         document.getElementById('lblBemVindo').innerText = `Olá, ${alunoSessao.nome.split(' ')[0]}!`;
-        
+
         document.getElementById('perfilNomeCompleto').innerText = alunoSessao.nome;
         document.getElementById('perfilEmailInstitucional').innerText = alunoSessao.email;
         document.getElementById('perfilRM').innerText = (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor') ? 'PROFESSOR (Apenas Cadastro)' : (alunoSessao.rm || 'N/A');
@@ -208,6 +209,7 @@ async function checarSessao() {
         const ehProf = /@(etec|cps)\.sp\.gov\.br$/i.test(alunoSessao.email || '') || alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor';
         const bPerdi = document.getElementById('btnPerdiBanner');
         if (bPerdi) bPerdi.classList.toggle('hidden', ehProf);
+        const navegacaoPerdi=document.querySelector('.ux-nav [data-ux-aba=mural]');if(navegacaoPerdi)navegacaoPerdi.hidden=ehProf;
         const mMural = document.getElementById('menuBtnMural');
         if (mMural) mMural.classList.toggle('hidden', ehProf);
         if (ehProf) {
@@ -217,10 +219,7 @@ async function checarSessao() {
         atualizarAcessoProfessor();
         carregarItensDaAPI();
         carregarCategoriasDinamicamente();
-        
-        if ("Notification" in window && Notification.permission === "default") {
-            setTimeout(solicitarPermissaoNotificacao, 3000);
-        }
+
     } else {
         if (token) SessaoPortal.limpar();
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
@@ -250,8 +249,8 @@ function toggleMenuNavegacao() {
     menu.classList.toggle('hidden');
 }
 
-function fecharMenuNavegacao() { 
-    document.getElementById('menuNavegacaoDropdown').classList.add('hidden'); 
+function fecharMenuNavegacao() {
+    document.getElementById('menuNavegacaoDropdown').classList.add('hidden');
 }
 
 function togglePerfilMenu() {
@@ -267,7 +266,7 @@ function togglePainelCategorias() {
     const painel = document.getElementById('categoryChipsContainer');
     const btn = document.getElementById('btnToggleFiltros');
     if (!painel) return;
-    
+
     const estaOculto = painel.classList.contains('hidden');
     painel.classList.toggle('hidden');
     if (btn) {
@@ -277,6 +276,7 @@ function togglePainelCategorias() {
             btn.classList.remove('border-red-500/80', 'text-red-400', 'bg-red-500/10');
         }
     }
+    document.getElementById('btnToggleFiltros').setAttribute('aria-expanded',String(!document.getElementById('categoryChipsContainer').classList.contains('hidden')));
 }
 
 function toggleDropdownStatus(event) {
@@ -287,7 +287,7 @@ function toggleDropdownStatus(event) {
     const navMenu = document.getElementById('menuNavegacaoDropdown');
     if(navMenu) navMenu.classList.add('hidden');
     if(perfilMenu) perfilMenu.classList.add('hidden');
-    
+
     const estaOculto = menu.classList.contains('hidden');
     menu.classList.toggle('hidden');
     if(seta) seta.classList.toggle('rotate-180', estaOculto);
@@ -328,6 +328,7 @@ function alternarTelaAuth(tela) {
     if (tela === 'login') document.getElementById('formLoginAluno').classList.remove('hidden');
     if (tela === 'cadastro') document.getElementById('formCadastroAluno').classList.remove('hidden');
     if (tela === 'recuperar') document.getElementById('formRecuperarAluno').classList.remove('hidden');
+    if(typeof ExperienciaUI!=='undefined')ExperienciaUI.auth(tela);
 }
 
 async function fazerLoginAluno(e) {
@@ -337,11 +338,11 @@ async function fazerLoginAluno(e) {
     let sucesso = false;
     try {
         const res = await fetch(API_URL + "/api/auth/login-aluno", {
-            method: 'POST', 
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                email: document.getElementById('loginEmailAluno').value.trim(), 
-                senha: document.getElementById('loginSenhaAluno').value.trim() 
+            body: JSON.stringify({
+                email: document.getElementById('loginEmailAluno').value.trim(),
+                senha: document.getElementById('loginSenhaAluno').value.trim()
             })
         });
         const data = await res.json();
@@ -354,8 +355,8 @@ async function fazerLoginAluno(e) {
         } else {
             mostrarToast(data.message || "Erro no login.", "error");
         }
-    } catch { 
-        mostrarToast("Erro ao conectar com o servidor.", "error"); 
+    } catch {
+        mostrarToast("Erro ao conectar com o servidor.", "error");
     } finally { encerrarAnimacaoAuth(sucesso); }
 }
 
@@ -365,15 +366,15 @@ async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
     const btn = document.getElementById(idBtn);
     btn.innerText = "Enviando..."; btn.disabled = true;
     try {
-        const res = await fetch(`${API_URL}/api/auth/enviar-codigo`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ email }) 
+        const res = await fetch(`${API_URL}/api/auth/enviar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
         });
         const data = await res.json();
-        if (data.success) { 
-            document.getElementById(idShow).classList.remove('hidden'); 
-            document.getElementById(idHide).classList.add('hidden'); 
+        if (data.success) {
+            document.getElementById(idShow).classList.remove('hidden');
+            document.getElementById(idHide).classList.add('hidden');
             mostrarToast("Código enviado para seu e-mail!", "success");
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro na rede ao enviar código.", "error"); }
@@ -385,18 +386,18 @@ async function confirmarCadastro(e) {
     if (!iniciarAnimacaoAuth('cadastro')) return;
     const lembrar = document.getElementById('lembrarCadastro').checked;
     let sucesso = false;
-    const payload = { 
-        email: document.getElementById('cadEmailAluno').value.trim(), 
-        codigo: document.getElementById('cadCodigo').value.trim(), 
-        nome: document.getElementById('cadNome').value.trim(), 
-        rm: document.getElementById('cadRM').value.trim(), 
-        senha: document.getElementById('cadSenha').value.trim() 
+    const payload = {
+        email: document.getElementById('cadEmailAluno').value.trim(),
+        codigo: document.getElementById('cadCodigo').value.trim(),
+        nome: document.getElementById('cadNome').value.trim(),
+        rm: document.getElementById('cadRM').value.trim(),
+        senha: document.getElementById('cadSenha').value.trim()
     };
     try {
-        const res = await fetch(`${API_URL}/api/auth/cadastrar`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(payload) 
+        const res = await fetch(`${API_URL}/api/auth/cadastrar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (res.ok && data.success && data.token) {
@@ -413,31 +414,32 @@ async function confirmarCadastro(e) {
 
 async function confirmarRedefinicao(e) {
     e.preventDefault();
-    const payload = { 
-        email: document.getElementById('recEmailAluno').value.trim(), 
-        codigo: document.getElementById('recCodigo').value.trim(), 
-        senha: document.getElementById('recSenha').value.trim() 
+    const payload = {
+        email: document.getElementById('recEmailAluno').value.trim(),
+        codigo: document.getElementById('recCodigo').value.trim(),
+        senha: document.getElementById('recSenha').value.trim()
     };
     try {
-        const res = await fetch(`${API_URL}/api/auth/redefinir`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(payload) 
+        const res = await fetch(`${API_URL}/api/auth/redefinir`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (data.success) { 
-            mostrarToast("Senha alterada com sucesso!", "success"); 
-            alternarTelaAuth('login'); 
+        if (data.success) {
+            mostrarToast("Senha alterada com sucesso!", "success");
+            alternarTelaAuth('login');
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro ao redefinir senha.", "error"); }
 }
 
 function mostrarToast(mensagem, tipo = 'info') {
+    if(typeof ExperienciaUI!=='undefined')ExperienciaUI.feedback(mensagem,tipo);
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
     const corIcone = tipo === 'success' ? 'text-emerald-400' : (tipo === 'error' ? 'text-rose-400' : 'text-blue-400');
     const icone = tipo === 'success' ? 'fa-check-circle' : (tipo === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
-    
+
     t.className = `glass-panel text-white px-4 py-3 rounded-2xl flex items-center gap-3 toast-enter pointer-events-auto shadow-2xl border border-white/10 min-w-[280px] max-w-sm`;
     t.innerHTML = `
         <i class="fas ${textoHTML(icone)} ${textoHTML(corIcone)} text-base shrink-0"></i>
@@ -445,27 +447,28 @@ function mostrarToast(mensagem, tipo = 'info') {
         <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white text-xs"><i class="fas fa-times"></i></button>
     `;
     t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
-    c.appendChild(t); 
+    c.appendChild(t);
     setTimeout(() => t.remove(), 4200);
 }
 
-function fecharZoomImagemDirect() { 
-    document.getElementById('modalZoomImagem').classList.remove('ativo'); 
-    document.body.style.overflow = ''; 
+function fecharZoomImagemDirect() {
+    document.getElementById('modalZoomImagem').classList.remove('ativo');
+    document.body.style.overflow = '';
 }
-function fecharZoomImagem(e) { 
-    if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect(); 
+function fecharZoomImagem(e) {
+    if (e.target.id === 'modalZoomImagem') fecharZoomImagemDirect();
 }
-function abrirZoomImagem(src) { 
+function abrirZoomImagem(src) {
     const url = urlImagemSegura(src);
     if (!url) return;
     document.getElementById('imgZoomConteudo').src = url;
-    document.getElementById('modalZoomImagem').classList.add('ativo'); 
-    document.body.style.overflow = 'hidden'; 
+    document.getElementById('modalZoomImagem').classList.add('ativo');
+    document.body.style.overflow = 'hidden';
 }
 
 function mudarAba(aba) {
     abaAtiva = aba;
+    if(typeof ExperienciaUI!=='undefined')ExperienciaUI.aba(aba);
     document.getElementById('catalogScreen').classList.toggle('hidden', aba !== 'catalogo');
     document.getElementById('muralScreen').classList.toggle('hidden', aba !== 'mural');
     document.getElementById('meusItensScreen').classList.toggle('hidden', aba !== 'meusItens');
@@ -481,7 +484,7 @@ async function abrirPainelMeusItens() {
 
     const listaSol = document.getElementById('listaMinhasSolicitacoes');
     const listaRel = document.getElementById('listaMeusRelatosMural');
-    
+
     listaSol.innerHTML = `<p class="text-xs text-slate-500 italic">Buscando solicitações...</p>`;
     listaRel.innerHTML = `<p class="text-xs text-slate-500 italic">Buscando relatos...</p>`;
 
@@ -490,7 +493,7 @@ async function abrirPainelMeusItens() {
         if (resItens.ok) {
             const itens = await resItens.json();
             const meus = itens;
-            
+
             if (meus.length > 0) {
                 listaSol.innerHTML = '';
                 meus.forEach(i => {
@@ -618,55 +621,26 @@ async function carregarCategoriasDinamicamente() {
 }
 
 async function carregarItensDaAPI() {
-    const cacheSalvo = localStorage.getItem('cache_itens_etec');
-    if (cacheSalvo) {
-        try {
-            todosItens = JSON.parse(cacheSalvo);
-            renderizarItens();
-        } catch(e) {}
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/api/itens`);
-        if (response.ok) { 
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                todosItens = data;
-                localStorage.setItem('cache_itens_etec', JSON.stringify(todosItens));
-                renderizarItens(); 
-            }
-        }
-    } catch(e){
-        if (todosItens.length > 0) {
-            mostrarToast("Exibindo itens salvos no dispositivo.", "info");
-        }
-    }
-    setTimeout(() => {
-        const loader = document.getElementById('loadingOverlay');
-        if (loader) loader.classList.add('fade-out');
-    }, 400);
+    if (typeof CatalogoPortal !== 'undefined') return CatalogoPortal.carregar(false);
 }
 
-function renderizarItens() {
+function renderizarItens(semBuscar = false) {
+    if (!semBuscar && typeof CatalogoPortal !== 'undefined' && CatalogoPortal.ativo) return CatalogoPortal.agendar();
     const grid = document.getElementById('itemsGrid');
     const contador = document.getElementById('itensContador');
     grid.innerHTML = '';
-    
-    const filtrados = todosItens.filter(i => {
-        const st = normalizarStatus(i);
-        return (categoriaAtual === 'TODOS' || (i.categoria && i.categoria.toUpperCase() === categoriaAtual)) &&
-               (statusAtual === 'TODOS' || st === statusAtual) &&
-               (!termoBusca || (i.nome||'').toLowerCase().includes(termoBusca) || (i.txt_descricao||'').toLowerCase().includes(termoBusca) || (i.txt_local||'').toLowerCase().includes(termoBusca));
-    });
 
-    if (contador) contador.innerText = `${filtrados.length} ${filtrados.length === 1 ? 'objeto encontrado' : 'objetos encontrados'}`;
+    const filtrados = todosItens.filter(i => typeof CatalogoPortal !== 'undefined' ? CatalogoPortal.corresponde(i) : true);
+
+    if (contador) contador.innerText = `${filtrados.length} ${filtrados.length === 1 ? 'objeto exibido' : 'objetos exibidos'}`;
 
     if (filtrados.length === 0) {
         grid.innerHTML = `
-            <div class="col-span-full py-16 text-center glass-panel rounded-3xl border border-white/5 space-y-3">
-                <i class="fas fa-search text-4xl text-slate-600"></i>
-                <h4 class="text-sm font-bold text-white">Nenhum objeto localizado</h4>
-                <p class="text-xs text-slate-400">Tente buscar por outros termos ou mudar o filtro de categoria.</p>
+            <div class="ux-empty">
+                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <h4>Nenhum objeto por aqui ainda</h4>
+                <p>Experimente uma busca mais simples ou remova os filtros. Você também pode contar o que perdeu no mural.</p>
+                <div class="ux-empty-actions"><button type="button" onclick="mudarAba('mural')">Relatar o que perdi</button><button type="button" onclick="CatalogoPortal.limpar()">Limpar filtros</button></div>
             </div>
         `;
         return;
@@ -676,7 +650,7 @@ function renderizarItens() {
         const fotosArray = (item.fotos && item.fotos.length > 0) ? item.fotos : (item.foto ? [item.foto] : []);
         const imagemSrc = fotosArray[0] || '';
         const st = normalizarStatus(item);
-        
+
         let badgeCor = 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
         if (st === 'SOLICITADO') {
             badgeCor = 'text-amber-400 border-amber-500/30 bg-amber-500/10';
@@ -689,8 +663,8 @@ function renderizarItens() {
         grid.innerHTML += `
             <div onclick="abrirDetalhes(${argumentoHTML(item)})" class="interactive-card glass-panel rounded-3xl p-4 cursor-pointer flex flex-col justify-between group border border-white/10">
                 <div>
-                    <div class="relative w-full h-44 rounded-2xl overflow-hidden mb-3.5 bg-black/40 border border-white/5">
-                        ${imagemSrc ? `<img src="${imagemHTML(imagemSrc)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex flex-col justify-center items-center text-slate-600"><i class="fas fa-box text-3xl mb-1"></i><span class="text-[10px] font-bold">Sem imagem</span></div>`}
+                    <div class="ux-card-image relative w-full h-44 rounded-2xl overflow-hidden mb-3.5 bg-black/40 border border-white/5">
+                        ${imagemSrc ? `<img ${urlImagemSegura(imagemSrc) ? `data-src="${imagemHTML(item.miniatura || imagemSrc)}"` : 'src=""'} loading="lazy" decoding="async" alt="${textoHTML(item.nome || 'Objeto encontrado')}" class="catalogo-imagem w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex flex-col justify-center items-center text-slate-600"><i class="fas fa-box text-3xl mb-1"></i><span class="text-[10px] font-bold">Sem imagem</span></div>`}
                         <div class="absolute top-2.5 left-2.5">
                             <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/10 shadow-sm">${textoHTML(item.categoria)}</span>
                         </div>
@@ -706,26 +680,27 @@ function renderizarItens() {
                     <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-snug">${textoHTML(item.txt_descricao)}</p>
                 </div>
 
-                <div class="pt-3 mt-3 border-t border-white/5 flex justify-between items-center text-[11px] text-slate-400">
-                    <span class="truncate max-w-[150px]"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${textoHTML(item.txt_local)}</span>
-                    <span class="font-bold text-slate-300 flex items-center gap-1">Ver <i class="fas fa-chevron-right text-[9px] text-red-500"></i></span>
+                <div class="ux-card-footer pt-3 mt-3 border-t border-white/5 flex justify-between items-center text-[11px] text-slate-400">
+                    <span class="ux-card-meta"><span><i class="fas fa-map-marker-alt text-red-500 mr-1" aria-hidden="true"></i>${textoHTML(item.txt_local)}</span><time>${textoHTML(item.txt_data || 'Data não informada')}</time></span>
+                    <span class="ux-card-view font-bold flex items-center gap-1">Ver objeto <i class="fas fa-chevron-right text-[9px]" aria-hidden="true"></i></span>
                 </div>
             </div>
         `;
     });
+    if (typeof CatalogoPortal !== 'undefined') CatalogoPortal.imagens();
 }
 
-function filtrarPorPalavraChave() { 
-    termoBusca = document.getElementById('searchInput').value.toLowerCase().trim(); 
+function filtrarPorPalavraChave() {
+    termoBusca = document.getElementById('searchInput').value.toLowerCase().trim();
     document.getElementById('btnClearSearch').classList.toggle('hidden', !termoBusca);
-    renderizarItens(); 
+    renderizarItens();
 }
 
-function limparBusca() { 
-    document.getElementById('searchInput').value = ''; 
-    termoBusca = ''; 
+function limparBusca() {
+    document.getElementById('searchInput').value = '';
+    termoBusca = '';
     document.getElementById('btnClearSearch').classList.add('hidden');
-    renderizarItens(); 
+    renderizarItens();
 }
 
 function abrirDetalhes(item) {
@@ -750,9 +725,9 @@ function abrirDetalhes(item) {
     else badgeEl.className = "text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700";
 
     const cont = document.getElementById('carouselContainer');
-    cont.innerHTML = ''; 
+    cont.innerHTML = '';
     fotosAtuais = (item.fotos && item.fotos.length > 0) ? item.fotos : (item.foto ? [item.foto] : []);
-    
+
     const counterEl = document.getElementById('photoCounter');
     const btnPrev = document.getElementById('btnPrevPhoto');
     const btnNext = document.getElementById('btnNextPhoto');
@@ -779,63 +754,64 @@ function abrirDetalhes(item) {
         btnPrev.classList.add('hidden');
         btnNext.classList.add('hidden');
     }
-    
+
     const b = document.getElementById('btnSolicitar');
     const ehProf = alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor');
     if (ehProf) {
         b.disabled = true;
         b.innerText = "PROFESSORES NÃO PODEM SOLICITAR ITENS";
         b.className = "w-full bg-slate-800 text-slate-400 font-bold py-3.5 rounded-xl text-xs uppercase cursor-not-allowed border border-white/5 opacity-80";
-    } else if (st !== 'DISPONÍVEL') { 
-        b.disabled = true; 
-        b.innerText = `STATUS: ${st}`; 
-        b.className = "w-full bg-slate-800 text-slate-500 font-bold py-3.5 rounded-xl text-xs uppercase cursor-not-allowed"; 
-    } else { 
-        b.disabled = false; 
-        b.innerText = "ESTE É O MEU ITEM"; 
-        b.className = "w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-[0.98]"; 
+    } else if (st !== 'DISPONÍVEL') {
+        b.disabled = true;
+        b.innerText = `STATUS: ${st}`;
+        b.className = "w-full bg-slate-800 text-slate-500 font-bold py-3.5 rounded-xl text-xs uppercase cursor-not-allowed";
+    } else {
+        b.disabled = false;
+        b.innerText = "Reconheci: solicitar retirada";
+        b.className = "w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition transform active:scale-[0.98]";
+    }
+    if(typeof ExperienciaUI!=='undefined')ExperienciaUI.detalhe(item,st);
+}
+
+function voltarParaCatalogo() { mudarAba('catalogo'); if(typeof ExperienciaUI!=='undefined')ExperienciaUI.voltar(); }
+
+function navegarFotos(dir) {
+    const c = document.getElementById('carouselContainer');
+    if(fotosAtuais.length > 1) {
+        fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length;
+        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
     }
 }
 
-function voltarParaCatalogo() { mudarAba('catalogo'); }
-
-function navegarFotos(dir) { 
-    const c = document.getElementById('carouselContainer'); 
-    if(fotosAtuais.length > 1) { 
-        fotoIndiceAtual = (fotoIndiceAtual + dir + fotosAtuais.length) % fotosAtuais.length; 
-        c.scrollTo({ left: c.clientWidth * fotoIndiceAtual, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-        document.getElementById('photoCurrentIdx').innerText = fotoIndiceAtual + 1;
-    } 
-}
-
-function abrirNovoModal() { 
+function abrirNovoModal() {
     if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
         return mostrarToast("Conta de professor autorizada apenas para cadastrar itens, não para solicitar.", "error");
     }
-    if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden'); 
+    if(itemSelecionado) document.getElementById('modalNovo').classList.remove('hidden');
 }
 
 async function enviarNovo() {
     if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
         return mostrarToast("Conta de professor autorizada apenas para cadastrar itens, não para solicitar.", "error");
     }
-    const btn = document.getElementById('btnNovo'); 
+    const btn = document.getElementById('btnNovo');
     btn.disabled = true; btn.innerText = "Processando...";
     try {
         const token = SessaoPortal.token();
-        const res = await fetch(`${API_URL}/api/solicitar`, { 
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            }, 
+        const res = await fetch(`${API_URL}/api/solicitar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ id: itemSelecionado.id })
         });
         const data = await res.json();
-        if(res.ok && data.success) { 
-            mostrarToast("Solicitação realizada! Compareça à secretaria para retirar.", "success"); 
-            document.getElementById('modalNovo').classList.add('hidden'); 
-            voltarParaCatalogo(); 
+        if(res.ok && data.success) {
+            mostrarToast("Solicitação realizada! Compareça à secretaria para retirar.", "success");
+            document.getElementById('modalNovo').classList.add('hidden');
+            voltarParaCatalogo();
             carregarItensDaAPI();
             if (typeof RetiradasAluno !== 'undefined') RetiradasAluno.mostrar(itemSelecionado.id);
         } else mostrarToast(data.message, "error");
@@ -848,30 +824,30 @@ async function enviarAvisoMural(e) {
     if (alunoSessao && (alunoSessao.rm === 'PROFESSOR' || alunoSessao.role === 'professor')) {
         return mostrarToast("Conta de professor autorizada apenas para cadastrar itens encontrados.", "error");
     }
-    const btn = document.getElementById('btnPublicarMural'); 
+    const btn = document.getElementById('btnPublicarMural');
     btn.disabled = true;
     try {
         const token = SessaoPortal.token();
-        const res = await fetch(`${API_URL}/api/mural`, { 
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            }, 
-            body: JSON.stringify({ 
-                categoria: document.getElementById('muralCategoria').value, 
-                descricao: document.getElementById('muralDescricao').value.trim() 
-            }) 
+        const res = await fetch(`${API_URL}/api/mural`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                categoria: document.getElementById('muralCategoria').value,
+                descricao: document.getElementById('muralDescricao').value.trim()
+            })
         });
         const data = await res.json();
-        if (res.ok && data.success) { 
+        if (res.ok && data.success) {
             if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('mural');
-            document.getElementById('muralDescricao').value = ''; 
-            if (data.matches_encontrados && data.matches_encontrados.length > 0) { 
+            document.getElementById('muralDescricao').value = '';
+            if (data.matches_encontrados && data.matches_encontrados.length > 0) {
                 dispararNotificacaoNativa("Objeto Parecido Encontrado!", "O sistema achou algo parecido com o que você perdeu!");
-                exibirMatchesImediatos(data.matches_encontrados); 
+                exibirMatchesImediatos(data.matches_encontrados);
             } else {
-                mostrarToast("Relato publicado com sucesso no mural!", "success"); 
+                mostrarToast("Relato publicado com sucesso no mural!", "success");
             }
             carregarMuralPublico();
         } else mostrarToast(data.message || "Erro ao publicar.", "error");
@@ -905,7 +881,7 @@ async function carregarMuralPublico() {
 }
 
 function exibirMatchesImediatos(itens) {
-    const lst = document.getElementById('matchItensLista'); 
+    const lst = document.getElementById('matchItensLista');
     lst.innerHTML = '';
     itens.forEach(i => {
         lst.innerHTML += `
@@ -924,8 +900,8 @@ function alternarJanelaChat() {
     chatAberto = !chatAberto;
     document.getElementById('janelaChat').classList.toggle('hidden', !chatAberto);
     document.getElementById('badgeChatWeb').classList.add('hidden');
-    if (chatAberto) { 
-        atualizarMensagensChat(); 
+    if (chatAberto) {
+        atualizarMensagensChat();
         iniciarPollingChatAluno();
     } else {
         pararPollingChatAluno();
@@ -954,12 +930,12 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-function abrirChatComItem() { 
-    if(!chatAberto) alternarJanelaChat(); 
+function abrirChatComItem() {
+    if(!chatAberto) alternarJanelaChat();
     if(itemSelecionado) {
         document.getElementById('chatInputTexto').value = `Olá! Gostaria de informações sobre o item #${itemSelecionado.id} (${itemSelecionado.nome || itemSelecionado.txt_descricao}): `;
         document.getElementById('chatInputTexto').focus();
-    } 
+    }
 }
 
 async function atualizarMensagensChat() {
@@ -981,10 +957,10 @@ async function atualizarMensagensChat() {
                     }
                 }
             }
-            ultimaQtdMensagens = msgs.length; 
+            ultimaQtdMensagens = msgs.length;
             c.innerHTML = '';
-            msgs.forEach(m => { 
-                const eu = m.remetente === 'ALUNO'; 
+            msgs.forEach(m => {
+                const eu = m.remetente === 'ALUNO';
                 c.innerHTML += `
                     <div class="flex w-full ${textoHTML(eu ? 'justify-end' : 'justify-start')}">
                         <div class="flex items-end gap-2 max-w-[85%] ${textoHTML(eu ? 'flex-row-reverse' : 'flex-row')}">
@@ -993,7 +969,7 @@ async function atualizarMensagensChat() {
                                 ${textoHTML(m.mensagem)}
                             </div>
                         </div>
-                    </div>`; 
+                    </div>`;
             });
             c.scrollTop = c.scrollHeight;
         }
@@ -1005,13 +981,13 @@ async function enviarMensagemChat(e) {
     const txt = document.getElementById('chatInputTexto').value.trim();
     if(!txt || !alunoSessao) return;
     try {
-        const res = await fetch(`${API_URL}/api/chat/enviar`, { 
-            method: 'POST', 
+        const res = await fetch(`${API_URL}/api/chat/enviar`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SessaoPortal.token() || ''}` },
-            body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt }) 
+            body: JSON.stringify({ rm: alunoSessao.rm, nome: alunoSessao.nome, remetente: 'ALUNO', mensagem: txt })
         });
         if(res.ok) {
-            document.getElementById('chatInputTexto').value = ''; 
+            document.getElementById('chatInputTexto').value = '';
             atualizarMensagensChat();
         }
     } catch(e){}
@@ -1019,6 +995,8 @@ async function enviarMensagemChat(e) {
 
 function abrirModalCadastrarAluno() {
     if (envioCadastroAluno) return;
+    if (typeof CorrecaoCadastro !== 'undefined') CorrecaoCadastro.cancelar();
+    const dataEncontrada=document.getElementById('alunoItemData');if(dataEncontrada)dataEncontrada.value=new Date().toLocaleDateString('en-CA');if(dataEncontrada)dataEncontrada.max=new Date().toLocaleDateString('en-CA');
     loteFotosAluno++; preparandoFotosAluno = false;
     document.getElementById('alunoItemFoto').disabled = false;
     document.getElementById('alunoItemFoto').value = '';
@@ -1110,12 +1088,14 @@ async function enviarCadastroAluno(e) {
     const btn = document.getElementById('btnSalvarAlunoItem');
     btn.innerText = "Enviando..."; btn.disabled = true;
 
+    const correcao = typeof CorrecaoCadastro !== 'undefined' ? CorrecaoCadastro.atual : null;
     const payload = {
+        ...(correcao ? {versao:correcao.versao} : {}),
         nome: document.getElementById('alunoItemNome').value.trim(),
         descricao: document.getElementById('alunoItemDesc').value.trim(),
         categoria: document.getElementById('alunoItemCat').value,
         local: document.getElementById('alunoItemLocal').value.trim(),
-        data: new Date().toLocaleDateString('pt-BR'),
+        data: document.getElementById('alunoItemData')?.value || correcao?.data || new Date().toLocaleDateString('pt-BR'),
         fotos: fotosAlunoSelecionadas,
         foto: fotosAlunoSelecionadas[0] || ""
     };
@@ -1124,9 +1104,9 @@ async function enviarCadastroAluno(e) {
         payload.fotos = await UploadAluno.enviarTodas(fotosAlunoSelecionadas);
         payload.foto = payload.fotos[0] || '';
         const token = SessaoPortal.token();
-        const res = await fetch(`${API_URL}/api/itens/cadastrar-aluno`, {
-            method: 'POST', 
-            headers: { 
+        const res = await fetch(correcao ? `${API_URL}/api/meus-cadastros/${correcao.id}` : `${API_URL}/api/itens/cadastrar-aluno`, {
+            method: correcao ? 'PUT' : 'POST',
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
@@ -1137,8 +1117,9 @@ async function enviarCadastroAluno(e) {
             mostrarEstadoFotos('statusCompressaoFotos', 'sucesso', 'Envio concluído!');
             mostrarToast(fotosAlunoSelecionadas.length ? "Fotos enviadas! Item aguardando moderação." : "Objeto enviado para moderação da secretaria!", "success");
             document.getElementById('modalCadastrarAluno').classList.add('hidden');
-            if (typeof Rascunhos !== 'undefined') Rascunhos.limpar('encontrado');
+            if (!correcao && typeof Rascunhos !== 'undefined') Rascunhos.limpar('encontrado');
             UploadAluno.limpar();
+            if (typeof CorrecaoCadastro !== 'undefined') CorrecaoCadastro.cancelar();
             fotosAlunoSelecionadas = [];
             renderizarGridPreviewAluno();
             e.target.reset();
@@ -1154,12 +1135,12 @@ async function enviarCadastroAluno(e) {
         document.getElementById('alunoItemFoto').disabled = false;
         document.getElementById('gridPreviewAluno').inert = false;
         document.getElementById('btnAutoPreencherIAAluno').disabled = false;
-        btn.innerText = 'Enviar para Moderação da Secretaria'; btn.disabled = false;
+        btn.innerText = correcao ? 'Reenviar cadastro para análise' : 'Enviar para análise da secretaria'; btn.disabled = false;
     }
 }
 
-window.onload = () => { 
-    document.body.classList.add('dark-theme'); 
+window.onload = () => {
+    document.body.classList.add('dark-theme');
     const splash = document.getElementById('splashScreenAnimacao');
     const video = document.getElementById('videoSplash');
 
@@ -1173,13 +1154,13 @@ window.onload = () => {
 
     if (splash && video) {
         sessionStorage.setItem('splash_ja_exibido', 'true');
-        
+
         const encerrarSplash = () => {
             splash.classList.add('opacity-0');
-            setTimeout(() => { 
-                splash.classList.add('hidden'); 
-                splash.style.display = 'none'; 
-                checarSessao(); 
+            setTimeout(() => {
+                splash.classList.add('hidden');
+                splash.style.display = 'none';
+                checarSessao();
             }, 700);
         };
 
@@ -1189,9 +1170,9 @@ window.onload = () => {
         video.onended = encerrarSplash;
 
         // Tempo limite de segurança de 4 segundos para o vídeo
-        setTimeout(() => { 
-            if (!splash.classList.contains('hidden')) encerrarSplash(); 
-        }, 4500); 
+        setTimeout(() => {
+            if (!splash.classList.contains('hidden')) encerrarSplash();
+        }, 4500);
     } else {
         checarSessao();
     }
@@ -1208,13 +1189,14 @@ async function atualizarPortalAluno() {
     if (btn) btn.disabled = true;
 
     try {
-        await Promise.all([
+        const resultados = await Promise.all([
             typeof carregarItensDaAPI === 'function' ? carregarItensDaAPI() : Promise.resolve(),
             typeof carregarCategoriasDinamicamente === 'function' ? carregarCategoriasDinamicamente() : Promise.resolve(),
             typeof carregarMuralPublico === 'function' ? carregarMuralPublico() : Promise.resolve(),
             typeof atualizarMensagensChat === 'function' && chatAberto ? atualizarMensagensChat() : Promise.resolve()
         ]);
-        mostrarToast("Catálogo e pertences atualizados!", "success");
+        if(resultados[0]===true)mostrarToast("Catálogo atualizado. Confira os objetos publicados.", "success");
+        else mostrarToast("Não foi possível atualizar o catálogo. Confira sua conexão e tente novamente.", "error");
     } catch (err) {
         mostrarToast("Erro ao sincronizar dados com o servidor.", "error");
     } finally {

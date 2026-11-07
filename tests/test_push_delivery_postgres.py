@@ -15,7 +15,7 @@ from requests import Response
 pgserver=pytest.importorskip('pgserver')
 import server
 import database
-from blueprints import chat,itens
+from blueprints import chat,itens,catalogo,moderacao
 from services import push_delivery as service,push_service
 from tests.test_push_delivery import configured,subscription
 
@@ -34,7 +34,7 @@ def db_env(postgres,configured,monkeypatch):
     with psycopg2.connect(postgres) as connection:
         with connection.cursor() as c:c.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
     def connect():return psycopg2.connect(postgres,options='-c search_path='+schema)
-    for module in [server,database,chat,itens,service,push_service]:
+    for module in [server,database,chat,itens,catalogo,moderacao,service,push_service]:
         monkeypatch.setattr(module,'get_db_connection',connect)
     monkeypatch.setattr(server,'DATABASE_URL','banco-temporario')
     monkeypatch.setattr(database,'DATABASE_URL','banco-temporario')

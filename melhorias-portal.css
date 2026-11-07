@@ -1,3 +1,4 @@
+.central-avisos.hidden{display:none!important}
 .central-avisos {position:fixed;inset:0;z-index:260;background:#000b;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px}
 .avisos-painel {width:min(540px,100%);max-height:88dvh;overflow:auto;padding:24px;background:#151c28;border:1px solid #394355;border-radius:24px;color:#f1f5f9}
 .avisos-cabecalho {display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.avisos-cabecalho h2{font-size:20px;font-weight:800}

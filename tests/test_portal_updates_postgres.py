@@ -73,7 +73,7 @@ def test_cadastros_seguem_autor_e_preservam_recusa(db_cadastros,modular):
     assert data['cadastros'][0]['situacao']=='AGUARDANDO'
     assert owner.get('/api/itens/cadastrados-por-mim',headers=auth('b@aluno.cps.sp.gov.br')).json['cadastros']==[]
     item_id=scalar(db_cadastros,'SELECT id FROM itens ORDER BY id DESC LIMIT 1')
-    assert client.put(f'/api/itens/{item_id}/aprovar',headers=sec).status_code==200
+    assert client.put(f'/api/itens/{item_id}/aprovar',headers=sec,json={'versao':1}).status_code==200
     assert owner.get('/api/itens/cadastrados-por-mim',headers=auth()).json['cadastros'][0]['situacao']=='PUBLICADO'
     assert client.post('/api/solicitar',headers=auth('b@aluno.cps.sp.gov.br'),json={'id':item_id}).status_code==200
     assert owner.get('/api/itens/cadastrados-por-mim',headers=auth('b@aluno.cps.sp.gov.br')).json['cadastros']==[]
@@ -81,16 +81,17 @@ def test_cadastros_seguem_autor_e_preservam_recusa(db_cadastros,modular):
     assert owner.get('/api/itens/cadastrados-por-mim',headers=auth()).json['cadastros'][0]['situacao']=='ENTREGUE'
     assert client.post('/api/itens/cadastrar-aluno',headers=auth(),json=payload).status_code==200
     rejected=scalar(db_cadastros,'SELECT id FROM itens ORDER BY id DESC LIMIT 1')
-    assert client.put(f'/api/itens/{rejected}/recusar',headers=sec).status_code==200
+    assert client.put(f'/api/itens/{rejected}/recusar',headers=sec,json={'versao':1,'motivo':'Informe o local encontrado.'}).status_code==200
     assert owner.get('/api/itens/cadastrados-por-mim',headers=auth()).json['cadastros'][0]['situacao']=='RECUSADO'
-    assert scalar(db_cadastros,'SELECT count(*) FROM itens WHERE id=%s',(rejected,))==0
+    assert scalar(db_cadastros,'SELECT count(*) FROM itens WHERE id=%s',(rejected,))==1
+    assert scalar(db_cadastros,'SELECT motivo_recusa FROM itens WHERE id=%s',(rejected,))=='Informe o local encontrado.'
     assert owner.get('/api/itens/cadastrados-por-mim').status_code==401
 
 def test_doacao_e_remocao_preservam_historico_sem_expor_autoria(db_cadastros):
     client=server.app.test_client();sec={'Authorization':'Bearer '+server.gerar_token_secretaria('sec@etec.sp.gov.br')}
     assert client.post('/api/itens/cadastrar-aluno',headers=auth(),json={'nome':'Estojo','descricao':'Estojo azul'}).status_code==200
     item=scalar(db_cadastros,'SELECT MAX(id) FROM itens')
-    assert client.put(f'/api/itens/{item}/aprovar',headers=sec).status_code==200
+    assert client.put(f'/api/itens/{item}/aprovar',headers=sec,json={'versao':1}).status_code==200
     for status,situacao in [('PARA DOAÇÃO','PARA DOAÇÃO'),('DOAÇÃO FEITA','DOADO')]:
         assert client.put(f'/api/itens/{item}',headers=sec,json={'status':status}).status_code==200
         assert client.get('/api/itens/cadastrados-por-mim',headers=auth()).json['cadastros'][0]['situacao']==situacao

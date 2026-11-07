@@ -46,6 +46,8 @@ def env(request):
     app.config['TESTING'] = True
     server.limiter.enabled = False
     admin_db = MagicMock()
+    admin_db.cursor.return_value.fetchone.return_value={'id':1,'versao':1,'aprovado':False,'nome_item':'Estojo','descricao':'Estojo preto','categoria':'OUTROS','data_encontrado':'06/11/2026'}
+    admin_db.cursor.return_value.fetchall.return_value=[]
     with patch.object(service, 'get_db_connection', return_value=Connection(db)), \
          patch.object(resource_module, 'get_db_connection', return_value=admin_db) as resource:
         yield {'client': app.test_client(), 'db':db, 'resource':resource}
@@ -78,7 +80,7 @@ def test_aprovar_libera_mesmo_token_e_revogar_bloqueia_imediatamente(env):
     c=env['client']; auth=headers()
     c.post('/api/professores/acesso',headers=auth)
     assert decide(c,'APROVAR').json['status']=='APROVADO'
-    assert c.put('/api/itens/1/aprovar',headers=auth).status_code==200
+    assert c.put('/api/itens/1/aprovar',headers=auth,json={'versao':1}).status_code==200
     env['resource'].reset_mock()
     # Approved professors cannot approve others, even while operating the panel.
     assert c.get('/api/secretaria/professores',headers=auth).status_code==403

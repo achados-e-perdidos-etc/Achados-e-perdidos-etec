@@ -12,7 +12,7 @@ class Cursor:
         self.cursor = connection.cursor()
 
     def execute(self, query, params=()):
-        self.cursor.execute(query.replace('%s', '?').replace(' FOR UPDATE',''), params)
+        self.cursor.execute(query.replace('%s', '?').replace(' FOR UPDATE','').replace('::int',''), params)
         # Consome RETURNING antes de commit, como o cursor PostgreSQL permite.
         self.rows = self.cursor.fetchall() if self.cursor.description else []
 
@@ -41,6 +41,9 @@ class Connection:
 
     def commit(self):
         self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
 
     def close(self):
         pass  # A conexão pertence ao teste, não a uma requisição.

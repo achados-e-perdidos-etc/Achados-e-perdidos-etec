@@ -21,7 +21,10 @@ const MeusCadastros = {
                 const titulo = document.createElement('h4'); titulo.textContent = item.nome;
                 const estado = document.createElement('strong'); estado.textContent = labels[item.situacao] || 'Em análise';
                 const data = document.createElement('p'); data.textContent = `Enviado em ${new Date(item.enviado_em).toLocaleString('pt-BR')} · ${item.categoria}`;
-                card.append(titulo,estado,data); lista.append(card);
+                card.append(titulo,estado,data);
+                if(item.motivo_recusa){const motivo=document.createElement('p');motivo.className='mod-motivo';motivo.textContent='Orientação: '+item.motivo_recusa;card.append(motivo);}
+                if(item.situacao==='RECUSADO'&&item.item_id){const corrigir=document.createElement('button');corrigir.type='button';corrigir.className='ev-action';corrigir.textContent='Corrigir e reenviar';corrigir.onclick=()=>CorrecaoCadastro.abrir(item.item_id);card.append(corrigir);}
+                lista.append(card);
             }
             status.textContent = this.itens.length ? '' : 'Você ainda não tem cadastros com autoria registrada. Os próximos objetos enviados aparecerão aqui.';
             document.getElementById('maisCadastros').hidden = !data.tem_mais;
