@@ -2,25 +2,31 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Aparência, buscas salvas e preferências
+
+[preferencias-e-atalhos.md](preferencias-e-atalhos.md): escolha de tema claro, escuro ou automático, com convite antes de acompanhar o sistema; dez buscas salvas por conta no navegador; filtros e apresentação lembrados; atalhos administrativos com contagens privadas; preferências e atalhos equivalentes no desktop. O [roteiro para colegas](teste-com-colegas.md) está pronto, sem alegar teste humano já realizado. Arquivos adicionados ao longo das atualizações agora usam nomes em minúsculas, com links corrigidos.
+
+Validação cumulativa mais recente: **404 Python, 49 JavaScript e 48 Chromium — 501 testes aprovados**. As contagens das seções seguintes são registros históricos de cada etapa.
+
 ## Paridade dos painéis e comprovante personalizado
 
-Matriz e validações em [PARIDADE-SECRETARIA.md](PARIDADE-SECRETARIA.md). Os painéis administrativos passam a oferecer os mesmos recursos de relatórios, etiquetas, filtros, mural, câmera, fotos e retirada com aceite, respeitando papéis. O comprovante compartilha um modelo A4 com logo, cores do portal e ilustrações de objetos. Validação cumulativa: **396 Python, 49 JavaScript e 48 Chromium — 493 testes aprovados**. Serviços externos/hardware e Windows seguem com os limites de validação descritos no documento.
+Matriz e validações em [paridade-secretaria.md](paridade-secretaria.md). Os painéis administrativos passam a oferecer os mesmos recursos de relatórios, etiquetas, filtros, mural, câmera, fotos e retirada com aceite, respeitando papéis. O comprovante compartilha um modelo A4 com logo, cores do portal e ilustrações de objetos. Validação cumulativa: **396 Python, 49 JavaScript e 48 Chromium — 493 testes aprovados**. Serviços externos/hardware e Windows seguem com os limites de validação descritos no documento.
 
 ## Comprovantes com impressão
 
-[COMPROVANTES-IMPRESSAO.md](COMPROVANTES-IMPRESSAO.md): opção de impressora/PDF na baixa manual, no histórico e na confirmação por código. Folha A4 somente com o comprovante, aceite quando existente e identificação de entrega revertida. Desktop abre a versão local para imprimir, preservando os dados do histórico e removendo temporários ao sair.
+[comprovantes-impressao.md](comprovantes-impressao.md): opção de impressora/PDF na baixa manual, no histórico e na confirmação por código. Folha A4 somente com o comprovante, aceite quando existente e identificação de entrega revertida. Desktop abre a versão local para imprimir, preservando os dados do histórico e removendo temporários ao sair.
 
 Validação cumulativa atual: **378 testes Python, 49 JavaScript e 48 Chromium — 475 aprovados**. PDF fictício A4 de uma página em `/workspace/comprovantes-evidencias`. Equipamento físico não foi utilizado.
 
 ## Revisão de experiência, catálogo e moderação
 
-Etapa atual em [EXPERIENCIA-E-CATALOGO.md](EXPERIENCIA-E-CATALOGO.md): navegação visível e responsiva, orientações de retirada e análise, login mais claro, filtros removíveis, feedback fiel à resposta do servidor e correções de sobreposição/foco/offline. Inclui catálogo paginado, fotos sob demanda, busca sem acentos com filtros combinados, recusa com motivo e correção pelo autor, histórico ampliado, aviso de duplicidade e moderação/gestão de professores no desktop.
+Etapa atual em [experiencia-e-catalogo.md](experiencia-e-catalogo.md): navegação visível e responsiva, orientações de retirada e análise, login mais claro, filtros removíveis, feedback fiel à resposta do servidor e correções de sobreposição/foco/offline. Inclui catálogo paginado, fotos sob demanda, busca sem acentos com filtros combinados, recusa com motivo e correção pelo autor, histórico ampliado, aviso de duplicidade e moderação/gestão de professores no desktop.
 
 Validação cumulativa atual: **373 testes Python, 49 JavaScript e 48 Chromium aprovados — 470 testes**. Inclui nove jornadas Flask/PostgreSQL/Chromium e fluxo Tkinter real em Linux/Xvfb. Capturas em `/workspace/experiencia-evidencias`. Resultados abaixo são históricos de cada etapa.
 
 ## Ampliação de segurança, retirada e PWA
 
-Avaliação e implementação das novas ideias em [EVOLUCAO-SEGURANCA-PWA.md](EVOLUCAO-SEGURANCA-PWA.md): papéis explícitos, auditoria transacional, fotos verificadas e normalizadas no servidor, retirada com código e aceite privado, revisão visual, alertas deduplicados e fila offline por conta. A tabela de decisões explica as alternativas descartadas e os limites dos recursos externos.
+Avaliação e implementação das novas ideias em [evolucao-seguranca-pwa.md](evolucao-seguranca-pwa.md): papéis explícitos, auditoria transacional, fotos verificadas e normalizadas no servidor, retirada com código e aceite privado, revisão visual, alertas deduplicados e fila offline por conta. A tabela de decisões explica as alternativas descartadas e os limites dos recursos externos.
 
 ## Página 404: Operação Achados
 

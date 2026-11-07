@@ -40,6 +40,6 @@ Arquivos internos Python/configuração/testes não são mais servidos pela raiz
 
 PostgreSQL temporário, migrações repetidas, testes Python/JavaScript e Chromium. Jornadas com Flask real e banco isolado verificam PWA reaberta sem internet, formulário real guardado e sincronizado, upload com resposta perdida após commit sem duplicação, isolamento e expiração da fila, logout, código apresentado pelo aluno, aceite na secretaria, auditoria e revisão visual sem alterar a conta. O armazenamento de imagens é simulado; não se usaram serviços externos reais nem o banco da escola.
 
-Detalhes históricos das etapas anteriores permanecem em `CORRECOES-28.md`. Evidências locais desta etapa ficam em `/workspace/evolucao-evidencias`.
+Detalhes históricos das etapas anteriores permanecem em `correcoes-28.md`. Evidências locais desta etapa ficam em `/workspace/evolucao-evidencias`.
 
 Resultado: **353 testes Python (incluindo cinco jornadas Flask/PostgreSQL/Chromium), 49 testes JavaScript e 48 testes Chromium das telas anteriores aprovados — 450 testes ao todo**. Após os ajustes finais da assinatura e da apresentação do histórico, as cinco jornadas integradas foram repetidas e passaram novamente. O CSS foi recompilado com as classes atuais do projeto.

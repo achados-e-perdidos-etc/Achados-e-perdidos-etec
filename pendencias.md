@@ -12,7 +12,7 @@ Corrigir as pendências do projeto. Hospedagem e migração de banco adiadas por
 
 ## Erros identificados na revisão inicial
 
-Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram o comportamento anterior. Detalhes e limites em VALIDACAO.md.
+Os itens marcados foram corrigidos nesta etapa; as descrições abaixo registram o comportamento anterior. Detalhes e limites em validacao.md.
 
 - [x] P1 — Autorização administrativa: `server.py:token_required` valida a assinatura do JWT, mas não o perfil. Rotas administrativas de aprovação, edição e exclusão usam esse decorador sem exigir secretaria. Reproduzido localmente com token de aluno e o decorador original extraído via AST; nenhuma operação real foi feita.
 - [x] P1 — Categorias: POST e DELETE em `/api/categorias` não exigem autenticação.
@@ -42,7 +42,7 @@ Validação: 46 testes Python e 5 testes JavaScript passaram. O acesso legítimo
 
 ## Validação da primeira etapa
 
-40 testes passaram: 17 existentes, 22 testes de contratos de rotas nas implementações unificada/modular e um teste da configuração JWT. JavaScript e compilação Python também verificados. Integrações externas e dados reais permanecem sem teste. Consulte VALIDACAO.md.
+40 testes passaram: 17 existentes, 22 testes de contratos de rotas nas implementações unificada/modular e um teste da configuração JWT. JavaScript e compilação Python também verificados. Integrações externas e dados reais permanecem sem teste. Consulte validacao.md.
 
 ## Verificações da análise inicial
 
@@ -82,7 +82,7 @@ Nova branch derivada da proposta #16, conforme orientação de continuar sempre 
 - [x] Permissão aprovada consultada no banco a cada requisição; revogação afeta também sessões já abertas.
 - [x] Professores aprovados podem operar o painel, mas não conceder permissões a outros professores.
 - [x] Registro do responsável e da data da decisão; reenvio de solicitação recusada ou revogada exige nova aprovação.
-- [x] Regra de branches futuras registrada em AGENTS.md.
+- [x] Regra de branches futuras registrada em agents.md.
 
 Validação: 72 testes Python e 11 testes JavaScript passaram. Também foi executado o ciclo de login, solicitação, aprovação, operação, restrição de decisões e revogação com PostgreSQL real isolado. Nenhum dado real foi acessado. A tabela professores_acesso é criada na inicialização do banco nas duas implementações. Nenhum acesso é concedido automaticamente a contas existentes.
 
@@ -129,7 +129,7 @@ Validação: 134 testes Python, 21 testes JavaScript e 10 testes no Chromium pas
 
 ## Oitava etapa — notificações vinculadas à conta (proposta 21)
 
-Branch numerada 21-protecao-notificacoes-push, derivada da proposta #20. A numeração das branches futuras também foi registrada em AGENTS.md por orientação do usuário.
+Branch numerada 21-protecao-notificacoes-push, derivada da proposta #20. A numeração das branches futuras também foi registrada em agents.md por orientação do usuário.
 
 - [x] POST/DELETE /api/push/subscribe exigem sessão institucional válida; a chave pública e OPTIONS continuam públicos.
 - [x] Assinaturas pertencem ao e-mail autenticado, sem usar RM/e-mail/perfil enviados no corpo. Contas que declaram o mesmo RM não sobrescrevem dispositivos diferentes.
@@ -193,7 +193,7 @@ Branch 25-envio-notificacoes, baseada na proposta #24.
 - [x] Timeout de oito segundos, até quatro tentativas e intervalos de reenvio. Endpoints de provedores conhecidos e sem redirecionamento; erros não registram chaves ou endpoints.
 - [x] Botão Testar Notificações solicita envio somente para a própria conta, com limite de um teste a cada 30 segundos e sem declarar entrega antes da recepção.
 - [x] Rotação de VAPID no navegador renova a assinatura quando necessário; chave de exemplo removida. Clique na notificação abre somente a origem do site.
-- [x] Orientação sobre pendências adiadas registrada em AGENTS.md e nesta lista.
+- [x] Orientação sobre pendências adiadas registrada em agents.md e nesta lista.
 
 Validação: testes criptografam/assinam com chaves efêmeras reais, interceptam o transporte sem contatar provedores e decifram/verificam o payload/JWT. Fila e migrações foram exercitadas em PostgreSQL temporário, com ambas as implementações de rotas. O recebimento por um aparelho real não foi comprovado: ativação e validação com serviços reais ficam adiadas junto das demais tarefas atualmente inviáveis. Nenhum banco/credencial de produção foi usado, nenhuma notificação foi enviada a contas reais e a proposta permanece separada da main.
 
@@ -210,12 +210,12 @@ As quatro melhorias compõem uma única branch `26-melhorias-portal`, dependente
 
 ## Proposta 27 — auditoria funcional e desktop
 
-Relatório completo em **AUDITORIA-27.md**. Logo desktop unificada com a web; correções dos IDs do histórico, confirmação de doações, timeouts e sugestões de IA. Verificação com Tkinter real em tela virtual, Flask e PostgreSQL isolado.
+Relatório completo em **auditoria-27.md**. Logo desktop unificada com a web; correções dos IDs do histórico, confirmação de doações, timeouts e sugestões de IA. Verificação com Tkinter real em tela virtual, Flask e PostgreSQL isolado.
 
 Novas descobertas ativas, ainda abertas: **A27-01** (isolamento do chat entre contas com mesmo RM), **A27-02** (reversão de entrega mantém histórico/indicadores), **A27-03** (cadastros vazios aceitos pela API), **A27-04** (desktop síncrono e erros silenciosos), **A27-05** (células de CSV sem neutralização de fórmulas) e **A27-06** (ordenação de categorias no desktop). Essas descobertas não foram encerradas. Elas não dependem da disponibilidade da lista oficial de matrículas e não substituem os registros das tarefas anteriormente adiadas.
 
 ## Proposta 28 — situação atual das prioridades
 
-As seis descobertas **A27-01 a A27-06** foram tratadas em uma única branch, com testes de regressão. Detalhes, migrações, evidências e limites em **CORRECOES-28.md**. Inclui retenção automática do chat em 30 dias e envio retomável por foto no portal/painel web. A logo desktop unificada foi preservada.
+As seis descobertas **A27-01 a A27-06** foram tratadas em uma única branch, com testes de regressão. Detalhes, migrações, evidências e limites em **correcoes-28.md**. Inclui retenção automática do chat em 30 dias e envio retomável por foto no portal/painel web. A logo desktop unificada foi preservada.
 
 O relatório da proposta 27 é o registro histórico das falhas antes das correções. As recomendações de novas funcionalidades e as tarefas anteriormente adiadas continuam separadas: não foram declaradas concluídas por esta revisão. A implementação ainda depende de integração das propostas para chegar ao site publicado.

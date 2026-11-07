@@ -57,7 +57,7 @@ Servidor: `requirements.txt` inclui `qrcode[pil]`. Desktop: instalar `requiremen
 
 ## Validação
 
-**396 testes Python, 49 JavaScript e 48 Chromium de regressão — 493 aprovados.** A suíte Python inclui quinze jornadas Flask/PostgreSQL/Chromium e um fluxo gráfico Tkinter em Linux/Xvfb. A câmera web foi testada com um stream sintético; a leitura de QR usou PNG real gerado pelo servidor e o decodificador OpenCV. O fluxo nativo exercitou filtros, rascunho, foto enviada, categoria, relatório comum, código e aceite, além de moderação, professores, login pessoal e revogação.
+**396 testes Python, 49 JavaScript e 48 Chromium de regressão — 493 aprovados nesta etapa.** A suíte Python inclui quinze jornadas Flask/PostgreSQL/Chromium e um fluxo gráfico Tkinter em Linux/Xvfb. A câmera web foi testada com um stream sintético; a leitura de QR usou PNG real gerado pelo servidor e o decodificador OpenCV. O fluxo nativo exercitou filtros, rascunho, foto enviada, categoria, relatório comum, código e aceite, além de moderação, professores, login pessoal e revogação. A validação posterior de temas, preferências e atalhos está em [preferencias-e-atalhos.md](preferencias-e-atalhos.md), com 501 casos cumulativos aprovados.
 
 Também foram verificados documento privado/HTML escapado, tipos de relatório, etiquetas em duas páginas, PNG, câmera liberada, progresso independente e foto com resposta perdida após commit, retomada sem reenviar a foto pronta. Suítes anteriores cobrem retirada concorrente, idempotência, privacidade, retenção e fila offline do aluno.
 

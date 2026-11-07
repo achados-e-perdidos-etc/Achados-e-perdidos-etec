@@ -4,6 +4,8 @@ Por orientação mais recente do proprietário, concentre as próximas atualiza�
 
 Consulte o head atual da branch no GitHub antes de começar e teste cada alteração e seus impactos antes da integração. Não use uma cópia antiga de main como base. Não afirme ausência absoluta de erros; registre as validações executadas e eventuais limitações.
 
+Por orientação do proprietário, os nomes dos novos arquivos devem usar letras minúsculas, incluindo documentos. Atualize referências ao renomear. Os quatro nomes originais com maiúsculas (`Procfile`, `animacao.GIF`, `animacao_pc.GIF` e `blueprints/Push.py`) foram preservados; a solicitação se refere aos arquivos adicionados nas atualizações.
+
 ## Pendências adiadas
 
 Por orientação do proprietário, integração/publicação das propostas, hospedagem/migração, validação por lista oficial de RM, testes com credenciais reais e revisão visual completa em monitores grandes estão adiados por inviabilidade atual. Preserve os registros, mas não os apresente como próximos passos ativos quando ele perguntar por pendências. Responda distinguindo pendências ativas de tarefas adiadas; não afirme que tarefas adiadas foram concluídas. Reabra esse trabalho somente quando o proprietário indicar que já é viável.

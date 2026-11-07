@@ -9,6 +9,25 @@ from utils.ferramentas import documento_relatorio,documento_etiquetas,qr_png,id_
 ferramentas_bp=Blueprint('ferramentas',__name__)
 CAMPOS="id,COALESCE(nome_item,descricao) AS nome,descricao AS txt_descricao,categoria,data_encontrado AS txt_data,local_encontrado AS txt_local,status,solicitado_por,rm_aluno"
 
+@ferramentas_bp.route('/api/secretaria/resumo',methods=['GET','OPTIONS'])
+@secretaria_required
+def resumo():
+    """Uma consulta para as prioridades dos dois painéis, sem expor mensagens."""
+    conn=None
+    try:
+        conn=get_db_connection();c=conn.cursor(cursor_factory=RealDictCursor)
+        c.execute("""SELECT
+          (SELECT count(*) FROM itens WHERE aprovado IS FALSE AND recusado_em IS NULL) AS pendentes,
+          (SELECT count(*) FROM itens WHERE aprovado IS NOT FALSE AND status='SOLICITADO') AS retiradas,
+          (SELECT count(*) FROM mensagens_chat WHERE remetente='ALUNO' AND NOT lida
+             AND criada_em >= CURRENT_TIMESTAMP - INTERVAL '30 days') AS mensagens""")
+        return jsonify(success=True,**dict(c.fetchone()))
+    except Exception:
+        current_app.logger.warning('Resumo administrativo temporariamente indisponível.')
+        return jsonify(success=False,message='Não foi possível atualizar as prioridades.'),503
+    finally:
+        if conn:conn.close()
+
 @ferramentas_bp.route('/api/secretaria/documentos',methods=['GET','OPTIONS'])
 @secretaria_required
 def documentos():

@@ -294,6 +294,7 @@ class SecretariaApp(ModeracaoDesktop,FerramentasDesktop,FormularioDesktop):
         elif self.tab_professores is not None and selecionada==str(self.tab_professores):self.carregar_professores()
 
     def carregar_dados(self):
+        self.atualizar_prioridades()
         self.carregar_categorias()
         self.carregar_itens()
         self.carregar_entregues()
@@ -449,6 +450,7 @@ class SecretariaApp(ModeracaoDesktop,FerramentasDesktop,FormularioDesktop):
         self.abrir_objeto_por_etiqueta(valor)
 
     def aplicar_filtros_tabela(self):
+        self.agendar_preferencias()
         status_filtro = self.combo_filtro_status.get().upper()
         self.tree_itens.delete(*self.tree_itens.get_children())
         self.tree_doacoes.delete(*self.tree_doacoes.get_children())

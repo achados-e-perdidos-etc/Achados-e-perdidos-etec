@@ -36,7 +36,8 @@ def tela(monkeypatch):
         process.terminate();process.wait(timeout=5)
 
 
-def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeypatch):
+def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeypatch,tmp_path):
+    monkeypatch.setenv('ETEC_PREFERENCIAS_DIR',str(tmp_path/'preferencias'))
     pending=inserir(db,nome='Caderno espiral azul',categoria='OUTROS',aprovado=False,autor='a@aluno.cps.sp.gov.br')
     teacher='docente@etec.sp.gov.br';senha='Senha-local-de-teste-123!'
     with db() as co:
@@ -71,6 +72,8 @@ def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeyp
     try:
         app.entry_email.insert(0,'secretaria@etec.sp.gov.br');app.entry_senha.insert(0,senha);app.verificar_login();aguardar()
         assert len(app.notebook.tabs())==9 and app.tab_professores is not None
+        assert app.botoes_prioridades['pendentes'][0].cget('text').endswith(': 1')
+        app.abrir_prioridade('moderacao');tela.update();aguardar();assert app.notebook.select()==str(app.tab_moderacao)
         app.notebook.select(app.tab_moderacao);tela.update();aguardar()
         app.tree_moderacao.selection_set(str(pending));app.recusar_cadastro_desktop();aguardar()
         assert scalar(db,'SELECT motivo_recusa FROM itens WHERE id=%s',(pending,))=='Confira a sala em que encontrou o caderno.'
@@ -93,6 +96,9 @@ def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeyp
         app.notebook.select(app.tab_itens);tela.update()
         app.filtros_estoque['q'].insert(0,'caderno');app.filtros_estoque['local'].insert(0,'sala');app.aplicar_filtros_tabela()
         assert len(app.tree_itens.get_children())==1
+        app.guardar_preferencias_desktop()
+        from utils import preferencias_desktop
+        assert preferencias_desktop.ler(app.preferencias_email)['filtros']['q']=='caderno'
         app.limpar_filtros_estoque()
         form=app.abrir_modal_form();form.campos['nome'].insert(0,'Rascunho preservado');form.fechar()
         form=app.abrir_modal_form();assert form.campos['nome'].get()=='Rascunho preservado';form.fechar()
@@ -123,6 +129,9 @@ def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeyp
         app.encerrar_sessao();app.entry_email.insert(0,teacher);app.entry_senha.insert(0,senha);app.verificar_login();aguardar()
         assert len(app.notebook.tabs())==8 and app.tab_professores is None
         assert app.perfil_painel['perfil']=='moderador'
+        assert app.filtros_estoque['q'].get()==''
+        app.abrir_prioridade('itens');aguardar();assert app.combo_filtro_status.get()=='SOLICITADO'
+        app.abrir_prioridade('chat');aguardar();assert app.notebook.select()==str(app.tab_chat)
         assert ('POST','/api/auth/login-aluno') in calls
         with db() as co:
             with co.cursor() as c:c.execute("UPDATE professores_acesso SET status='REVOGADO' WHERE email=%s",(teacher,))

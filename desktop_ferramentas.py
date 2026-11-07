@@ -10,12 +10,20 @@ from utils.catalogo import normalizar
 from utils.ferramentas import filtrar_itens,id_etiqueta,TIPOS
 from utils.comprovantes import abrir_documento_local
 from utils.exportacao import salvar_csv
+from utils import preferencias_desktop
 
 BG='#0d1117';CARD='#161b22';FG='#c9d1d9';BLUE='#1f6feb';GREEN='#059669'
 
 
 class FerramentasDesktop:
     def limpar_recursos_paridade(self):
+        self.guardar_preferencias_desktop()
+        for nome in ['timer_prioridades','timer_preferencias']:
+            timer=getattr(self,nome,None)
+            if timer:
+                try:self.root.after_cancel(timer)
+                except tk.TclError:pass
+            setattr(self,nome,None)
         for camera in list(getattr(self,'cameras',[])):camera.fechar()
         for upload in list(getattr(self,'uploads_abertos',[])):upload.fechar()
         self.cameras=[];self.uploads_abertos=[];self.rascunho_item=None
@@ -58,6 +66,60 @@ class FerramentasDesktop:
         ttk.Button(self.tab_mural,text='Comparar com objetos / preparar entrega',command=self.comparar_mural).pack(pady=6)
         pesquisa=tk.StringVar();entry=ttk.Entry(self.listbox_chat.master,textvariable=pesquisa);entry.pack(fill='x',before=self.listbox_chat,pady=5);self.busca_conversas=pesquisa
         pesquisa.trace_add('write',lambda *a:self.filtrar_conversas());self.conversas_atuais=[]
+        self.construir_preferencias_atalhos()
+
+    def construir_preferencias_atalhos(self):
+        box=tk.Frame(self.tab_dash,bg=BG);box.pack(fill='x',before=self.lbl_disponiveis,padx=22,pady=6)
+        self.botoes_prioridades={}
+        for chave,texto,aba in [('pendentes','Cadastros para analisar','moderacao'),('retiradas','Retiradas solicitadas','itens'),('mensagens','Mensagens não lidas','chat')]:
+            b=ttk.Button(box,text=texto+': —',command=lambda a=aba:self.abrir_prioridade(a));b.pack(side='left',fill='x',expand=True,padx=3);self.botoes_prioridades[chave]=(b,texto)
+        ttk.Button(box,text='Atualizar atalhos',command=self.atualizar_prioridades).pack(side='left',padx=3)
+        self.lbl_prioridades=tk.Label(self.tab_dash,text='Consultando prioridades…',bg=BG,fg=FG);self.lbl_prioridades.pack(before=self.lbl_disponiveis)
+        self.preferencias_email=self.perfil_painel.get('email')
+        dados=preferencias_desktop.ler(self.preferencias_email) if self.preferencias_email else {}
+        for k,v in dados.get('filtros',{}).items():
+            if k in self.filtros_estoque:self.filtros_estoque[k].insert(0,v)
+        status=dados.get('filtros',{}).get('status','TODOS');self.combo_filtro_status.set(status if status in self.combo_filtro_status['values'] else 'TODOS')
+        for col,width in dados.get('larguras',{}).items():
+            if col in self.tree_itens['columns']:self.tree_itens.column(col,width=width)
+        self.tree_itens.bind('<ButtonRelease-1>',lambda e:self.agendar_preferencias(),add='+')
+        self.timer_preferencias=None;self.timer_prioridades=None
+        def ciclo():
+            self.atualizar_prioridades();self.timer_prioridades=self.root.after(60000,ciclo)
+        self.timer_prioridades=self.root.after(60000,ciclo)
+
+    def agendar_preferencias(self):
+        if not getattr(self,'preferencias_email',None):return
+        if getattr(self,'timer_preferencias',None):self.root.after_cancel(self.timer_preferencias)
+        self.timer_preferencias=self.root.after(350,self.guardar_preferencias_desktop)
+
+    def guardar_preferencias_desktop(self):
+        timer=getattr(self,'timer_preferencias',None)
+        if timer:
+            try:self.root.after_cancel(timer)
+            except tk.TclError:pass
+        self.timer_preferencias=None
+        if not getattr(self,'preferencias_email',None):return
+        try:
+            dados={'filtros':{**self.filtros_documento(),'status':self.combo_filtro_status.get()},'larguras':{col:self.tree_itens.column(col,'width') for col in self.tree_itens['columns']}}
+            if not preferencias_desktop.salvar(self.preferencias_email,dados):self.status_operacao('Preferências válidas nesta sessão; não foi possível salvar no computador.',erro=True)
+        except tk.TclError:pass
+
+    def abrir_prioridade(self,aba):
+        if aba=='itens':self.limpar_filtros_estoque();self.combo_filtro_status.set('SOLICITADO');self.aplicar_filtros_tabela()
+        elif aba=='moderacao':self.filtro_moderacao.set('PENDENTE');self.carregar_moderacao()
+        elif aba=='chat':self.busca_conversas.set('');self.carregar_conversas()
+        self.notebook.select(getattr(self,'tab_'+aba))
+
+    @assincrono
+    def atualizar_prioridades(self):
+        try:
+            res=yield Trabalho(self.chamar_api,'GET','/api/secretaria/resumo',headers=self.get_auth_headers_get());data=res.json()
+            for k,(botao,texto) in self.botoes_prioridades.items():botao.configure(text=f'{texto}: {data[k]}')
+            self.lbl_prioridades.configure(text='Atualizado às '+datetime.now().strftime('%H:%M'))
+        except Exception:
+            for botao,texto in self.botoes_prioridades.values():botao.configure(text=texto+': —')
+            self.lbl_prioridades.configure(text='Não foi possível atualizar as prioridades. Tente novamente.')
 
     def limpar_filtros_estoque(self):
         for campo in self.filtros_estoque.values():campo.delete(0,tk.END)

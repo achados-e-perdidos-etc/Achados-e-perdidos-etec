@@ -26,7 +26,7 @@ const Acessibilidade = {
             }
         }
         for (const el of document.querySelectorAll('button')) {
-            if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || el.innerText.trim().replace(/[✕×]/g,'').trim()) continue;
+            if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || el.textContent.trim().replace(/[✕×]/g,'').trim()) continue;
             const fn = el.getAttribute('onclick') || '';
             let nome = el.title;
             if (!nome) {

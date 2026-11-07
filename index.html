@@ -20,6 +20,8 @@
 <link rel="stylesheet" href="/evolucao-interface.css">
 <link rel="stylesheet" href="/catalogo-moderacao.css">
 <link rel="stylesheet" href="/experiencia.css">
+<link rel="stylesheet" href="/preferencias.css">
+<script src="/tema.js"></script>
 </head>
 <body class="portal-experiencia dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
@@ -677,7 +679,6 @@
         if (jaExibido || !navigator.onLine || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !splash || !gif) {
             if (splash) esconderSplash();
             window.onload = () => {
-                document.body.classList.add('dark-theme');
                 checarSessao();
             };
             return;
@@ -697,9 +698,8 @@
         gif.onerror = encerrarSplash;
         gif.src = emPaisagem ? GIF_PC : GIF_CELULAR;
 
-        window.onload = () => {
-            document.body.classList.add('dark-theme');
-        };
+        // A animação chama checarSessao() ao terminar.
+        window.onload = () => {};
     })();
     </script>
 
@@ -711,5 +711,6 @@
 <script src="/catalogo-portal.js"></script>
 <script src="/moderacao-interface.js"></script>
 <script src="/experiencia.js"></script>
+<script src="/preferencias.js"></script>
 </body>
 </html>

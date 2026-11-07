@@ -7,6 +7,7 @@ async function verificarSessaoPainel() {
         const perfil = document.querySelector('.status-sessao');
         if (perfil) perfil.textContent = data.user.acesso_delegado ? 'Moderador · acesso autorizado pela escola' : 'Administrador geral · secretaria titular';
         document.getElementById('menuAba-professores').classList.toggle('hidden', !!data.user.acesso_delegado);
+        if (typeof PreferenciasUI !== 'undefined') PreferenciasUI.entrar(data.user.email,true);
         return true;
     } catch (error) {
         document.getElementById('menuAba-professores').classList.add('hidden');

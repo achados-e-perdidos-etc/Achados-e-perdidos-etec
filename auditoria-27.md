@@ -29,7 +29,7 @@ Resultado: **281 testes Python, 38 testes Chromium e 40 testes JavaScript passar
 | Média — A27-05 | Desktop exporta células de texto livre diretamente com `csv.writer`. Revisão estática; não abriu Excel. | Neutralizar fórmulas de planilha em células que começam com `=`, `+`, `-` ou `@` e testar os exportadores web/desktop. |
 | Baixa — A27-06 | Categorias em destaque no dashboard desktop são ordenadas pela tupla/nome, não pela quantidade. Revisão estática. | Ordenar por quantidade para exibir as categorias com mais objetos. |
 
-Os problemas abertos acima são descobertas desta auditoria, não foram corrigidos nem encerrados por terem sido documentados. Os testes de regressão que passaram não cobriam todos eles. As tarefas anteriormente adiadas permanecem separadas em PENDENCIAS.md.
+Os problemas abertos acima são descobertas desta auditoria, não foram corrigidos nem encerrados por terem sido documentados. Os testes de regressão que passaram não cobriam todos eles. As tarefas anteriormente adiadas permanecem separadas em pendencias.md.
 
 ## Corrigido nesta proposta
 

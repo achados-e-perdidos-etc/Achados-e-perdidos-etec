@@ -196,6 +196,7 @@ async function checarSessao() {
         } catch (e) {}
 
         alunoSessao = dados;
+        if (typeof PreferenciasUI !== 'undefined') PreferenciasUI.entrar(dados.email);
         if (typeof CentralAvisos !== "undefined") CentralAvisos.carregar();
         ativarWebPush();
         document.getElementById('loginAlunoScreen').classList.add('hidden');
@@ -231,6 +232,7 @@ function fazerLogoff(recarregar = true, preservarFila = false) {
     const limpezaFila = !preservarFila && typeof FilaOffline !== 'undefined' ? FilaOffline.sair() : Promise.resolve();
     SessaoPortal.limpar(true);
     alunoSessao = null;
+    if (typeof PreferenciasUI !== 'undefined') PreferenciasUI.sair();
     if (recarregar) {
         return Promise.all([limpezaFila, Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])])
             .finally(() => window.location.reload());
@@ -677,6 +679,7 @@ function renderizarItens(semBuscar = false) {
                     </div>
 
                     <h4 class="font-extrabold text-sm text-white truncate tracking-tight">${textoHTML(item.nome || item.txt_descricao)}</h4>
+                    <span class="ux-card-list-state ${textoHTML(badgeCor)}">${textoHTML(st)}</span>
                     <p class="text-xs text-slate-400 line-clamp-2 mt-1 leading-snug">${textoHTML(item.txt_descricao)}</p>
                 </div>
 
@@ -1140,7 +1143,6 @@ async function enviarCadastroAluno(e) {
 }
 
 window.onload = () => {
-    document.body.classList.add('dark-theme');
     const splash = document.getElementById('splashScreenAnimacao');
     const video = document.getElementById('videoSplash');
 

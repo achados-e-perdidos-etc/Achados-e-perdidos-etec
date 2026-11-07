@@ -2,7 +2,7 @@
 
 Atualização na branch `28-atualizacoes-do-projeto`, proposta #29 com base em `main`.
 
-O modelo visual foi ampliado em [PARIDADE-SECRETARIA.md](PARIDADE-SECRETARIA.md): logo, cores vermelha/grafite, ilustrações de objetos e campos reorganizados no mesmo modelo da web/desktop. O exemplo atual está em `/workspace/comprovantes-evidencias/comprovante-personalizado.pdf`. Os resultados de testes abaixo descrevem a etapa original da impressão.
+O modelo visual foi ampliado em [paridade-secretaria.md](paridade-secretaria.md): logo, cores vermelha/grafite, ilustrações de objetos e campos reorganizados no mesmo modelo da web/desktop. O exemplo atual está em `/workspace/comprovantes-evidencias/comprovante-personalizado.pdf`. Os resultados de testes abaixo descrevem a etapa original da impressão.
 
 - **Secretaria web:** botão Imprimir no comprovante da baixa manual; Comprovante / Imprimir no histórico de entregas e após a confirmação por código. Ver aceite continua disponível e abre o comprovante completo.
 - **Folha de impressão:** A4, fundo branco, dados do objeto/aluno, data registrada e responsável. O comprovante do histórico inclui o aceite quando existir; sem assinatura, informa essa ausência. Registros revertidos recebem identificação explícita. Menu, chat, painel e botões ficam fora da impressão. Imprimir/cancelar não registra outra entrega nem altera o banco.

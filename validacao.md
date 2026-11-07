@@ -265,6 +265,6 @@ Resultado desta execução: **273 testes Python** (incluindo fluxos com PostgreS
 
 ## Proposta 28 — prioridades e retomada de upload
 
-As correções e a validação estão descritas em **CORRECOES-28.md**. Foram aprovados 324 testes Python, 49 testes JavaScript e 39 testes Chromium, além de jornadas reais locais do desktop e do portal com PostgreSQL temporário. Serviços externos foram substituídos por transporte controlado.
+As correções e a validação estão descritas em **correcoes-28.md**. Foram aprovados 324 testes Python, 49 testes JavaScript e 39 testes Chromium, além de jornadas reais locais do desktop e do portal com PostgreSQL temporário. Serviços externos foram substituídos por transporte controlado.
 
 Migrações idempotentes acrescentam `mensagens_chat.criada_em`, índices de retenção/conta, `entregues.cancelada_em`/`cancelada_por` e tabelas de sessões/partes de fotos. Históricos sem autoria não são associados por RM. Mensagens legadas sem data estruturada recebem a data da migração como início da retenção. O worker de limpeza do chat e dos uploads inicia após migração, no primeiro acesso; limita lotes, coordena instâncias por trava PostgreSQL e retenta falhas temporárias. O novo cache PWA inclui as dependências do portal.

@@ -672,6 +672,8 @@
 <link rel="stylesheet" href="/experiencia.css">
 <link rel="stylesheet" href="/comprovantes.css">
 <link rel="stylesheet" href="/ferramentas-secretaria.css">
+<link rel="stylesheet" href="/preferencias.css">
+<script src="/tema.js"></script>
 </head>
 <body class="secretaria-experiencia">
 
@@ -2750,7 +2752,7 @@
               plugins: {
                 legend: {
                   position: 'bottom',
-                  labels: { color: '#8b949e', font: { size: 11 }, boxWidth: 12, padding: 8 }
+                  labels: { color: typeof TemaUI!=='undefined'&&document.documentElement.dataset.tema==='claro'?'#4b5b70':'#c4cfdf', font: { size: 11 }, boxWidth: 12, padding: 8 }
                 }
               }
             }
@@ -2785,11 +2787,11 @@
               scales: {
                 x: {
                   grid: { color: 'rgba(255,255,255,0.05)' },
-                  ticks: { color: '#8b949e', stepSize: 1, precision: 0 }
+                  ticks: { color: typeof TemaUI!=='undefined'&&document.documentElement.dataset.tema==='claro'?'#4b5b70':'#c4cfdf', stepSize: 1, precision: 0 }
                 },
                 y: {
                   grid: { display: false },
-                  ticks: { color: '#c9d1d9', font: { size: 11 } }
+                  ticks: { color: typeof TemaUI!=='undefined'&&document.documentElement.dataset.tema==='claro'?'#4b5b70':'#c4cfdf', font: { size: 11 } }
                 }
               },
               plugins: {
@@ -3214,6 +3216,7 @@
 <script src="/experiencia.js"></script>
 <script src="/comprovantes.js"></script>
 <script src="/ferramentas-secretaria.js"></script>
+<script src="/preferencias.js"></script>
 </body>
 </html>
 
