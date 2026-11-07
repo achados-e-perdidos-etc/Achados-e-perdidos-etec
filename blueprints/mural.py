@@ -35,9 +35,16 @@ def mural():
         if not aluno:
             return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem publicar relatos de perda.'}), 403
         data = request.json or {}
+        if request.headers.get('Idempotency-Key'):
+            from services.cadastro_offline import enviar
+            return enviar(get_db_connection,'mural',data)
         nome, rm, email_aluno = aluno['nome'], aluno['rm'], aluno['email']
-        categoria = data.get('categoria')
-        descricao = data.get('descricao')
+        from utils.validacao_item import texto,validar_categoria
+        try:
+            categoria=texto(data.get('categoria'),'Categoria',50).upper()
+            descricao=texto(data.get('descricao'),'Descrição',2000,linhas=True)
+            validar_categoria(get_db_connection,categoria)
+        except ValueError as error:return jsonify(success=False,message=str(error)),400
         
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)

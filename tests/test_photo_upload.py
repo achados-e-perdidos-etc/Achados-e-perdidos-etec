@@ -1,6 +1,13 @@
 """Falhas do provedor não viram sucesso ou gravação de item sem fotos."""
 from unittest.mock import MagicMock, patch
 import pytest
+import io,base64
+from PIL import Image
+
+def foto(cor='blue'):
+    out=io.BytesIO();Image.new('RGB',(40,40),cor).save(out,format='PNG')
+    return 'data:image/png;base64,'+base64.b64encode(out.getvalue()).decode()
+
 import server
 from services import cloudinary_service as service
 
@@ -12,19 +19,19 @@ def test_unificado_usa_processamento_canonico():
 def test_urls_existentes_e_sem_fotos_nao_fazem_upload():
     with patch.object(service.cloudinary.uploader,'upload') as upload:
         assert service.processar_fotos([])==[]
-        assert service.processar_fotos(['https://img.example.org/a.jpg'])==['https://img.example.org/a.jpg']
+        assert service.processar_fotos(['https://img.example.org/a.jpg'],existentes=['https://img.example.org/a.jpg'])==['https://img.example.org/a.jpg']
         upload.assert_not_called()
 
 
 def test_ordem_das_fotos_e_preservada():
     with patch.object(service.cloudinary.uploader,'upload',side_effect=[{'secure_url':'https://img.example.org/a.jpg'},{'secure_url':'https://img.example.org/b.jpg'}]):
-        assert service.processar_fotos(['foto-a','foto-b'])==['https://img.example.org/a.jpg','https://img.example.org/b.jpg']
+        assert service.processar_fotos([foto('red'),foto('blue')])==['https://img.example.org/a.jpg','https://img.example.org/b.jpg']
 
 
 @pytest.mark.parametrize('bad',[[],{}, {'secure_url':''},{'secure_url':'http://img.example.org/a.jpg'}])
 def test_resposta_incompleta_nao_perde_foto_silenciosamente(bad):
     with patch.object(service.cloudinary.uploader,'upload',return_value=bad):
-        with pytest.raises(service.FalhaUploadFotos):service.processar_fotos(['foto'])
+        with pytest.raises(service.FalhaUploadFotos):service.processar_fotos([foto()])
 
 
 @pytest.mark.parametrize('implementation',['unificado','modular'])
@@ -40,7 +47,7 @@ def test_falha_do_provedor_nao_grava_no_banco_nem_expoe_erro(implementation,path
     # Primeiro arquivo sobe; a falha do segundo ainda deve impedir gravação do item.
     with patch.object(module,'get_db_connection') as db,patch.object(service.cloudinary.uploader,'upload',side_effect=[{'secure_url':'https://img.example.org/a.jpg'},RuntimeError('credencial privada do provedor')]):
         db.return_value.cursor.return_value.fetchone.return_value={'id':1,'nome_item':'Estojo','descricao':'Descrição','status':'DISPONÍVEL'}
-        result=app.test_client().open(path,method='PUT' if path.endswith('/1') else 'POST',headers={'Authorization':'Bearer '+token},json={'nome':'Estojo','descricao':'Descrição','fotos':['foto-a','foto-b']})
+        result=app.test_client().open(path,method='PUT' if path.endswith('/1') else 'POST',headers={'Authorization':'Bearer '+token},json={'nome':'Estojo','descricao':'Descrição','fotos':[foto('red'),foto('blue')]})
         assert result.status_code==502,result.json
         assert result.json['success'] is False
         assert 'credencial privada' not in result.get_data(as_text=True)
@@ -52,7 +59,7 @@ def test_falha_do_provedor_nao_grava_no_banco_nem_expoe_erro(implementation,path
 
 
 @pytest.mark.parametrize('implementation',['unificado','modular'])
-@pytest.mark.parametrize('photos,expected',[(None,'https://img.example.org/antiga.jpg'),([],''),(['foto-nova'],'https://img.example.org/nova.jpg')])
+@pytest.mark.parametrize('photos,expected',[(None,'https://img.example.org/antiga.jpg'),([],''),([foto()],'https://img.example.org/nova.jpg')])
 def test_edicao_persiste_fotos_e_omissao_preserva_anteriores(implementation,photos,expected):
     import sqlite3,json
     from tests.test_student_authorship import Connection

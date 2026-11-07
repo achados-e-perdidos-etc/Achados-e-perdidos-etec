@@ -11,21 +11,19 @@
   <link rel="apple-touch-icon" href="logo_secretaria.png">
   
   <!-- Ícones Font Awesome 6 -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+<link rel="stylesheet" href="/vendor/fontes.css">
   
   <!-- Fonte Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Chart.js para Dashboard e Gráficos de Inteligência (BI) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/vendor/chart.umd.min.js"></script>
   
   <!-- QRCode.js para Base64 instantâneo -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="/vendor/qrcode.min.js"></script>
   
   <!-- Leitor Html5-QRCode para Câmera -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="/vendor/html5-qrcode.min.js"></script>
 
   <style>
     /* ==========================================================================
@@ -669,6 +667,7 @@
 <link rel="stylesheet" href="acessibilidade.css">
 <script src="exportacao-segura.js"></script>
 <script src="upload-retomavel.js"></script>
+<link rel="stylesheet" href="/evolucao-interface.css">
 </head>
 <body>
 
@@ -1486,7 +1485,7 @@
       });
     };
 
-    const API_URL = (window.location.origin && window.location.origin.includes("railway.app")) ? window.location.origin : "https://etec-achados.up.railway.app";
+    const API_URL = window.location.origin;
     let tokenSecretaria = null;
     let itensSec = [];
     let itensPendentesSec = [];
@@ -2482,7 +2481,7 @@
         if (res.ok) {
           const l = await res.json();
           document.getElementById('tabelaEntreguesBody').innerHTML = l.map(e => `
-            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td>${e.cancelada_em ? textoHTML('Revertida por '+e.cancelada_por+' em '+e.cancelada_em) : `<button onclick="desfazerEntrega(${argumentoHTML(e.item_id)}, ${argumentoHTML(e.id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button>`}</td></tr>
+            <tr><td>#${textoHTML(e.item_id)}</td><td><strong>${textoHTML(e.nome_item)}</strong></td><td>${textoHTML(e.retirado_por)}</td><td>${textoHTML(e.rm_retirante)}</td><td>${textoHTML(e.data_entrega)}</td><td>${e.metodo === 'CODIGO' ? `<button class="ev-action" onclick="RetiradaSecretaria.verAssinatura(${argumentoHTML(e.id)})">Ver aceite</button>` : ''}${e.cancelada_em ? textoHTML('Revertida por '+e.cancelada_por+' em '+e.cancelada_em) : `<button onclick="desfazerEntrega(${argumentoHTML(e.item_id)}, ${argumentoHTML(e.id)})" style="background: none; border: none; color: #f59e0b; cursor: pointer;"><i class="fas fa-undo"></i></button>`}</td></tr>
           `).join('');
         }
       } catch (e) {}
@@ -3265,7 +3264,7 @@
       try {
         const res = await fetch("/api/ia/analisar-imagem", {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
@@ -3273,6 +3272,7 @@
         if (!res.ok) throw new Error((data.error && data.error.message) || data.message || `HTTP ${res.status}`);
         if (data.success && data.resultado) {
           const r = data.resultado;
+          if (typeof RevisaoVisual !== 'undefined') RevisaoVisual.mostrar(r,'secretaria');
           const aplicado = aplicarSugestaoVisual(r, {
             nome: document.getElementById('formItemNome'),
             descricao: document.getElementById('formItemDescricao'),
@@ -3309,6 +3309,7 @@
 <script src="visao-formulario.js"></script>
 <script src="professores-secretaria.js"></script>
 <script src="acessibilidade.js"></script>
+<script src="/evolucao-interface.js"></script>
 </body>
 </html>
 

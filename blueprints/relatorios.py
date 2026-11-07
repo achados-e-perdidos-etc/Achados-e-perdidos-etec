@@ -23,7 +23,7 @@ def get_entregues():
     res = cursor.fetchall()
     cursor.close()
     conn.close()
-    return jsonify(res)
+    return jsonify([{k:v for k,v in row.items() if k!='assinatura'} for row in res])
 
 @relatorios_bp.route('/api/estatisticas', methods=['OPTIONS', 'GET'])
 @secretaria_required

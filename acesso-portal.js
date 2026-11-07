@@ -30,13 +30,15 @@ const SessaoPortal = {
     salvar(token, dados, lembrar = false) {
         if (typeof token !== 'string' || !token.trim() || !dados
             || typeof dados.nome !== 'string' || typeof dados.email !== 'string') throw Error('Resposta de acesso inválida.');
-        this.limpar();
+        this.limpar(this.dados()?.email === dados.email);
         const destino = lembrar ? localStorage : sessionStorage;
         destino.setItem('aluno_token', token.trim());
         destino.setItem('aluno_dados', JSON.stringify(dados));
         if (lembrar) localStorage.setItem('aluno_lembrar', 'true');
+        if (typeof FilaOffline !== 'undefined') setTimeout(()=>FilaOffline.sincronizar(),0);
     },
-    limpar() {
+    limpar(preservarFila = false) {
+        if (!preservarFila && typeof FilaOffline !== 'undefined') FilaOffline.sair();
         if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();
         for (const destino of [sessionStorage, localStorage]) {
             for (const chave of ['aluno_token', 'aluno_dados', 'aluno_lembrar', 'secretaria_token']) destino.removeItem(chave);

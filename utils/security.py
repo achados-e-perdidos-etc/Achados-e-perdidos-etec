@@ -32,13 +32,6 @@ def token_required(f):
 
         if not token:
             token = request.headers.get('x-access-token', '').strip('"\'')
-        if not token:
-            token = request.args.get('token', '').strip('"\'')
-        if not token and request.is_json:
-            dados_token = request.get_json(silent=True)
-            if isinstance(dados_token, dict):
-                token = str(dados_token.get('token') or '').strip('"\'')
-
         if not token or token.lower() in ['null', 'undefined', 'none', '']:
             return jsonify({
                 "success": False, 
@@ -51,7 +44,7 @@ def token_required(f):
                 JWT_SECRET, 
                 algorithms=["HS256"], 
                 leeway=timedelta(seconds=60), 
-                options={"verify_exp": True}
+                options={"verify_exp": True, "require": ["exp", "email", "role"]}
             )
             if payload.get("auth_version") != 2:
                 return jsonify({"success": False, "message": "Faça login novamente para renovar sua sessão.", "expired": True}), 401
@@ -80,6 +73,12 @@ def token_required(f):
             if acesso and acesso['status'] == 'APROVADO':
                 request.user['role'] = 'secretaria'
                 request.user['acesso_delegado'] = True
+
+        if request.user.get('role') not in ('aluno', 'secretaria'):
+            return jsonify(success=False, message='Perfil de acesso inválido.'), 403
+        request.user['perfil'] = ('moderador' if request.user.get('acesso_delegado') else 'administrador_geral') if request.user['role'] == 'secretaria' else 'aluno'
+        request.user['permissoes'] = ((['cadastrar'] if email_de_professor(request.user.get('email')) else ['cadastrar', 'reclamar', 'relatar']) if request.user['role'] == 'aluno'
+            else ['moderar', 'entregar', 'auditar'] + ([] if request.user.get('acesso_delegado') else ['gerir_acessos']))
 
         response = make_response(f(*args, **kwargs))
         response.headers['Cache-Control'] = 'private, no-store'

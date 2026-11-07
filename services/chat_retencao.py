@@ -40,7 +40,9 @@ def _executar():
             if limpar_expiradas() >= 10000: atraso = 60
             conn = get_db_connection()
             try:
-                c=conn.cursor();c.execute("DELETE FROM uploads_fotos WHERE atualizado_em<CURRENT_TIMESTAMP-INTERVAL '24 hours'");conn.commit()
+                c=conn.cursor();c.execute("DELETE FROM uploads_fotos WHERE atualizado_em<CURRENT_TIMESTAMP-INTERVAL '24 hours'")
+                c.execute("DELETE FROM requisicoes_portal WHERE criada_em<CURRENT_TIMESTAMP-INTERVAL '7 days'")
+                conn.commit()
             finally:conn.close()
         except Exception:
             logger.warning('Limpeza do chat temporariamente indisponível; será tentada novamente.')

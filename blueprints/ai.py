@@ -2,10 +2,12 @@ from flask import Blueprint, request, jsonify
 import logging
 from services.ai_vision_service import analisar_imagem_com_ia
 from utils.helpers import calcular_afinidade_semantica
+from utils.security import token_required
 
 ai_bp = Blueprint('ai', __name__)
 
 @ai_bp.route('/api/ia/analisar-imagem', methods=['OPTIONS', 'POST'])
+@token_required
 def rota_analisar_imagem():
     if request.method == 'OPTIONS':
         return jsonify({"success": True}), 200

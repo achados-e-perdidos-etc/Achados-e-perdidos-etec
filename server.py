@@ -1,3 +1,4 @@
+from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
 from utils.uploads import SCHEMA_UPLOADS
 from utils.chat_retencao import SCHEMA_RETENCAO
 from utils.validacao_item import validar_item, validar_categoria
@@ -16,6 +17,7 @@ import json
 import re
 import base64
 import random
+import secrets
 import requests
 import psycopg2
 from threading import Thread
@@ -54,6 +56,8 @@ from blueprints.Push import push_bp
 app.register_blueprint(push_bp)
 from blueprints.uploads import uploads_bp
 app.register_blueprint(uploads_bp)
+from blueprints.evolucao import evolucao_bp
+app.register_blueprint(evolucao_bp)
 from blueprints.notificacoes import notificacoes_bp
 app.register_blueprint(notificacoes_bp)
 from blueprints.cadastros import cadastros_bp
@@ -80,7 +84,7 @@ app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_UPLOAD_BYTES', 8 * 10
 
 @app.errorhandler(FalhaUploadFotos)
 def falha_upload_fotos(error):
-    return jsonify({'success': False, 'message': str(error)}), 502
+    return jsonify({'success': False, 'message': str(error)}), error.status_code
 
 @app.errorhandler(413)
 def payload_too_large(error):
@@ -136,18 +140,30 @@ ULTIMA_VERIFICACAO_DOACOES = None
 # ============================================================
 @app.before_request
 def handle_preflight():
+    if request.endpoint == 'static':
+        from pathlib import PurePosixPath
+        caminho = PurePosixPath(request.path.lstrip('/'))
+        permitidos = {'.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.woff', '.woff2', '.ttf', '.ico'}
+        if (any(p.startswith('.') for p in caminho.parts) or len(caminho.parts)>1 and caminho.parts[0]!='vendor'
+            or caminho.suffix.lower() not in permitidos and str(caminho) not in ('manifest.json','manifest_secretaria.json')):
+            from flask import abort
+            abort(404)
+    from services.matches_service import iniciar
+    iniciar()
     if request.method == "OPTIONS":
         res = jsonify({"success": True})
         res.headers['Access-Control-Allow-Origin'] = '*'
         res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Idempotency-Key, X-Upload-Offset'
         res.headers['Access-Control-Max-Age'] = '86400'
         return res, 200
 
 @app.after_request
 def after_request(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'same-origin'
     response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, x-access-token'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, x-access-token, Idempotency-Key, X-Upload-Offset'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
     if request.path.endswith('.html') or request.path == '/' or request.path.endswith('.js'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -172,7 +188,7 @@ def gerar_token_secretaria(email, dias_validade=7):
 def get_db_connection():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL não configurada no ambiente.")
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+    return contextualizar(psycopg2.connect(DATABASE_URL, sslmode='require'))
 
 def calcular_dias_passados(data_str):
     if not data_str: return 0
@@ -199,6 +215,7 @@ def verificar_e_atualizar_itens_doacao(forcar=False):
         itens = cursor.fetchall()
         ids_para_doacao = [i['id'] for i in itens if calcular_dias_passados(i.get('data_encontrado')) >= 90]
         if ids_para_doacao:
+            cursor.execute("SELECT set_config('etec.ator_id','sistema:doacoes',false),set_config('etec.perfil','sistema',false)")
             cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = ANY(%s);", (ids_para_doacao,))
             conn.commit()
             print(f"[Doações 90 Dias] {len(ids_para_doacao)} item(ns) atualizado(s) para 'PARA DOAÇÃO'.")
@@ -270,6 +287,7 @@ def init_db():
         cursor.execute(SCHEMA_EMAIL_CHAT)
         cursor.execute(SCHEMA_RETENCAO)
         cursor.execute(SCHEMA_UPLOADS)
+        cursor.execute(SCHEMA_EVOLUCAO)
         cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
@@ -445,6 +463,7 @@ def pagina_nao_encontrada(erro):
 # ============================================================
 @app.route('/api/ia/analisar-imagem', methods=['OPTIONS', 'POST'])
 @limiter.limit('20 per minute')
+@token_required
 def rota_ia_img():
     if request.method == 'OPTIONS': return jsonify({"success": True}), 200
     d = request.json or {}
@@ -454,32 +473,8 @@ def rota_ia_img():
         return jsonify({"success": False, "error": {"code": "INVALID_IMAGE", "message": "Imagem inválida ou maior que o limite permitido."}}), 413
     res, err = analisar_imagem_com_ia(foto)
     if err: return jsonify({"success": False, "error": {"code": "VISION_ANALYSIS_FAILED", "message": "Não foi possível analisar a imagem.", "detail": str(err)[:300]}}), 400
-    # Cruzamento de OCR com alunos cadastrados; não retorna e-mail ao navegador.
+    # OCR auxilia o cadastro do objeto; não consulta pessoas ou comprova RM.
     res["aluno_correspondente"] = None
-    rm_ocr = re.sub(r"[^A-Za-z0-9]", "", str(res.get("ocr_rm") or ""))[:20]
-    nome_ocr = re.sub(r"\s+", " ", str(res.get("ocr_nome_aluno") or "")).strip()[:100]
-    if res.get("pode_preencher") and res.get("ocr_confianca") == "alta" and (rm_ocr or nome_ocr):
-        conn = None
-        try:
-            conn = get_db_connection()
-            c = conn.cursor(cursor_factory=RealDictCursor)
-            if rm_ocr:
-                c.execute("SELECT nome, rm FROM alunos WHERE regexp_replace(COALESCE(rm,''), '[^A-Za-z0-9]', '', 'g') = %s LIMIT 1", (rm_ocr,))
-                aluno = c.fetchone()
-            else:
-                aluno = None
-            if not aluno and nome_ocr and len(nome_ocr.split()) >= 2:
-                c.execute("SELECT nome, rm FROM alunos WHERE lower(nome) = lower(%s) LIMIT 1", (nome_ocr,))
-                aluno = c.fetchone()
-            if aluno:
-                res["aluno_correspondente"] = {"nome": aluno.get("nome"), "rm_encontrado": bool(rm_ocr and aluno.get("rm"))}
-                res["ocr_rm"] = str(aluno.get("rm") or rm_ocr)
-            c.close()
-        except Exception:
-            logger.exception("Falha no cruzamento OCR/alunos")
-        finally:
-            if conn:
-                conn.close()
     return jsonify({"success": True, "resultado": res})
 
 @app.route('/api/ia/comparar-semantica', methods=['OPTIONS', 'POST'])
@@ -520,7 +515,7 @@ def upd_rm():
 def env_cod():
     val, email = validar_email_institucional((request.json or {}).get('email', ''))
     if not val: return jsonify({"success": False, "message": email}), 400
-    cod = str(random.randint(100000, 999999))
+    cod = str(100000+secrets.randbelow(900000))
     try:
         conn = get_db_connection(); c = conn.cursor()
         c.execute("INSERT INTO codigos_auth (email, codigo, expiracao) VALUES (%s, %s, %s) ON CONFLICT (email) DO UPDATE SET codigo = EXCLUDED.codigo, expiracao = EXCLUDED.expiracao;", (email, cod, datetime.now() + timedelta(minutes=15)))
@@ -600,7 +595,7 @@ def log_sec():
         if ADMIN_SENHA and senha == ADMIN_SENHA: valido = True
         elif ADMIN_SENHA_HASH:
             try: valido = check_password_hash(ADMIN_SENHA_HASH, senha)
-            except: valido = (senha == ADMIN_SENHA_HASH)
+            except: valido = False
     if valido: return jsonify({"success": True, "token": gerar_token_secretaria(email)})
     return jsonify({"success": False, "message": "Credenciais inválidas."}), 401
 
@@ -675,6 +670,9 @@ def cad_item_aluno():
     if not autor:
         return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
     d = request.get_json(silent=True)
+    if request.headers.get('Idempotency-Key'):
+        from services.cadastro_offline import enviar
+        return enviar(get_db_connection,'encontrado',d)
     try:
         v = validar_item(d); validar_categoria(get_db_connection, v['categoria'])
     except ValueError as error: return jsonify(success=False,message=str(error)),400
@@ -713,38 +711,7 @@ def cad_item():
         nid = c.fetchone()['id']
         conn.commit()
 
-        # OCR pode identificar RM em carteirinha/caderno; só notifica se RM existir no cadastro.
-        ocr_rm = re.sub(r"[^A-Za-z0-9]", "", str(d.get('ocr_rm') or ''))[:20]
-        if ocr_rm:
-            try:
-                c.execute("SELECT nome, rm, email FROM alunos WHERE regexp_replace(COALESCE(rm,''), '[^A-Za-z0-9]', '', 'g') = %s LIMIT 2;", (ocr_rm,))
-                candidatos_ocr = c.fetchall()
-                aluno_ocr = candidatos_ocr[0] if len(candidatos_ocr) == 1 else None
-                if aluno_ocr:
-                    msg = f"A secretaria cadastrou um objeto que pode conter seus dados: '{nome or desc}'. Entre no ETEC Achados ou fale com a secretaria para confirmar."
-                    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, 'SECRETARIA', %s, %s, %s);",
-                              (aluno_ocr.get('rm') or ocr_rm, aluno_ocr.get('nome') or 'Aluno', msg, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), aluno_ocr['email']))
-                    if aluno_ocr.get('email'):
-                        disparar_email(aluno_ocr['email'], "Possível item identificado - ETEC Achados",
-                            f"<div style='font-family:Arial,sans-serif'><h2>Possível item identificado</h2><p>Olá {aluno_ocr.get('nome') or 'aluno'}, a secretaria cadastrou um objeto que pode estar associado aos seus dados: <strong>{nome or desc}</strong>.</p><p>Confirme a identificação com a secretaria.</p></div>")
-                    conn.commit()
-            except Exception:
-                conn.rollback()
-                logger.exception("Falha ao notificar aluno por OCR | item_id=%s", nid)
-
-        destinatarios_push = set()
-        try:
-            termos_n = extrair_termos(f"{nome} {desc}")
-            c.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (cat,))
-            for m in c.fetchall():
-                if len(termos_n.intersection(extrair_termos(m.get('descricao', '')))) >= 1:
-                    if m.get('email_aluno'): destinatarios_push.add(m['email_aluno'].strip().lower())
-                    c.execute("INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, 'SECRETARIA', %s, %s, %s);", (m['rm_aluno'], m['nome_aluno'], f"Possível pertence encontrado: '{nome or desc}'. Veja o catálogo!", datetime.now().strftime("%d/%m/%Y %H:%M:%S"), m.get("email_aluno")))
-            conn.commit()
-        except Exception:
-            conn.rollback(); destinatarios_push.clear()
         c.close(); conn.close()
-        for destino in destinatarios_push: push_delivery.notificar(destino, 'match')
         return jsonify({"success": True, "id": nid})
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
@@ -755,7 +722,6 @@ def gen_item(item_id):
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         if request.method == 'DELETE' or (request.is_json and request.json and request.json.get('_method') == 'DELETE'):
-            c.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             c.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
             conn.commit(); c.close(); conn.close()
             return jsonify({"success": True})
@@ -769,7 +735,7 @@ def gen_item(item_id):
             except ValueError as error:
                 conn.rollback();conn.close(); return jsonify(success=False,message=str(error)),400
             nome,desc,cat,data_enc,local,status = (v[k] for k in ['nome','descricao','categoria','data','local','status'])
-            urls = processar_fotos(d['fotos']) if 'fotos' in d and d['fotos'] is not None else None
+            urls = processar_fotos(d['fotos'], existentes=json.loads(it.get('fotos_json') or '[]') + ([it['foto']] if it.get('foto') else [])) if 'fotos' in d and d['fotos'] is not None else None
             c.execute("UPDATE itens SET nome_item=%s, descricao=%s, categoria=%s, data_encontrado=%s, local_encontrado=%s, status=%s, aprovado=TRUE WHERE id=%s;", (nome, desc, cat, data_enc, local, status, item_id))
             if urls is not None:
                 c.execute('UPDATE itens SET foto=%s, fotos_json=%s WHERE id=%s;', (urls[0] if urls else '', json.dumps(urls), item_id))
@@ -783,7 +749,7 @@ def gen_item(item_id):
             return jsonify({"success": True})
     except FalhaUploadFotos as error:
         if conn: conn.rollback(); conn.close()
-        return jsonify({'success': False, 'message': str(error)}), 502
+        return jsonify({'success': False, 'message': str(error)}), error.status_code
     except Exception as e: logger.exception("Falha de banco/rota | path=%s", request.path); return jsonify({"success": False, "error": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/itens/<int:item_id>/recusar', methods=['OPTIONS', 'PUT', 'DELETE', 'POST'])
@@ -830,6 +796,15 @@ def rotas_mural():
         if not aluno:
             return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem publicar relatos de perda.'}), 403
         d = request.json or {}
+        if request.headers.get('Idempotency-Key'):
+            from services.cadastro_offline import enviar
+            return enviar(get_db_connection,'mural',d)
+        from utils.validacao_item import texto
+        try:
+            d['categoria']=texto(d.get('categoria'),'Categoria',50).upper()
+            d['descricao']=texto(d.get('descricao'),'Descrição',2000,linhas=True)
+            validar_categoria(get_db_connection,d['categoria'])
+        except ValueError as error:return jsonify(success=False,message=str(error)),400
         conn = get_db_connection(); c = conn.cursor()
         c.execute("INSERT INTO mural_perdidos (nome_aluno, rm_aluno, email_aluno, categoria, descricao, data_registro, status) VALUES (%s, %s, %s, %s, %s, %s, 'PROCURANDO');", (aluno['nome'], aluno['rm'], aluno['email'], d.get('categoria'), d.get('descricao'), datetime.now().strftime("%d/%m/%Y %H:%M")))
         conn.commit(); c.close(); conn.close()
@@ -885,7 +860,7 @@ def rotas_entregues():
     conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("SELECT * FROM entregues ORDER BY id DESC;" if request.args.get("incluir_canceladas") == "true" else "SELECT * FROM entregues WHERE cancelada_em IS NULL ORDER BY id DESC;")
     res = c.fetchall(); c.close(); conn.close()
-    return jsonify(res)
+    return jsonify([{k:v for k,v in row.items() if k!='assinatura'} for row in res])
 
 @app.route('/api/estatisticas', methods=['OPTIONS', 'GET'])
 @secretaria_required

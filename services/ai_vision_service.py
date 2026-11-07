@@ -26,7 +26,7 @@ def extrair_cores_predominantes_local(imagem_bytes):
         ranking = sorted(contagem.items(), key=lambda x: x[1], reverse=True)
         return [c for c, _ in ranking[:2]]
     except Exception:
-        return ["cinza"]
+        return []
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 PROMPT = 'Você é um sistema de visão computacional especializado em identificar objetos perdidos em uma escola brasileira. Examine a imagem com atenção e retorne SOMENTE um objeto JSON válido, sem Markdown.\n\nPRIORIDADE MÁXIMA — IDENTIFICAÇÃO DO OBJETO:\n1. Diga o nome específico do objeto visível, não uma descrição genérica. Exemplos: "Caderno espiral", "Cubo mágico 3x3", "Lápis grafite", "Caneta azul", "Estojo escolar", "Mochila", "Garrafa de água", "Carteirinha de estudante", "Livro didático", "Fone de ouvido", "Chaveiro".\n2. Diferencie objetos parecidos: caderno vs. livro; lápis vs. caneta; cubo mágico (peça cúbica com quadradinhos coloridos) vs. dado; estojo vs. carteira; garrafa vs. copo. Use detalhes visuais observáveis para decidir.\n3. Se houver vários objetos, escolha como principal o item que está mais centralizado, maior ou claramente destacado. Mencione os demais brevemente na descrição, sem misturar os nomes.\n4. Não deduza marca, material, conteúdo ou função que não esteja visível. Não invente características. Se não der para distinguir, não adivinhe: deixe nome e descrição vazios, use confiança baixa e explique a incerteza.\n5. O título deve ser curto e específico, de preferência 2 a 6 palavras. Nunca use títulos vagos como "Item Escolar", "Objeto" ou somente a cor quando o objeto for reconhecível.\n6. A descrição deve ter 1 a 3 frases úteis para diferenciar o item: formato, padrão, tipo de fechamento, estampa, número de peças, texto ou marcas visíveis. Inclua as cores relevantes sem substituir o nome do objeto.\n7. Escolha categoria compatível com a lista de categorias existentes: "ESCOLARES", "MOCHILA", "ELETRÔNICOS", "ROUPAS", "ACESSÓRIOS" ou "OUTROS". Use "ESCOLARES" para caderno, lápis, caneta, cubo mágico, livro, estojo e material de estudo; "MOCHILA" para mochilas; "ELETRÔNICOS" para fones e aparelhos; "ACESSÓRIOS" para chaveiros e objetos pessoais semelhantes. Se a escola usar outro nome de categoria, escolha a opção mais próxima.\n8. Liste até 3 cores visivelmente presentes. Não confunda o fundo da foto com a cor do objeto.\n\nOCR / DADOS PESSOAIS:\nLeia apenas texto realmente legível em carteirinhas, cadernos, agendas ou etiquetas. Nunca invente nomes, RM, série ou números. RM só deve ser preenchido quando houver evidência de matrícula/registro acadêmico. Caso contrário, use string vazia.\n\nRetorne exatamente estes campos:\n{"nome":"nome específico do objeto","categoria":"ESCOLARES","cores":["azul","preto"],"descricao":"descrição visual específica e objetiva","tags":["caderno","espiral"],"confianca_objeto":"alta|media|baixa","alternativas":["nome alternativo se houver dúvida"],"objetos_detectados":["objeto principal","outro objeto visível"],"ocr_texto":"texto realmente legível","ocr_nome_aluno":"","ocr_rm":"","ocr_serie":"","tipo_documento":"","ocr_confianca":"baixa|media|alta"}\n\nA confiança deve refletir a imagem: alta se o tipo de objeto estiver claro; média se houver alguma dúvida; baixa se estiver desfocado, pequeno ou parcialmente oculto. "alternativas" pode ser uma lista vazia. Não retorne comentários fora do JSON.'
@@ -57,6 +57,12 @@ def analisar_imagem_com_ia(imagem_entrada):
     try:
         if imagem_entrada.startswith(('https://', 'http://')):
             # A bounded stream avoids loading unbounded downloads into memory.
+            from urllib.parse import urlsplit
+            from config import CLOUDINARY_CLOUD_NAME
+            endereco=urlsplit(imagem_entrada)
+            if (endereco.scheme!='https' or endereco.hostname!='res.cloudinary.com' or endereco.username or endereco.password
+                or not CLOUDINARY_CLOUD_NAME or not endereco.path.startswith('/'+CLOUDINARY_CLOUD_NAME+'/image/upload/')):
+                return None, 'Selecione o arquivo da foto; links externos não são aceitos.'
             with requests.get(imagem_entrada, timeout=8, allow_redirects=False, stream=True) as res:
                 if res.status_code != 200:
                     return None, 'Não foi possível obter a imagem.'
@@ -124,6 +130,7 @@ def analisar_imagem_com_ia(imagem_entrada):
             and result['confianca_objeto'] in ('alta', 'media')
             and result['nome'].lower() not in ('item', 'objeto', 'item escolar', 'objeto escolar'))
         result['ocr_confianca'] = 'alta' if value.get('ocr_confianca') == 'alta' else 'baixa'
+        result['ocr_revisar'] = [] if result['ocr_confianca']=='alta' else ['nome','rm']
         if not result['pode_preencher'] or result['ocr_confianca'] != 'alta':
             for key in ('ocr_texto', 'ocr_nome_aluno', 'ocr_rm', 'ocr_serie'):
                 result[key] = ''

@@ -9,17 +9,15 @@
     <meta name="theme-color" content="#dc2626">
     <link rel="apple-touch-icon" href="/icon-192.png">
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/tailwind.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+<link rel="stylesheet" href="/vendor/fontes.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="estado-fotos.css">
     <link rel="stylesheet" href="movimento.css">
     <link rel="stylesheet" href="melhorias-portal.css">
 <link rel="stylesheet" href="acessibilidade.css">
+<link rel="stylesheet" href="/evolucao-interface.css">
 </head>
 <body class="dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
@@ -653,7 +651,7 @@
         // Splash só aparece 1x por sessão (igual ao comportamento anterior)
         const jaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
 
-        if (jaExibido || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !splash || !gif) {
+        if (jaExibido || !navigator.onLine || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !splash || !gif) {
             if (splash) esconderSplash();
             window.onload = () => {
                 document.body.classList.add('dark-theme');
@@ -685,5 +683,7 @@
     <script src="central-notificacoes.js"></script>
     <script src="meus-cadastros.js"></script>
     <script src="acessibilidade.js"></script>
+<script src="/evolucao-interface.js"></script>
+<script src="/fila-offline.js"></script>
 </body>
 </html>

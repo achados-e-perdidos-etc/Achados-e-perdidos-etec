@@ -2,7 +2,7 @@
 // SERVICE WORKER - ETEC ACHADOS E PERDIDOS (VERSÃO 2.0 PWA & WEB PUSH)
 // ==============================================================================
 
-const CACHE_NAME = 'etec-achados-v28-404';
+const CACHE_NAME = 'etec-achados-v28-seguranca-offline';
 
 const STATIC_ASSETS = [
     '/',
@@ -24,6 +24,18 @@ const STATIC_ASSETS = [
     '/acessibilidade.js',
     '/acessibilidade.css',
     '/upload-retomavel.js',
+    '/evolucao-interface.js',
+    '/evolucao-interface.css',
+    '/fila-offline.js',
+    '/vendor/tailwind.css',
+    '/vendor/fontes.css',
+    '/vendor/jakarta-0.woff2',
+    '/vendor/inter-0.woff2',
+    '/vendor/fontawesome/css/all.min.css',
+    '/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+    '/vendor/fontawesome/webfonts/fa-regular-400.woff2',
+    '/vendor/fontawesome/webfonts/fa-brands-400.woff2',
+    '/vendor/fontawesome/webfonts/fa-v4compatibility.woff2',
     '/404.html',
     '/jogo-404.css',
     '/jogo-404.js',
@@ -37,10 +49,7 @@ const STATIC_ASSETS = [
 
 // INSTALAÇÃO: Armazena em cache os recursos estáticos essenciais
 self.addEventListener('install', (e) => {
-    self.skipWaiting();
-    e.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
-    );
+    e.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(STATIC_ASSETS)).then(()=>self.skipWaiting()));
 });
 
 // ATIVAÇÃO: Invalida caches obsoletos
@@ -48,29 +57,31 @@ self.addEventListener('activate', (e) => {
     e.waitUntil(
         caches.keys().then((keys) => {
             return Promise.all(
-                keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+                keys.filter((k) => k.startsWith('etec-achados-') && k !== CACHE_NAME).map((k) => caches.delete(k))
             );
         }).then(() => self.clients.claim())
     );
 });
 
-// INTERCEPTAÇÃO DE REDE: Estratégia Network-First para a API e Stale-While-Revalidate para estáticos
-self.addEventListener('fetch', (e) => {
-    // Nunca interceptar chamadas da API REST ou autenticação Google
-    if (e.request.url.includes('/api/') || e.request.url.includes('googleapis.com') || e.request.url.includes('accounts.google.com')) {
-        return;
-    }
-
-    e.respondWith(
-        fetch(e.request).catch(() => {
-            return caches.match(e.request).then((res) => {
-                if (res) return res;
-                if (e.request.mode === 'navigate') {
-                    return caches.match('/index.html');
-                }
-            });
-        })
-    );
+// Somente a interface pública vai ao cache. APIs e requisições autenticadas seguem à rede.
+self.addEventListener('fetch', event => {
+    const url=new URL(event.request.url);
+    if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/')
+       ||event.request.headers.has('Authorization')||event.request.headers.has('x-access-token'))return;
+    const conhecido=STATIC_ASSETS.includes(url.pathname);
+    if(!conhecido&&event.request.mode!=='navigate')return;
+    event.respondWith((async()=>{
+        if(conhecido){const cached=await caches.match(event.request,{ignoreSearch:true});if(cached)return cached;}
+        try{
+            const response=await fetch(event.request);
+            if(conhecido&&response.ok){const cache=await caches.open(CACHE_NAME);await cache.put(event.request,response.clone());}
+            return response;
+        }catch(_){
+            const cached=await caches.match(event.request);if(cached)return cached;
+            if(event.request.mode==='navigate')return await caches.match('/404.html')||Response.error();
+            return Response.error();
+        }
+    })());
 });
 
 // ==============================================================================

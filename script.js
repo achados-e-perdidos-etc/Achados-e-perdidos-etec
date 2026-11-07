@@ -1,5 +1,5 @@
 const UploadAluno = new UploadFotos('uploadsAluno',()=>SessaoPortal.token());
-const API_URL = "https://etec-achados.up.railway.app";
+const API_URL = window.location.origin;
 let todosItens = [];
 let itemSelecionado = null;
 let categoriaAtual = 'TODOS';
@@ -188,7 +188,7 @@ async function checarSessao() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.status === 401) {
-                fazerLogoff(false);
+                fazerLogoff(false, true);
                 mostrarToast("Sua sessão expirou. Faça login novamente.", "info");
                 return;
             }
@@ -227,17 +227,18 @@ async function checarSessao() {
     }
 }
 
-function fazerLogoff(recarregar = true) {
+function fazerLogoff(recarregar = true, preservarFila = false) {
     const limpezaPush = desativarWebPush(SessaoPortal.token());
-    SessaoPortal.limpar();
+    const limpezaFila = !preservarFila && typeof FilaOffline !== 'undefined' ? FilaOffline.sair() : Promise.resolve();
+    SessaoPortal.limpar(true);
     alunoSessao = null;
     if (recarregar) {
-        return Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])
+        return Promise.all([limpezaFila, Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])])
             .finally(() => window.location.reload());
     } else {
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
-    return limpezaPush;
+    return Promise.all([limpezaPush, limpezaFila]);
 }
 
 function toggleMenuNavegacao() {
@@ -500,6 +501,7 @@ async function abrirPainelMeusItens() {
                                 <p class="text-xs font-bold text-white">${textoHTML(i.nome || i.txt_descricao)}</p>
                                 <p class="text-[10px] text-slate-400 mt-0.5">Status: <span class="font-bold text-amber-400 uppercase">${textoHTML(st)}</span></p>
                             </div>
+                            ${st === 'SOLICITADO' ? `<button class="ev-action" type="button" data-codigo-retirada="${textoHTML(i.id)}">Código de retirada</button>` : ''}
                             <button onclick="abrirDetalhes(${argumentoHTML(i)})" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition">VER</button>
                         </div>`;
                 });
@@ -583,10 +585,13 @@ function selecionarFiltroCategoria(catNome, catLabel) {
 }
 
 async function carregarCategoriasDinamicamente() {
+    let cats=[];
     try {
-        const res = await fetch(`${API_URL}/api/categorias`);
-        if (res.ok) {
-            const cats = await res.json();
+        const res=await fetch(`${API_URL}/api/categorias`);
+        if(!res.ok)throw Error();
+        cats=await res.json();if(!Array.isArray(cats))throw Error();
+        try{localStorage.setItem('cache_categorias_etec',JSON.stringify(cats.filter(c=>typeof c.nome==='string'&&c.nome.length<=50).slice(0,100)));}catch(_){}
+    }catch(_){try{cats=JSON.parse(localStorage.getItem('cache_categorias_etec')||'[]');if(!Array.isArray(cats))cats=[];}catch(_){cats=[];}}
             const containerChips = document.getElementById('dynamicChipsList');
             const selectMural = document.getElementById('muralCategoria');
             const selectAlunoCad = document.getElementById('alunoItemCat');
@@ -609,8 +614,7 @@ async function carregarCategoriasDinamicamente() {
                 cats.forEach(c => { selectAlunoCad.innerHTML += `<option value="${textoHTML(c.nome)}">${textoHTML(c.nome)}</option>`; });
             }
             if (typeof Rascunhos !== 'undefined') { Rascunhos.restaurar('mural'); Rascunhos.restaurar('encontrado'); }
-        }
-    } catch (e) {}
+
 }
 
 async function carregarItensDaAPI() {
@@ -832,7 +836,8 @@ async function enviarNovo() {
             mostrarToast("Solicitação realizada! Compareça à secretaria para retirar.", "success"); 
             document.getElementById('modalNovo').classList.add('hidden'); 
             voltarParaCatalogo(); 
-            carregarItensDaAPI(); 
+            carregarItensDaAPI();
+            if (typeof RetiradasAluno !== 'undefined') RetiradasAluno.mostrar(itemSelecionado.id);
         } else mostrarToast(data.message, "error");
     } catch { mostrarToast("Erro na solicitação.", "error"); }
     btn.disabled = false; btn.innerText = "Sim, é meu!";
@@ -1238,13 +1243,14 @@ async function analisarFotoAlunoComIA() {
     try {
         const res = await fetch(API_URL + "/api/ia/analisar-imagem", {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SessaoPortal.token() || ''}` },
             body: JSON.stringify({ foto: fotoAnalisada })
         });
         const data = await res.json();
         if (envioCadastroAluno || fotosAlunoSelecionadas[0] !== fotoAnalisada) return;
         if (res.ok && data.success && data.resultado) {
             const r = data.resultado;
+            if (typeof RevisaoVisual !== 'undefined') RevisaoVisual.mostrar(r,'aluno');
             const aplicado = aplicarSugestaoVisual(r, {
                 nome: document.getElementById('alunoItemNome'),
                 descricao: document.getElementById('alunoItemDesc'),

@@ -26,7 +26,7 @@ itens_bp = Blueprint('itens', __name__)
 
 @itens_bp.errorhandler(FalhaUploadFotos)
 def falha_upload_fotos(error):
-    return jsonify({'success': False, 'message': str(error)}), 502
+    return jsonify({'success': False, 'message': str(error)}), error.status_code
 
 @itens_bp.route('/api/categorias/<string:nome>', methods=['OPTIONS', 'DELETE'])
 @itens_bp.route('/api/categorias', methods=['OPTIONS', 'GET', 'POST', 'DELETE'])
@@ -173,6 +173,9 @@ def cadastrar_item_aluno():
     if not autor:
         return jsonify({'success': False, 'message': 'Entre com sua conta institucional para cadastrar objetos.'}), 403
     data = request.json or {}
+    if request.headers.get('Idempotency-Key'):
+        from services.cadastro_offline import enviar
+        return enviar(get_db_connection,'encontrado',data)
     try:
         v = validar_item(data); validar_categoria(get_db_connection,v['categoria'])
     except ValueError as error: return jsonify(success=False,message=str(error)),400
@@ -253,35 +256,8 @@ def cadastrar_item():
         novo_id = row['id'] if isinstance(row, dict) else row[0]
         conn.commit()
 
-        destinatarios_push = set()
-        # Verifica correspondências com o mural de perdidos dos alunos
-        try:
-            termos_novo = extrair_termos(f"{nome} {descricao}")
-            cursor.execute("SELECT * FROM mural_perdidos WHERE status = 'PROCURANDO' AND categoria = %s;", (categoria,))
-            for mural in cursor.fetchall():
-                termos_mural = extrair_termos(mural.get('descricao', ''))
-                if len(termos_novo.intersection(termos_mural)) >= 1:
-                    if mural.get('email_aluno'): destinatarios_push.add(mural['email_aluno'].strip().lower())
-                    msg_match = f"A secretaria registrou um objeto parecido: '{nome or descricao}'. Veja o catálogo!"
-                    cursor.execute(
-                        "INSERT INTO mensagens_chat (rm_aluno, nome_aluno, remetente, mensagem, data_envio, email_aluno) VALUES (%s, %s, %s, %s, %s, %s);",
-                        (mural['rm_aluno'], mural['nome_aluno'], 'SECRETARIA', msg_match, datetime.now().strftime("%d/%m/%Y %H:%M:%S"), mural.get("email_aluno"))
-                    )
-                    if mural.get('email_aluno'):
-                        disparar_email(
-                            mural['email_aluno'], 
-                            "Item Encontrado! ETEC Achados", 
-                            f"<div style='font-family:Arial;'><h2 style='color:#dc2626;'>Possível Match!</h2><p>Olá {mural['nome_aluno']}, a secretaria registrou um item parecido: <strong>{nome or descricao}</strong>.</p></div>"
-                        )
-            conn.commit()
-        except Exception:
-            if conn:
-                conn.rollback()
-            destinatarios_push.clear()
-
         cursor.close()
         conn.close()
-        for destino in destinatarios_push: push_delivery.notificar(destino, 'match')
         return jsonify({"success": True, "id": novo_id, "message": "Item salvo com sucesso!"})
     except Exception as e:
         if conn:
@@ -299,7 +275,6 @@ def gerenciar_item(item_id):
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         if request.method == 'DELETE' or (request.is_json and request.json and request.json.get('_method') == 'DELETE'):
-            cursor.execute("DELETE FROM entregues WHERE item_id = %s;", (item_id,))
             cursor.execute("DELETE FROM itens WHERE id = %s;", (item_id,))
             conn.commit()
             cursor.close()
@@ -322,7 +297,7 @@ def gerenciar_item(item_id):
 
             if 'fotos' in data and data.get('fotos') is not None:
                 fotos_rec = data.get('fotos') or []
-                urls = processar_fotos(fotos_rec)
+                urls = processar_fotos(fotos_rec, existentes=json.loads(item_atual.get('fotos_json') or '[]') + ([item_atual['foto']] if item_atual.get('foto') else []))
                 foto_capa = urls[0] if urls else ''
                 fotos_json_str = json.dumps(urls)
                 cursor.execute("""
@@ -352,7 +327,7 @@ def gerenciar_item(item_id):
             return jsonify({"success": True, "message": "Item atualizado com sucesso!"})
     except FalhaUploadFotos as error:
         if conn: conn.rollback(); conn.close()
-        return jsonify({'success': False, 'message': str(error)}), 502
+        return jsonify({'success': False, 'message': str(error)}), error.status_code
     except Exception as e:
         if conn:
             conn.rollback()

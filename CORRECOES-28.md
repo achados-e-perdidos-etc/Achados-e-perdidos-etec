@@ -2,6 +2,10 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Ampliação de segurança, retirada e PWA
+
+Avaliação e implementação das novas ideias em [EVOLUCAO-SEGURANCA-PWA.md](EVOLUCAO-SEGURANCA-PWA.md): papéis explícitos, auditoria transacional, fotos verificadas e normalizadas no servidor, retirada com código e aceite privado, revisão visual, alertas deduplicados e fila offline por conta. A tabela de decisões explica as alternativas descartadas e os limites dos recursos externos.
+
 ## Página 404: Operação Achados
 
 Nova tela responsiva com jogo da memória de objetos perdidos. As fases têm 6, 8 e até 10 pares, combos de até 3×, bônus de tempo, duas dicas por fase, pausa, repetição e recorde local. O jogo só começa após uma ação explícita; sair da aba pausa a partida. Teclado, toque, redução de movimento e armazenamento bloqueado são contemplados. Os links para voltar ao portal continuam disponíveis, inclusive sem JavaScript.

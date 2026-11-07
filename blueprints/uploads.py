@@ -58,11 +58,9 @@ def upload(upload_id=None):
             c.execute('SELECT conteudo FROM uploads_partes WHERE upload_id=%s ORDER BY posicao',(str(upload_id),))
             data=b''.join(bytes(p['conteudo']) for p in c.fetchall())
             if hashlib.sha256(data).hexdigest()!=row['sha256']:return jsonify(success=False,message='A foto recebida não confere.'),400
-            try:
-                with Image.open(io.BytesIO(data)) as foto:
-                    if foto.format not in ['JPEG','PNG','WEBP']:raise ValueError()
-                    foto.verify()
-            except Exception:return jsonify(success=False,message='Arquivo de imagem inválido.'),400
+            from utils.imagens import preparar_imagem
+            try:data=preparar_imagem(data,limite=2*1024*1024)
+            except ValueError as error:return jsonify(success=False,message=str(error)),400
             resultado=cloudinary.uploader.upload(io.BytesIO(data),public_id='etec_achados/'+str(upload_id),overwrite=True,resource_type='image',timeout=30)
             url=resultado.get('secure_url')
             if not isinstance(url,str) or not url.startswith('https://'):raise ValueError()

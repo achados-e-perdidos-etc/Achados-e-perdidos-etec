@@ -4,6 +4,8 @@ async function verificarSessaoPainel() {
         const res = await fetch(`${API_URL}/api/auth/verificar`, {headers: getAuthHeadersGet()});
         const data = await res.json();
         if (!res.ok || !data.success || data.user.role !== 'secretaria') throw Error('Acesso não autorizado.');
+        const perfil = document.querySelector('.status-sessao');
+        if (perfil) perfil.textContent = data.user.acesso_delegado ? 'Moderador · acesso autorizado pela escola' : 'Administrador geral · secretaria titular';
         document.getElementById('menuAba-professores').classList.toggle('hidden', !!data.user.acesso_delegado);
         return true;
     } catch (error) {

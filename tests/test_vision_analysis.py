@@ -228,7 +228,7 @@ def test_endpoint_nao_consulta_alunos_quando_identificacao_nao_e_confiavel(image
         confianca_objeto='baixa', ocr_rm='12345', ocr_nome_aluno='Nome sugerido'))
     database = Mock(side_effect=AssertionError('A identificação não permite consultar alunos'))
     monkeypatch.setattr(server, 'get_db_connection', database)
-    response = server.app.test_client().post('/api/ia/analisar-imagem', json={'foto': image_data})
+    response = server.app.test_client().post('/api/ia/analisar-imagem', headers={'Authorization':'Bearer '+server.gerar_token_aluno('a@aluno.cps.sp.gov.br','Aluno','12345')}, json={'foto': image_data})
     assert response.status_code == 200
     assert response.json['resultado']['pode_preencher'] is False
     assert response.json['resultado']['aluno_correspondente'] is None

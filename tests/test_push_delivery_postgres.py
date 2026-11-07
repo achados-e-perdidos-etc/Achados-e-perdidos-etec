@@ -173,6 +173,8 @@ def test_match_mural_e_recusa_geram_avisos_genericos_apos_commit(db_env,implemen
     with patch.object(server,'disparar_email'),patch.object(itens,'disparar_email'):
         result=app.test_client().post('/api/itens',headers=owner,json={'nome':'Estojo preto','descricao':'estojo preto','categoria':'OUTROS','fotos':[]})
     assert result.status_code==200,result.json
+    from services.matches_service import processar
+    processar(db_env)
     # Dois relatos da mesma conta produzem um único aviso por dispositivo.
     assert scalar(db_env,'SELECT count(*) FROM push_entregas')==1
     assert 'Estojo' not in scalar(db_env,'SELECT payload_json FROM push_entregas')

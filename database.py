@@ -1,3 +1,4 @@
+from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
 from utils.uploads import SCHEMA_UPLOADS
 from utils.chat_retencao import SCHEMA_RETENCAO
 from utils.entregas import SCHEMA_ENTREGAS
@@ -16,7 +17,7 @@ ULTIMA_VERIFICACAO_DOACOES = None
 def get_db_connection():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL não configurada no ambiente.")
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+    return contextualizar(psycopg2.connect(DATABASE_URL, sslmode='require'))
 
 def verificar_e_atualizar_itens_doacao(forcar=False):
     global ULTIMA_VERIFICACAO_DOACOES
@@ -38,6 +39,7 @@ def verificar_e_atualizar_itens_doacao(forcar=False):
                 ids_para_doacao.append(item['id'])
         
         if ids_para_doacao:
+            cursor.execute("SELECT set_config('etec.ator_id','sistema:doacoes',false),set_config('etec.perfil','sistema',false)")
             cursor.execute("UPDATE itens SET status = 'PARA DOAÇÃO' WHERE id = ANY(%s);", (ids_para_doacao,))
             conn.commit()
             print(f"[Doações 90 Dias] {len(ids_para_doacao)} item(ns) atualizado(s) para 'PARA DOAÇÃO'.")
@@ -127,6 +129,7 @@ def init_db():
         cursor.execute(SCHEMA_EMAIL_CHAT)
         cursor.execute(SCHEMA_RETENCAO)
         cursor.execute(SCHEMA_UPLOADS)
+        cursor.execute(SCHEMA_EVOLUCAO)
         cursor.execute(SCHEMA_LIMITE_PUSH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
