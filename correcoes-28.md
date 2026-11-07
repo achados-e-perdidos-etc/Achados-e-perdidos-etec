@@ -2,6 +2,14 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Limpeza de arquivos sem uso
+
+Os 194 arquivos versionados foram revisados por entradas de execução, importações Python, registros de rotas, referências de recursos estáticos, manifestos, testes e documentação. Foram removidos três módulos sem consumidores ou registro na aplicação: `blueprints/ai.py`, `blueprints/ai_vision_service.py` e `blueprints/frontend.py`. As rotas de IA, páginas, logotipos e erro 404 continuam no servidor executado pelo `Procfile`; o serviço de visão utilizado permanece em `services/ai_vision_service.py`.
+
+Os módulos utilizados pelos testes de compatibilidade, os dois pontos de entrada (`server.py` e `app.py`), os recursos do desktop, animações referenciadas, configurações, orientações e licenças foram preservados. O `.gitignore` evita adicionar caches, ambientes locais e configuração privada. O aviso da tela de acesso passou a informar somente que o site aceita e-mails institucionais de alunos e professores; as regras de validação continuam iguais. O cache da PWA foi versionado para distribuir a mensagem atualizada.
+
+Após a limpeza, passaram **404 testes Python, 49 JavaScript e 48 Chromium — 501 no total**, sem remover testes. Também foram conferidos 56 recursos estáticos, as páginas e os aliases da secretaria, além da resposta 404. A varredura de importações não encontrou outros módulos Python sem caminho de uso pelas entradas ou pelos testes. Não houve alteração no banco de produção nem publicação em servidor.
+
 ## Aparência, buscas salvas e preferências
 
 [preferencias-e-atalhos.md](preferencias-e-atalhos.md): escolha de tema claro, escuro ou automático, com convite antes de acompanhar o sistema; dez buscas salvas por conta no navegador; filtros e apresentação lembrados; atalhos administrativos com contagens privadas; preferências e atalhos equivalentes no desktop. O [roteiro para colegas](teste-com-colegas.md) está pronto, sem alegar teste humano já realizado. Arquivos adicionados ao longo das atualizações agora usam nomes em minúsculas, com links corrigidos.
