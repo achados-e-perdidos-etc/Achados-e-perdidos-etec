@@ -2,7 +2,7 @@
 // SERVICE WORKER - ETEC ACHADOS E PERDIDOS (VERSÃO 2.0 PWA & WEB PUSH)
 // ==============================================================================
 
-const CACHE_NAME = 'etec-achados-v28';
+const CACHE_NAME = 'etec-achados-v28-404';
 
 const STATIC_ASSETS = [
     '/',
@@ -24,6 +24,9 @@ const STATIC_ASSETS = [
     '/acessibilidade.js',
     '/acessibilidade.css',
     '/upload-retomavel.js',
+    '/404.html',
+    '/jogo-404.css',
+    '/jogo-404.js',
 
     '/logo.png',
     '/logo_secretaria.png',

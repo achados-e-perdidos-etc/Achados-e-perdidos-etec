@@ -1,6 +1,14 @@
 # Proposta 28 — prioridades da auditoria e upload retomável
 
-Branch única `28-correcoes-prioridades`, dependente da proposta 27. Preserva a logo unificada da secretaria web/desktop.
+Branch única `28-correcoes-prioridades`, com a proposta #28 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
+
+## Página 404: Operação Achados
+
+Nova tela responsiva com jogo da memória de objetos perdidos. As fases têm 6, 8 e até 10 pares, combos de até 3×, bônus de tempo, duas dicas por fase, pausa, repetição e recorde local. O jogo só começa após uma ação explícita; sair da aba pausa a partida. Teclado, toque, redução de movimento e armazenamento bloqueado são contemplados. Os links para voltar ao portal continuam disponíveis, inclusive sem JavaScript.
+
+Validação desta atualização: **326 testes Python, 49 JavaScript e 48 Chromium aprovados (423 testes)**. As nove jornadas específicas do jogo cobrem progressão, combos, tempo, tentativas rápidas, dicas, pausa, teclado, toque e armazenamento indisponível. A correção final de foco após encontrar um par foi validada repetindo essas nove jornadas. Foram conferidas larguras de 320 a 1920 px e produzidas capturas de computador e celular.
+
+O jogo não chama APIs, não grava no banco nem altera autenticação. CSS e JavaScript usam caminhos absolutos para carregar também em URLs inexistentes aninhadas. O service worker inclui os novos recursos em uma versão nova do cache. O servidor mantém o status HTTP 404 e o retorno JSON das rotas `/api/` inexistentes.
 
 ## Correções entregues
 

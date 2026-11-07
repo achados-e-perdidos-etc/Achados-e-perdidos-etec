@@ -10,6 +10,37 @@ import server
 from utils.helpers import validar_email_institucional
 
 
+class ErrorPageTests(unittest.TestCase):
+    def setUp(self):
+        server.app.config['TESTING'] = True
+        server.limiter.enabled = False
+        self.client = server.app.test_client()
+        patcher = patch.object(server, 'get_db_connection')
+        self.get_db = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_404_html_aninhado_e_recursos_do_jogo_sem_banco(self):
+        response = self.client.get('/uma/pagina/que-nao-existe', headers={'Accept': 'text/html'})
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('Operação Achados', response.get_data(as_text=True))
+        for asset, content_type in [('/jogo-404.css', 'text/css'), ('/jogo-404.js', 'javascript')]:
+            resource = self.client.get(asset)
+            self.assertEqual(resource.status_code, 200)
+            self.assertIn(content_type, resource.content_type)
+            resource.close()
+        self.get_db.assert_not_called()
+        response.close()
+
+    def test_404_api_continua_json_mesmo_com_accept_html(self):
+        for path in ['/api/rota-inexistente', '/nao-existe.js']:
+            headers = {'Accept': 'text/html'} if path.startswith('/api/') else {}
+            response = self.client.get(path, headers=headers)
+            self.assertEqual(response.status_code, 404)
+            self.assertIsNotNone(response.get_json())
+            self.assertNotIn(b'jogo-404', response.data)
+        self.get_db.assert_not_called()
+
+
 class RouteTests(unittest.TestCase):
     def setUp(self):
         server.app.config['TESTING'] = True

@@ -75,9 +75,9 @@ class MotionTests(safety.TextSafetyBrowser):
         button.focus()
         self.assertEqual(button.evaluate('el=>getComputedStyle(el).outlineStyle'),'solid')
         self.page.goto(safety.ORIGIN+'/404.html')
-        self.assertTrue(self.page.locator('a[href="/"]').is_visible())
+        self.assertTrue(self.page.locator('.exit-link[href="/"]').is_visible())
         self.page.emulate_media(reduced_motion='reduce')
-        self.assertEqual(self.page.locator('.lost').first.evaluate('el=>getComputedStyle(el).animationName'),'none')
+        self.assertEqual(self.page.locator('.card-inner').first.evaluate('el=>getComputedStyle(el).transitionDuration'),'0s')
 
 
 def load_tests(loader, tests, pattern):
