@@ -1,6 +1,6 @@
 # Branches e propostas
 
-Por orientação mais recente do proprietário, concentre as próximas atualizações na branch `28-correcoes-prioridades`, preservando todas as alterações anteriores. Mantenha a proposta #28 com `main` como base; não crie uma branch para cada tarefa. As branches antigas foram removidas a pedido dele, restando essa branch e `main`.
+Por orientação mais recente do proprietário, concentre as próximas atualizações na branch `28-atualizacoes-do-projeto`, preservando todas as alterações anteriores. Mantenha a proposta #29 com `main` como base; não crie uma branch para cada tarefa. As branches antigas foram removidas a pedido dele, restando essa branch e `main`.
 
 Consulte o head atual da branch no GitHub antes de começar e teste cada alteração e seus impactos antes da integração. Não use uma cópia antiga de main como base. Não afirme ausência absoluta de erros; registre as validações executadas e eventuais limitações.
 

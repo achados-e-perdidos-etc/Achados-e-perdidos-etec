@@ -1,6 +1,6 @@
-# Proposta 28 — prioridades da auditoria e upload retomável
+# Atualizações do projeto — prioridades, uploads e experiência web
 
-Branch única `28-correcoes-prioridades`, com a proposta #28 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
+Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
 ## Página 404: Operação Achados
 
