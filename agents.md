@@ -4,11 +4,9 @@ Por orientação mais recente do proprietário, concentre as próximas atualiza�
 
 Consulte o head atual da branch no GitHub antes de começar e teste cada alteração e seus impactos antes da integração. Não use uma cópia antiga de main como base. Não afirme ausência absoluta de erros; registre as validações executadas e eventuais limitações.
 
-Por orientação do proprietário, os nomes dos novos arquivos devem usar letras minúsculas, incluindo documentos. Atualize referências ao renomear. Os quatro nomes originais com maiúsculas (`Procfile`, `animacao.GIF`, `animacao_pc.GIF` e `blueprints/Push.py`) foram preservados; a solicitação se refere aos arquivos adicionados nas atualizações.
+## Estabilidade
 
-## Estabilidade e ambiente de testes
-
-O proprietário pediu para priorizar estabilidade, desempenho e correções, sem acrescentar funcionalidades ao produto por iniciativa própria. A configuração de desenvolvimento do GitHub Codespaces foi solicitada para permitir testes antes da hospedagem; instruções em `testar-no-codespaces.md`. Use o banco e as contas de demonstração desse ambiente, mantendo a porta 5000 privada. Não conecte o preparo de demonstração ao banco da escola. O SSL do banco continua obrigatório por padrão; apenas o banco interno desse devcontainer usa `DATABASE_SSLMODE=disable`.
+O proprietário pediu para priorizar estabilidade, desempenho e correções, sem acrescentar funcionalidades ao produto por iniciativa própria.
 
 ## Funções dos módulos removidos
 

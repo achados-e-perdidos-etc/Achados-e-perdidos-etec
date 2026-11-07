@@ -30,4 +30,4 @@ Total cumulativo de **404 casos Python, 49 JavaScript e 48 Chromium de regressã
 
 Nesta etapa foram conferidos: escolha explícita antes de acompanhar o sistema, atualização automática do tema, escolha fixa após recarga, busca salva e retomada, isolamento de contas, limpeza e limite de dez buscas, armazenamento bloqueado, funcionamento offline, contagens administrativas privadas, revogação de acesso, recuperação de erro 503 e larguras de 320, 390, 768 e 1366 pixels. O desktop exercitou os atalhos, persistência dos filtros e troca de conta. Scripts inline também passaram pela verificação sintática do Node.
 
-As capturas fictícias estão em `/workspace/preferencias-evidencias`. Documentos e licenças adicionados nas etapas anteriores foram renomeados para minúsculas, com referências atualizadas; o conteúdo dos avisos de licença foi preservado. Os quatro nomes com maiúsculas que já existiam em `main` permanecem como estavam.
+As capturas fictícias estão em `/workspace/preferencias-evidencias`.

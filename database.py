@@ -10,7 +10,7 @@ from utils.push import SCHEMA_PUSH, SCHEMA_ENTREGAS_PUSH, SCHEMA_EMAIL_CHAT, SCH
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from config import DATABASE_URL, DATABASE_SSLMODE
+from config import DATABASE_URL
 from utils.helpers import calcular_dias_passados
 
 ULTIMA_VERIFICACAO_DOACOES = None
@@ -18,7 +18,7 @@ ULTIMA_VERIFICACAO_DOACOES = None
 def get_db_connection():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL não configurada no ambiente.")
-    return contextualizar(psycopg2.connect(DATABASE_URL, sslmode=DATABASE_SSLMODE))
+    return contextualizar(psycopg2.connect(DATABASE_URL, sslmode='require'))
 
 def verificar_e_atualizar_itens_doacao(forcar=False):
     global ULTIMA_VERIFICACAO_DOACOES

@@ -2,14 +2,6 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
-## Ambiente de testes no GitHub Codespaces
-
-Configuração de desenvolvimento em `.devcontainer/` para executar o servidor e PostgreSQL de demonstração, com porta 5000 encaminhada, contas de aluno/professor/secretaria e objetos fictícios. [Guia para abrir e usar](testar-no-codespaces.md). O preparo fixa a conexão no banco interno, substituindo uma eventual `DATABASE_URL` herdada; os acessos aleatórios ficam fora do Git. Preparar novamente preserva as contas existentes e não duplica os objetos iniciais.
-
-O backend aceita a variável `DATABASE_SSLMODE`, mantendo `require` como padrão e validando os valores. Somente o ambiente de testes configura `disable` para o PostgreSQL interno do Docker. As funcionalidades do site permanecem iguais. A instalação real do Codespace deve ser iniciada pelo proprietário em sua conta; criação e acesso dependem da disponibilidade/franquia do GitHub. Docker Compose e JSON foram validados; preparo de contas, login, catálogo e idempotência foram exercitados com PostgreSQL temporário. Não foi criado um Codespace remoto nesta sessão.
-
-Validação desta etapa: **407 testes Python e 49 JavaScript aprovados**, além da conferência do Compose, JSON, script e exclusão das credenciais locais pelo Git. Os testes anteriores de navegador continuam registrados nas respectivas etapas.
-
 ## Limpeza de arquivos sem uso
 
 Os 194 arquivos versionados foram revisados por entradas de execução, importações Python, registros de rotas, referências de recursos estáticos, manifestos, testes e documentação. Foram removidos três módulos sem consumidores ou registro na aplicação: `blueprints/ai.py`, `blueprints/ai_vision_service.py` e `blueprints/frontend.py`. As rotas de IA, páginas, logotipos e erro 404 continuam no servidor executado pelo `Procfile`; o serviço de visão utilizado permanece em `services/ai_vision_service.py`.
@@ -36,7 +28,7 @@ Na rechecagem solicitada após a remoção, os **501 testes foram executados nov
 
 ## Aparência, buscas salvas e preferências
 
-[preferencias-e-atalhos.md](preferencias-e-atalhos.md): escolha de tema claro, escuro ou automático, com convite antes de acompanhar o sistema; dez buscas salvas por conta no navegador; filtros e apresentação lembrados; atalhos administrativos com contagens privadas; preferências e atalhos equivalentes no desktop. O [roteiro para colegas](teste-com-colegas.md) está pronto, sem alegar teste humano já realizado. Arquivos adicionados ao longo das atualizações agora usam nomes em minúsculas, com links corrigidos.
+[preferencias-e-atalhos.md](preferencias-e-atalhos.md): escolha de tema claro, escuro ou automático, com convite antes de acompanhar o sistema; dez buscas salvas por conta no navegador; filtros e apresentação lembrados; atalhos administrativos com contagens privadas; preferências e atalhos equivalentes no desktop. O [roteiro para colegas](teste-com-colegas.md) está pronto, sem alegar teste humano já realizado.
 
 Validação cumulativa mais recente: **404 Python, 49 JavaScript e 48 Chromium — 501 testes aprovados**. As contagens das seções seguintes são registros históricos de cada etapa.
 

@@ -44,7 +44,7 @@ from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.professores import SCHEMA_ACESSO_PROFESSORES
 from utils.push import SCHEMA_PUSH, SCHEMA_ENTREGAS_PUSH, SCHEMA_EMAIL_CHAT, SCHEMA_LIMITE_PUSH, INDICE_ENTREGAS_PUSH
-from config import JWT_SECRET, DATABASE_SSLMODE
+from config import JWT_SECRET
 
 # ============================================================
 # CONFIGURAÇÕES E AMBIENTE
@@ -195,7 +195,7 @@ def gerar_token_secretaria(email, dias_validade=7):
 def get_db_connection():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL não configurada no ambiente.")
-    return contextualizar(psycopg2.connect(DATABASE_URL, sslmode=DATABASE_SSLMODE))
+    return contextualizar(psycopg2.connect(DATABASE_URL, sslmode='require'))
 
 def calcular_dias_passados(data_str):
     if not data_str: return 0
