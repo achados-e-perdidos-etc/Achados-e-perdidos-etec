@@ -8,12 +8,14 @@ from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
-from utils.security import token_required
+from utils.privacy import item_publico, relato_publico
+from utils.security import consulta_publica, token_required, secretaria_required, identidade_aluno
 from utils.helpers import extrair_termos
 
 mural_bp = Blueprint('mural', __name__)
 
 @mural_bp.route('/api/mural', methods=['OPTIONS', 'GET', 'POST'])
+@consulta_publica
 def mural():
     """Lista todos os relatos ou cadastra um novo relato de perda com busca imediata de matches."""
     if request.method == 'OPTIONS':
@@ -26,15 +28,23 @@ def mural():
         res = cursor.fetchall()
         cursor.close()
         conn.close()
-        return jsonify(res)
+        return jsonify(res if request.user.get('role') == 'secretaria' else [relato_publico(it) for it in res])
         
     else:
+        aluno = identidade_aluno()
+        if not aluno:
+            return jsonify({'success': False, 'message': 'Somente alunos com RM informado podem publicar relatos de perda.'}), 403
         data = request.json or {}
-        nome = data.get('nome')
-        rm = data.get('rm')
-        email_aluno = data.get('email')
-        categoria = data.get('categoria')
-        descricao = data.get('descricao')
+        if request.headers.get('Idempotency-Key'):
+            from services.cadastro_offline import enviar
+            return enviar(get_db_connection,'mural',data)
+        nome, rm, email_aluno = aluno['nome'], aluno['rm'], aluno['email']
+        from utils.validacao_item import texto,validar_categoria
+        try:
+            categoria=texto(data.get('categoria'),'Categoria',50).upper()
+            descricao=texto(data.get('descricao'),'Descrição',2000,linhas=True)
+            validar_categoria(get_db_connection,categoria)
+        except ValueError as error:return jsonify(success=False,message=str(error)),400
         
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -69,17 +79,21 @@ def mural():
         return jsonify({"success": True, "matches_encontrados": matches})
 
 @mural_bp.route('/api/mural/aluno/<string:rm>', methods=['OPTIONS', 'GET'])
+@token_required
 def mural_aluno(rm):
     """Retorna os relatos cadastrados pelo estudante filtrados por seu RM."""
+    if request.user.get("role") != "secretaria" and rm != str(request.user.get("rm") or ""):
+        return jsonify({"success": False, "message": "Acesso negado."}), 403
+    filtro, valor = ("rm_aluno", rm) if request.user.get("role") == "secretaria" else ("email_aluno", request.user.get("email"))
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT id, categoria, descricao, data_registro as data, status 
             FROM mural_perdidos 
-            WHERE rm_aluno = %s 
+            WHERE {filtro} = %s
             ORDER BY id DESC;
-        """, (rm,))
+        """, (valor,))
         res = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -88,7 +102,7 @@ def mural_aluno(rm):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @mural_bp.route('/api/mural/<int:id>', methods=['OPTIONS', 'DELETE'])
-@token_required
+@secretaria_required
 def deletar_mural(id):
     """Exclui um relato do mural de perdidos."""
     conn = get_db_connection()
@@ -98,3 +112,4 @@ def deletar_mural(id):
     cursor.close()
     conn.close()
     return jsonify({"success": True})
+

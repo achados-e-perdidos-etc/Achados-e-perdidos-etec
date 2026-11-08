@@ -3,6 +3,7 @@ Blueprint de Autenticação e Gestão de Usuários
 Rotas de verificação, cadastro, login convencional, login Google OAuth institucional e redefinição de senha.
 """
 import random
+import secrets
 import requests
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
@@ -16,6 +17,8 @@ from utils.helpers import validar_email_institucional
 from services.email_service import disparar_email
 
 auth_bp = Blueprint('auth', __name__)
+from blueprints.professores import professores_bp
+auth_bp.register_blueprint(professores_bp)
 
 @auth_bp.route('/api/auth/verificar', methods=['GET', 'OPTIONS'])
 @token_required
@@ -144,7 +147,7 @@ def enviar_codigo():
         return jsonify({"success": False, "message": res}), 400
     
     email = res
-    codigo = str(random.randint(100000, 999999))
+    codigo = str(100000+secrets.randbelow(900000))
     expiracao = datetime.now() + timedelta(minutes=15)
     
     try:
@@ -301,7 +304,7 @@ def login_secretaria():
             try:
                 login_valido = check_password_hash(ADMIN_SENHA_HASH, senha)
             except Exception:
-                login_valido = (senha == ADMIN_SENHA_HASH)
+                login_valido = False
 
     if login_valido:
         token = gerar_token_secretaria(email)

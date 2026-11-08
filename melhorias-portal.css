@@ -1,0 +1,11 @@
+.central-avisos.hidden{display:none!important}
+.central-avisos {position:fixed;inset:0;z-index:260;background:#000b;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px}
+.avisos-painel {width:min(540px,100%);max-height:88dvh;overflow:auto;padding:24px;background:#151c28;border:1px solid #394355;border-radius:24px;color:#f1f5f9}
+.avisos-cabecalho {display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.avisos-cabecalho h2{font-size:20px;font-weight:800}
+.avisos-acoes {display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.avisos-acoes button,.avisos-painel>button{padding:10px 14px;border-radius:10px;background:#263449;border:1px solid #53647e;font-size:13px}
+.aviso-card{margin:10px 0;border:1px solid #43516a;border-radius:14px;background:#1b2638}.aviso-abrir{display:flex;flex-direction:column;gap:8px;padding:16px;text-align:left;width:100%;overflow-wrap:anywhere}.aviso-abrir strong{color:#f9fafb}.aviso-abrir span,.avisos-status{font-size:13px;color:#cbd5e1}.aviso-abrir small{color:#aebed3;font-size:11px}
+#badgeAvisos{position:absolute;top:-4px;right:-4px;background:#be123c;color:white;border-radius:10px;min-width:18px;padding:0 4px;font-size:10px;font-weight:bold} [hidden]{display:none!important}
+
+.cadastro-card{padding:16px;border:1px solid #43516a;background:#1b2638;border-radius:14px;margin:10px 0;overflow-wrap:anywhere}.cadastro-card h4{font-weight:800;margin-bottom:7px}.cadastro-card strong{color:#93c5fd;font-size:13px}.cadastro-card p{font-size:12px;color:#cbd5e1;margin-top:7px}
+
+.rascunho-controles{border:1px solid #40516b;background:#152135;border-radius:12px;padding:12px;margin-bottom:14px;color:#cbd5e1;font-size:12px;line-height:1.5}.rascunho-controles button{color:#fda4af;text-decoration:underline;margin-top:7px;padding:5px 0}.rascunho-controles p{margin:0}
