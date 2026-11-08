@@ -45,7 +45,7 @@ def test_pwa_reabre_offline_formulario_real_e_sincroniza_sem_duplicar(runtime):
         page.wait_for_function("document.getElementById('loginAlunoScreen').classList.contains('hidden')")
         assert page.locator('#alunoItemCat option').count()>0
         page.wait_for_function("getComputedStyle(document.getElementById('loadingOverlay')).visibility==='hidden'")
-        assert page.locator('#gifSplash').get_attribute('src') is None
+        assert page.locator('#videoAbertura').get_attribute('src') is None
         page.evaluate('abrirModalCadastrarAluno()')
         page.locator('#alunoItemNome').fill('Estojo offline')
         page.locator('#alunoItemDesc').fill('Estojo preto com zíper azul')

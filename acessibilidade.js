@@ -1,7 +1,7 @@
 /* Navegação por teclado compartilhada entre portal e secretaria. */
 const Acessibilidade = {
     ativo: null, retorno: new WeakMap(), inertes: new Map(), agendado: false,
-    seletor: '.modal-overlay, #modalErroDetalhado, #centralAvisos, #modalNovo, #modalCadastrarAluno, #modalMatchImediato, #modalZoomImagem, #loginAlunoScreen, #loginScreen, #menuLateral.aberto, dialog[open]',
+    seletor: '#splashScreenAnimacao, .modal-overlay, #modalErroDetalhado, #centralAvisos, #modalNovo, #modalCadastrarAluno, #modalMatchImediato, #modalZoomImagem, #loginAlunoScreen, #loginScreen, #menuLateral.aberto, dialog[open]',
     visivel(el) { return !!el && !el.hidden && !el.classList.contains('hidden') && getComputedStyle(el).visibility !== 'hidden' && el.getClientRects().length > 0; },
     focaveis(el) { return Array.from(el.querySelectorAll('button,a[href],input,select,textarea,[tabindex="0"]')).filter(x => !x.disabled && !x.closest('[inert]') && this.visivel(x)); },
     preparar() {
@@ -81,6 +81,7 @@ const Acessibilidade = {
     fechar() {
         const el = this.ativo;
         if (!el || ['loginAlunoScreen','loginScreen'].includes(el.id)) return;
+        if(el.id==='splashScreenAnimacao'){AberturaPortal.encerrar();return;}
         if(el.tagName==='DIALOG'){el.close();return;}
         if (el.id === 'modalCadastrarAluno' && typeof envioCadastroAluno !== 'undefined' && envioCadastroAluno) return;
         if (el.id === 'modalFormItem' && typeof envioItemSecretaria !== 'undefined' && envioItemSecretaria) return;

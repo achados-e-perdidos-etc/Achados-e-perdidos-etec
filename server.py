@@ -150,7 +150,7 @@ def handle_preflight():
     if request.endpoint == 'static':
         from pathlib import PurePosixPath
         caminho = PurePosixPath(request.path.lstrip('/'))
-        permitidos = {'.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.woff', '.woff2', '.ttf', '.ico'}
+        permitidos = {'.html', '.css', '.js', '.mp4', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.woff', '.woff2', '.ttf', '.ico'}
         if (any(p.startswith('.') for p in caminho.parts) or len(caminho.parts)>1 and caminho.parts[0]!='vendor'
             or caminho.suffix.lower() not in permitidos and str(caminho) not in ('manifest.json','manifest_secretaria.json')):
             from flask import abort

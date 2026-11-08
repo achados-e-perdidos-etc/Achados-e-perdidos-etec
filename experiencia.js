@@ -45,7 +45,23 @@ const ExperienciaUI = {
         btn.onclick=()=>{const visivel=input.type==='password';input.type=visivel?'text':'password';btn.textContent=visivel?'Ocultar':'Mostrar';btn.setAttribute('aria-pressed',String(visivel));btn.setAttribute('aria-label',visivel?'Ocultar senha':'Mostrar senha');};wrap.append(btn);
         document.getElementById('loginAlunoScreen')?.addEventListener('submit',()=>{input.type='password';btn.textContent='Mostrar';btn.setAttribute('aria-pressed','false');btn.setAttribute('aria-label','Mostrar senha');});
     },
+    formularios(){
+        document.addEventListener('invalid',evento=>{
+            const campo=evento.target;if(!campo.id||!campo.validity)return;
+            const id='ux-erro-'+campo.id;let aviso=document.getElementById(id);
+            if(!aviso){aviso=document.createElement('p');aviso.id=id;aviso.className='ux-field-error';const alvo=campo.parentElement.matches('.relative,.ux-password-wrap')?campo.parentElement:campo;alvo.after(aviso);}
+            aviso.textContent=campo.validity.valueMissing?'Preencha este campo para continuar.':campo.validity.typeMismatch?'Digite um e-mail válido.':campo.validity.tooShort?`Use pelo menos ${campo.minLength} caracteres.`:'Confira o valor deste campo.';
+            campo.setAttribute('aria-invalid','true');campo.setAttribute('aria-describedby',[...new Set([...(campo.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean),id])].join(' '));
+        },true);
+        document.addEventListener('input',evento=>{
+            const campo=evento.target;if(!campo.id||!campo.validity?.valid)return;
+            const id='ux-erro-'+campo.id;if(!document.getElementById(id))return;
+            document.getElementById(id).remove();campo.removeAttribute('aria-invalid');
+            const outros=(campo.getAttribute('aria-describedby')||'').split(/\s+/).filter(v=>v&&v!==id);if(outros.length)campo.setAttribute('aria-describedby',outros.join(' '));else campo.removeAttribute('aria-describedby');
+        });
+    },
     iniciar(){
+        this.formularios();
         if(document.getElementById('loginAlunoScreen')){
             this.senha('loginSenhaAluno');this.senha('cadSenha');this.senha('recSenha');
             document.getElementById('loginAlunoScreen').addEventListener('submit',()=>this.limparFeedback(),true);

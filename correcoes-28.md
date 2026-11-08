@@ -2,6 +2,18 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Acabamento e abertura mais leve
+
+Os GIFs de abertura foram substituídos por dois clipes MP4 H.264 de 2,2 segundos, gerados a partir da apresentação original: **27.717.854 bytes → 819.960 bytes, redução de 97,04%**. As fontes anteriores continuam no histórico Git. O portal escolhe somente o vídeo adequado à orientação da tela; não inclui os vídeos no precache da PWA. A sessão começa a carregar no DOMContentLoaded, paralelamente à apresentação, com proteção contra inicialização duplicada.
+
+O botão “Entrar no site” permite pular imediatamente. A abertura é encerrada após no máximo 2,4 segundos; falha de reprodução, falta de rede, economia de dados, conexão 2G, movimento reduzido ou retorno na mesma sessão levam diretamente ao portal. Ao fechar, a mídia é pausada e a origem removida. Escape e foco de teclado respeitam a janela ativa. O servidor serve MP4 e aceita requisições parciais de vídeo; o cache da interface foi versionado.
+
+Nos formulários, campos inválidos recebem instruções curtas associadas ao campo; digitação válida remove a indicação, preservando o conteúdo dos demais campos. O e-mail do login usa um exemplo mais curto. Altura útil dos modais acompanha o viewport dinâmico, há rolagem interna e maior área de toque para fechar o cadastro e limpar a pesquisa. O ajuste de altura só vale na tela, preservando a impressão. Contraste de mensagens e textos auxiliares foi revisado nos temas claro/escuro.
+
+Verificação focada: formulários de aluno e secretaria, retenção de texto após erro, temas claro/escuro, contraste mínimo de 4,5:1 nos textos conferidos, larguras de 320/390/768/1366 e redução da altura para simular teclado aberto. A entrega de MP4 e respostas HTTP 206/Range foram conferidas pelo servidor real, com serviços externos controlados. Nenhuma funcionalidade de negócio foi acrescentada.
+
+Validação desta etapa: **408 testes Python, 49 JavaScript e 51 Chromium — 508 aprovados**. A suíte Python inclui as jornadas com PostgreSQL/Chromium, impressão/PDF e o fluxo nativo Tkinter/Xvfb. Não houve implantação em servidor nem uso de dados da escola.
+
 ## Limpeza de arquivos sem uso
 
 Os 194 arquivos versionados foram revisados por entradas de execução, importações Python, registros de rotas, referências de recursos estáticos, manifestos, testes e documentação. Foram removidos três módulos sem consumidores ou registro na aplicação: `blueprints/ai.py`, `blueprints/ai_vision_service.py` e `blueprints/frontend.py`. As rotas de IA, páginas, logotipos e erro 404 continuam no servidor executado pelo `Procfile`; o serviço de visão utilizado permanece em `services/ai_vision_service.py`.
@@ -30,7 +42,7 @@ Na rechecagem solicitada após a remoção, os **501 testes foram executados nov
 
 [preferencias-e-atalhos.md](preferencias-e-atalhos.md): escolha de tema claro, escuro ou automático, com convite antes de acompanhar o sistema; dez buscas salvas por conta no navegador; filtros e apresentação lembrados; atalhos administrativos com contagens privadas; preferências e atalhos equivalentes no desktop. O [roteiro para colegas](teste-com-colegas.md) está pronto, sem alegar teste humano já realizado.
 
-Validação cumulativa mais recente: **404 Python, 49 JavaScript e 48 Chromium — 501 testes aprovados**. As contagens das seções seguintes são registros históricos de cada etapa.
+Validação cumulativa da etapa de preferências: **404 Python, 49 JavaScript e 48 Chromium — 501 testes aprovados**. As contagens das seções seguintes são registros históricos de cada etapa.
 
 ## Paridade dos painéis e comprovante personalizado
 

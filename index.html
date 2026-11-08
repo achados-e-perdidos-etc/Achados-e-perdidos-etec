@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>ETEC - Achados e Perdidos</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="manifest" href="/manifest.json">
@@ -25,9 +25,11 @@
 </head>
 <body class="portal-experiencia dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
 
-    <!-- SPLASH SCREEN COM GIF (celular = animacao.GIF | PC/paisagem = animacao_pc.GIF) -->
-    <div id="splashScreenAnimacao" class="fixed inset-0 z-[300] bg-black flex items-center justify-center transition-opacity duration-700">
-        <img id="gifSplash" alt="ETEC Achados e Perdidos" decoding="async" class="w-full h-full object-cover landscape:object-contain">
+    <!-- Abertura leve; pode ser pulada e não bloqueia o carregamento da sessão. -->
+    <div id="splashScreenAnimacao" class="abertura-portal" hidden>
+        <h2 class="sr-only-acessivel">Bem-vindo ao ETEC Achados</h2>
+        <video id="videoAbertura" muted playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true"></video>
+        <button id="pularAbertura" type="button">Entrar no site <span aria-hidden="true">→</span></button>
     </div>
 
     <!-- BANNER DE STATUS DE REDE (ONLINE / OFFLINE) -->
@@ -55,7 +57,7 @@
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">E-mail Institucional</label>
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                        <input type="email" id="loginEmailAluno" autocomplete="username" required placeholder="Seu e-mail institucional CPS ou ETEC" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
+                        <input type="email" id="loginEmailAluno" autocomplete="username" required placeholder="Seu e-mail institucional" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-red-500 transition">
                     </div>
                 </div>
                 <div>
@@ -636,72 +638,10 @@
     <script src="estado-fotos.js"></script>
     <script src="rascunhos.js"></script>
     <script src="upload-retomavel.js"></script>
+    <script src="abertura.js"></script>
     <script src="script.js"></script>
     <script src="notificacoes-push.js"></script>
     <script src="professores.js"></script>
-
-    <!-- ==========================================================================
-         SPLASH COM GIF (substitui o vídeo animacao.mp4)
-         - Celular (tela em pé / retrato)  -> animacao.GIF
-         - PC / tela deitada (paisagem)    -> animacao_pc.GIF
-         Este bloco redefine o window.onload do script.js (que ainda usava <video>).
-         ========================================================================== -->
-    <script>
-    (function () {
-        const GIF_CELULAR = 'animacao.GIF';
-        const GIF_PC      = 'animacao_pc.GIF';
-        const DURACAO_GIF_MS = 9990;   // duração de uma volta completa dos dois GIFs (~10 s)
-        const LIMITE_MAX_MS  = 25000;  // segurança: se o GIF não terminar de baixar, libera o portal
-
-        const splash = document.getElementById('splashScreenAnimacao');
-        const gif = document.getElementById('gifSplash');
-        let encerrado = false;
-
-        function esconderSplash() {
-            splash.classList.add('hidden');
-            splash.style.display = 'none';
-            if (gif) gif.removeAttribute('src'); // libera a memória do GIF
-        }
-
-        function encerrarSplash() {
-            if (encerrado) return;
-            encerrado = true;
-            splash.classList.add('opacity-0');
-            setTimeout(() => {
-                esconderSplash();
-                checarSessao();
-            }, 700);
-        }
-
-        // Splash só aparece 1x por sessão (igual ao comportamento anterior)
-        const jaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
-
-        if (jaExibido || !navigator.onLine || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !splash || !gif) {
-            if (splash) esconderSplash();
-            window.onload = () => {
-                checarSessao();
-            };
-            return;
-        }
-
-        sessionStorage.setItem('splash_ja_exibido', 'true');
-
-        // Escolhe o GIF conforme a tela: em pé = celular, deitada = PC
-        const emPaisagem = window.matchMedia('(orientation: landscape)').matches;
-
-        // O relógio só começa quando o GIF terminou de carregar (para não cortar a animação)
-        const timerFalha = setTimeout(encerrarSplash, LIMITE_MAX_MS);
-        gif.onload = () => {
-            clearTimeout(timerFalha);
-            setTimeout(encerrarSplash, DURACAO_GIF_MS);
-        };
-        gif.onerror = encerrarSplash;
-        gif.src = emPaisagem ? GIF_PC : GIF_CELULAR;
-
-        // A animação chama checarSessao() ao terminar.
-        window.onload = () => {};
-    })();
-    </script>
 
     <script src="central-notificacoes.js"></script>
     <script src="meus-cadastros.js"></script>

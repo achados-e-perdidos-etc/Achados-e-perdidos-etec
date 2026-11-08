@@ -1142,43 +1142,7 @@ async function enviarCadastroAluno(e) {
     }
 }
 
-window.onload = () => {
-    const splash = document.getElementById('splashScreenAnimacao');
-    const video = document.getElementById('videoSplash');
-
-    const splashJaExibido = sessionStorage.getItem('splash_ja_exibido') === 'true';
-    if (splashJaExibido && splash) {
-        splash.classList.add('hidden');
-        splash.style.display = 'none';
-        checarSessao();
-        return;
-    }
-
-    if (splash && video) {
-        sessionStorage.setItem('splash_ja_exibido', 'true');
-
-        const encerrarSplash = () => {
-            splash.classList.add('opacity-0');
-            setTimeout(() => {
-                splash.classList.add('hidden');
-                splash.style.display = 'none';
-                checarSessao();
-            }, 700);
-        };
-
-        video.muted = true;
-        video.defaultMuted = true;
-        video.play().catch(() => {});
-        video.onended = encerrarSplash;
-
-        // Tempo limite de segurança de 4 segundos para o vídeo
-        setTimeout(() => {
-            if (!splash.classList.contains('hidden')) encerrarSplash();
-        }, 4500);
-    } else {
-        checarSessao();
-    }
-};
+window.onload = () => AberturaPortal.iniciar();
 
 
 // ==============================================================================

@@ -65,7 +65,7 @@ class MotionTests(safety.TextSafetyBrowser):
         other=self.context.new_page()
         other.emulate_media(reduced_motion='reduce')
         other.goto(safety.ORIGIN+'/index.html')
-        self.assertIsNone(other.locator('#gifSplash').get_attribute('src'))
+        self.assertIsNone(other.locator('#videoAbertura').get_attribute('src'))
         self.assertEqual(other.locator('#splashScreenAnimacao').evaluate('el=>getComputedStyle(el).display'),'none')
         other.close()
 
