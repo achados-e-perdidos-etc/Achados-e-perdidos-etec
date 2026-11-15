@@ -1,3 +1,4 @@
+from utils.perfis import SCHEMA_PERFIS
 from utils.catalogo import SCHEMA_CATALOGO
 from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
 from utils.uploads import SCHEMA_UPLOADS
@@ -110,6 +111,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
+        cursor.execute(SCHEMA_PERFIS)
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
         cursor.execute(SCHEMA_ENTREGAS)
         cursor.execute(SCHEMA_NOTIFICACOES)

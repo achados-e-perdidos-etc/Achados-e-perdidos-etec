@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="/catalogo-moderacao.css">
 <link rel="stylesheet" href="/experiencia.css">
 <link rel="stylesheet" href="/preferencias.css">
+<link rel="stylesheet" href="/perfil.css">
 <script src="/tema.js"></script>
 </head>
 <body class="portal-experiencia dark-theme min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#090d13] text-slate-100 antialiased font-['Plus_Jakarta_Sans']">
@@ -97,6 +98,11 @@
                     </div>
                     <input type="password" id="cadSenha" autocomplete="new-password" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <label class="auth-remember auth-remember-compact" for="lembrarCadastro"><input type="checkbox" id="lembrarCadastro"><span><strong>Lembrar de mim neste dispositivo</strong></span></label>
+                    <div class="termos-cadastro">
+                        <button id="lerTermos" type="button" class="ev-action">Ler os Termos de Uso</button>
+                        <p id="statusTermos" role="status">Carregando os termos…</p>
+                        <label for="aceiteTermos"><input id="aceiteTermos" type="checkbox" required disabled aria-describedby="statusTermos"><span>Li e aceito os Termos de Uso e estou ciente do uso dos meus dados descrito no texto.</span></label>
+                    </div>
                     <button type="submit" id="btnConfirmarCad" class="auth-submit w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Finalizar Cadastro</button>
                 </div>
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-semibold text-slate-400 hover:text-white pt-1">Voltar ao Login</button>
@@ -652,5 +658,6 @@
 <script src="/moderacao-interface.js"></script>
 <script src="/experiencia.js"></script>
 <script src="/preferencias.js"></script>
+<script src="/perfil.js"></script>
 </body>
 </html>

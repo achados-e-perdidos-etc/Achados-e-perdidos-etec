@@ -38,6 +38,7 @@ const SessaoPortal = {
         if (typeof FilaOffline !== 'undefined') setTimeout(()=>FilaOffline.sincronizar(),0);
     },
     limpar(preservarFila = false) {
+        if(typeof PerfilUI!=='undefined')PerfilUI.limpar();
         if (!preservarFila && typeof FilaOffline !== 'undefined') FilaOffline.sair();
         if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();
         for (const destino of [sessionStorage, localStorage]) {

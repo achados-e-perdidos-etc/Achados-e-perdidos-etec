@@ -53,7 +53,11 @@ A confirmação manual agora retorna o ID do comprovante persistido; a web abre 
 
 ## Dependências e instalação
 
-Servidor: `requirements.txt` inclui `qrcode[pil]`. Desktop: instalar `requirements-desktop.txt`, que acrescenta `opencv-python-headless` para captura/decodificação QR. Tkinter continua vindo do Python/sistema operacional. A imagem da logo e `comprovantes.css` devem acompanhar a distribuição, assim como os módulos novos; a instalação por código-fonte usa a pasta do projeto. `ETEC_API_URL` aponta o aplicativo para o servidor escolhido.
+Servidor: `requirements.txt` inclui `qrcode[pil]` e `opencv-python-headless` (pré-verificação local da foto de perfil). Desktop: instalar `requirements-desktop.txt`, com OpenCV para captura/decodificação QR. Tkinter continua vindo do Python/sistema operacional. A imagem da logo e `comprovantes.css` devem acompanhar a distribuição, assim como os módulos novos; a instalação por código-fonte usa a pasta do projeto. `ETEC_API_URL` aponta o aplicativo para o servidor escolhido.
+
+### Foto de perfil para conferência
+
+Web e desktop permitem consultar a foto opcional e os dados da conta selecionada no chat ou vinculada à retirada de um objeto solicitado. Ambos usam os mesmos endpoints privados, sem procurar pela matrícula isolada; o desktop busca bytes autenticados em worker e só cria a imagem Tk na thread gráfica. Conta sem foto mantém seus dados e a orientação para conferir documentos. A foto não comprova identidade nem propriedade. O envio e a remoção da própria foto pertencem ao portal pessoal do aluno/professor.
 
 ## Validação
 

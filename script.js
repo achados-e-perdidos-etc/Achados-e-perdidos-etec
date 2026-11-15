@@ -196,6 +196,7 @@ async function checarSessao() {
         } catch (e) {}
 
         alunoSessao = dados;
+        if(typeof PerfilUI!=='undefined') PerfilUI.carregar();
         if (typeof PreferenciasUI !== 'undefined') PreferenciasUI.entrar(dados.email);
         if (typeof CentralAvisos !== "undefined") CentralAvisos.carregar();
         ativarWebPush();
@@ -385,6 +386,7 @@ async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
 
 async function confirmarCadastro(e) {
     e.preventDefault();
+    if(typeof TermosUI==='undefined'||!TermosUI.valido())return mostrarToast('Abra os termos, percorra o texto até o fim e marque o aceite para continuar.','error');
     if (!iniciarAnimacaoAuth('cadastro')) return;
     const lembrar = document.getElementById('lembrarCadastro').checked;
     let sucesso = false;
@@ -393,7 +395,8 @@ async function confirmarCadastro(e) {
         codigo: document.getElementById('cadCodigo').value.trim(),
         nome: document.getElementById('cadNome').value.trim(),
         rm: document.getElementById('cadRM').value.trim(),
-        senha: document.getElementById('cadSenha').value.trim()
+        senha: document.getElementById('cadSenha').value.trim(),
+        aceite_termos:true,versao_termos:TermosUI.lida
     };
     try {
         const res = await fetch(`${API_URL}/api/auth/cadastrar`, {
@@ -405,6 +408,7 @@ async function confirmarCadastro(e) {
         if (res.ok && data.success && data.token) {
             SessaoPortal.salvar(data.token, data.aluno, lembrar);
             document.getElementById('cadSenha').value = '';
+            TermosUI.reiniciar();
             await confirmarAnimacaoAuth('cadastro');
             mostrarToast("Conta criada com sucesso!", "success");
             await checarSessao();

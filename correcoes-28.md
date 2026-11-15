@@ -2,6 +2,24 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Foto privada, termos e contraste — 15/11/2026
+
+Por pedido explícito do proprietário, alunos e professores podem adicionar, substituir e remover uma foto opcional no menu do perfil. Orientações: foto individual, de frente, cabeça e ombros, rosto e olhos visíveis, boa iluminação, sem máscara, óculos escuros, filtros, montagens ou objetos sobre o rosto. A secretaria web e desktop consultam o perfil nas conversas e na retirada de um objeto solicitado, usando a conta vinculada à solicitação, sem deduzir identidade pelo RM.
+
+O servidor valida os bytes reais (JPEG/PNG/WEBP estático, até 2 MB e 16 MP), corrige orientação, remove metadados e usa modelos locais OpenCV de rosto frontal e olhos. Rejeita enquadramento sem um único rosto detectável, pequeno ou com olhos não detectáveis. A foto é recortada e reduzida a 160 × 160 pixels; há uma única imagem de no máximo 64 KB por conta, no banco, sem envio ao provedor de análise de objetos. Arquivos/modelos vêm de `opencv-python-headless` em `requirements.txt`. A amostra NASA dos testes está atribuída em `vendor/terceiros.md`.
+
+**Limite:** detecção não é reconhecimento de identidade, prova de autenticidade, presença física ou garantia de que toda obstrução seja identificada. Pode recusar uma foto adequada ou aceitar uma imagem inadequada. As instruções informam isso; cadastro/login continuam disponíveis sem foto e a equipe deve conferir os dados presencialmente.
+
+Fotos não aparecem no catálogo público. A API exige sessão e permite leitura apenas ao titular e à equipe autorizada, com revogação de professor conferida por requisição. URLs UUID mudam na substituição; exclusão remove a imagem. Metadados e bytes são privados e não entram no cache PWA. O navegador usa blobs temporários, sem gravar fotos no armazenamento local; saída/troca de conta fecha as janelas e limpa as prévias.
+
+Novos cadastros precisam abrir os Termos de Uso e percorrer o texto até o fim antes de habilitar a caixa de aceite, usando toque, roda do mouse ou teclado. A caixa nunca é marcada automaticamente. Fechar no meio mantém o bloqueio; atualizar a versão exige nova leitura. O backend aceita apenas `aceite_termos: true` com a versão atual. Conta, versão/data do aceite e consumo do código são confirmados na mesma transação; falha preserva o código e reverte a conta. Não há exigência retroativa para contas existentes. `/api/termos` e `/termos` usam o mesmo texto; alterar o texto exige atualizar `VERSAO_TERMOS` em `utils/perfis.py`.
+
+**Limite do aceite:** a rolagem é um requisito da interface; não comprova que o texto foi lido ou compreendido. O servidor registra a declaração de aceite e a versão, não um suposto comprovante de leitura.
+
+No tema claro, corrigidos os rótulos sobre fotos do catálogo, o link de detalhes, textos/ajudas do cadastro e a ação de descartar rascunho. Contraste dos pontos conferidos no navegador é de pelo menos 4,5:1. Cache PWA atualizado para incluir `perfil.js` e `perfil.css`.
+
+Validação: **433 Python, 49 JavaScript e 51 Chromium — 533 testes aprovados**, incluindo 25 novos casos de foto/termos, jornadas reais com Flask/PostgreSQL/Chromium, gestos de toque, teclado e consulta de foto no Tkinter/Xvfb. O fluxo nativo existente foi ampliado, sem criar outra raiz Tk no processo. Após os ajustes finais de ajuda e validação do documento, os quatro fluxos de navegador de perfil/termos foram repetidos. Sem alteração no banco da escola, implantação, câmera/impressora físicas ou prova de autenticidade de fotos.
+
 ## Acabamento e abertura mais leve
 
 Os GIFs de abertura foram substituídos por dois clipes MP4 H.264 de 2,2 segundos, gerados a partir da apresentação original: **27.717.854 bytes → 819.960 bytes, redução de 97,04%**. As fontes anteriores continuam no histórico Git. O portal escolhe somente o vídeo adequado à orientação da tela; não inclui os vídeos no precache da PWA. A sessão começa a carregar no DOMContentLoaded, paralelamente à apresentação, com proteção contra inicialização duplicada.

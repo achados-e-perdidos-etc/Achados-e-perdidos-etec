@@ -39,6 +39,7 @@ const RetiradaSecretaria = {
         d.append(EvolucaoUI.node('p','Confira o documento do aluno e detalhes particulares do objeto antes de confirmar. O código identifica a solicitação; não comprova a propriedade.','ev-note'));
         const form=document.createElement('form'),id=EvolucaoUI.field(form,'Número do objeto','number'),code=EvolucaoUI.field(form,'Código de seis dígitos');
         id.min=1;id.required=true;code.inputMode='numeric';code.pattern='[0-9]{6}';code.maxLength=6;code.required=true;code.autocomplete='off';
+        const perfil=EvolucaoUI.node('button','Ver perfil do solicitante','ev-action');perfil.type='button';perfil.onclick=()=>{if(id.reportValidity())PerfilUI.verAluno({item_id:Number(id.value)});};form.append(perfil);
         const check=EvolucaoUI.field(form,'Conferi presencialmente a identidade e os detalhes do objeto','checkbox');check.required=true;
         form.append(EvolucaoUI.node('p','Assinatura do aluno: declaro que recebi o objeto indicado acima. Este registro é um comprovante simples de recebimento.'));
         const canvas=document.createElement('canvas');canvas.width=700;canvas.height=330;canvas.className='ev-signature';canvas.setAttribute('aria-label','Área para assinar com o dedo ou mouse');form.append(canvas);

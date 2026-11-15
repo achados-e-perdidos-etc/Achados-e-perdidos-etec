@@ -24,6 +24,7 @@ class LoginTests(safety.TextSafetyBrowser):
             const fields=signup?{cadEmailAluno:'teste@aluno.cps.sp.gov.br',cadNome:'Aluno Teste',cadRM:'12345',cadCodigo:'123456',cadSenha:'SenhaTeste123!'}:{loginEmailAluno:'teste@aluno.cps.sp.gov.br',loginSenhaAluno:'SenhaTeste123!'};
             for(const [id,value] of Object.entries(fields))document.getElementById(id).value=value;
             document.getElementById(signup?'lembrarCadastro':'lembrarLogin').checked=remember;
+            if(signup){TermosUI.dados={versao:'2026-11-15'};TermosUI.lida='2026-11-15';const check=document.getElementById('aceiteTermos');check.disabled=false;check.checked=true;}
             window._pending=(signup?confirmarCadastro:fazerLoginAluno)({preventDefault(){}});
         }''',dict(signup=signup,remember=remember))
 

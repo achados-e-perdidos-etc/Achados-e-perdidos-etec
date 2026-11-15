@@ -506,6 +506,7 @@ class SecretariaApp(ModeracaoDesktop,FerramentasDesktop,FormularioDesktop):
         if item.get('solicitado_por'): info_texto += f"\n🚨 SOLICITADO POR: {item.get('solicitado_por')} (RM: {item.get('rm_aluno', '')})"
 
         tk.Label(frame_info, text=info_texto, justify="left", bg=COR_BG_CARD, fg=COR_TEXTO_PRINCIPAL, font=("Segoe UI", 11)).pack(padx=20, pady=15, anchor="w")
+        if st=='SOLICITADO':ttk.Button(frame_info,text='Ver perfil do solicitante',command=lambda:self.ver_perfil_aluno_desktop(item_id=item['id'])).pack(pady=6)
 
         tk.Label(modal, text="Galeria de Fotos:", font=("Segoe UI", 12, "bold"), bg=COR_BG_GERAL, fg=COR_TEXTO_PRINCIPAL).pack(pady=(10, 5), anchor="w", padx=20)
         frame_fotos = tk.Frame(modal, bg=COR_BG_GERAL)

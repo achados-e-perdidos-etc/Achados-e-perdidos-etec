@@ -66,6 +66,7 @@ class FerramentasDesktop:
         ttk.Button(self.tab_mural,text='Comparar com objetos / preparar entrega',command=self.comparar_mural).pack(pady=6)
         pesquisa=tk.StringVar();entry=ttk.Entry(self.listbox_chat.master,textvariable=pesquisa);entry.pack(fill='x',before=self.listbox_chat,pady=5);self.busca_conversas=pesquisa
         pesquisa.trace_add('write',lambda *a:self.filtrar_conversas());self.conversas_atuais=[]
+        ttk.Button(self.tab_chat,text='Ver perfil e foto do aluno selecionado',command=self.ver_perfil_aluno_desktop).pack(side='bottom',pady=4)
         self.construir_preferencias_atalhos()
 
     def construir_preferencias_atalhos(self):
@@ -234,9 +235,33 @@ class FerramentasDesktop:
             if busca not in normalizar(str(conta.get('nome_aluno'))+' '+str(conta.get('rm_aluno'))+' '+str(conta.get('email_aluno'))):continue
             self.listbox_chat.insert('end',f"{conta.get('nao_lidas',0)} novas · {conta['nome_aluno']} (RM: {conta['rm_aluno']})");self.mapa_conversas.append(conta)
 
+    @assincrono
+    def ver_perfil_aluno_desktop(self,email=None,item_id=None):
+        email=email or getattr(self,'email_chat_ativo',None)
+        if item_id is None and not email:return messagebox.showinfo('Perfil','Selecione uma conversa ou um objeto solicitado.')
+        modal=self.janela_ferramenta('Perfil para conferência','520x530')
+        label=tk.Label(modal,text='Consultando perfil…',bg=BG,fg=FG,wraplength=470);label.pack(pady=18,padx=18)
+        tk.Label(modal,text='Foto informada pelo usuário. Confira também documento, RM e detalhes da retirada. A foto não comprova identidade.',bg=BG,fg=FG,wraplength=470).pack(padx=18,pady=10)
+        try:
+            res=yield Trabalho(self.chamar_api,'POST','/api/secretaria/perfil',json={'item_id':item_id} if item_id is not None else {'email':email},headers=self.get_auth_headers())
+            if not modal.winfo_exists():return
+            perfil=res.json()['perfil'];label.configure(text=f"{perfil['nome']}\nRM: {perfil['rm']}\n{perfil['email']}")
+            if not perfil.get('foto_id'):tk.Label(modal,text='Esta conta ainda não cadastrou foto.',bg=BG,fg=FG).pack(pady=10);return
+            resposta=yield Trabalho(self.chamar_api,'GET','/api/perfil/foto/'+perfil['foto_id'],headers=self.get_auth_headers_get())
+            if not modal.winfo_exists():return
+            with Image.open(io.BytesIO(resposta.content)) as imagem:foto=ImageTk.PhotoImage(imagem.copy(),master=modal)
+            retrato=tk.Label(modal,image=foto,bg=BG);retrato.image=foto;retrato.pack(pady=12)
+        except Exception as erro:
+            if modal.winfo_exists():label.configure(text='Não foi possível consultar o perfil. '+str(erro))
+
     def abrir_retirada_codigo(self):
         modal=self.janela_ferramenta('Confirmar retirada com código','650x760')
         id=self.campo_ferramenta(modal,'Número do objeto');codigo=self.campo_ferramenta(modal,'Código de seis dígitos');nome=self.campo_ferramenta(modal,'Nome completo, caso o aluno use aceite digitado')
+        def perfil():
+            try:item_id=id_etiqueta(id.get())
+            except ValueError as erro:return messagebox.showwarning('Objeto',str(erro),parent=modal)
+            self.ver_perfil_aluno_desktop(item_id=item_id)
+        ttk.Button(modal,text='Ver perfil do solicitante',command=perfil).pack(pady=3)
         tk.Label(modal,text='Conferir presencialmente a identidade e os detalhes do objeto.\nO código não comprova propriedade.',bg=BG,fg='#fbbf24').pack(pady=9)
         conferido=tk.BooleanVar(value=False);tk.Checkbutton(modal,text='Conferi a identidade e o objeto',variable=conferido,bg=BG,fg=FG,selectcolor=CARD).pack()
         imagem=Image.new('RGB',(700,330),'white');draw=ImageDraw.Draw(imagem);assinou={'ok':False,'ponto':None}

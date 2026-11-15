@@ -1,3 +1,4 @@
+from utils.perfis import SCHEMA_PERFIS
 from utils.catalogo import SCHEMA_CATALOGO
 from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
 from utils.uploads import SCHEMA_UPLOADS
@@ -69,6 +70,8 @@ from blueprints.notificacoes import notificacoes_bp
 app.register_blueprint(notificacoes_bp)
 from blueprints.cadastros import cadastros_bp
 app.register_blueprint(cadastros_bp)
+from blueprints.perfis import perfis_bp
+app.register_blueprint(perfis_bp)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
 
@@ -279,6 +282,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS alunos (
             email VARCHAR(150) PRIMARY KEY, nome VARCHAR(100) NOT NULL, rm VARCHAR(20) NOT NULL, senha_hash TEXT NOT NULL
         );''')
+        cursor.execute(SCHEMA_PERFIS)
         cursor.execute(SCHEMA_ACESSO_PROFESSORES)
         cursor.execute(SCHEMA_ENTREGAS)
         cursor.execute(SCHEMA_NOTIFICACOES)
@@ -531,12 +535,17 @@ def env_cod():
 
 @app.route('/api/auth/cadastrar', methods=['OPTIONS', 'POST'])
 def cad_aluno():
-    d = request.json or {}
+    if request.method=='OPTIONS':return jsonify(success=True),200
+    d = request.get_json(silent=True)
+    from utils.perfis import validar_aceite, registrar_aceite
+    erro=validar_aceite(d)
+    if erro:return jsonify(success=False,message=erro),400
     val, email = validar_email_institucional(d.get('email', ''))
     if not val: return jsonify({"success": False, "message": email}), 400
     cod, nome, rm, senha = d.get('codigo', '').strip(), d.get('nome', '').strip(), d.get('rm', '').strip(), d.get('senha', '').strip()
     if not rm:
         rm = 'PROFESSOR' if any(email.endswith(d) for d in ['@cps.sp.gov.br', '@etec.sp.gov.br']) else 'ALUNO'
+    conn=None
     try:
         conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
         c.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
@@ -546,12 +555,17 @@ def cad_aluno():
         c.execute("SELECT email FROM alunos WHERE email = %s;", (email,))
         if c.fetchone(): return jsonify({"success": False, "message": "E-mail já cadastrado."}), 400
         c.execute("INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", (email, nome, rm, generate_password_hash(senha)))
+        registrar_aceite(c,email)
         c.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
-        conn.commit(); c.close(); conn.close()
+        conn.commit(); c.close()
         return jsonify({"success": True, "token": gerar_token_aluno(email, nome, rm), "aluno": {"nome": nome, "rm": rm, "email": email}})
     except Exception:
+        if conn:conn.rollback()
         logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
         return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+
+    finally:
+        if conn:conn.close()
 
 @app.route('/api/auth/login-aluno', methods=['OPTIONS', 'POST'])
 def log_aluno():

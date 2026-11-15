@@ -11,6 +11,8 @@ Arquivos distribuídos localmente para permitir abertura offline e fixar versõe
 
 As bibliotecas são cópias de distribuição; os avisos de licença foram preservados. A fonte da UI não contém dados de usuário.
 
+`tests/fixtures/rosto_teste.jpg` é um recorte da foto da astronauta Eileen Collins, da NASA (domínio público), distribuída como `astronaut.png` no scikit-image v0.19.3: https://github.com/scikit-image/scikit-image/blob/v0.19.3/skimage/data/astronaut.png. Usada apenas nos testes locais de enquadramento; não representa uma conta real do portal.
+
 Para regenerar o CSS após acrescentar classes Tailwind, na raiz do projeto:
 
 ```sh

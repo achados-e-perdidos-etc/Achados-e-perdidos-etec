@@ -52,7 +52,7 @@ def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeyp
         if '/image/upload/' in path:
             out=io.BytesIO();Image.new('RGB',(30,30),'blue').save(out,'JPEG');return SimpleNamespace(status_code=200,ok=True,content=out.getvalue())
         response=server.app.test_client().open(path+('?' +urlsplit(url).query if urlsplit(url).query else ''),method=method,headers=kwargs.get('headers',{}),json=kwargs.get('json'),data=kwargs.get('data'))
-        return SimpleNamespace(status_code=response.status_code,ok=200<=response.status_code<300,json=lambda:response.json,text=response.get_data(as_text=True),content=response.data,headers=response.headers)
+        return SimpleNamespace(status_code=response.status_code,ok=200<=response.status_code<300,json=lambda:response.json,text=response.data.decode('utf-8',errors='replace'),content=response.data,headers=response.headers)
     monkeypatch.setattr(desktop.requests,'request',transport)
     from blueprints import uploads
     from services import cloudinary_service
@@ -116,9 +116,17 @@ def test_desktop_moderacao_professores_login_pessoal_e_revogacao(db,tela,monkeyp
         assert 'Caderno espiral azul' in (Path(app.impressoes_temporarias[-1].name)/'documento.html').read_text()
         app.limpar_impressoes()
         retirada=item(db);code=codigo(server.app.test_client(),retirada)
+        from tests.test_perfis_termos import ROSTO,uri
+        assert server.app.test_client().post('/api/perfil/foto',headers=auth(),json={'foto':uri(ROSTO.read_bytes())}).status_code==200
         app.abrir_retirada_codigo();janela=next(w for w in tela.winfo_children() if isinstance(w,tk.Toplevel) and w.title()=='Confirmar retirada com código')
         entries=[w for w in filhos(janela) if w.winfo_class()=='TEntry']
         for campo,valor in zip(entries,[str(retirada),code,'Aluno de Teste']):campo.insert(0,valor)
+        next(w for w in filhos(janela) if w.winfo_class()=='TButton' and w.cget('text')=='Ver perfil do solicitante').invoke();aguardar()
+        perfil=next(w for w in tela.winfo_children() if isinstance(w,tk.Toplevel) and w.title()=='Perfil para conferência')
+        assert any('a@aluno.cps.sp.gov.br' in str(w.cget('text')) for w in filhos(perfil) if w.winfo_class()=='Label')
+        assert any(getattr(w,'image',None) for w in filhos(perfil))
+        assert ('GET','/api/perfil/foto/'+scalar(db,'SELECT id::text FROM perfis_fotos')) in calls
+        perfil.destroy()
         next(w for w in filhos(janela) if w.winfo_class()=='Checkbutton').invoke()
         next(w for w in filhos(janela) if w.winfo_class()=='TButton' and w.cget('text')=='Usar nome digitado').invoke()
         next(w for w in filhos(janela) if w.winfo_class()=='TButton' and w.cget('text')=='Confirmar entrega').invoke();aguardar()

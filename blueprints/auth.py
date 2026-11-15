@@ -181,7 +181,11 @@ def enviar_codigo():
 @auth_bp.route('/api/auth/cadastrar', methods=['OPTIONS', 'POST'])
 def cadastrar_aluno():
     """Valida o código de 6 dígitos e cadastra o aluno com senha criptografada."""
-    data = request.json or {}
+    if request.method=='OPTIONS':return jsonify(success=True),200
+    data = request.get_json(silent=True)
+    from utils.perfis import validar_aceite,registrar_aceite
+    erro=validar_aceite(data)
+    if erro:return jsonify(success=False,message=erro),400
     email_bruto = data.get('email', '')
     codigo = data.get('codigo', '').strip()
     nome = data.get('nome', '').strip()
@@ -196,6 +200,7 @@ def cadastrar_aluno():
     if not all([codigo, nome, rm, senha]):
         return jsonify({"success": False, "message": "Todos os campos são obrigatórios."}), 400
 
+    conn=None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -214,10 +219,10 @@ def cadastrar_aluno():
             "INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", 
             (email, nome, rm, senha_hash)
         )
+        registrar_aceite(cursor,email)
         cursor.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
         conn.commit()
         cursor.close()
-        conn.close()
         
         token = gerar_token_aluno(email, nome, rm)
         return jsonify({
@@ -225,8 +230,11 @@ def cadastrar_aluno():
             "token": token, 
             "aluno": {"nome": nome, "rm": rm, "email": email}
         })
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    except Exception:
+        if conn:conn.rollback()
+        return jsonify(success=False,message="Não foi possível criar a conta. Tente novamente."),500
+    finally:
+        if conn:conn.close()
 
 @auth_bp.route('/api/auth/login-aluno', methods=['OPTIONS', 'POST'])
 def login_aluno():

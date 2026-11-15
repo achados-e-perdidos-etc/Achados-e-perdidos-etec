@@ -673,6 +673,7 @@
 <link rel="stylesheet" href="/comprovantes.css">
 <link rel="stylesheet" href="/ferramentas-secretaria.css">
 <link rel="stylesheet" href="/preferencias.css">
+<link rel="stylesheet" href="/perfil.css">
 <script src="/tema.js"></script>
 </head>
 <body class="secretaria-experiencia">
@@ -1599,6 +1600,7 @@
     }
 
     function sairSecretaria() {
+      if(typeof PerfilUI!=='undefined')PerfilUI.limpar();
       sessionStorage.removeItem('secretaria_token');
       if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();
       localStorage.removeItem('secretaria_token');
@@ -3217,6 +3219,7 @@
 <script src="/comprovantes.js"></script>
 <script src="/ferramentas-secretaria.js"></script>
 <script src="/preferencias.js"></script>
+<script src="/perfil.js"></script>
 </body>
 </html>
 
