@@ -6,6 +6,20 @@ O envio Web Push foi implementado na proposta #25. As demais pendências conheci
 
 Registro em 04/11/2026. Repositório: https://github.com/achados-e-perdidos-etc/Achados-e-perdidos-etec
 
+## Teste de carga adiado a pedido do proprietário — 15/11/2026
+
+Fonte: https://www.instagram.com/reel/DfnN4jgjrwF/ . Foi possível ler a legenda com as orientações; não foi obtido o vídeo.
+
+- [ ] Executar k6 com 100 usuários virtuais em banco/servidor locais descartáveis.
+- [ ] Aumentar para 1.000 usuários, registrando taxa de erros, vazão e latências p95/p99, além dos recursos da máquina.
+- [ ] Investigar consultas com EXPLAIN/ANALYZE e criar índices somente quando as medições justificarem.
+- [ ] Avaliar cache limitado de dados públicos, com invalidação e testes de privacidade; não armazenar dados de contas em cache compartilhado.
+- [ ] Preparar sinalização de respostas acima de 1 segundo, preservando dados pessoais e evitando excesso de logs.
+
+O trabalho parou na preparação: k6 1.0.0 foi disponibilizado no ambiente e três roteiros preliminares foram esboçados. **Nenhuma carga de 100 ou 1.000 usuários foi executada; não há resultado de capacidade nem otimização de cache/índices/alertas validada nesta etapa.** Os rascunhos ficaram fora do repositório, em `/workspace/carga-rascunhos-adiados`, sem executar o lançador. A tarefa permanece adiada até novo pedido do proprietário.
+
+Ponto a verificar na retomada: existe limite padrão por IP de 300 requisições/hora. Separar a avaliação desse limite (inclusive usuários em Wi-Fi compartilhado) do benchmark de capacidade; não remover a proteção do aplicativo real para obter números melhores. As medições locais não comprovam capacidade de uma hospedagem futura.
+
 ## Prioridade atual definida pelo usuário
 
 Corrigir as pendências do projeto. Hospedagem e migração de banco adiadas por orientação do usuário. Esta primeira etapa está preparada para revisão, sem publicação ou alteração do banco real.

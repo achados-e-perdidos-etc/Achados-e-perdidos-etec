@@ -15,3 +15,5 @@ Os antigos `blueprints/ai.py`, `blueprints/frontend.py` e `blueprints/ai_vision_
 ## Pendências adiadas
 
 Por orientação do proprietário, integração/publicação das propostas, hospedagem/migração, validação por lista oficial de RM, testes com credenciais reais e revisão visual completa em monitores grandes estão adiados por inviabilidade atual. Preserve os registros, mas não os apresente como próximos passos ativos quando ele perguntar por pendências. Responda distinguindo pendências ativas de tarefas adiadas; não afirme que tarefas adiadas foram concluídas. Reabra esse trabalho somente quando o proprietário indicar que já é viável.
+
+O teste de carga do Reel (k6 com 100/1.000 usuários, consultas/índices, cache público e respostas acima de 1 segundo) foi explicitamente adiado em 15/11/2026. Estado e roteiro de retomada em `pendencias.md`. Nenhum teste de capacidade foi executado; não tratar os esboços como resultados ou iniciar a carga até novo pedido.
