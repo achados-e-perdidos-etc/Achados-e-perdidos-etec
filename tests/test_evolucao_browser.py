@@ -31,8 +31,8 @@ def portal(browser,origin):
     context=browser.new_context(viewport={'width':390,'height':844},has_touch=True)
     context.add_init_script('sessionStorage.setItem("splash_ja_exibido","true");sessionStorage.setItem("aluno_token",'+json.dumps(auth()['Authorization'][7:])+');sessionStorage.setItem("aluno_dados",'+json.dumps(json.dumps({'nome':'Aluno','email':'a@aluno.cps.sp.gov.br','rm':'12345'}))+');')
     page=context.new_page();page.emulate_media(reduced_motion='reduce');errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-    page.goto(origin+'/');page.wait_for_function("typeof alunoSessao!=='undefined' && alunoSessao?.email==='a@aluno.cps.sp.gov.br'")
-    page.wait_for_function("document.getElementById('alunoItemCat').options.length>0")
+    page.goto(origin+'/');page.wait_for_function("()=>(typeof alunoSessao!=='undefined' && alunoSessao?.email==='a@aluno.cps.sp.gov.br')")
+    page.wait_for_function("()=>(document.getElementById('alunoItemCat').options.length>0)")
     return context,page,errors
 
 
@@ -40,11 +40,11 @@ def test_pwa_reabre_offline_formulario_real_e_sincroniza_sem_duplicar(runtime):
     browser,origin,db=runtime;context,page,errors=portal(browser,origin)
     try:
         page.evaluate('navigator.serviceWorker.ready')
-        page.wait_for_function('navigator.serviceWorker.controller!==null')
+        page.wait_for_function('()=>(navigator.serviceWorker.controller!==null)')
         context.set_offline(True);page.reload()
-        page.wait_for_function("document.getElementById('loginAlunoScreen').classList.contains('hidden')")
+        page.wait_for_function("()=>(document.getElementById('loginAlunoScreen').classList.contains('hidden'))")
         assert page.locator('#alunoItemCat option').count()>0
-        page.wait_for_function("getComputedStyle(document.getElementById('loadingOverlay')).visibility==='hidden'")
+        page.wait_for_function("()=>(getComputedStyle(document.getElementById('loadingOverlay')).visibility==='hidden')")
         assert page.locator('#videoAbertura').get_attribute('src') is None
         page.evaluate('abrirModalCadastrarAluno()')
         page.locator('#alunoItemNome').fill('Estojo offline')
@@ -53,12 +53,12 @@ def test_pwa_reabre_offline_formulario_real_e_sincroniza_sem_duplicar(runtime):
         page.locator('#alunoItemLocal').fill('Biblioteca')
         page.locator('#offlineConsent-encontrado').check()
         page.locator('#btnSalvarAlunoItem').click()
-        page.wait_for_function("document.getElementById('modalCadastrarAluno').classList.contains('hidden')")
+        page.wait_for_function("()=>(document.getElementById('modalCadastrarAluno').classList.contains('hidden'))")
         assert page.evaluate('FilaOffline.listar().then(r=>r.length)')==1
         assert scalar(db,'SELECT count(*) FROM itens')==0
         context.set_offline(False)
         page.evaluate('FilaOffline.sincronizar()')
-        page.wait_for_function('!FilaOffline.busy')
+        page.wait_for_function('()=>(!FilaOffline.busy)')
         assert page.evaluate('FilaOffline.listar().then(r=>r.length)')==0
         assert scalar(db,'SELECT count(*) FROM itens')==1
         assert scalar(db,'SELECT aprovado FROM itens') is False
@@ -78,7 +78,7 @@ def test_fila_com_fotos_retoma_e_perda_da_resposta_nao_duplica(runtime):
           const r=await original(url,options);if(!lost&&String(url).endsWith('/api/itens/cadastrar-aluno')){lost=true;throw Error('Resposta perdida');}return r;};}''')
         context.set_offline(False)
         page.evaluate('FilaOffline.sincronizar()')
-        page.wait_for_function('!FilaOffline.busy')
+        page.wait_for_function('()=>(!FilaOffline.busy)')
         assert scalar(db,'SELECT count(*) FROM itens')==1
         assert page.evaluate('FilaOffline.listar().then(r=>r.length)')==1
         page.evaluate('FilaOffline.sincronizar()')
@@ -130,7 +130,7 @@ def test_aluno_obtem_codigo_secretaria_confirma_aceite_e_consulta_historico(runt
         page.get_by_role('button',name='Usar nome digitado',exact=True).click()
         page.screenshot(path=str(output/'secretaria-aceite-retirada.png'),full_page=True)
         page.get_by_role('button',name='Confirmar entrega',exact=True).click()
-        page.wait_for_function("document.querySelector('.evolucao-dialog [role=status]').textContent.includes('Entrega confirmada')")
+        page.wait_for_function("()=>(document.querySelector('.evolucao-dialog [role=status]').textContent.includes('Entrega confirmada'))")
         assert scalar(db,'SELECT count(*) FROM entregues')==1
         page.locator('.ev-close').click();page.evaluate('RetiradaSecretaria.historico()')
         page.locator('dialog[open]').get_by_label('Número do objeto',exact=True).fill(str(id));page.get_by_role('button',name='Consultar',exact=True).click()

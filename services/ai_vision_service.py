@@ -87,6 +87,10 @@ def analisar_imagem_com_ia(imagem_entrada):
             if not mime_type:
                 return None, 'Use uma imagem PNG, JPEG ou WEBP.'
             image.verify()
+        # O provedor recebe só pixels normalizados, sem EXIF/GPS ou animações.
+        from utils.imagens import preparar_imagem
+        img_bytes=preparar_imagem(img_bytes,lado=1600,limite=MAX_IMAGE_BYTES)
+        mime_type='image/jpeg'
     except Exception:
         return None, 'Não foi possível ler a imagem. Selecione uma foto válida.'
 

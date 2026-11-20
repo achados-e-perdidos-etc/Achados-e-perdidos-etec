@@ -96,7 +96,7 @@
                         <input type="text" id="cadNome" autocomplete="name" required placeholder="Nome Completo" class="col-span-2 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                         <input type="text" id="cadRM" inputmode="numeric" required placeholder="Seu RM" class="col-span-1 w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-red-500">
                     </div>
-                    <input type="password" id="cadSenha" autocomplete="new-password" required placeholder="Crie uma Senha Forte" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
+                    <input type="password" id="cadSenha" minlength="12" maxlength="128" autocomplete="new-password" required placeholder="Crie uma senha (mínimo 12 caracteres)" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <label class="auth-remember auth-remember-compact" for="lembrarCadastro"><input type="checkbox" id="lembrarCadastro"><span><strong>Lembrar de mim neste dispositivo</strong></span></label>
                     <div class="termos-cadastro">
                         <button id="lerTermos" type="button" class="ev-action">Ler os Termos de Uso</button>
@@ -115,7 +115,7 @@
                 </div>
                 <div id="passo2Recuperar" class="hidden space-y-3">
                     <input type="text" id="recCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="Código recebido" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 text-center tracking-widest font-black text-base">
-                    <input type="password" id="recSenha" autocomplete="new-password" required placeholder="Nova Senha" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
+                    <input type="password" id="recSenha" minlength="12" maxlength="128" autocomplete="new-password" required placeholder="Nova Senha" class="w-full bg-[#0d1117] border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500">
                     <button type="submit" id="btnConfirmarRec" class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg transition">Atualizar Senha</button>
                 </div>
                 <button type="button" onclick="alternarTelaAuth('login')" class="w-full text-xs font-semibold text-slate-400 hover:text-white pt-1">Voltar ao Login</button>

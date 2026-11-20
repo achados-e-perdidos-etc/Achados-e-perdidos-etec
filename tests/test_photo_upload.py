@@ -89,3 +89,9 @@ def test_edicao_persiste_fotos_e_omissao_preserva_anteriores(implementation,phot
             assert row['foto']==expected
             assert json.loads(row['fotos_json'])==([expected] if expected else [])
     finally:db.close()
+
+
+@pytest.fixture(autouse=True)
+def estado_de_sessao_isolado(monkeypatch):
+    """Este módulo testa contratos sem PostgreSQL; revogação real tem suíte própria."""
+    monkeypatch.setattr("services.autenticacao_service.sessao_valida",lambda payload:True)

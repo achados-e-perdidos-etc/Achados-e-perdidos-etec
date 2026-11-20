@@ -6,6 +6,7 @@ from functools import wraps
 from datetime import datetime, timedelta, timezone
 from flask import request, jsonify, make_response
 import jwt
+import time,secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import JWT_SECRET
 from utils.professores import email_de_professor
@@ -25,10 +26,8 @@ def token_required(f):
         auth_header = request.headers.get('Authorization', '')
         if auth_header:
             parts = auth_header.split()
-            if len(parts) >= 2 and parts[0].lower() == 'bearer':
+            if len(parts) == 2 and parts[0].lower() == 'bearer':
                 token = parts[1].strip('"\'')
-            elif len(parts) == 1:
-                token = parts[0].strip('"\'')
 
         if not token:
             token = request.headers.get('x-access-token', '').strip('"\'')
@@ -44,11 +43,14 @@ def token_required(f):
                 JWT_SECRET, 
                 algorithms=["HS256"], 
                 leeway=timedelta(seconds=60), 
-                options={"verify_exp": True, "require": ["exp", "email", "role"]}
+                audience='etec-portal',issuer='etec-achados',
+                options={"verify_exp": True, "require": ["exp", "email", "role", "iat", "jti"]}
             )
-            if payload.get("auth_version") != 2:
+            if payload.get("auth_version") != 3:
                 return jsonify({"success": False, "message": "Faça login novamente para renovar sua sessão.", "expired": True}), 401
             request.user = payload
+            if (not isinstance(payload['email'],str) or not 3<=len(payload['email'])<=150
+                or type(payload['iat']) not in (int,float) or not isinstance(payload['jti'],str) or len(payload['jti'])!=32):raise ValueError()
         except jwt.ExpiredSignatureError:
             return jsonify({
                 "success": False, 
@@ -58,8 +60,15 @@ def token_required(f):
         except Exception:
             return jsonify({
                 "success": False, 
+                "expired": True,
                 "message": "Token inválido. Faça login novamente."
             }), 401
+
+        from services.autenticacao_service import sessao_valida
+        try:
+            if not sessao_valida(payload):return jsonify(success=False,expired=True,message='Sessão encerrada. Entre novamente.'),401
+        except Exception:return jsonify(success=False,message='Não foi possível validar sua sessão. Tente novamente.'),503
+        if request.is_json and request.get_data(cache=True) and not isinstance(request.get_json(silent=True),dict):return jsonify(success=False,message='Envie um objeto JSON válido.'),400
 
         # Permissions are checked on every request, so revocation also affects old tokens.
         request.user.pop('acesso_delegado', None)
@@ -162,24 +171,30 @@ def pode_acessar_chat(rm):
         and str(rm).strip() == proprio_rm
     )
 
-def gerar_token_aluno(email, nome, rm, dias_validade=30):
+def gerar_token_aluno(email, nome, rm, dias_validade=7):
     """
     Gera um token JWT para sessão do aluno.
     """
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
     return jwt.encode(
-        {"email": email, "nome": nome, "rm": rm, "role": "aluno", "auth_version": 2, "exp": exp},
+        {"email": email, "nome": nome, "rm": rm, "role": "aluno", "auth_version": 3, "exp": exp,"iat":time.time(),"jti":secrets.token_hex(16),"iss":"etec-achados","aud":"etec-portal"},
         JWT_SECRET,
         algorithm="HS256"
     )
 
-def gerar_token_secretaria(email, dias_validade=7):
+def atualizar_identidade_token(user,rm):
+    """Alterar o RM não cria outra sessão nem contorna uma revogação concorrente."""
+    claims={k:user[k] for k in ('email','nome','role','auth_version','exp','iat','jti','iss','aud')}
+    claims['rm']=rm
+    return jwt.encode(claims,JWT_SECRET,algorithm='HS256')
+
+def gerar_token_secretaria(email, dias_validade=1/3):
     """
     Gera um token JWT para sessão da secretaria escolar.
     """
     exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
     return jwt.encode(
-        {"user": "secretaria", "role": "secretaria", "email": email, "auth_version": 2, "exp": exp},
+        {"user": "secretaria", "role": "secretaria", "email": email, "auth_version": 3, "exp": exp,"iat":time.time(),"jti":secrets.token_hex(16),"iss":"etec-achados","aud":"etec-portal"},
         JWT_SECRET,
         algorithm="HS256"
     )

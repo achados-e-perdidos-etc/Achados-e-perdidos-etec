@@ -116,7 +116,7 @@ def cadastro(request,db,monkeypatch):
 def dados_cadastro(db):
     email='novo@aluno.cps.sp.gov.br'
     with db() as co:
-        with co.cursor() as c:c.execute('INSERT INTO codigos_auth(email,codigo,expiracao) VALUES(%s,%s,%s)',(email,'123456',datetime.now()+timedelta(minutes=5)))
+        with co.cursor() as c:c.execute('INSERT INTO codigos_auth(email,codigo,expiracao) VALUES(%s,%s,%s)',(email,__import__('services.autenticacao_service',fromlist=['resumo_codigo']).resumo_codigo(email,'cadastro','123456'),datetime.now()+timedelta(minutes=5)))
     return dict(email=email,nome='Aluno Novo',rm='12345',senha='Senha-local-de-teste-123!',codigo='123456',aceite_termos=True,versao_termos=VERSAO_TERMOS)
 
 
@@ -144,7 +144,7 @@ def test_falha_no_aceite_reverte_conta_e_preserva_codigo(cadastro,db,monkeypatch
     client,_=cadastro;payload=dados_cadastro(db)
     def falhar(*args):raise RuntimeError('Falha simulada antes do aceite')
     monkeypatch.setattr('utils.perfis.registrar_aceite',falhar)
-    assert client.post('/api/auth/cadastrar',json=payload).status_code==500
+    assert client.post('/api/auth/cadastrar',json=payload).status_code==503
     assert scalar(db,'SELECT count(*) FROM alunos WHERE email=%s',(payload['email'],))==0
     assert scalar(db,'SELECT count(*) FROM codigos_auth')==1
 

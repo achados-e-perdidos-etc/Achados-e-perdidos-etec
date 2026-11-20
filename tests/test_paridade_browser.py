@@ -13,19 +13,19 @@ def test_web_filtra_sem_acentos_abre_id_etiqueta_documentos_e_png(runtime):
     browser,origin,db=runtime;id=inserir(db,nome='Óculos azul',categoria='ACESSÓRIOS');inserir(db,nome='Calculadora')
     context,page,errors=admin(browser,origin)
     try:
-        page.wait_for_function('itensSec.length===2')
-        page.locator('#inputBusca').fill('oculos');page.wait_for_function("document.querySelectorAll('#gridItensContainer .item-card').length===1")
+        page.wait_for_function('()=>(itensSec.length===2)')
+        page.locator('#inputBusca').fill('oculos');page.wait_for_function("()=>(document.querySelectorAll('#gridItensContainer .item-card').length===1)")
         assert 'Óculos azul' in page.locator('#gridItensContainer').inner_text()
         page.locator('#secFiltroLocal').fill('patio');page.locator('#secFiltroInicio').fill('2026-11-01');page.locator('#secFiltroFim').fill('2026-11-07')
         assert page.locator('#gridItensContainer .item-card').count()==1
         page.locator('#secBuscaID').fill('ETEC-ITEM-'+str(id));page.get_by_role('button',name='Abrir por ID',exact=True).click()
         assert page.locator('#modalDetalhesItem').is_visible()
         page.get_by_role('button',name='Etiqueta individual',exact=True).click()
-        page.wait_for_function("Acessibilidade.ativo?.tagName==='DIALOG'")
+        page.wait_for_function("()=>(Acessibilidade.ativo?.tagName==='DIALOG')")
         page.keyboard.press('Tab');assert page.evaluate("document.querySelector('dialog[open]').contains(document.activeElement)")
         with page.expect_download() as download:page.get_by_role('button',name='Baixar etiqueta PNG',exact=True).click()
         assert download.value.suggested_filename=='etiqueta-'+str(id)+'.png'
-        page.keyboard.press('Escape');page.wait_for_function("!document.querySelector('dialog[open]')")
+        page.keyboard.press('Escape');page.wait_for_function("()=>(!document.querySelector('dialog[open]'))")
         page.evaluate("fecharModal('modalDetalhesItem')")
         page.evaluate('abrirModalRelatorioPDF()');page.locator('#tipoRelatorioPDF').select_option('INVENTARIO')
         with page.expect_popup() as popup:page.get_by_role('button',name='Gerar / Imprimir em PDF',exact=False).click()
@@ -53,7 +53,7 @@ def test_web_mural_usa_matches_do_servidor_e_prepara_entrega(runtime):
     try:
         canonical=server.app.test_client().get('/api/smart-match',headers=auth('secretaria@etec.sp.gov.br',True)).json
         page.evaluate("trocarAba('mural')")
-        page.wait_for_function('PainelParidade.matches.size===1')
+        page.wait_for_function('()=>(PainelParidade.matches.size===1)')
         page.locator('#tabelaMuralBody button').first.click()
         assert 'Calculadora Casio azul' in page.locator('#smartMatchItensContainer').inner_text()
         assert page.evaluate('[...PainelParidade.matches.values()][0][0].score')==canonical['resultados'][0]['matches'][0]['score']
@@ -72,9 +72,9 @@ def test_foto_camera_web_captura_e_libera_stream_sem_dispositivo_fisico(runtime)
         page.evaluate('abrirModalCadastrar()')
         page.get_by_role('button',name='Fotografar com câmera',exact=True).click()
         page.get_by_role('button',name='Ativar câmera',exact=True).click()
-        page.wait_for_function("document.querySelector('dialog[open] video').videoWidth>0")
+        page.wait_for_function("()=>(document.querySelector('dialog[open] video').videoWidth>0)")
         page.get_by_role('button',name='Usar esta foto',exact=True).click()
-        page.wait_for_function('fotosBase64Upload.length===1')
+        page.wait_for_function('()=>(fotosBase64Upload.length===1)')
         assert page.locator('#secFotosPreview img').count()==1
         assert page.evaluate("cameraTeste.getTracks().every(t=>t.readyState==='ended')")
         page.get_by_role('button',name='Remover foto 1',exact=True).click()

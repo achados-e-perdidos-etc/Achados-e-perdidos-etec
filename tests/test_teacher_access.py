@@ -132,3 +132,9 @@ def test_conta_inexistente_nao_cria_pedido(env):
     response=env['client'].post('/api/professores/acesso',headers=headers('inexistente@etec.sp.gov.br'))
     assert response.status_code==403
     assert env['db'].execute('SELECT COUNT(*) FROM professores_acesso').fetchone()[0]==0
+
+
+@pytest.fixture(autouse=True)
+def estado_de_sessao_isolado(monkeypatch):
+    """Este módulo testa contratos sem PostgreSQL; revogação real tem suíte própria."""
+    monkeypatch.setattr("services.autenticacao_service.sessao_valida",lambda payload:True)

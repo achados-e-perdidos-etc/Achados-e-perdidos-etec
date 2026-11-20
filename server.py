@@ -1,3 +1,4 @@
+from services.autenticacao_service import SCHEMA_AUTH
 from utils.perfis import SCHEMA_PERFIS
 from utils.catalogo import SCHEMA_CATALOGO
 from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
@@ -27,7 +28,6 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -73,7 +73,8 @@ app.register_blueprint(cadastros_bp)
 from blueprints.perfis import perfis_bp
 app.register_blueprint(perfis_bp)
 
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
+from utils.http_security import instalar
+instalar(app)
 
 # Limites por IP; em produção multi-worker, configure storage compartilhado (ex.: Redis).
 limiter = Limiter(get_remote_address, app=app, default_limits=["300 per hour"], storage_uri=os.environ.get("RATELIMIT_STORAGE_URI", "memory://"), headers_enabled=True)
@@ -98,11 +99,11 @@ def falha_upload_fotos(error):
 
 @app.errorhandler(413)
 def payload_too_large(error):
-    return jsonify({"success": False, "error": {"code": "PAYLOAD_TOO_LARGE", "message": "A imagem ou requisição excede o limite de 8 MB."}}), 413
+    return jsonify({"success": False, "message":"A requisição excede o tamanho permitido para esta operação.","error": {"code": "PAYLOAD_TOO_LARGE", "message": "A requisição excede o tamanho permitido para esta operação."}}), 413
 
 @app.errorhandler(429)
 def rate_limit_exceeded(error):
-    return jsonify({"success": False, "error": {"code": "RATE_LIMITED", "message": "Muitas tentativas em pouco tempo. Aguarde e tente novamente."}}), 429
+    return jsonify({"success": False, "message":"Muitas tentativas em pouco tempo. Aguarde e tente novamente.","error": {"code": "RATE_LIMITED", "message": "Muitas tentativas em pouco tempo. Aguarde e tente novamente."}}), 429
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(error):
@@ -160,21 +161,10 @@ def handle_preflight():
             abort(404)
     from services.matches_service import iniciar
     iniciar()
-    if request.method == "OPTIONS":
-        res = jsonify({"success": True})
-        res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Idempotency-Key, X-Upload-Offset'
-        res.headers['Access-Control-Max-Age'] = '86400'
-        return res, 200
-
 @app.after_request
 def after_request(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'same-origin'
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, x-access-token, Idempotency-Key, X-Upload-Offset'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
     if request.path.endswith('.html') or request.path == '/' or request.path.endswith('.js'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -184,13 +174,7 @@ def after_request(response):
 # ============================================================
 # SEGURANÇA E TOKENS JWT
 # ============================================================
-def gerar_token_aluno(email, nome, rm, dias_validade=30):
-    exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
-    return jwt.encode({"email": email, "nome": nome, "rm": rm, "role": "aluno", "auth_version": 2, "exp": exp}, JWT_SECRET, algorithm="HS256")
-
-def gerar_token_secretaria(email, dias_validade=7):
-    exp = datetime.now(timezone.utc) + timedelta(days=dias_validade)
-    return jwt.encode({"user": "secretaria", "role": "secretaria", "email": email, "auth_version": 2, "exp": exp}, JWT_SECRET, algorithm="HS256")
+from utils.security import gerar_token_aluno, gerar_token_secretaria, atualizar_identidade_token
 
 # ============================================================
 # BANCO DE DADOS E MIGRATIONS
@@ -299,6 +283,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')
+        cursor.execute(SCHEMA_AUTH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (
             id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) UNIQUE NOT NULL, subscription_json TEXT NOT NULL
         );''')
@@ -485,10 +470,13 @@ def rota_ia_img():
     return jsonify({"success": True, "resultado": res})
 
 @app.route('/api/ia/comparar-semantica', methods=['OPTIONS', 'POST'])
+@limiter.limit('60 per minute')
 def rota_ia_sem():
     if request.method == 'OPTIONS': return jsonify({"success": True}), 200
     d = request.json or {}
-    score, mot = calcular_afinidade_semantica(d.get('texto_a') or d.get('relato') or '', d.get('texto_b') or d.get('item') or '')
+    a,b=d.get('texto_a') or d.get('relato') or '',d.get('texto_b') or d.get('item') or ''
+    if any(not isinstance(t,str) or len(t)>2000 for t in (a,b)):return jsonify(success=False,message='Informe textos de até 2.000 caracteres.'),400
+    score, mot = calcular_afinidade_semantica(a,b)
     return jsonify({"success": True, "score_percentual": round(score * 100, 1), "motivos": mot})
 
 # ============================================================
@@ -507,114 +495,56 @@ def upd_rm():
     nrm = str((request.json or {}).get('rm', '')).strip()
     user = getattr(request, 'user', {})
     email = user.get('email')
-    if not nrm or len(nrm) < 3: return jsonify({"success": False, "message": "RM inválido."}), 400
+    if not identidade_aluno() or not 3<=len(nrm)<=20 or not nrm.isascii() or not nrm.isdigit():return jsonify(success=False,message='Informe um RM numérico válido na sua conta de aluno.'),400
     try:
         conn = get_db_connection(); c = conn.cursor()
         c.execute("UPDATE alunos SET rm = %s WHERE email = %s;", (nrm, email))
         c.execute("UPDATE mural_perdidos SET rm_aluno = %s WHERE email_aluno = %s;", (nrm, email))
         conn.commit(); c.close(); conn.close()
-        return jsonify({"success": True, "token": gerar_token_aluno(email, user.get('nome', ''), nrm), "rm": nrm})
+        return jsonify({"success": True, "token": atualizar_identidade_token(user,nrm), "rm": nrm})
     except Exception:
         logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
         return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
 
 @app.route('/api/auth/enviar-codigo', methods=['OPTIONS', 'POST'])
+@limiter.limit('60 per minute')
 def env_cod():
-    val, email = validar_email_institucional((request.json or {}).get('email', ''))
-    if not val: return jsonify({"success": False, "message": email}), 400
-    cod = str(100000+secrets.randbelow(900000))
-    try:
-        conn = get_db_connection(); c = conn.cursor()
-        c.execute("INSERT INTO codigos_auth (email, codigo, expiracao) VALUES (%s, %s, %s) ON CONFLICT (email) DO UPDATE SET codigo = EXCLUDED.codigo, expiracao = EXCLUDED.expiracao;", (email, cod, datetime.now() + timedelta(minutes=15)))
-        conn.commit(); c.close(); conn.close()
-        disparar_email(email, "Código de acesso ETEC", f"<div style='padding:20px;'><h2 style='color:#dc2626;'>Código ETEC</h2><p style='font-size:24px;font-weight:bold;'>{cod}</p></div>")
-        return jsonify({"success": True})
-    except Exception:
-        logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
-        return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('enviar',get_db_connection)
 
 @app.route('/api/auth/cadastrar', methods=['OPTIONS', 'POST'])
+@limiter.limit('60 per minute')
 def cad_aluno():
-    if request.method=='OPTIONS':return jsonify(success=True),200
-    d = request.get_json(silent=True)
-    from utils.perfis import validar_aceite, registrar_aceite
-    erro=validar_aceite(d)
-    if erro:return jsonify(success=False,message=erro),400
-    val, email = validar_email_institucional(d.get('email', ''))
-    if not val: return jsonify({"success": False, "message": email}), 400
-    cod, nome, rm, senha = d.get('codigo', '').strip(), d.get('nome', '').strip(), d.get('rm', '').strip(), d.get('senha', '').strip()
-    if not rm:
-        rm = 'PROFESSOR' if any(email.endswith(d) for d in ['@cps.sp.gov.br', '@etec.sp.gov.br']) else 'ALUNO'
-    conn=None
-    try:
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
-        reg = c.fetchone()
-        if not reg or reg['codigo'] != cod or reg['expiracao'] < datetime.now():
-            return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
-        c.execute("SELECT email FROM alunos WHERE email = %s;", (email,))
-        if c.fetchone(): return jsonify({"success": False, "message": "E-mail já cadastrado."}), 400
-        c.execute("INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", (email, nome, rm, generate_password_hash(senha)))
-        registrar_aceite(c,email)
-        c.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
-        conn.commit(); c.close()
-        return jsonify({"success": True, "token": gerar_token_aluno(email, nome, rm), "aluno": {"nome": nome, "rm": rm, "email": email}})
-    except Exception:
-        if conn:conn.rollback()
-        logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
-        return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
-
-    finally:
-        if conn:conn.close()
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('cadastrar',get_db_connection)
 
 @app.route('/api/auth/login-aluno', methods=['OPTIONS', 'POST'])
+@limiter.limit('60 per minute')
 def log_aluno():
-    if request.method == 'OPTIONS': return jsonify({"success": True}), 200
-    d = request.json or {}
-    email, senha = d.get('email', '').lower().strip(), d.get('senha', '').strip()
-    
-    try:
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT * FROM alunos WHERE email = %s;", (email,))
-        a = c.fetchone(); c.close(); conn.close()
-        if a and check_password_hash(a['senha_hash'], senha):
-            return jsonify({"success": True, "token": gerar_token_aluno(a['email'], a['nome'], a['rm']), "aluno": {"nome": a['nome'], "rm": a['rm'], "email": a['email']}})
-        return jsonify({"success": False, "message": "Credenciais incorretas."}), 401
-    except Exception:
-        logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
-        return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('login',get_db_connection)
 
 @app.route('/api/auth/redefinir', methods=['OPTIONS', 'POST'])
+@limiter.limit('60 per minute')
 def red_senha():
-    d = request.json or {}
-    email, cod, senha = d.get('email', '').lower().strip(), d.get('codigo', '').strip(), d.get('senha', '').strip()
-    try:
-        conn = get_db_connection(); c = conn.cursor(cursor_factory=RealDictCursor)
-        c.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
-        reg = c.fetchone()
-        if not reg or reg['codigo'] != cod or reg['expiracao'] < datetime.now():
-            return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
-        c.execute("UPDATE alunos SET senha_hash = %s WHERE email = %s;", (generate_password_hash(senha), email))
-        c.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
-        conn.commit(); c.close(); conn.close()
-        return jsonify({"success": True, "message": "Senha redefinida com sucesso."})
-    except Exception:
-        logger.exception("Falha na rota de autenticação/notificação | path=%s", request.path)
-        return jsonify({"success": False, "message": "Não foi possível concluir a operação.", "code": "REQUEST_FAILED", "path": request.path}), 500
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('redefinir',get_db_connection)
+
+@app.route('/api/auth/sair',methods=['POST','OPTIONS'])
+@token_required
+def encerrar_token():
+    from services.autenticacao_service import sair
+    return sair(get_db_connection)
 
 @app.route('/api/login', methods=['OPTIONS', 'POST'])
 @limiter.limit('10 per minute')
 def log_sec():
-    d = request.json or {}
-    email, senha = (d.get('email') or '').strip().lower(), (d.get('senha') or '').strip()
-    valido = False
-    if email == EMAIL_SECRETARIA:
-        if ADMIN_SENHA and senha == ADMIN_SENHA: valido = True
-        elif ADMIN_SENHA_HASH:
-            try: valido = check_password_hash(ADMIN_SENHA_HASH, senha)
-            except: valido = False
-    if valido: return jsonify({"success": True, "token": gerar_token_secretaria(email)})
-    return jsonify({"success": False, "message": "Credenciais inválidas."}), 401
+    from services.autenticacao_service import administrador
+    return administrador(get_db_connection,EMAIL_SECRETARIA,ADMIN_SENHA_HASH,ADMIN_SENHA)
 
 # ============================================================
 # ROTAS ITENS E CATEGORIAS

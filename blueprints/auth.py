@@ -12,7 +12,7 @@ from psycopg2.extras import RealDictCursor
 
 from config import JWT_SECRET, EMAIL_SECRETARIA, ADMIN_SENHA, ADMIN_SENHA_HASH, GOOGLE_CLIENT_ID
 from database import get_db_connection
-from utils.security import token_required, gerar_token_aluno, gerar_token_secretaria
+from utils.security import token_required, gerar_token_aluno, gerar_token_secretaria, atualizar_identidade_token, identidade_aluno
 from utils.helpers import validar_email_institucional
 from services.email_service import disparar_email
 
@@ -36,8 +36,10 @@ def login_google_institucional():
     if request.method == 'OPTIONS':
         return jsonify({"success": True}), 200
 
-    dados = request.json or {}
-    credential = dados.get('credential', '').strip()
+    if not GOOGLE_CLIENT_ID:return jsonify(success=False,message='Login Google não configurado.'),503
+    dados = request.get_json(silent=True)
+    if not isinstance(dados,dict) or not isinstance(dados.get('credential'),str) or len(dados['credential'])>8192:return jsonify(success=False,message='Credencial inválida.'),400
+    credential = dados['credential'].strip()
     
     if not credential:
         return jsonify({"success": False, "message": "Credencial do Google não informada."}), 400
@@ -52,6 +54,7 @@ def login_google_institucional():
             return jsonify({"success": False, "message": "Token do Google inválido ou expirado."}), 401
             
         payload = resp.json()
+        if payload.get("aud")!=GOOGLE_CLIENT_ID or payload.get("iss") not in ("accounts.google.com","https://accounts.google.com") or int(payload.get("exp",0))<=datetime.now(timezone.utc).timestamp():return jsonify(success=False,message="Credencial do Google inválida."),401
         email = (payload.get('email') or '').strip().lower()
         nome = (payload.get('name') or 'Aluno ETEC').strip()
         picture = payload.get('picture', '')
@@ -80,14 +83,7 @@ def login_google_institucional():
             cursor.execute("UPDATE alunos SET nome = %s WHERE email = %s;", (nome, email))
             conn.commit()
         else:
-            # Cadastra o aluno pela primeira vez automaticamente com hash de segurança aleatório
-            senha_aleatoria = f"google_sso_{random.randint(10000000, 99999999)}"
-            senha_hash = generate_password_hash(senha_aleatoria)
-            cursor.execute(
-                "INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s) ON CONFLICT (email) DO NOTHING;",
-                (email, nome, rm, senha_hash)
-            )
-            conn.commit()
+            return jsonify(success=False,message='Crie sua conta institucional e aceite os termos antes de usar este acesso.'),403
 
         cursor.close()
         conn.close()
@@ -104,8 +100,10 @@ def login_google_institucional():
                 "precisa_rm": (rm == 'PENDENTE' or not rm)
             }
         })
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Falha na autenticação Google: {str(e)}"}), 500
+    except Exception:
+        return jsonify(success=False,message="Não foi possível validar o acesso Google."),503
+    finally:
+        if 'conn' in locals():conn.close()
 
 @auth_bp.route('/api/auth/atualizar-rm', methods=['OPTIONS', 'POST'])
 @token_required
@@ -119,7 +117,7 @@ def atualizar_rm():
     user = getattr(request, 'user', {})
     email = user.get('email')
 
-    if not novo_rm or len(novo_rm) < 3:
+    if not identidade_aluno() or not 3<=len(novo_rm)<=20 or not novo_rm.isascii() or not novo_rm.isdigit():
         return jsonify({"success": False, "message": "RM inválido."}), 400
 
     try:
@@ -127,194 +125,42 @@ def atualizar_rm():
         cursor = conn.cursor()
         cursor.execute("UPDATE alunos SET rm = %s WHERE email = %s;", (novo_rm, email))
         cursor.execute("UPDATE mural_perdidos SET rm_aluno = %s WHERE email_aluno = %s;", (novo_rm, email))
-        cursor.execute("UPDATE mensagens_chat SET rm_aluno = %s WHERE rm_aluno = 'PENDENTE' AND nome_aluno = %s;", (novo_rm, user.get('nome', '')))
         conn.commit()
         cursor.close()
         conn.close()
 
         # Gera novo token com RM atualizado
-        novo_token = gerar_token_aluno(email, user.get('nome', ''), novo_rm)
+        novo_token = atualizar_identidade_token(user,novo_rm)
         return jsonify({"success": True, "token": novo_token, "rm": novo_rm})
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify(success=False,message="Não foi possível concluir a operação."),503
 
 @auth_bp.route('/api/auth/enviar-codigo', methods=['OPTIONS', 'POST'])
 def enviar_codigo():
-    """Envia código de verificação numérico de 6 dígitos para o e-mail institucional."""
-    email_bruto = request.json.get('email', '')
-    valido, res = validar_email_institucional(email_bruto)
-    if not valido:
-        return jsonify({"success": False, "message": res}), 400
-    
-    email = res
-    codigo = str(100000+secrets.randbelow(900000))
-    expiracao = datetime.now() + timedelta(minutes=15)
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO codigos_auth (email, codigo, expiracao) 
-            VALUES (%s, %s, %s) 
-            ON CONFLICT (email) DO UPDATE 
-            SET codigo = EXCLUDED.codigo, expiracao = EXCLUDED.expiracao;
-        """, (email, codigo, expiracao))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        html = f"""
-        <div style="font-family: Arial, sans-serif; padding: 24px; background: #0d1117; color: #c9d1d9; border-radius: 12px; max-width: 500px; margin: auto;">
-            <h2 style="color: #dc2626; margin-top: 0;">ETEC Achados e Perdidos</h2>
-            <p style="font-size: 14px;">Olá estudante! Utilize o código abaixo para autenticar sua conta no sistema:</p>
-            <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #10b981;">{codigo}</span>
-            </div>
-            <p style="font-size: 12px; color: #8b949e;">Este código expira em 15 minutos. Se você não solicitou, desconsidere esta mensagem.</p>
-        </div>
-        """
-        disparar_email(email, "Seu código de acesso - ETEC Achados e Perdidos", html)
-        return jsonify({"success": True, "message": "Código enviado para seu e-mail institucional."})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('enviar',get_db_connection)
 
 @auth_bp.route('/api/auth/cadastrar', methods=['OPTIONS', 'POST'])
 def cadastrar_aluno():
-    """Valida o código de 6 dígitos e cadastra o aluno com senha criptografada."""
-    if request.method=='OPTIONS':return jsonify(success=True),200
-    data = request.get_json(silent=True)
-    from utils.perfis import validar_aceite,registrar_aceite
-    erro=validar_aceite(data)
-    if erro:return jsonify(success=False,message=erro),400
-    email_bruto = data.get('email', '')
-    codigo = data.get('codigo', '').strip()
-    nome = data.get('nome', '').strip()
-    rm = data.get('rm', '').strip()
-    senha = data.get('senha', '').strip()
-
-    valido, res = validar_email_institucional(email_bruto)
-    if not valido:
-        return jsonify({"success": False, "message": res}), 400
-    email = res
-
-    if not all([codigo, nome, rm, senha]):
-        return jsonify({"success": False, "message": "Todos os campos são obrigatórios."}), 400
-
-    conn=None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
-        reg = cursor.fetchone()
-        
-        if not reg or reg['codigo'] != codigo or reg['expiracao'] < datetime.now():
-            return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
-        
-        cursor.execute("SELECT email FROM alunos WHERE email = %s;", (email,))
-        if cursor.fetchone():
-            return jsonify({"success": False, "message": "E-mail já cadastrado. Faça login."}), 400
-        
-        senha_hash = generate_password_hash(senha)
-        cursor.execute(
-            "INSERT INTO alunos (email, nome, rm, senha_hash) VALUES (%s, %s, %s, %s);", 
-            (email, nome, rm, senha_hash)
-        )
-        registrar_aceite(cursor,email)
-        cursor.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
-        conn.commit()
-        cursor.close()
-        
-        token = gerar_token_aluno(email, nome, rm)
-        return jsonify({
-            "success": True, 
-            "token": token, 
-            "aluno": {"nome": nome, "rm": rm, "email": email}
-        })
-    except Exception:
-        if conn:conn.rollback()
-        return jsonify(success=False,message="Não foi possível criar a conta. Tente novamente."),500
-    finally:
-        if conn:conn.close()
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('cadastrar',get_db_connection)
 
 @auth_bp.route('/api/auth/login-aluno', methods=['OPTIONS', 'POST'])
 def login_aluno():
-    """Autentica o aluno via e-mail institucional e senha com verificação de hash."""
-    dados = request.json or {}
-    email = dados.get('email', '').lower().strip()
-    senha = dados.get('senha', '').strip()
-    
-    if not email or not senha:
-        return jsonify({"success": False, "message": "Informe e-mail e senha."}), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM alunos WHERE email = %s;", (email,))
-        aluno = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        
-        if aluno and check_password_hash(aluno['senha_hash'], senha):
-            token = gerar_token_aluno(aluno['email'], aluno['nome'], aluno['rm'])
-            return jsonify({
-                "success": True, 
-                "token": token, 
-                "aluno": {"nome": aluno['nome'], "rm": aluno['rm'], "email": aluno['email']}
-            })
-        return jsonify({"success": False, "message": "Senha incorreta ou usuário não encontrado."}), 401
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('login',get_db_connection)
 
 @auth_bp.route('/api/auth/redefinir', methods=['OPTIONS', 'POST'])
 def redefinir_senha():
-    """Redefine a senha do aluno após confirmação do código enviado por e-mail."""
-    dados = request.json or {}
-    email = dados.get('email', '').lower().strip()
-    codigo = dados.get('codigo', '').strip()
-    nova_senha = dados.get('senha', '').strip()
-    
-    if not all([email, codigo, nova_senha]):
-        return jsonify({"success": False, "message": "Preencha todos os campos."}), 400
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT codigo, expiracao FROM codigos_auth WHERE email = %s;", (email,))
-        reg = cursor.fetchone()
-        if not reg or reg['codigo'] != codigo or reg['expiracao'] < datetime.now():
-            return jsonify({"success": False, "message": "Código inválido ou expirado."}), 400
-        
-        senha_hash = generate_password_hash(nova_senha)
-        cursor.execute("UPDATE alunos SET senha_hash = %s WHERE email = %s;", (senha_hash, email))
-        cursor.execute("DELETE FROM codigos_auth WHERE email = %s;", (email,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Senha redefinida com sucesso."})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import operar
+    return operar('redefinir',get_db_connection)
 
 @auth_bp.route('/api/login', methods=['OPTIONS', 'POST'])
 def login_secretaria():
-    """Autentica o operador da secretaria escolar gerando token de administrador."""
-    dados = request.json or {}
-    email = (dados.get('email') or '').strip().lower()
-    senha = (dados.get('senha') or '').strip()
-    
-    if not email or not senha:
-        return jsonify({"success": False, "message": "Preencha e-mail e senha."}), 400
-
-    login_valido = False
-    if email == EMAIL_SECRETARIA:
-        if ADMIN_SENHA and senha == ADMIN_SENHA:
-            login_valido = True
-        elif ADMIN_SENHA_HASH:
-            try:
-                login_valido = check_password_hash(ADMIN_SENHA_HASH, senha)
-            except Exception:
-                login_valido = False
-
-    if login_valido:
-        token = gerar_token_secretaria(email)
-        return jsonify({"success": True, "token": token})
-    return jsonify({"success": False, "message": "Credenciais inválidas."}), 401
+    if request.method=='OPTIONS':return jsonify(success=True)
+    from services.autenticacao_service import administrador
+    return administrador(get_db_connection,EMAIL_SECRETARIA,ADMIN_SENHA_HASH,ADMIN_SENHA)

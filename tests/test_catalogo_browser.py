@@ -23,7 +23,7 @@ def admin(browser,origin):
     context=browser.new_context(viewport={'width':1366,'height':900},service_workers='block')
     context.add_init_script('sessionStorage.setItem("secretaria_token",'+json.dumps(auth('secretaria@etec.sp.gov.br',True)['Authorization'][7:])+');')
     page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.emulate_media(reduced_motion='reduce');page.goto(origin+'/controle_etec_7788.html')
-    page.wait_for_function("tokenSecretaria!==null && document.getElementById('loginScreen').classList.contains('hidden')")
+    page.wait_for_function("()=>(tokenSecretaria!==null && document.getElementById('loginScreen').classList.contains('hidden'))")
     return context,page,errors
 
 
@@ -35,20 +35,20 @@ def test_catalogo_paginado_fotos_so_visiveis_filtros_e_navegacao_responsiva(runt
     requests=[];context.route('**/image/upload/**',foto_local)
     page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('request',lambda r:requests.append(r.url));page.emulate_media(reduced_motion='reduce')
     try:
-        page.goto(origin+'/');page.wait_for_function('CatalogoPortal.ativo && !CatalogoPortal.ocupado');page.wait_for_function("getComputedStyle(document.getElementById('loadingOverlay')).visibility==='hidden'")
+        page.goto(origin+'/');page.wait_for_function('()=>(CatalogoPortal.ativo && !CatalogoPortal.ocupado)');page.wait_for_function("()=>(getComputedStyle(document.getElementById('loadingOverlay')).visibility==='hidden')")
         assert page.locator('#itemsGrid>.interactive-card').count()==24
         assert page.locator('#itemsGrid img[src]').count()<24
         assert page.locator('#itemsGrid img[data-src]').count()>0
         assert not any('/api/itens?' in u or u.endswith('/api/itens') for u in requests)
         OUT.mkdir(exist_ok=True);page.screenshot(path=str(OUT/'catalogo-celular.png'),full_page=False)
-        page.locator('#catalogoMais').click();page.wait_for_function('!CatalogoPortal.ocupado && todosItens.length===48')
+        page.locator('#catalogoMais').click();page.wait_for_function('()=>(!CatalogoPortal.ocupado && todosItens.length===48)')
         assert page.locator('#itemsGrid>.interactive-card').count()==48
-        page.locator('#searchInput').fill('termica azul 54');page.wait_for_function('!CatalogoPortal.ocupado && todosItens.length===1')
+        page.locator('#searchInput').fill('termica azul 54');page.wait_for_function('()=>(!CatalogoPortal.ocupado && todosItens.length===1)')
         assert str(ids[-1])==str(page.evaluate('todosItens[0].id'))
         assert page.locator('#catalogoFiltrosAtivos button').count()==1
-        page.locator('#catalogoFiltrosAtivos button').click();page.wait_for_function('!CatalogoPortal.ocupado && todosItens.length===24')
+        page.locator('#catalogoFiltrosAtivos button').click();page.wait_for_function('()=>(!CatalogoPortal.ocupado && todosItens.length===24)')
         assert page.locator('#searchInput').input_value()==''
-        page.locator('#searchInput').fill('termica azul 54');page.wait_for_function('!CatalogoPortal.ocupado && todosItens.length===1')
+        page.locator('#searchInput').fill('termica azul 54');page.wait_for_function('()=>(!CatalogoPortal.ocupado && todosItens.length===1)')
         page.locator('#itemsGrid>.interactive-card').first.click()
         assert page.locator('#detailScreen').is_visible()
         assert 'presencialmente' in page.locator('#detailProximoPasso').inner_text()
@@ -65,7 +65,7 @@ def test_catalogo_paginado_fotos_so_visiveis_filtros_e_navegacao_responsiva(runt
         for width in [320,390,768,1366]:
             page.set_viewport_size({'width':width,'height':900})
             assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),width
-        page.set_viewport_size({'width':1366,'height':900});page.locator('#searchInput').fill('');page.wait_for_function('!CatalogoPortal.ocupado && todosItens.length===24');page.evaluate('window.scrollTo(0,0)')
+        page.set_viewport_size({'width':1366,'height':900});page.locator('#searchInput').fill('');page.wait_for_function('()=>(!CatalogoPortal.ocupado && todosItens.length===24)');page.evaluate('window.scrollTo(0,0)')
         page.locator('#searchInput').blur();page.screenshot(path=str(OUT/'catalogo-computador.png'),full_page=False)
         page.screenshot(path=str(OUT/'catalogo-completo.png'),full_page=True)
         assert errors==[]
@@ -79,21 +79,21 @@ def test_ui_recusa_aluno_corrige_e_secretaria_aprova_preservando_cadastro(runtim
         student.locator('#alunoItemNome').fill('Caderno espiral azul')
         student.locator('#alunoItemDesc').fill('Caderno azul com adesivos na capa')
         student.locator('#alunoItemCat').select_option('OUTROS');student.locator('#alunoItemLocal').fill('Pátio')
-        student.locator('#btnSalvarAlunoItem').click();student.wait_for_function("document.getElementById('modalCadastrarAluno').classList.contains('hidden')")
+        student.locator('#btnSalvarAlunoItem').click();student.wait_for_function("()=>(document.getElementById('modalCadastrarAluno').classList.contains('hidden'))")
         id=scalar(db,'SELECT max(id) FROM itens')
         staff.evaluate("trocarAba('pendentes')")
         staff.get_by_role('button',name='Pedir correção',exact=True).click()
         staff.locator('dialog[open] textarea').fill('Confira a sala em que o caderno foi encontrado.')
         staff.get_by_role('button',name='Enviar motivo ao aluno',exact=True).click()
-        staff.wait_for_function("!document.querySelector('dialog[open]')")
+        staff.wait_for_function("()=>(!document.querySelector('dialog[open]'))")
         student.evaluate('abrirPainelMeusItens()');student.get_by_role('button',name='Corrigir e reenviar',exact=True).click()
-        student.wait_for_function('CorrecaoCadastro.atual!==null')
+        student.wait_for_function('()=>(CorrecaoCadastro.atual!==null)')
         assert 'Confira a sala' in student.locator('#motivoCorrecaoCadastro').inner_text()
         assert student.locator('#alunoItemNome').input_value()=='Caderno espiral azul'
         student.locator('#alunoItemLocal').fill('Sala 12');student.locator('#btnSalvarAlunoItem').click()
-        student.wait_for_function("document.getElementById('modalCadastrarAluno').classList.contains('hidden')")
+        student.wait_for_function("()=>(document.getElementById('modalCadastrarAluno').classList.contains('hidden'))")
         staff.evaluate('ModeracaoUI.carregar()');staff.get_by_role('button',name='Aprovar',exact=True).click()
-        staff.wait_for_function("!ModeracaoUI.ocupado && document.querySelector('#gridItensPendentesContainer').textContent.includes('Nenhum cadastro')")
+        staff.wait_for_function("()=>(!ModeracaoUI.ocupado && document.querySelector('#gridItensPendentesContainer').textContent.includes('Nenhum cadastro'))")
         assert scalar(db,'SELECT count(*) FROM itens')==1
         assert scalar(db,'SELECT aprovado FROM itens WHERE id=%s',(id,)) is True
         assert scalar(db,'SELECT local_encontrado FROM itens WHERE id=%s',(id,))=='Sala 12'
@@ -117,7 +117,7 @@ def test_acesso_rotulos_senha_visivel_erro_persistente_e_como_funciona(runtime):
         assert page.locator('#loginSenhaAluno').get_attribute('type')=='text'
         page.get_by_role('button',name='Ocultar senha',exact=True).click()
         page.locator('#loginEmailAluno').fill('a@aluno.cps.sp.gov.br');page.locator('#loginSenhaAluno').fill('senha-errada')
-        page.locator('#btnAcessoLogin').click();page.wait_for_function('!authOcupada && !document.getElementById("authFeedback").hidden')
+        page.locator('#btnAcessoLogin').click();page.wait_for_function('()=>(!authOcupada && !document.getElementById("authFeedback").hidden)')
         assert page.locator('#authFeedback').get_attribute('role')=='alert'
         assert not page.locator('#loginSenhaAluno').is_disabled()
         OUT.mkdir(exist_ok=True);page.screenshot(path=str(OUT/'login-celular.png'),full_page=False)
@@ -133,11 +133,11 @@ def test_busca_antiga_nao_substitui_nova_e_falha_nao_anuncia_sucesso(runtime):
     browser,origin,db=runtime;inserir(db,nome='Calculadora Casio')
     context,page,errors=portal(browser,origin)
     try:
-        page.wait_for_function('CatalogoPortal.ativo && !CatalogoPortal.ocupado')
+        page.wait_for_function('()=>(CatalogoPortal.ativo && !CatalogoPortal.ocupado)')
         page.evaluate("""()=>{window.fetchReal=window.fetch;window.fetch=async(url,opts)=>{
           if(String(url).includes('/api/catalogo?')&&String(url).includes('q=antiga'))return new Promise(resolve=>window.finalizarAntiga=resolve);
           return window.fetchReal(url,opts);};termoBusca='antiga';window.buscaAntiga=CatalogoPortal.carregar();}""")
-        page.wait_for_function('typeof finalizarAntiga===\'function\'')
+        page.wait_for_function("()=>(typeof finalizarAntiga==='function')")
         page.evaluate("termoBusca='casio';CatalogoPortal.carregar()")
         assert page.evaluate('todosItens[0].nome')=='Calculadora Casio'
         page.evaluate("finalizarAntiga({ok:true,json:async()=>({success:true,itens:[],tem_mais:false,proximo:null})})")

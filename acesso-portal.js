@@ -1,5 +1,10 @@
 // A senha nunca é armazenada. Persistência exige uma escolha explícita.
 const SessaoPortal = {
+    async revogar(token=this.token()) {
+        if(!token)return;
+        const controle=new AbortController(),limite=setTimeout(()=>controle.abort(),2000);
+        try{await fetch(API_URL+'/api/auth/sair',{method:'POST',headers:{Authorization:'Bearer '+token},keepalive:true,signal:controle.signal});}catch(_){/* Sem rede, a saída local continua imediata. */}finally{clearTimeout(limite);}
+    },
     migrarLegado() {
         const legado = localStorage.getItem('aluno_token');
         if (!legado || localStorage.getItem('aluno_lembrar') === 'true') return;

@@ -175,3 +175,9 @@ def test_falha_de_gravacao_faz_rollback_e_fecha_conexao():
     connection.rollback.assert_called_once()
     connection.close.assert_called_once()
     connection.cursor.return_value.close.assert_called_once()
+
+
+@pytest.fixture(autouse=True)
+def estado_de_sessao_isolado(monkeypatch):
+    """Este módulo testa contratos sem PostgreSQL; revogação real tem suíte própria."""
+    monkeypatch.setattr("services.autenticacao_service.sessao_valida",lambda payload:True)

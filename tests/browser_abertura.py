@@ -34,7 +34,7 @@ class AberturaTests(safety.TextSafetyBrowser):
             else:pagina.add_init_script("Object.defineProperty(HTMLMediaElement.prototype,'src',{set(v){this.dataset.solicitado=v},get(){return ''}});HTMLMediaElement.prototype.play=()=>new Promise(()=>{})")
             try:
                 pagina.goto(safety.ORIGIN,wait_until='domcontentloaded')
-                pagina.wait_for_function("document.getElementById('splashScreenAnimacao').hidden",timeout=5000)
+                pagina.wait_for_function("()=>(document.getElementById('splashScreenAnimacao').hidden)",timeout=5000)
                 self.assertTrue(pagina.locator('#loginAlunoScreen').is_visible())
                 self.assertTrue(pagina.locator('#videoAbertura').evaluate('v=>v.paused'))
             finally:contexto.close()

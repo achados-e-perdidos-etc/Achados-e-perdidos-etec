@@ -140,3 +140,9 @@ def test_api_de_teste_sempre_usa_conta_autenticada(configured,result,code,implem
         assert response.status_code==code
         queue.assert_called_once_with('aluno@aluno.cps.sp.gov.br')
         if code==202:assert response.json['queued'] is True
+
+
+@pytest.fixture(autouse=True)
+def estado_de_sessao_isolado(monkeypatch):
+    """Transporte push unitário; revogação tem integração PostgreSQL própria."""
+    monkeypatch.setattr("services.autenticacao_service.sessao_valida",lambda payload:True)

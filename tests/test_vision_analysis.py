@@ -123,7 +123,7 @@ def test_resultado_completo_e_confianca_permitida_libera_preenchimento(confidenc
     assert result['nome'] == 'Caderno espiral'
     assert result['descricao'] == 'Caderno com capa azul e espiral preta na lateral.'
     payload = provider.call_args.kwargs['json']
-    assert payload['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/png'
+    assert payload['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/jpeg'
 
 
 @pytest.mark.parametrize('confidence', ['baixa', '', None, 'certeza-absoluta'])
@@ -212,7 +212,7 @@ def test_mime_e_determinado_pelos_bytes_e_nao_pelo_data_uri(image_data, provider
     assert error is None
     assert result['pode_preencher'] is True
     payload = provider.call_args.kwargs['json']
-    assert payload['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/png'
+    assert payload['contents'][0]['parts'][1]['inline_data']['mime_type'] == 'image/jpeg'
 
 
 def test_backend_de_producao_usa_o_servico_canonico():
@@ -233,3 +233,20 @@ def test_endpoint_nao_consulta_alunos_quando_identificacao_nao_e_confiavel(image
     assert response.json['resultado']['pode_preencher'] is False
     assert response.json['resultado']['aluno_correspondente'] is None
     database.assert_not_called()
+
+
+@pytest.fixture(autouse=True)
+def estado_de_sessao_isolado(monkeypatch):
+    """Este módulo testa contratos sem PostgreSQL; revogação real tem suíte própria."""
+    monkeypatch.setattr("services.autenticacao_service.sessao_valida",lambda payload:True)
+
+
+def test_ia_nao_recebe_metadados_da_foto(provider):
+    foto=Image.new('RGB',(300,200),'blue');exif=Image.Exif();exif[270]='local-privado-da-foto'
+    entrada=io.BytesIO();foto.save(entrada,'JPEG',exif=exif)
+    provider.return_value=provider_response(model_result())
+    resultado,erro=vision.analisar_imagem_com_ia('data:image/jpeg;base64,'+base64.b64encode(entrada.getvalue()).decode())
+    assert erro is None
+    enviada=provider.call_args.kwargs['json']['contents'][0]['parts'][1]['inline_data']
+    raw=base64.b64decode(enviada['data']);assert b'local-privado-da-foto' not in raw
+    with Image.open(io.BytesIO(raw)) as img:assert img.format=='JPEG' and not img.getexif()

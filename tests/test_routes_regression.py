@@ -46,6 +46,8 @@ class RouteTests(unittest.TestCase):
         server.app.config['TESTING'] = True
         server.limiter.enabled = False
         self.client = server.app.test_client()
+        estado=patch('services.autenticacao_service.sessao_valida',return_value=True);estado.start();self.addCleanup(estado.stop)
+        limite=patch('services.autenticacao_service.limitar',return_value=True);limite.start();self.addCleanup(limite.stop)
         permission_patch = patch('services.professores_service.buscar_acesso', return_value=None)
         permission_patch.start()
         self.addCleanup(permission_patch.stop)

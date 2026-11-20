@@ -42,9 +42,9 @@ test('professor usa senha sem converter maiúsculas e sessão do servidor', asyn
   const ui = setup(async (url, opts) => {
     sent = JSON.parse(opts.body);
     return {ok:true, json:async () => ({success:true, token:'token-assinado', aluno:{email:sent.email}})};
-  }, 'docente@cps.sp.gov.br', 'MinhaSenhaABC!');
+  }, 'docente@cps.sp.gov.br', ' MinhaSenhaABC! ');
   await ui.ctx.fazerLoginAluno({preventDefault(){}});
-  assert.equal(sent.senha, 'MinhaSenhaABC!');
+  assert.equal(sent.senha, ' MinhaSenhaABC! ');
   assert.equal(ui.values.get('aluno_token'), 'token-assinado');
   assert.equal(ui.sessions(), 1);
 });
@@ -68,4 +68,15 @@ test('sessão fictícia antiga é removida antes de consultar o servidor', async
   vm.runInContext(source.slice(start,end),ui.ctx);
   await ui.ctx.checarSessao();
   assert.equal(ui.values.size,0);
+});
+
+
+test('códigos de cadastro e recuperação recebem finalidades distintas', async () => {
+  for(const [campo,finalidade] of [['cadEmailAluno','cadastro'],['recEmailAluno','recuperacao']]){
+    let body;
+    const ui=setup(async(url,opts)=>{body=JSON.parse(opts.body);return {ok:true,json:async()=>({success:false})};});
+    ui.element(campo).value='aluno@aluno.cps.sp.gov.br';
+    await ui.ctx.enviarCodigoAuth(campo,'botao','mostrar','ocultar');
+    assert.equal(body.finalidade,finalidade);
+  }
 });

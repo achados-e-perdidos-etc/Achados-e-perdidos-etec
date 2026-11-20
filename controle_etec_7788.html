@@ -1566,7 +1566,7 @@
       if (e) e.preventDefault();
       const erro = document.getElementById('loginErroMsg');
       const email = document.getElementById('loginEmailInput').value.trim();
-      const senha = document.getElementById('loginSenhaInput').value.trim();
+      const senha = document.getElementById('loginSenhaInput').value;
       const btn = document.getElementById('btnLoginSec');
 
       btn.disabled = true;
@@ -1600,6 +1600,7 @@
     }
 
     function sairSecretaria() {
+      fetch(API_URL+'/api/auth/sair',{method:'POST',headers:{Authorization:'Bearer '+tokenSecretaria},keepalive:true}).catch(()=>{});
       if(typeof PerfilUI!=='undefined')PerfilUI.limpar();
       sessionStorage.removeItem('secretaria_token');
       if (typeof Rascunhos !== 'undefined') Rascunhos.limparConta();

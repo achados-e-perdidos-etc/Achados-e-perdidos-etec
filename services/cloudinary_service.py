@@ -41,6 +41,15 @@ def processar_fotos(fotos_array, folder="etec_achados", *, existentes=()):
                     and '/etec_achados/' in parsed.path)
                 if foto not in existentes and not permitido:
                     raise ValueError('Selecione a foto neste site; links externos não são aceitos.')
+                if foto not in existentes:
+                    from flask import request,has_request_context
+                    from database import get_db_connection
+                    if not has_request_context() or not getattr(request,'user',{}).get('email'):raise ValueError('Envio sem autoria confirmada.')
+                    conn=get_db_connection()
+                    try:
+                        c=conn.cursor();c.execute('SELECT 1 FROM uploads_fotos WHERE email=%s AND url=%s',(request.user['email'],foto))
+                        if not c.fetchone():raise ValueError('Esta foto não pertence aos seus envios. Selecione o arquivo novamente.')
+                    finally:conn.close()
                 preparados.append(foto)
             else: preparados.append(preparar_imagem(foto))
     except ValueError as error: raise FotoInvalida(str(error)) from None

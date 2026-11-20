@@ -124,3 +124,9 @@ def test_solicitacao_relato_e_cadastro_ficam_com_o_autor_da_sessao(implementatio
             assert db.execute('SELECT status FROM itens WHERE id=?', (row['id'],)).fetchone()[0] == 'DISPONÍVEL'
     finally:
         db.close()
+
+
+@pytest.fixture(autouse=True)
+def estado_de_sessao_isolado(monkeypatch):
+    """Este módulo testa contratos sem PostgreSQL; revogação real tem suíte própria."""
+    monkeypatch.setattr("services.autenticacao_service.sessao_valida",lambda payload:True)

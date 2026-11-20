@@ -229,18 +229,19 @@ async function checarSessao() {
 }
 
 function fazerLogoff(recarregar = true, preservarFila = false) {
+    const revogacao=SessaoPortal.revogar?.() || Promise.resolve();
     const limpezaPush = desativarWebPush(SessaoPortal.token());
     const limpezaFila = !preservarFila && typeof FilaOffline !== 'undefined' ? FilaOffline.sair() : Promise.resolve();
     SessaoPortal.limpar(true);
     alunoSessao = null;
     if (typeof PreferenciasUI !== 'undefined') PreferenciasUI.sair();
     if (recarregar) {
-        return Promise.all([limpezaFila, Promise.race([limpezaPush, new Promise(resolve => setTimeout(resolve, 1500))])])
+        return Promise.all([limpezaFila, Promise.race([Promise.all([limpezaPush,revogacao]), new Promise(resolve => setTimeout(resolve, 1500))])])
             .finally(() => window.location.reload());
     } else {
         document.getElementById('loginAlunoScreen').classList.remove('hidden');
     }
-    return Promise.all([limpezaPush, limpezaFila]);
+    return Promise.all([limpezaPush, limpezaFila,revogacao]);
 }
 
 function toggleMenuNavegacao() {
@@ -345,7 +346,7 @@ async function fazerLoginAluno(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 email: document.getElementById('loginEmailAluno').value.trim(),
-                senha: document.getElementById('loginSenhaAluno').value.trim()
+                senha: document.getElementById('loginSenhaAluno').value
             })
         });
         const data = await res.json();
@@ -372,7 +373,7 @@ async function enviarCodigoAuth(idEmail, idBtn, idShow, idHide) {
         const res = await fetch(`${API_URL}/api/auth/enviar-codigo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email, finalidade:idEmail==='recEmailAluno'?'recuperacao':'cadastro' })
         });
         const data = await res.json();
         if (data.success) {
@@ -395,7 +396,7 @@ async function confirmarCadastro(e) {
         codigo: document.getElementById('cadCodigo').value.trim(),
         nome: document.getElementById('cadNome').value.trim(),
         rm: document.getElementById('cadRM').value.trim(),
-        senha: document.getElementById('cadSenha').value.trim(),
+        senha: document.getElementById('cadSenha').value,
         aceite_termos:true,versao_termos:TermosUI.lida
     };
     try {
@@ -423,7 +424,7 @@ async function confirmarRedefinicao(e) {
     const payload = {
         email: document.getElementById('recEmailAluno').value.trim(),
         codigo: document.getElementById('recCodigo').value.trim(),
-        senha: document.getElementById('recSenha').value.trim()
+        senha: document.getElementById('recSenha').value
     };
     try {
         const res = await fetch(`${API_URL}/api/auth/redefinir`, {

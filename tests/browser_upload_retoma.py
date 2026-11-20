@@ -32,7 +32,7 @@ class Retoma(safety.TextSafetyBrowser):
         self.assertIn('interrompido',states[0]);self.assertIn('Enviada',states[1])
         self.page.evaluate('window.antes=envios.length')
         self.page.locator('#testeUploads button').first.click()
-        self.page.wait_for_function('testManager.arquivos.get(fotosTeste[0]).url!==null')
+        self.page.wait_for_function('()=>(testManager.arquivos.get(fotosTeste[0]).url!==null)')
         novos=self.page.evaluate('envios.slice(antes)')
         self.assertEqual(novos[0],['1',65536]);self.assertTrue(all(x[0]=='1' for x in novos))
         self.page.evaluate('testManager.enviarTodas(fotosTeste)')

@@ -62,7 +62,7 @@ def test_historico_com_aceite_imprime_so_recibo_a4_e_revertido_identificado(runt
         assert 'Calculadora Casio azul' in page.locator('dialog[open] .comprovante-papel').inner_text()
         page.evaluate('''()=>{window.print=()=>{window.capturaImpressao={texto:document.getElementById('areaImpressaoComprovante').innerText,semBotoes:document.querySelectorAll('#areaImpressaoComprovante button').length,ativo:document.body.classList.contains('imprimindo-comprovante')};};}''')
         page.get_by_role('button',name='Imprimir comprovante',exact=True).click()
-        page.wait_for_function('window.capturaImpressao!==undefined')
+        page.wait_for_function('()=>(window.capturaImpressao!==undefined)')
         assert page.evaluate('capturaImpressao.ativo && capturaImpressao.semBotoes===0')
         assert 'Calculadora Casio azul' in page.evaluate('capturaImpressao.texto')
         assert page.locator('#areaImpressaoComprovante').count()==0
@@ -90,7 +90,7 @@ def test_botao_do_comprovante_manual_imprime_somente_termo(runtime):
     try:
         page.evaluate('''()=>{document.getElementById('comprovanteDadosBox').textContent='Aluno de teste · Objeto #7: Estojo azul';document.getElementById('modalComprovante').classList.remove('hidden');window.print=()=>{window.impresso=document.getElementById('areaImpressaoComprovante').innerText;};}''')
         page.locator('#modalComprovante').get_by_role('button',name='Imprimir',exact=True).click()
-        page.wait_for_function('window.impresso!==undefined')
+        page.wait_for_function('()=>(window.impresso!==undefined)')
         assert 'Estojo azul' in page.evaluate('window.impresso')
         assert 'Baixar TXT' not in page.evaluate('window.impresso')
         assert page.locator('#modalComprovante').is_visible()

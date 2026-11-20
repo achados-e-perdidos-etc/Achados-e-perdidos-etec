@@ -2,6 +2,12 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Revisão de segurança — 16/11/2026
+
+Autenticação com sessão revogável, proteção de recuperação/códigos por conta, finalidades distintas e uso único, política de senha, proteção de concorrência e cabeçalhos/CORS. Fotos com autoria conferida e normalização antes da análise externa; cliente desktop protege credenciais, TLS e redirecionamentos. Dependências atualizadas. Escopo, operação, resultado da auditoria e limites da validação em [seguranca-28.md](seguranca-28.md).
+
+Validação final disponível: **335 testes Python e 50 JavaScript aprovados**; **140 casos integrados permanecem sem reexecução final**, pois o sandbox negou sockets de PostgreSQL, Chromium e Xvfb. Houve validação integrada de uma versão intermediária, registrada no relatório; ela não representa toda a árvore final. Preservados os testes, a proposta em rascunho e `main` sem integração.
+
 ## Foto privada, termos e contraste — 15/11/2026
 
 Por pedido explícito do proprietário, alunos e professores podem adicionar, substituir e remover uma foto opcional no menu do perfil. Orientações: foto individual, de frente, cabeça e ombros, rosto e olhos visíveis, boa iluminação, sem máscara, óculos escuros, filtros, montagens ou objetos sobre o rosto. A secretaria web e desktop consultam o perfil nas conversas e na retirada de um objeto solicitado, usando a conta vinculada à solicitação, sem deduzir identidade pelo RM.

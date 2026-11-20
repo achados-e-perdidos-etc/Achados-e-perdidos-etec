@@ -23,7 +23,7 @@ def cadastro_aberto(browser,origin):
     page.get_by_role('button',name='Criar Conta',exact=True).click()
     # Código sem SMTP externo, já preparado no banco temporário.
     page.evaluate("document.getElementById('passo1Cadastro').classList.add('hidden');document.getElementById('passo2Cadastro').classList.remove('hidden')")
-    page.wait_for_function('TermosUI.dados!==null')
+    page.wait_for_function('()=>(TermosUI.dados!==null)')
     return context,page,errors
 
 
@@ -41,14 +41,14 @@ def test_termos_obrigam_fim_do_texto_e_aceite_explicito_antes_do_cadastro(runtim
         texto.focus();page.keyboard.press('PageDown');assert check.is_disabled()
         page.get_by_role('button',name='Voltar ao cadastro',exact=True).click();assert check.is_disabled()
         page.locator('#lerTermos').click();texto.focus();page.keyboard.press('Control+End')
-        page.wait_for_function("!document.getElementById('aceiteTermos').disabled")
+        page.wait_for_function("()=>(!document.getElementById('aceiteTermos').disabled)")
         assert not check.is_checked()
         OUT.mkdir(exist_ok=True);page.screenshot(path=str(OUT/'termos-leitura-celular.png'))
         page.get_by_role('button',name='Voltar ao cadastro',exact=True).click()
         page.get_by_role('button',name='Finalizar Cadastro',exact=True).click()
         assert scalar(db,'SELECT count(*) FROM termos_aceites')==0
         check.check();page.get_by_role('button',name='Finalizar Cadastro',exact=True).click()
-        page.wait_for_function("alunoSessao?.email==='novo@aluno.cps.sp.gov.br'")
+        page.wait_for_function("()=>(alunoSessao?.email==='novo@aluno.cps.sp.gov.br')")
         assert scalar(db,'SELECT versao FROM termos_aceites')==VERSAO_TERMOS
         assert scalar(db,'SELECT count(*) FROM codigos_auth')==0
         assert check.is_disabled() and not check.is_checked()
@@ -73,7 +73,7 @@ def test_termos_rolagem_por_toque_e_nova_versao_bloqueia_novamente(runtime):
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         page.get_by_role('button',name='Voltar ao cadastro',exact=True).click();page.locator('#aceiteTermos').check()
         page.route('**/api/termos',lambda r:r.fulfill(json={'success':True,'versao':'versao-nova','secoes':[{'titulo':'Novo texto','texto':'Releia os termos atualizados. '*100}]}))
-        page.locator('#lerTermos').click();page.wait_for_function("TermosUI.dados?.versao==='versao-nova'")
+        page.locator('#lerTermos').click();page.wait_for_function("()=>(TermosUI.dados?.versao==='versao-nova')")
         assert page.locator('#aceiteTermos').is_disabled() and not page.locator('#aceiteTermos').is_checked()
         assert not errors
     finally:context.close()
@@ -89,14 +89,14 @@ def test_upload_remover_e_logout_nao_deixam_foto_anterior(runtime):
         dialog.locator('input[type=file]').set_input_files(ROSTO)
         assert 'ainda não foi salva' in dialog.locator('[role=status]').inner_text()
         dialog.get_by_role('button',name='Salvar foto',exact=True).click()
-        page.wait_for_function('PerfilUI.proprio?.foto_id && PerfilUI.url!==null')
+        page.wait_for_function('()=>(PerfilUI.proprio?.foto_id && PerfilUI.url!==null)')
         assert scalar(db,'SELECT count(*) FROM perfis_fotos')==1
         assert page.locator('.perfil-avatar').get_attribute('src').startswith('blob:')
         assert not page.evaluate("JSON.stringify({...localStorage,...sessionStorage}).includes('blob:')")
         dialog.get_by_role('button',name='Remover minha foto',exact=True).click()
-        page.wait_for_function('PerfilUI.url===null');assert page.locator('.perfil-avatar').is_hidden()
+        page.wait_for_function('()=>(PerfilUI.url===null)');assert page.locator('.perfil-avatar').is_hidden()
         dialog.locator('input[type=file]').set_input_files(ROSTO);dialog.get_by_role('button',name='Salvar foto',exact=True).click()
-        page.wait_for_function('PerfilUI.url!==null');page.evaluate('fazerLogoff(false)')
+        page.wait_for_function('()=>(PerfilUI.url!==null)');page.evaluate('fazerLogoff(false)')
         assert page.locator('dialog.perfil-privado').count()==0
         assert page.locator('.perfil-avatar').get_attribute('src') is None
         assert not errors

@@ -28,6 +28,14 @@ TOKEN_SECRETARIA = None
 
 def requisicao_desktop(metodo, url, **kwargs):
     """Limita a espera em conexões interrompidas, inclusive durante login."""
+    from urllib.parse import urlsplit
+    destino=urlsplit(url)
+    cabecalhos={str(k).lower():v for k,v in kwargs.get('headers',{}).items()}
+    sensivel=bool(cabecalhos.get('authorization') or cabecalhos.get('x-access-token') or kwargs.get('auth')) or any(isinstance(kwargs.get(campo),dict) and any(k in kwargs[campo] for k in ('senha','codigo','credential')) for campo in ('json','data'))
+    if kwargs.get('verify') is False:raise ValueError('A verificação TLS é obrigatória.')
+    if sensivel and (not url.startswith(API_URL+'/api/') or destino.username or destino.password or destino.fragment or (destino.scheme!='https' and not (destino.scheme=='http' and destino.hostname in ('localhost','127.0.0.1','::1')))):
+        raise ValueError('Use HTTPS para transmitir credenciais ao servidor configurado.')
+    kwargs['allow_redirects']=False
     permitir_falha_login=kwargs.pop('permitir_falha_login',False)
     kwargs.setdefault('timeout', (5, 25))
     res = requests.request(metodo, url, **kwargs)
@@ -147,6 +155,8 @@ class SecretariaApp(ModeracaoDesktop,FerramentasDesktop,FormularioDesktop):
 
     def encerrar_sessao(self,expirada=False):
         global TOKEN_SECRETARIA
+        if TOKEN_SECRETARIA and not expirada:
+            self.tarefas.pool.submit(requisicao_desktop,'POST',API_URL+'/api/auth/sair',headers=self.get_auth_headers(),timeout=(3,5))
         TOKEN_SECRETARIA = None
         self.tarefas.invalidar()
         self.limpar_impressoes()
@@ -216,7 +226,7 @@ class SecretariaApp(ModeracaoDesktop,FerramentasDesktop,FormularioDesktop):
     def verificar_login(self):
         global TOKEN_SECRETARIA
         email = self.entry_email.get().strip().lower()
-        senha = self.entry_senha.get().strip()
+        senha = self.entry_senha.get()
 
         if not email or not senha:
             return messagebox.showerror("Erro", "Preencha o e-mail e a senha!")

@@ -26,7 +26,7 @@ class PushTest(safety.TextSafetyBrowser):
     def test_push_button_uses_session_and_waits_without_claiming_delivery(self):
         self.prepare()
         self.page.evaluate('()=>{window._pending=testarNotificacaoPush();}')
-        self.page.wait_for_function('window._done!==undefined')
+        self.page.wait_for_function('()=>(window._done!==undefined)')
         self.assertTrue(self.page.locator('#btnTestarPush').is_disabled())
         self.page.evaluate('testarNotificacaoPush()')
         self.assertEqual(self.page.evaluate("window._calls.filter(c=>c.url.endsWith('/test')).length"),1)
@@ -40,7 +40,7 @@ class PushTest(safety.TextSafetyBrowser):
     def test_push_server_rejection_restores_button_and_shows_message(self):
         self.prepare()
         self.page.evaluate('()=>{window._pending=testarNotificacaoPush();}')
-        self.page.wait_for_function('window._done!==undefined')
+        self.page.wait_for_function('()=>(window._done!==undefined)')
         self.page.evaluate("window._done({ok:false,json:async()=>({success:false,message:'Aguarde 30 segundos.'})})")
         self.page.evaluate('window._pending')
         self.assertFalse(self.page.locator('#btnTestarPush').is_disabled())

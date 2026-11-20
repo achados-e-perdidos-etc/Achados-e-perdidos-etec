@@ -75,7 +75,7 @@ class UploadTests(safety.TextSafetyBrowser):
         self.assertFalse(self.page.evaluate('envioCadastroAluno'))
         self.page.evaluate('abrirModalCadastrarAluno()')
         self.page.evaluate("window._prepared('data:image/jpeg;base64,YQ==')")
-        self.page.wait_for_function('!preparandoFotosAluno')
+        self.page.wait_for_function('()=>(!preparandoFotosAluno)')
         self.assertEqual(self.page.evaluate('fotosAlunoSelecionadas.length'),0)
 
     def test_upload_bad_file_no_false_green_and_reduced_motion(self):

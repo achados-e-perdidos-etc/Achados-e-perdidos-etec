@@ -1,3 +1,4 @@
+from services.autenticacao_service import SCHEMA_AUTH
 from utils.perfis import SCHEMA_PERFIS
 from utils.catalogo import SCHEMA_CATALOGO
 from utils.evolucao import SCHEMA_EVOLUCAO, contextualizar
@@ -128,6 +129,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS codigos_auth (
             email VARCHAR(150) PRIMARY KEY, codigo VARCHAR(6) NOT NULL, expiracao TIMESTAMP NOT NULL
         );''')
+        cursor.execute(SCHEMA_AUTH)
         cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (
             id SERIAL PRIMARY KEY, rm_aluno VARCHAR(20) UNIQUE NOT NULL, subscription_json TEXT NOT NULL
         );''')
