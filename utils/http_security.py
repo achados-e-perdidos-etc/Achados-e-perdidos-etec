@@ -42,6 +42,9 @@ def instalar(app):
         resposta.headers.update({'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY',
           'Permissions-Policy':'camera=(self), microphone=(), geolocation=(), payment=(), usb=()',
           'Cross-Origin-Opener-Policy':'same-origin','Cross-Origin-Resource-Policy':'same-origin'})
+        # A logo é pública e também aparece no HTML dos e-mails transacionais.
+        if request.path == '/logo.png' and resposta.status_code in (200, 304):
+            resposta.headers['Cross-Origin-Resource-Policy'] = 'cross-origin'
         # Handlers HTML legados ainda usam scripts/estilos inline. Não habilitar unsafe-eval.
         resposta.headers['Content-Security-Policy']="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://res.cloudinary.com; font-src 'self'; connect-src 'self' "+' '.join(sorted(origens))+"; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         if request.is_secure:resposta.headers['Strict-Transport-Security']='max-age=31536000'

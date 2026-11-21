@@ -1,6 +1,18 @@
 # Atualizações do projeto — prioridades, uploads e experiência web
 
-Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
+Branch única `28-atualizacoes-do-projeto`. A proposta #29 foi integrada em `main` em 21/11/2026, preservando o histórico anterior e a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações continuam nessa branch, a partir da `main` atual e com nova proposta de integração.
+
+## E-mails com a identidade do portal — 21/11/2026
+
+Os códigos de cadastro e recuperação eram enviados como título e número sem diagramação. O serviço transacional agora utiliza `templates/email_codigo.html`, com a logo do aluno, cabeçalho grafite, faixa vermelha, cartão do código, textos por finalidade e a assinatura “Achados, cuidados, devolvidos.”. O código continua sendo um único trecho de seis dígitos, sem caixas ou espaços inseridos, para permitir copiar e colar. Não aparece no assunto, na prévia da caixa de entrada ou em links.
+
+O HTML usa tabelas, cores e estilos essenciais inline, fontes do sistema e adaptação de tema claro/escuro quando o cliente oferece suporte. A logo é uma imagem HTTPS do endereço oficial `PUBLIC_SITE_URL`; a mensagem mantém o nome da marca, código e instruções mesmo com imagens bloqueadas ou sem domínio configurado no ambiente de teste. Não há fontes remotas, scripts, anexos CID ou logo em base64 no e-mail enviado. A API transacional da [Brevo](https://developers.brevo.com/reference/send-transac-email) recebe HTML e alternativa `textContent`; a [orientação do provedor sobre imagens](https://community.brevo.com/t/does-transactional-email-support-embedded-image/6665) recomenda uma URL pública. Somente `/logo.png`, inclusive em resposta 304 de cache, permite incorporação externa; as fotos pessoais e demais recursos mantêm a política anterior.
+
+O conteúdo é escapado pelo Jinja. O remetente configurado, destinatário, endpoint da Brevo, limites de tempo, recusa de redirecionamentos e confirmação de aceitação pelo provedor permanecem iguais. A validade de dez minutos, uso único, limites de tentativas/reenvio e separação de finalidade continuam no serviço de autenticação. Não foram alterados dados de contas nem enviadas mensagens reais para validar a aparência. A proposta #29 já mesclada não é reaberta; essa alteração posterior utiliza uma nova proposta na mesma branch de trabalho.
+
+Prévias locais com código fictício `123456` em `/workspace/emails-previas`, fora do repositório: cadastro e recuperação, claro/escuro, larguras de 320, 390 e 1024 px. Nos 12 cenários conferidos no Chromium não houve rolagem horizontal; o menor contraste dos textos avaliados foi 5,83:1, e a informação permaneceu legível com imagens ocultadas. Isso valida o modelo renderizado, não uma reprodução exata de todos os clientes de e-mail; Outlook/Gmail/Apple Mail podem ajustar estilos e bloquear imagens.
+
+Validação desta etapa: **540 testes Python aprovados**, incluindo 14 novos casos de HTML/texto, finalidade, cópia dos dígitos, escape, ausência de domínio/chave, erros de rede e recusa do provedor, incorporação da logo em respostas 200/304 e bloqueio do template na raiz estática. A suíte completa inclui os fluxos de autenticação, Flask/PostgreSQL/Chromium e desktop Tkinter/Xvfb. Passaram ainda 64 subtestes, não somados aos 540; os 12 avisos de depreciação do adaptador SQLite são os mesmos das etapas anteriores. As suítes separadas de JavaScript/Chromium do portal não foram repetidas, pois seus arquivos não mudaram. A validação visual do e-mail está descrita acima e as respostas da Brevo foram simuladas.
 
 ## Origem HTTPS atrás do proxy do Railway — 21/11/2026
 
