@@ -2,6 +2,22 @@
 
 As propostas #29 e #30 foram integradas em `main`, preservando o histórico anterior e a logo unificada da secretaria web/desktop. Por orientação mais recente do proprietário, as próximas alterações são feitas diretamente na `main`, com preservação das versões anteriores, como registrado abaixo.
 
+## Backups numerados — 21/11/2026
+
+Por pedido explícito do proprietário, as três versões existentes receberam nomes em sequência, da mais antiga para a mais recente, preservando os mesmos commits:
+
+| Nome | Código preservado |
+| --- | --- |
+| `backup-1` | `65ec6a44e16306d899de095964281abcddec685b` — antes dos e-mails personalizados |
+| `backup-2` | `33114db045352270b65e8053658fe3fa44bd310e` — e-mails integrados e validados |
+| `backup-3` | `97cf91f5599ef778f5fe08ccca64d76434f3d65c` — preservação automática das versões |
+
+Os nomes baseados no SHA são substituídos somente após conferir as referências numeradas. As cópias ZIP também estão disponíveis com os nomes `backup-1.zip`, `backup-2.zip` e `backup-3.zip` em `/workspace/backups-etec`, fora do repositório. Os arquivos de nome anterior são preservados para não quebrar os links já fornecidos no chat.
+
+O workflow agora identifica todos os backups numerados, inclusive com mais de uma página de tags, e reserva o maior número mais um para cada código ainda não preservado. Comparações são numéricas; `backup-10` sucede `backup-9`. Repetir a execução não duplica o backup do mesmo commit. Se dois processos disputarem um número, o alvo existente é conferido e a numeração é recalculada, sem substituir ou apagar nenhuma versão. A mudança se limita ao workflow e às instruções; o código do site permanece igual à versão validada anteriormente.
+
+Validação: YAML/Python conferidos e nove cenários aprovados, cobrindo início da sequência, reutilização do mesmo commit, máximo numérico, paginação com mais de cem tags, duas formas de concorrência, erros de permissão/criação e SHA inválido. Os arquivos ZIP mantêm os mesmos códigos das tags correspondentes. As execuções reais ficam na aba Actions; nenhuma funcionalidade da aplicação foi modificada nesta etapa.
+
 ## Main única, integração dos e-mails e cópias de segurança — 21/11/2026
 
 A proposta #30, dos e-mails personalizados, foi mesclada no commit `33114db045352270b65e8053658fe3fa44bd310e`. A árvore resultante é idêntica à versão que passou nos 540 testes Python e nos 12 cenários visuais; o Railway também confirmou a implantação desse commit. A branch `28-atualizacoes-do-projeto` foi excluída com conferência do SHA e somente após verificar que seu conteúdo estava no histórico de `main`. Não houve reescrita do histórico.

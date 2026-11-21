@@ -28,8 +28,6 @@ jobs:
           def guardar(repo, token, sha):
               if not re.fullmatch(r'[0-9a-f]{40}', sha) or sha == '0' * 40:
                   raise ValueError('Commit de backup inválido.')
-              nome = 'backup-main-' + sha[:12]
-
               def api(caminho, dados=None):
                   requisicao = urllib.request.Request(
                       'https://api.github.com/repos/' + repo + '/' + caminho,
@@ -42,24 +40,48 @@ jobs:
                   with urllib.request.urlopen(requisicao, timeout=20) as resposta:
                       return json.load(resposta)
 
-              caminho = 'git/ref/tags/' + nome
-              try:
-                  referencia = api(caminho)
-              except urllib.error.HTTPError as erro:
-                  if erro.code != 404:
-                      raise
+              def numerados():
+                  encontrados = {}
+                  pagina = 1
+                  while True:
+                      tags = api('tags?per_page=100&page=' + str(pagina))
+                      for tag in tags:
+                          numero = re.fullmatch(r'backup-([1-9][0-9]*)', tag['name'])
+                          if numero:
+                              encontrados[int(numero.group(1))] = tag['commit']['sha']
+                      if len(tags) < 100:
+                          return encontrados
+                      pagina += 1
+
+              for tentativa in range(10):
+                  existentes = numerados()
+                  repetidos = sorted(n for n, alvo in existentes.items() if alvo == sha)
+                  if repetidos:
+                      nome = 'backup-' + str(repetidos[0])
+                      print('Backup preservado: ' + nome + ' -> ' + sha)
+                      return nome
+                  nome = 'backup-' + str(max(existentes, default=0) + 1)
                   try:
                       referencia = api('git/refs', {'ref': 'refs/tags/' + nome, 'sha': sha})
                   except urllib.error.HTTPError as conflito:
                       if conflito.code != 422:
                           raise
-                      # Outro processo pode ter criado a mesma tag. Confirme o alvo.
-                      referencia = api(caminho)
-              if (referencia.get('ref') != 'refs/tags/' + nome
-                      or referencia.get('object', {}).get('type') != 'commit'
-                      or referencia.get('object', {}).get('sha') != sha):
-                  raise RuntimeError('A tag existente aponta para outra versão; não será sobrescrita.')
-              print('Backup preservado: ' + nome + ' -> ' + sha)
+                      try:
+                          referencia = api('git/ref/tags/' + nome)
+                      except urllib.error.HTTPError as ausente:
+                          if ausente.code == 404:
+                              raise conflito from None
+                          raise
+                      if referencia.get('object', {}).get('sha') != sha:
+                          # Outro processo reservou o número; recalcule sem sobrescrever.
+                          continue
+                  if (referencia.get('ref') != 'refs/tags/' + nome
+                          or referencia.get('object', {}).get('type') != 'commit'
+                          or referencia.get('object', {}).get('sha') != sha):
+                      raise RuntimeError('A tag retornada não corresponde à versão de backup.')
+                  print('Backup preservado: ' + nome + ' -> ' + sha)
+                  return nome
+              raise RuntimeError('Não foi possível reservar um número de backup sem conflito.')
 
           def main():
               with open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8') as arquivo:
