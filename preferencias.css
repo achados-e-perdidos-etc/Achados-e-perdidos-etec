@@ -1,0 +1,55 @@
+/* Componentes compartilhados; o modo claro mantém a identidade vermelha da escola. */
+.preferencia-botao{background:#202c40;color:#f1f5f9;border:1px solid #64748b;border-radius:10px;padding:10px 13px;font:600 12px/1.4 system-ui;cursor:pointer;min-height:40px;max-width:100%;overflow-wrap:anywhere}
+.preferencia-botao[aria-pressed=true]{background:#9f1828;color:#fff;border-color:#fda4af;box-shadow:0 0 0 2px #fda4af44}
+.menu-lateral:not(.aberto){display:none}
+.preferencia-opcoes{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.preferencia-dialog{background:#151d2c;color:#f1f5f9;border:1px solid #64748b;border-radius:22px;padding:24px;width:min(94vw,520px);max-height:86dvh;overflow:auto;margin:auto;font:15px/1.6 system-ui;box-shadow:0 20px 70px #0007}
+.preferencia-dialog h2{font-size:25px;margin:0 0 8px}.preferencia-dialog p{margin:10px 0}.preferencia-dialog::backdrop{background:#050914bf;backdrop-filter:blur(4px)}
+.tema-pergunta,.preferencias-listas{padding:16px;border:1px solid #64748b66;background:#192337;border-radius:16px;margin:12px 0;color:#e2e8f0;font:13px/1.6 system-ui}
+.tema-pergunta p,.preferencias-listas p{margin:8px 0}.tema-pergunta strong{font-size:15px}.preferencias-listas summary{font-weight:700;cursor:pointer;padding:3px 0}
+.tema-abrir{flex-shrink:0}.glass-header .tema-abrir{font-size:11px;padding:8px;min-height:36px}#loginAuthCard>.tema-abrir,.login-card>.tema-abrir{margin-top:16px}
+#perfilMenu>.tema-abrir{width:100%;margin-top:10px}@media(max-width:767px){.glass-header>.max-w-5xl>.tema-abrir{display:none}}
+.secretaria-experiencia .botoes-secundarios-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.secretaria-experiencia .botoes-secundarios-grid>button{min-width:0}
+@media(max-width:500px){.secretaria-experiencia .botoes-secundarios-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.busca-salva{display:flex;align-items:center;gap:8px;margin:10px 0}.busca-salva>button:first-child{flex:1;text-align:left}
+#itemsGrid.preferencia-lista{grid-template-columns:1fr!important}#itemsGrid.preferencia-lista>.interactive-card{display:block}#itemsGrid.preferencia-lista>.interactive-card>div:first-child{display:grid;grid-template-columns:110px minmax(0,1fr);column-gap:16px;align-items:center}#itemsGrid.preferencia-lista .ux-card-image{grid-row:1/4;height:110px;margin:0}#itemsGrid.preferencia-lista .ux-card-image>.absolute{display:none}#itemsGrid.preferencia-lista img{max-height:110px}
+#gridItensContainer.preferencia-lista{grid-template-columns:1fr!important}#gridItensContainer.preferencia-lista .item-card{display:flex;align-items:center;gap:16px}#gridItensContainer.preferencia-lista .item-foto-thumb{width:48px;min-width:48px;height:48px}
+.secretaria-atalhos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0 24px}.secretaria-atalhos>.preferencia-botao{display:flex;align-items:center;gap:12px;text-align:left;background:#192234;padding:16px}.secretaria-atalhos strong{font-size:28px;color:#fda4af;min-width:30px}.atalhos-rodape{grid-column:1/-1;display:flex;align-items:center;gap:12px;justify-content:space-between;font:12px/1.5 system-ui;color:#c4cfdf}
+@media(max-width:600px){.secretaria-atalhos{gap:6px}.secretaria-atalhos>.preferencia-botao{flex-direction:column;align-items:flex-start;padding:10px;font-size:11px}.secretaria-atalhos strong{font-size:24px}.atalhos-rodape{flex-wrap:wrap}.busca-salva{align-items:stretch}#itemsGrid.preferencia-lista>.interactive-card>div:first-child{grid-template-columns:80px minmax(0,1fr)}.glass-header>.max-w-5xl{flex-wrap:wrap}.glass-header .tema-abrir{margin-left:auto}}
+
+.ux-card-list-state{display:none}#itemsGrid.preferencia-lista .ux-card-list-state{display:inline-block;font-size:10px;width:fit-content;border-radius:6px;padding:3px 6px;border:1px solid;margin:4px 0}
+.secretaria-experiencia .grid-itens:not(.preferencia-lista){display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:700px){.secretaria-experiencia .grid-itens:not(.preferencia-lista){grid-template-columns:1fr}.header-secretaria{flex-wrap:wrap;gap:10px}.header-direita-botoes{margin-left:auto}.header-secretaria .logo-area{min-width:0}.header-secretaria .status-sessao{font-size:10px}}
+
+/* Os documentos para impressão têm sua própria paleta, independente da escolha da tela. */
+@media screen {
+html[data-tema=claro]{--bg-main:#f3f5f9;--bg-panel:#fff;--text-main:#192334;--text-muted:#4b5b70;--border-color:#cbd3df;--border-highlight:#b91c2b;color-scheme:light}
+html[data-tema=claro] body{--bg-main:#f3f5f9;--bg-panel:#fff;--text-main:#192334;--text-muted:#4b5b70;--border-color:#cbd3df;--border-highlight:#b91c2b;background:#f3f5f9!important;color:#192334!important}
+html[data-tema=claro] :is(.glass-panel,.glass-header,.login-card,.modal-box,.menu-lateral,.header-secretaria,.item-card,.card-dash,.card-conversa-aluno,.evolucao-dialog,.preferencia-dialog,.central-avisos,.cadastro-card,.ux-next-step,.ux-como-funciona,.ux-nav,.ux-nav-inner,.chat-container,.chat-lista-alunos,.chat-conversa-area,.chat-header,.chat-input-area,.preferencias-listas,.tema-pergunta,.filtro-barra,#menuNavegacaoDropdown,#perfilMenu,#dropdownStatusMenu,#loginAlunoScreen,#loginScreen,#loginAuthCard,#authTransition,#chatMensagens,#chatListaConversasContainer,#chatMensagensContainer,#centralAvisos){background:#fff!important;background-color:#fff!important;color:#192334!important;border-color:#cbd3df!important;box-shadow:0 8px 28px #23324a0d}
+html[data-tema=claro] :is(input:not([type=checkbox]):not([type=radio]),textarea,select){background:#f8fafc!important;color:#192334!important;border-color:#8c9bb0!important}
+html[data-tema=claro] :is(input,textarea,select){color-scheme:light}
+html[data-tema=claro] :is(input,textarea)::placeholder{color:#53647b!important;opacity:1}
+html[data-tema=claro] :is(.text-white,.text-slate-100,.text-slate-200,.text-slate-300,.text-gray-100,.text-gray-200,.header-titulo,.item-nome,.modal-titulo,.card-dash h3,.evolucao-dialog h2,.ux-auth-title){color:#192334!important}
+html[data-tema=claro] :is(.text-slate-400,.text-slate-500,.text-slate-600,.text-gray-400,.text-gray-500,.ev-field,.ev-status,.mod-resumo,.catalogo-status,.evolucao-dialog p,.ev-log pre,.status-sessao,.campo-grupo label,.atalhos-rodape){color:#4b5b70!important}
+html[data-tema=claro] :is(.ux-search-label,.ux-search-hint,#buscaAjuda,.ux-review-note,.catalogo-filtros,.paridade-filtros label,.ux-account-help,.ux-shared-device,.ux-auth-description,.auth-remember strong,.auth-remember small,#authContaAjuda,.ux-hero p,.ux-como-funciona p,.cadastro-card p,.cadastro-card strong,.rascunho-controles,.avisos-status,.aviso-abrir span,.aviso-abrir small,.item-local-data,.badge-cat){color:#4b5b70!important}
+html[data-tema=claro] :is(.ux-eyebrow,#loginAuthCard .ux-eyebrow){color:#a31828!important}
+html[data-tema=claro] :is(.auth-submit.auth-submit,.bg-blue-600,.bg-rose-600,.btn-relatorio){color:#fff!important}
+html[data-tema=claro] :is(.chat-sistema-grid,.chat-sidebar-conversas,.chat-sidebar-header,.chat-conversa-ativa-box,.chat-conversa-header,.chat-input-bar,.avisos-painel,.aviso-card,.rascunho-controles,.tabela-container,.item-foto-thumb,.badge-cat){background:#f8fafc!important;border-color:#cbd3df!important;color:#192334}
+html[data-tema=claro] :is(.item-titulo,.secao-titulo,.aviso-abrir strong,.btn-voltar-chat-mobile){color:#192334!important}
+html[data-tema=claro] .msg-aluno{background:#e8eef7;color:#192334;border-color:#aebdce}
+html[data-tema=claro] :is(.text-red-400,.text-red-300,.text-rose-400,.ev-error,.catalogo-erro){color:#b91c2b!important}html[data-tema=claro] :is(.text-emerald-400,.text-green-400){color:#00684b!important}html[data-tema=claro] :is(.text-amber-400,.text-yellow-400){color:#805308!important}
+html[data-tema=claro] :is(.preferencia-botao,.ev-action,.evolucao-dialog button:not(.ev-close),.pilula-filtro,.btn-acao,.item-menu,.ux-nav button,.ux-filter-chip,.ux-password-toggle){background:#edf1f7;color:#27364c;border-color:#aebdce}
+html[data-tema=claro] :is(.preferencia-botao[aria-pressed=true],.pilula-filtro.active,.item-menu.active,.ux-nav button[aria-current=page]){background:#fff0f2!important;color:#9c1725!important;border-color:#bb2637!important}
+html[data-tema=claro] .secretaria-atalhos strong{color:#ab1c2b}html[data-tema=claro] .secretaria-atalhos>.preferencia-botao{background:#fff}
+html[data-tema=claro] [class*="bg-black"]:not(.fixed):not(.absolute){background-color:#edf1f7!important}
+html[data-tema=claro] [class*="bg-white/"]{background-color:#e8edf5!important}
+html[data-tema=claro] [class*="bg-[#"]{background-color:#f3f5f9!important}
+html[data-tema=claro] :is(.bg-red-600,.bg-emerald-600,.btn-entrar-login,.btn-novo-item,#btnSalvarAlunoItem,#btnSalvarItem){color:#fff!important}
+html[data-tema=claro] .ux-card-image .text-white{color:#fff!important}
+/* Cores legadas da secretaria foram declaradas inline. Sobrescrevemos só os tons neutros. */
+html[data-tema=claro] :is([style*="background: #0d1117"],[style*="background: #161b22"],[style*="background: #21262d"],[style*="background: #1f2937"],[style*="background:#0c1523"],[style*="background:#151c2b"]){background:#edf1f7!important}
+html[data-tema=claro] :is([style*="color: #ffffff"],[style*="color: white"],[style*="color:white"],[style*="color: #c9d1d9"]){color:#192334!important}
+html[data-tema=claro] :is([style*="color: #8b949e"],[style*="color: #9ca3af"]){color:#4b5b70!important}
+html[data-tema=claro] :is(.ev-note,.ev-visual,.mod-motivo){background:#fff8e6!important;color:#71500e!important;border-color:#c29b45!important}
+html[data-tema=claro] .ev-code{background:#e6f6ef;color:#07543d}html[data-tema=claro] :focus-visible{outline-color:#075bbb!important}
+}
+@media print{.secretaria-atalhos,.preferencias-listas,.tema-abrir,.tema-pergunta{display:none!important}}

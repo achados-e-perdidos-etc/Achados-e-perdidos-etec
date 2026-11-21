@@ -6,6 +6,17 @@ import requests
 from threading import Thread
 from config import BREVO_API_KEY, SMTP_SENDER
 
+def enviar_confirmacao(destinatario,codigo,finalidade):
+    """Só confirma o pedido de código se o provedor aceitar o e-mail."""
+    if not BREVO_API_KEY:return False
+    try:
+        resposta=requests.post('https://api.brevo.com/v3/smtp/email',headers={'api-key':BREVO_API_KEY,'Content-Type':'application/json'},
+          json={'sender':{'name':'ETEC Achados e Perdidos','email':SMTP_SENDER},'to':[{'email':destinatario}],
+          'subject':'Código para '+('criar conta' if finalidade=='cadastro' else 'recuperar acesso'),
+          'htmlContent':'<h2>Seu código ETEC</h2><p>'+codigo+'</p><p>Válido por 10 minutos. Não compartilhe este código.</p>'},timeout=(5,15),allow_redirects=False)
+        return resposta.status_code in (200,201,202)
+    except requests.RequestException:return False
+
 def enviar_email_api_async(destinatario, assunto, html_content):
     """
     Executa a requisição HTTP para a API Brevo v3.

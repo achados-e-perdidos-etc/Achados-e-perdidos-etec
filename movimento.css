@@ -1,0 +1,93 @@
+/* Movimento compartilhado: entradas curtas, sem bloquear ações ou adicionar esperas. */
+:root {
+    --movimento-rapido: 150ms;
+    --movimento-padrao: 220ms;
+    --movimento-curva: cubic-bezier(.2,.75,.25,1);
+}
+
+/* Somente propriedades visuais: não animar largura/altura de todos os elementos. */
+button, a, input, select, textarea, .item-menu, .pilula-filtro, .category-chip {
+    transition-property: background-color, color, border-color, box-shadow, opacity;
+    transition-duration: var(--movimento-rapido);
+    transition-timing-function: var(--movimento-curva);
+}
+button:focus-visible, a:focus-visible {
+    outline: 2px solid #fb7185;
+    outline-offset: 3px;
+}
+input:focus, select:focus, textarea:focus {
+    box-shadow: 0 0 0 3px #f43f5e14;
+}
+button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+button:not(:disabled):active, .btn:active { scale: .98; }
+
+/* Entrada de seções por opacidade: sem transformar ancestrais de menus/modais. */
+:is(#catalogScreen,#muralScreen,#meusItensScreen,#detailScreen,[id^="secao-"]):not(.hidden):not([hidden]) {
+    animation: movimento-secao var(--movimento-padrao) ease-out backwards;
+}
+:is(#menuNavegacaoDropdown,#perfilMenu,#dropdownStatusMenu,#categoryChipsContainer,#janelaChat):not(.hidden):not([hidden]) {
+    animation: movimento-menu 180ms var(--movimento-curva) backwards;
+    transform-origin: top center;
+}
+#janelaChat { transform-origin: bottom right; }
+
+/* A classe hidden continua fechando imediatamente, inclusive durante a entrada. */
+:is(#modalNovo,#modalCadastrarAluno,#modalMatchImediato,.modal-overlay):not(.hidden):not([hidden]) {
+    animation: movimento-fundo 160ms ease-out backwards;
+}
+:is(#modalNovo,#modalCadastrarAluno,#modalMatchImediato):not(.hidden) > .glass-panel,
+.modal-overlay:not(.hidden) > .modal-box {
+    animation: movimento-modal var(--movimento-padrao) var(--movimento-curva) backwards;
+}
+#menuBackdrop:not(.hidden) { animation: movimento-fundo 160ms ease-out backwards; }
+.menu-lateral { transition-duration: 220ms; }
+#loginAuthCard, .login-box { animation: movimento-modal 240ms var(--movimento-curva) backwards; }
+
+/* Coleções: sequência de no máximo 90ms, sem reanimar mensagens a cada polling. */
+:is(#itemsGrid,#gridItensContainer,#gridItensPendentesContainer,#listaAcessosProfessores) > :is(.interactive-card,.item-card,.card-dash),
+.grid-dashboard-cards > .card-dash {
+    animation: movimento-card 180ms var(--movimento-curva) backwards;
+    animation-delay: 90ms;
+}
+:is(#itemsGrid,#gridItensContainer,#gridItensPendentesContainer,#listaAcessosProfessores,.grid-dashboard-cards) > :first-child { animation-delay: 0ms; }
+:is(#itemsGrid,#gridItensContainer,#gridItensPendentesContainer,#listaAcessosProfessores,.grid-dashboard-cards) > :nth-child(2) { animation-delay: 18ms; }
+:is(#itemsGrid,#gridItensContainer,#gridItensPendentesContainer,#listaAcessosProfessores,.grid-dashboard-cards) > :nth-child(3) { animation-delay: 36ms; }
+:is(#itemsGrid,#gridItensContainer,#gridItensPendentesContainer,#listaAcessosProfessores,.grid-dashboard-cards) > :nth-child(4) { animation-delay: 54ms; }
+:is(#itemsGrid,#gridItensContainer,#gridItensPendentesContainer,#listaAcessosProfessores,.grid-dashboard-cards) > :nth-child(5) { animation-delay: 72ms; }
+.interactive-card, .item-card, .card-dash {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms var(--movimento-curva);
+}
+.item-foto-thumb img, .interactive-card img { transition: transform 220ms var(--movimento-curva); }
+.tabela-container tbody tr { transition: background-color 150ms ease; }
+#toast:not(.hidden):not(.toast), .toast-enter { animation: movimento-menu 180ms var(--movimento-curva) backwards; }
+
+/* Hover só em dispositivos com ponteiro preciso, para evitar estado preso no celular. */
+@media (hover:hover) and (pointer:fine) {
+    .interactive-card:hover, .item-card:hover { transform: translateY(-2px); border-color: #fb718566; box-shadow: 0 8px 24px #00000026; }
+    .item-card:hover .item-foto-thumb img { transform: scale(1.035); }
+    .item-menu:hover, .pilula-filtro:hover, .category-chip:hover { box-shadow: inset 0 0 0 1px #fb71852e; }
+    .tabela-container tbody tr:hover { background-color: #ffffff04; }
+}
+@media (hover:none), (pointer:coarse) {
+    .interactive-card:hover, .item-card:hover, .item-card:hover .item-foto-thumb img { transform: none; }
+}
+@keyframes movimento-secao { from { opacity: .65; } to { opacity: 1; } }
+@keyframes movimento-menu { from { opacity: 0; transform: translateY(4px) scale(.99); } to { opacity: 1; transform: none; } }
+@keyframes movimento-fundo { from { opacity: 0; } to { opacity: 1; } }
+@keyframes movimento-modal { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes movimento-card { from { opacity: .65; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Uma preferência global cobre também os efeitos CSS das etapas anteriores. */
+@media (prefers-reduced-motion:reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+    button:not(:disabled):active, .btn:active { scale: none; }
+    .interactive-card:hover, .item-card:hover, .item-card:hover .item-foto-thumb img { transform: none; }
+    .lost.got { opacity: 0; visibility: hidden; }
+}
+@media print {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+}

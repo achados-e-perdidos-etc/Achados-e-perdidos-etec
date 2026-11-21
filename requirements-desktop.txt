@@ -1,0 +1,6 @@
+# Tkinter é fornecido pelo Python/instalador do sistema, não pelo pip.
+requests==2.34.2
+Pillow>=13.0.0,<14
+qrcode[pil]>=7.4,<9
+
+opencv-python-headless>=4.10,<5

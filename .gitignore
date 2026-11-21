@@ -1,0 +1,18 @@
+# Arquivos locais gerados pelo Python e pelos testes
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ambientes e dependências instalados na máquina
+.venv/
+venv/
+node_modules/
+
+# Configuração privada e arquivos do sistema operacional
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
