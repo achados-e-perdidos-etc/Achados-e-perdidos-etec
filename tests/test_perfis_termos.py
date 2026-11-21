@@ -140,6 +140,16 @@ def test_cadastro_registra_versao_e_timestamp_junto_da_conta(cadastro,db):
     assert check_password_hash(scalar(db,'SELECT senha_hash FROM alunos WHERE email=%s',(payload['email'],)),payload['senha'])
 
 
+def test_senha_vazia_no_cadastro_preserva_codigo_para_correcao(cadastro,db):
+    client,_=cadastro;payload=dados_cadastro(db)
+    res=client.post('/api/auth/cadastrar',json={**payload,'senha':'\u3000'*12})
+    assert res.status_code==400 and 'apenas espaços' in res.json['message']
+    assert scalar(db,'SELECT count(*) FROM alunos')==2
+    assert scalar(db,'SELECT count(*) FROM termos_aceites')==0
+    assert scalar(db,'SELECT tentativas FROM codigos_auth WHERE email=%s',(payload['email'],))==0
+    assert client.post('/api/auth/cadastrar',json=payload).status_code==200
+
+
 def test_falha_no_aceite_reverte_conta_e_preserva_codigo(cadastro,db,monkeypatch):
     client,_=cadastro;payload=dados_cadastro(db)
     def falhar(*args):raise RuntimeError('Falha simulada antes do aceite')

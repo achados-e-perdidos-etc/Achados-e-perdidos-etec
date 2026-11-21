@@ -36,7 +36,10 @@ def limitar(c,email,operacao,maximo):
     return c.fetchone()['quantidade']<=maximo
 
 
-def senha_valida(senha):return isinstance(senha,str) and 12<=len(senha)<=128 and len(senha.encode())<=512 and '\x00' not in senha
+def senha_valida(senha):
+    # Verifica o vazio sem modificar o valor usado no hash ou no login.
+    return (isinstance(senha,str) and 12<=len(senha)<=128
+            and bool(senha.strip()) and len(senha.encode())<=512 and '\x00' not in senha)
 
 
 def sessao_valida(payload):
@@ -78,7 +81,7 @@ def operar(acao,conectar):
     if not valido or len(email)>150:return jsonify(success=False,message='Credenciais incorretas.' if acao=='login' else 'Informe seu e-mail institucional válido.'),(401 if acao=='login' else 400)
     senha=d.get('senha');finalidade=d.get('finalidade','cadastro')
     if acao=='enviar' and finalidade not in ('cadastro','recuperacao'):return jsonify(success=False,message='Solicitação inválida.'),400
-    if acao in ('cadastrar','redefinir') and not senha_valida(senha):return jsonify(success=False,message='Use uma senha com 12 a 128 caracteres.'),400
+    if acao in ('cadastrar','redefinir') and not senha_valida(senha):return jsonify(success=False,message='Use uma senha com 12 a 128 caracteres. Ela não pode conter apenas espaços.'),400
     if acao=='login' and (not isinstance(senha,str) or not 1<=len(senha)<=128):return jsonify(success=False,message='Credenciais incorretas.'),401
     nome,rm=d.get('nome'),d.get('rm')
     if acao=='cadastrar':

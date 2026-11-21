@@ -2,6 +2,14 @@
 
 Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `main`. Reúne o histórico anterior e preserva a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações ficam nesta mesma branch.
 
+## Senhas formadas somente por espaços — 21/11/2026
+
+A revisão de estabilidade reproduziu cadastros e redefinições que aceitavam doze espaços ou tabulações como senha. A validação compartilhada agora recusa senhas compostas somente por espaços em branco, inclusive Unicode, antes de acessar o código de e-mail. A mensagem orienta a corrigir a senha, sem apagar o código, incrementar suas tentativas ou modificar a conta. A senha com texto conserva seus espaços iniciais/finais e continua funcionando no login.
+
+Os testes de regressão verificam as duas rotas, o cadastro ativo e modular e a recuperação em PostgreSQL temporário: a tentativa inválida preserva a conta e o código; a correção com o mesmo código conclui a operação. O teste existente de recuperação no navegador também confere a senha exata com espaços nas pontas. Nenhuma migração ou configuração nova é necessária.
+
+Validação desta correção: **482 testes Python e 64 subtestes aprovados**, com a suíte completa e sem seleção parcial, incluindo os fluxos de navegador e Tkinter/Xvfb. Os sete casos novos estão incluídos nos 482, sem somar os subtestes à contagem. Os 12 avisos são de depreciação do adaptador de datas SQLite usado nos testes. As suítes separadas de 51 regressões Chromium e 50 JavaScript, aprovadas na revisão imediatamente anterior, não foram repetidas porque esses arquivos não mudaram. Sem acesso ao banco da escola ou implantação.
+
 ## Revisão de segurança — 16/11/2026
 
 Autenticação com sessão revogável, proteção de recuperação/códigos por conta, finalidades distintas e uso único, política de senha, proteção de concorrência e cabeçalhos/CORS. Fotos com autoria conferida e normalização antes da análise externa; cliente desktop protege credenciais, TLS e redirecionamentos. Dependências atualizadas. Escopo, operação, resultado da auditoria e limites da validação em [seguranca-28.md](seguranca-28.md).

@@ -150,11 +150,25 @@ def test_conta_inexistente_e_existente_recebem_mesma_resposta(ambiente):
     assert r1.status_code==r2.status_code==200 and r1.json==r2.json and len(m)==1
 
 
-@pytest.mark.parametrize('senha',['','curta','a'*129,[],None,12345])
+@pytest.mark.parametrize('senha',['','curta','a'*129,[],None,12345,' '*12,'\t'*12,'\n\t '*6,'\u3000'*12])
 def test_senha_fraca_ou_tipo_invalido_rejeitado_antes_do_codigo(senha):
     with patch.object(server,'get_db_connection') as banco:
-        assert server.app.test_client().post('/api/auth/redefinir',json=dict(email=A,codigo='123456',senha=senha)).status_code==400
+        dados=dict(email=A,codigo='123456',senha=senha,nome='Aluno Teste',rm='12345',aceite_termos=True,versao_termos=VERSAO_TERMOS)
+        for rota in ['/api/auth/redefinir','/api/auth/cadastrar']:
+            assert server.app.test_client().post(rota,json=dados).status_code==400
         banco.assert_not_called()
+
+
+def test_senha_vazia_na_recuperacao_nao_consume_codigo_nem_altera_a_conta(ambiente):
+    c,db,m=ambiente;codigo=emitir(c,m)
+    anterior=scalar(db,'SELECT senha_hash FROM alunos WHERE email=%s',(A,))
+    dados=dict(email=A,codigo=codigo,senha=' '*12)
+    resposta=c.post('/api/auth/redefinir',json=dados)
+    assert resposta.status_code==400 and 'apenas espaços' in resposta.json['message']
+    assert scalar(db,'SELECT senha_hash FROM alunos WHERE email=%s',(A,))==anterior
+    assert scalar(db,'SELECT count(*) FROM auth_revogacoes')==0
+    assert scalar(db,'SELECT tentativas FROM codigos_auth WHERE email=%s',(A,))==0
+    assert c.post('/api/auth/redefinir',json={**dados,'senha':SENHA}).status_code==200
 
 
 def test_tokens_anteriores_ou_claims_alterados_sao_rejeitados(monkeypatch):
