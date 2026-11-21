@@ -2,7 +2,7 @@
 // SERVICE WORKER - ETEC ACHADOS E PERDIDOS (VERSÃO 2.0 PWA & WEB PUSH)
 // ==============================================================================
 
-const CACHE_NAME = 'etec-achados-v28-seguranca-contas';
+const CACHE_NAME = 'etec-achados-v28-busca-publica';
 
 const STATIC_ASSETS = [
     '/',

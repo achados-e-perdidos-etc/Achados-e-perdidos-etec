@@ -27,7 +27,7 @@ const ExperienciaUI = {
     },
     voltar(){window.scrollTo({top:this.scrollCatalogo,behavior:'instant'});if(this.focoCatalogo?.isConnected)this.focoCatalogo.focus({preventScroll:true});},
     auth(tela){
-        const titulos={login:['Vamos encontrar o que é seu.','Entre com sua conta institucional de aluno ou professor.'],cadastro:['Faça parte dos reencontros.','Confirme seu e-mail institucional para criar sua conta.'],recuperar:['Recupere seu acesso.','Enviaremos um código ao seu e-mail institucional.']};
+        const titulos={login:['Vamos encontrar o que é seu.','Procure objetos perdidos na ETEC. Entre com seu e-mail institucional de aluno ou professor.'],cadastro:['Faça parte dos reencontros.','Confirme seu e-mail institucional para criar sua conta.'],recuperar:['Recupere seu acesso.','Enviaremos um código ao seu e-mail institucional.']};
         const copy=titulos[tela]||titulos.login;document.getElementById('authTitulo').textContent=copy[0];document.getElementById('authDescricao').textContent=copy[1];this.limparFeedback();
     },
     limparFeedback(){const n=document.getElementById('authFeedback');if(n){n.hidden=true;n.textContent='';}},

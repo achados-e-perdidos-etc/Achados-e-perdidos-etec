@@ -33,6 +33,12 @@ def instalar(app):
         # Handlers HTML legados ainda usam scripts/estilos inline. Não habilitar unsafe-eval.
         resposta.headers['Content-Security-Policy']="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://res.cloudinary.com; font-src 'self'; connect-src 'self' "+' '.join(sorted(origens))+"; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         if request.is_secure:resposta.headers['Strict-Transport-Security']='max-age=31536000'
+        # Só a apresentação pública entra nas buscas. No ambiente sem domínio,
+        # também impede a indexação da prévia; não substitui a autenticação.
+        if (not app.config.get('PUBLIC_SITE_URL') or resposta.status_code >= 400
+                or (request.path not in ('/', '/index.html')
+                    and (request.path.startswith('/api/') or resposta.mimetype == 'text/html'))):
+            resposta.headers['X-Robots-Tag'] = 'noindex'
         if request.path.startswith('/api/'):
             resposta.headers['Cache-Control']='private, no-store'
             resposta.headers['Vary']='Origin, Authorization, x-access-token'

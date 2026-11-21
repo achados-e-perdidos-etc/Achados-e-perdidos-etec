@@ -1,8 +1,10 @@
 import os
+from utils.seo import normalizar_url_publica
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+PUBLIC_SITE_URL = normalizar_url_publica(os.environ.get("PUBLIC_SITE_URL", ""))
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
 if len(JWT_SECRET.encode('utf-8')) < 32:

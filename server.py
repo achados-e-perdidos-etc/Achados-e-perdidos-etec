@@ -27,7 +27,7 @@ from threading import Thread
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -45,13 +45,15 @@ from utils.helpers import validar_email_institucional
 from utils.doacoes import DOACOES_PENDENTES_SQL
 from utils.professores import SCHEMA_ACESSO_PROFESSORES
 from utils.push import SCHEMA_PUSH, SCHEMA_ENTREGAS_PUSH, SCHEMA_EMAIL_CHAT, SCHEMA_LIMITE_PUSH, INDICE_ENTREGAS_PUSH
-from config import JWT_SECRET
+from config import JWT_SECRET, PUBLIC_SITE_URL
+from utils.seo import metadados_publicos, mapa_site
 
 # ============================================================
 # CONFIGURAÇÕES E AMBIENTE
 # ============================================================
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
+app.config['PUBLIC_SITE_URL'] = PUBLIC_SITE_URL
 from blueprints.professores import professores_bp
 app.register_blueprint(professores_bp)
 from blueprints.Push import push_bp
@@ -432,7 +434,30 @@ def fav():
 def sec_web(): return send_from_directory(app.static_folder, 'controle_etec_7788.html')
 
 @app.route('/')
-def home(): return send_from_directory(app.static_folder, 'index.html')
+@app.route('/index.html')
+def home():
+    with open(os.path.join(app.static_folder, 'index.html'), encoding='utf-8') as pagina:
+        html = pagina.read().replace('<!-- seo-publico -->', metadados_publicos(app.config['PUBLIC_SITE_URL']), 1)
+    return Response(html, mimetype='text/html')
+
+
+@app.route('/robots.txt')
+def robots():
+    texto = 'User-agent: *\nAllow: /\n'
+    if app.config['PUBLIC_SITE_URL']:
+        texto += 'Sitemap: ' + app.config['PUBLIC_SITE_URL'] + 'sitemap.xml\n'
+    resposta = Response(texto, mimetype='text/plain')
+    resposta.headers['Cache-Control'] = 'no-cache'
+    return resposta
+
+
+@app.route('/sitemap.xml')
+def sitemap():
+    if not app.config['PUBLIC_SITE_URL']:
+        return Response('O endereço público do site ainda não foi configurado.\n', status=503, mimetype='text/plain')
+    resposta = Response(mapa_site(app.config['PUBLIC_SITE_URL']), mimetype='application/xml')
+    resposta.headers['Cache-Control'] = 'no-cache'
+    return resposta
 
 # ------------------------------------------------------------
 # PÁGINA 404 PERSONALIZADA
