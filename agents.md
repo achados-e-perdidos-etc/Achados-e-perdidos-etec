@@ -14,6 +14,8 @@ Os antigos `blueprints/ai.py`, `blueprints/frontend.py` e `blueprints/ai_vision_
 
 ## Pendências adiadas
 
-Por orientação do proprietário, integração/publicação das propostas, hospedagem/migração, validação por lista oficial de RM, testes com credenciais reais e revisão visual completa em monitores grandes estão adiados por inviabilidade atual. Preserve os registros, mas não os apresente como próximos passos ativos quando ele perguntar por pendências. Responda distinguindo pendências ativas de tarefas adiadas; não afirme que tarefas adiadas foram concluídas. Reabra esse trabalho somente quando o proprietário indicar que já é viável.
+Em 21/11/2026, o proprietário informou que publicou o site no Railway e forneceu `https://etec-achados.up.railway.app/` para conferência. A disponibilidade desse endereço foi confirmada por GET 200. Diagnóstico e correções do serviço público estão autorizados no escopo solicitado; registre separadamente resultados locais e respostas efetivamente verificadas no servidor. O acesso ao painel/às variáveis do Railway não está conectado neste chat. Não presuma que um commit já entrou em produção sem verificar.
+
+Integração em `main`, novas migrações de hospedagem, validação por lista oficial de RM, testes com credenciais reais e revisão visual completa em monitores grandes continuam adiados enquanto não houver novo pedido. Preserve os registros, mas não os apresente como próximos passos ativos quando ele perguntar por pendências. Responda distinguindo pendências ativas de tarefas adiadas; não afirme que tarefas adiadas foram concluídas.
 
 O teste de carga do Reel (k6 com 100/1.000 usuários, consultas/índices, cache público e respostas acima de 1 segundo) foi explicitamente adiado em 15/11/2026. Estado e roteiro de retomada em `pendencias.md`. Nenhum teste de capacidade foi executado; não tratar os esboços como resultados ou iniciar a carga até novo pedido.

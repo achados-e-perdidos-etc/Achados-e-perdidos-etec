@@ -2,10 +2,22 @@
 import os
 from urllib.parse import urlsplit
 from flask import request,jsonify
+from utils.seo import normalizar_url_publica
 
 
 def instalar(app):
     origens={x.strip().rstrip('/') for x in os.environ.get('CORS_ORIGINS','').split(',') if x.strip()}
+    # O proxy encerra o HTTPS antes do Flask. Use somente os endereços
+    # configurados pelo operador/provedor, sem confiar em X-Forwarded-*.
+    publica = app.config.get('PUBLIC_SITE_URL', '')
+    if publica:
+        origens.add(normalizar_url_publica(publica).rstrip('/'))
+    dominio_railway = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '').strip()
+    if dominio_railway:
+        try:
+            origens.add(normalizar_url_publica('https://' + dominio_railway).rstrip('/'))
+        except RuntimeError:
+            raise RuntimeError('RAILWAY_PUBLIC_DOMAIN deve conter somente o domínio público do serviço, sem protocolo ou caminho.') from None
     for origem in origens:
         p=urlsplit(origem)
         if p.scheme not in ('https','http') or not p.netloc or p.path or p.query or p.fragment or p.username:raise RuntimeError('CORS_ORIGINS deve conter origens completas, sem caminho.')
