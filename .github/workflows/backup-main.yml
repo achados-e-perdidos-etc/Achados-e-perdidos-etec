@@ -1,0 +1,73 @@
+name: Backup da main
+
+"on":
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  preservar-versoes:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Preservar versões anterior e atual sem sobrescrever tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+
+          def guardar(repo, token, sha):
+              if not re.fullmatch(r'[0-9a-f]{40}', sha) or sha == '0' * 40:
+                  raise ValueError('Commit de backup inválido.')
+              nome = 'backup-main-' + sha[:12]
+
+              def api(caminho, dados=None):
+                  requisicao = urllib.request.Request(
+                      'https://api.github.com/repos/' + repo + '/' + caminho,
+                      data=json.dumps(dados).encode() if dados is not None else None,
+                      headers={'Authorization': 'Bearer ' + token,
+                               'Accept': 'application/vnd.github+json',
+                               'Content-Type': 'application/json',
+                               'User-Agent': 'etec-achados-backup-main',
+                               'X-GitHub-Api-Version': '2022-11-28'})
+                  with urllib.request.urlopen(requisicao, timeout=20) as resposta:
+                      return json.load(resposta)
+
+              caminho = 'git/ref/tags/' + nome
+              try:
+                  referencia = api(caminho)
+              except urllib.error.HTTPError as erro:
+                  if erro.code != 404:
+                      raise
+                  try:
+                      referencia = api('git/refs', {'ref': 'refs/tags/' + nome, 'sha': sha})
+                  except urllib.error.HTTPError as conflito:
+                      if conflito.code != 422:
+                          raise
+                      # Outro processo pode ter criado a mesma tag. Confirme o alvo.
+                      referencia = api(caminho)
+              if (referencia.get('ref') != 'refs/tags/' + nome
+                      or referencia.get('object', {}).get('type') != 'commit'
+                      or referencia.get('object', {}).get('sha') != sha):
+                  raise RuntimeError('A tag existente aponta para outra versão; não será sobrescrita.')
+              print('Backup preservado: ' + nome + ' -> ' + sha)
+
+          def main():
+              with open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8') as arquivo:
+                  evento = json.load(arquivo)
+              for sha in dict.fromkeys((evento.get('before', ''), os.environ['GITHUB_SHA'])):
+                  if sha and sha != '0' * 40:
+                      guardar(os.environ['GITHUB_REPOSITORY'], os.environ['GH_TOKEN'], sha)
+
+          if __name__ == '__main__':
+              main()
+          PY

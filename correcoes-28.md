@@ -1,6 +1,18 @@
 # Atualizações do projeto — prioridades, uploads e experiência web
 
-Branch única `28-atualizacoes-do-projeto`. A proposta #29 foi integrada em `main` em 21/11/2026, preservando o histórico anterior e a logo unificada da secretaria web/desktop. Por orientação do proprietário, as próximas atualizações continuam nessa branch, a partir da `main` atual e com nova proposta de integração.
+As propostas #29 e #30 foram integradas em `main`, preservando o histórico anterior e a logo unificada da secretaria web/desktop. Por orientação mais recente do proprietário, as próximas alterações são feitas diretamente na `main`, com preservação das versões anteriores, como registrado abaixo.
+
+## Main única, integração dos e-mails e cópias de segurança — 21/11/2026
+
+A proposta #30, dos e-mails personalizados, foi mesclada no commit `33114db045352270b65e8053658fe3fa44bd310e`. A árvore resultante é idêntica à versão que passou nos 540 testes Python e nos 12 cenários visuais; o Railway também confirmou a implantação desse commit. A branch `28-atualizacoes-do-projeto` foi excluída com conferência do SHA e somente após verificar que seu conteúdo estava no histórico de `main`. Não houve reescrita do histórico.
+
+As tags `backup-main-65ec6a44e163` e `backup-main-33114db04535` preservam, respectivamente, a versão anterior aos e-mails personalizados e a integração validada. A cópia ZIP do código validado, sem ambientes locais ou configuração privada não versionada, foi salva em `/workspace/backups-etec/codigo-validado-540-testes-33114db04535.zip`, fora do repositório.
+
+O workflow `.github/workflows/backup-main.yml` usa o token temporário do GitHub Actions com permissão de conteúdo para criar tags leves `backup-main-<SHA de 12 caracteres>` da versão anterior e da versão atual a cada push em `main`. Pode ser executado manualmente na própria `main`. Não depende de chave pessoal, não instala pacotes e não copia arquivos para dentro do repositório; os commits são preservados por referência. Tags existentes só são aceitas se apontarem para o mesmo commit; não são movidas ou apagadas. A criação concorrente da mesma tag é conferida antes de prosseguir. Não há exclusão automática de outras branches nesse workflow.
+
+`agents.md` registra a nova preferência: trabalhar diretamente na `main`, guardar o estado anterior antes de cada atualização remota, testar as mudanças e conservar o histórico. O backup automático complementa essa preservação prévia. Para recuperar, consulte as tags no GitHub, compare a versão desejada e faça uma restauração por novo commit, mantendo o workflow e os registros. Uma tag de backup não é, por si só, comprovação de funcionamento; os resultados de testes e conferências públicas continuam registrados separadamente.
+
+Validação do mecanismo: YAML e Python conferidos, com cinco cenários simulados para criação/repetição, preservação de uma tag divergente, concorrência, recusa de permissão e SHA inválido. O ZIP foi aberto e teve sua integridade conferida. Esta etapa muda apenas as instruções, este registro e o workflow; o código da aplicação permanece igual à integração validada nos 540 testes. As execuções reais do backup ficam registradas na aba Actions, e as referências podem ser conferidas na lista de tags do GitHub.
 
 ## E-mails com a identidade do portal — 21/11/2026
 

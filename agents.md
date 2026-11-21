@@ -1,8 +1,12 @@
-# Branches e propostas
+# Trabalho direto na main e preservação de versões
 
-Por orientação do proprietário, concentre as próximas atualizações na branch `28-atualizacoes-do-projeto`, preservando todas as alterações anteriores; não crie uma branch para cada tarefa. A proposta #29 foi mesclada em `main` a pedido explícito em 21/11/2026, no commit `65ec6a44e16306d899de095964281abcddec685b`, sem apagar a branch de trabalho. Para mudanças posteriores, parta da `main` atual e use essa mesma branch; abra ou atualize uma nova proposta com `main` como base, sem reabrir a #29 já integrada. As branches antigas foram removidas a pedido dele, restando essa branch e `main`.
+Por orientação mais recente do proprietário em 21/11/2026, faça as próximas alterações diretamente em `main`. Não crie novas branches ou propostas sem novo pedido. As propostas #29 e #30 foram mescladas; a branch `28-atualizacoes-do-projeto` foi removida após confirmar que todo o seu conteúdo estava na `main`. O GitHub deve manter apenas `main`, salvo instrução posterior do proprietário.
 
-Consulte o head atual da branch no GitHub antes de começar e teste cada alteração e seus impactos antes da integração. Não use uma cópia antiga de main como base. Não afirme ausência absoluta de erros; registre as validações executadas e eventuais limitações.
+Consulte o head atual de `main` no GitHub antes de começar e teste cada alteração e seus impactos antes de publicar. Nunca use uma cópia antiga de `main` como base nem sobrescreva trabalho concorrente. Atualizações remotas devem avançar o histórico normal, sem force push.
+
+Antes de alterar remotamente a `main`, confirme uma tag leve `backup-main-<12 primeiros caracteres do SHA>` apontando para o commit anterior. Se já existir, confira se aponta para o mesmo commit; nunca mova ou exclua tags antigas de backup. Preserve especialmente a última versão validada e em funcionamento. O workflow `.github/workflows/backup-main.yml` também cria essas tags para as versões anterior e atual de cada push em `main`, sem sobrescrevê-las. Um backup registra a versão; não certifica que ela passou em testes.
+
+Se a cópia de segurança falhar, preserve o código e resolva a falha antes de publicar novas mudanças. Para recuperar uma versão, compare a tag e restaure por um novo commit, conservando o histórico e o mecanismo de backup. Não use reset remoto forçado como procedimento padrão. Não afirme ausência absoluta de erros; registre as validações executadas e eventuais limitações.
 
 ## Estabilidade
 
